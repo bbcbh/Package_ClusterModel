@@ -40,11 +40,17 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	public static final int FIELD_LAST_INFECTED_AT_AGE = FIELD_INFECT_STAT + 1;
 	public static final int FIELD_TIME_UNTIL_NEXT_STAGE = FIELD_LAST_INFECTED_AT_AGE + 1;
 	public static final int FIELD_LAST_ACT_INFECTIOUS = FIELD_TIME_UNTIL_NEXT_STAGE + 1;
+	public static final int FIELD_BEHAVIOR_TYPE = FIELD_LAST_ACT_INFECTIOUS + 1;
+	
 	
 	public static final int GENDER_TYPE_FEMALE = 0;
 	public static final int GENDER_TYPE_HETRO_MALE = 1;
 	public static final int GENDER_TYPE_MSMO = 2;
 	public static final int GENDER_TYPE_MSMW = 3;
+	
+	public static final int BEHAVIOR_TYPE_REGULAR_ONLY = 0;
+	public static final int BEHAVIOR_TYPE_CASUAL_ONLY = BEHAVIOR_TYPE_REGULAR_ONLY + 1;
+	public static final int BEHAVIOR_TYPE_ANY = BEHAVIOR_TYPE_CASUAL_ONLY + 1;
 
 	private final Pattern PARAM_PATTERN = Pattern.compile("\\d+");
 

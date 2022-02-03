@@ -2,7 +2,9 @@ package population;
 
 import java.util.Arrays;
 
+import availability.AbstractAvailability;
 import person.AbstractIndividualInterface;
+import population.availability.Bridging_Population_Availability;
 import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
 import relationship.RelationshipMap;
@@ -19,7 +21,7 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 			// FIELD_POP_COMPOSITION
 			// int[] {NUM_FEMALE, NUM_MALE, NUM_MSMO, NUM_MSMW}
 			new int[] { 5000, 5000, 200, 50 },
-			// FIELD_CONTACT_MAP		
+			// FIELD_CONTACT_MAP
 			new ContactMap[3],
 
 	};
@@ -31,6 +33,10 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 	public static final int CONTACT_MAP_ALL = 0;
 	public static final int CONTACT_MAP_HETRO = CONTACT_MAP_ALL + 1;
 	public static final int CONTACT_MAP_MSM = CONTACT_MAP_HETRO + 1;
+
+	public static final int RELMAP_HETRO = 0;
+	public static final int RELMAP_MSM = 1;
+	public static final int RELMAP_TOTAL = 2;
 
 	public Bridging_Population(long seed) {
 		setSeed(seed);
@@ -97,25 +103,60 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 
 	@Override
 	public void initialise() {
+
+		// Initialise relationship map
+		RelationshipMap[] relMaps = new RelationshipMap[RELMAP_TOTAL];
+		relMaps[RELMAP_HETRO] = new RelationshipMap();
+		relMaps[RELMAP_MSM] = new RelationshipMap();
+		this.setRelMap(relMaps);
+
+		// Initialise population
 		int[] popSizes = (int[]) getFields()[FIELD_POP_COMPOSITION];
 		int popSizeTotal = 0;
-		for(int i = 0; i < popSizes.length; i++) {
+		for (int i = 0; i < popSizes.length; i++) {
 			popSizeTotal += popSizes[i];
 		}
-		
-		AbstractIndividualInterface[] pop = new AbstractIndividualInterface[popSizeTotal];		
+
+		AbstractIndividualInterface[] pop = new AbstractIndividualInterface[popSizeTotal];
 		int popPt = 0;
-		for(int i = 0; i < popSizes.length; i++) {
-			for(int g = 0; g < popSizes[i]; g++) {								
-				pop[popPt] = new Person_Bridging_Pop(popPt+1, i, 
-						18*AbstractIndividualInterface.ONE_YEAR_INT, getGlobalTime(), // Initial age - might not be used.
+		for (int i = 0; i < popSizes.length; i++) {
+			for (int g = 0; g < popSizes[i]; g++) {
+				pop[popPt] = new Person_Bridging_Pop(popPt + 1, i, 18 * AbstractIndividualInterface.ONE_YEAR_INT,
+						getGlobalTime(), // Initial age - might not be used.
 						3); // 3 sites
+				
+				// TODO Set individual behavior 
+				
+				
+				
+				
+				
+				if(i != Person_Bridging_Pop.GENDER_TYPE_MSMO) {
+					relMaps[RELMAP_HETRO].addAvailablePerson(pop[popPt]);
+				}
+				if(i == Person_Bridging_Pop.GENDER_TYPE_MSMO || i==Person_Bridging_Pop.GENDER_TYPE_MSMW) {
+					relMaps[RELMAP_MSM].addAvailablePerson(pop[popPt]);
+				}				
 			}
-			
-		}
+		}		
+
+		this.setPop(pop);				
+		
+		// Set availability
+		
+		AbstractAvailability[] avail = new AbstractAvailability[RELMAP_TOTAL];
+		
+		avail[RELMAP_HETRO] = new Bridging_Population_Availability(getRNG());
+		avail[RELMAP_HETRO].setParameter(Bridging_Population_Availability.BIPARTITE_MAPPING, true);
+		avail[RELMAP_MSM] = new Bridging_Population_Availability(getRNG());
+		avail[RELMAP_MSM].setParameter(Bridging_Population_Availability.BIPARTITE_MAPPING, false);
 		
 		
-		// TODO Auto-generated method stub
+		
+		
+		
+
+		
 
 	}
 
