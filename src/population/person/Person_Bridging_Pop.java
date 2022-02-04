@@ -12,13 +12,17 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	private Object[] fields = new Object[] {
 			// FIELD_ID
 			-1,
-			// FIELD_GENDER			
+			// FIELD_GENDER
 			0,
 			// FIELD_AGE
 			18 * AbstractIndividualInterface.ONE_YEAR_INT,
 			// FIELD_ENTER_POP_AT_AGE
 			18 * AbstractIndividualInterface.ONE_YEAR_INT,
-			// FIELD_ENTER_POP_AT
+			// FIELD_ENTER_POP_AT_TIME
+			0,
+			// FIELD_MAX_REGULAR_PARTNER
+			0,
+			// FIELD_MAX_CASUAL_PARTNERS_6_MONTHS
 			0,
 			// FIELD_INFECT_STAT
 			new int[0],
@@ -26,50 +30,65 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 			new int[0],
 			// FIELD_TIME_UNTIL_NEXT_STAGE
 			new int[0],
+			// FIELD_NUM_PARTNER
+			new int[2],
 			// FIELD_LAST_ACT_INFECTIOUS
 			new boolean[0],
 
 	};
 
+	// Int field
 	public static final int FIELD_ID = 0;
 	public static final int FIELD_GENDER = FIELD_ID + 1;
 	public static final int FIELD_AGE = FIELD_GENDER + 1;
 	public static final int FIELD_ENTER_POP_AT_AGE = FIELD_AGE + 1;
 	public static final int FIELD_ENTER_POP_AT_TIME = FIELD_ENTER_POP_AT_AGE + 1;
-	public static final int FIELD_INFECT_STAT = FIELD_ENTER_POP_AT_TIME + 1;
+	public static final int FIELD_MAX_REGULAR_PARTNER = FIELD_ENTER_POP_AT_TIME + 1;
+	public static final int FIELD_MAX_CASUAL_PARTNERS_6_MONTHS = FIELD_MAX_REGULAR_PARTNER + 1;
+
+	// Int[] field
+	public static final int FIELD_INFECT_STAT = FIELD_MAX_CASUAL_PARTNERS_6_MONTHS + 1;
 	public static final int FIELD_LAST_INFECTED_AT_AGE = FIELD_INFECT_STAT + 1;
 	public static final int FIELD_TIME_UNTIL_NEXT_STAGE = FIELD_LAST_INFECTED_AT_AGE + 1;
-	public static final int FIELD_LAST_ACT_INFECTIOUS = FIELD_TIME_UNTIL_NEXT_STAGE + 1;
-	public static final int FIELD_BEHAVIOR_TYPE = FIELD_LAST_ACT_INFECTIOUS + 1;
-	
-	
+	public static final int FIELD_NUM_PARTNER = FIELD_TIME_UNTIL_NEXT_STAGE + 1;
+
+	// boolean[] field
+	public static final int FIELD_LAST_ACT_INFECTIOUS = FIELD_NUM_PARTNER + 1;
+
+	private static final int FIELDTYPE_LIMIT_INT = FIELD_INFECT_STAT;
+	private static final int FIELDTYPE_LIMIT_INT_ARRAYS = FIELD_LAST_ACT_INFECTIOUS;
+
 	public static final int GENDER_TYPE_FEMALE = 0;
 	public static final int GENDER_TYPE_HETRO_MALE = 1;
 	public static final int GENDER_TYPE_MSMO = 2;
 	public static final int GENDER_TYPE_MSMW = 3;
-	
-	public static final int BEHAVIOR_TYPE_REGULAR_ONLY = 0;
-	public static final int BEHAVIOR_TYPE_CASUAL_ONLY = BEHAVIOR_TYPE_REGULAR_ONLY + 1;
-	public static final int BEHAVIOR_TYPE_ANY = BEHAVIOR_TYPE_CASUAL_ONLY + 1;
 
 	private final Pattern PARAM_PATTERN = Pattern.compile("\\d+");
+
+	// Casual encounter record
+	protected int[] casualRecord = new int[6 * 30];
+	protected int casualRecordIndex = 0;
 
 	public Person_Bridging_Pop(int id, int gender, int startingAge, int startingTime, int numInfection) {
 		super();
 		fields[FIELD_ID] = id;
 		fields[FIELD_GENDER] = gender;
- 		fields[FIELD_AGE] = startingAge;
+		fields[FIELD_AGE] = startingAge;
 		fields[FIELD_ENTER_POP_AT_AGE] = startingAge;
 		fields[FIELD_ENTER_POP_AT_TIME] = startingTime;
-		
-		for(int i = FIELD_INFECT_STAT; i < FIELD_LAST_ACT_INFECTIOUS; i++) {
-			fields[i] = new int[numInfection];	
+
+		for (int i = FIELDTYPE_LIMIT_INT; i < FIELDTYPE_LIMIT_INT_ARRAYS; i++) {
+			fields[i] = new int[numInfection];
 			Arrays.fill((int[]) fields[i], AbstractIndividualInterface.INFECT_S);
 		}
-		
+
 		fields[FIELD_LAST_ACT_INFECTIOUS] = new boolean[numInfection];
 	}
-	
+
+	public void addCasualPartner(AbstractIndividualInterface p) {
+		casualRecord[casualRecordIndex] = p.getId();
+	}
+
 	public int getGenderType() {
 		return (int) fields[FIELD_GENDER];
 	}
@@ -100,37 +119,59 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	}
 
 	@Override
+	public Comparable<?> setParameter(String id, Comparable<?> value) {
+		Matcher m = PARAM_PATTERN.matcher(id);
+		Comparable<?> res = null;
+
+		if (m.find()) {
+			int nId = Integer.parseInt(m.group());
+
+			if (nId < FIELDTYPE_LIMIT_INT) {
+				res = (int) fields[nId];
+				fields[nId] = (int) value;
+			} else if (nId < FIELDTYPE_LIMIT_INT_ARRAYS) {
+				if (m.find()) {
+					int aInd = Integer.parseInt(m.group());
+					res = ((int[]) fields[nId])[aInd];
+					((int[]) fields[nId])[aInd] = (int) value;
+				}
+
+			} else {
+				if (m.find()) {
+					int aInd = Integer.parseInt(m.group());
+					res = ((boolean[]) fields[nId])[aInd];
+					((boolean[]) fields[nId])[aInd] = (boolean) value;
+				}
+
+			}
+
+		}
+
+		if (res == null) {
+			System.err.println(String.format("setParameter: Ill-formed parameter string of \"%s\" and value \"%s\"", id,
+					value.toString()));
+		}
+		return res;
+	}
+
+	@Override
 	public Comparable<?> getParameter(String id) {
 		Matcher m = PARAM_PATTERN.matcher(id);
 		if (m.find()) {
 			int nId = Integer.parseInt(m.group());
 
-			switch (nId) {
-			// Int fields
-			case FIELD_ID:
-			case FIELD_GENDER:
-			case FIELD_AGE:
-			case FIELD_ENTER_POP_AT_AGE:
-			case FIELD_ENTER_POP_AT_TIME:
+			if (nId < FIELDTYPE_LIMIT_INT) {
 				return (int) fields[nId];
-
-			// Int Array
-			case FIELD_INFECT_STAT:
-			case FIELD_LAST_INFECTED_AT_AGE:
-			case FIELD_TIME_UNTIL_NEXT_STAGE:
+			} else if (nId < FIELDTYPE_LIMIT_INT_ARRAYS) {
 				if (m.find()) {
 					int aInd = Integer.parseInt(m.group());
 					return ((int[]) fields[nId])[aInd];
 				}
-
-			// Boolean Array
-			case FIELD_LAST_ACT_INFECTIOUS:
+			} else {
 				if (m.find()) {
 					int aInd = Integer.parseInt(m.group());
 					return ((boolean[]) fields[nId])[aInd];
 				}
-			default:
-				// Nothing
 			}
 
 		}
@@ -166,54 +207,6 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	}
 
 	@Override
-	public Comparable<?> setParameter(String id, Comparable<?> value) {
-		Matcher m = PARAM_PATTERN.matcher(id);
-		Comparable<?> res = null;
-
-		if (m.find()) {
-			int nId = Integer.parseInt(m.group());
-
-			switch (nId) {
-			// Int fields
-			case FIELD_ID:
-			case FIELD_GENDER:
-			case FIELD_AGE:
-			case FIELD_ENTER_POP_AT_AGE:
-			case FIELD_ENTER_POP_AT_TIME:
-				res = (int) fields[nId];
-				fields[nId] = (int) value;
-			
-			// Int Array
-			case FIELD_INFECT_STAT:
-			case FIELD_LAST_INFECTED_AT_AGE:
-			case FIELD_TIME_UNTIL_NEXT_STAGE:
-				if (m.find()) {
-					int aInd = Integer.parseInt(m.group());
-					res = ((int[]) fields[nId])[aInd];
-					((int[]) fields[nId])[aInd] = (int) value;
-				}
-
-			// Boolean Array
-			case FIELD_LAST_ACT_INFECTIOUS:
-				if (m.find()) {
-					int aInd = Integer.parseInt(m.group());
-					res = ((boolean[]) fields[nId])[aInd];
-					((boolean[]) fields[nId])[aInd] = (boolean) value;
-				}
-			default:
-				// Nothing
-			}
-
-		}
-
-		if (res == null) {
-			System.err.println(String.format("setParameter: Ill-formed parameter string of \"%s\" and value \"%s\"", id,
-					value.toString()));
-		}
-		return res;
-	}
-
-	@Override
 	public void setTimeUntilNextStage(int index, double newTimeUntilNextStage) {
 		((int[]) fields[FIELD_TIME_UNTIL_NEXT_STAGE])[index] = (int) newTimeUntilNextStage;
 	}
@@ -243,7 +236,15 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	@Override
 	public int incrementTime(int deltaT, AbstractInfection[] infectionList) {
 		// TODO Auto-generated method stub
-		return 0;
+		int res = deltaT;
+		for (int t = 0; t < deltaT; t++) {
+			casualRecordIndex = (casualRecordIndex + 1) % casualRecord.length;
+			if (casualRecord[casualRecordIndex] != 0) {
+				// Remove casual from record
+				casualRecord[casualRecordIndex] = 0;
+			}
+		}
+		return res;
 	}
 
 }
