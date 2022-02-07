@@ -88,6 +88,17 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	public void addCasualPartner(AbstractIndividualInterface p) {
 		casualRecord[casualRecordIndex] = p.getId();
 	}
+	
+	public int getNumCasualInRecord() {
+		int c = 0;
+		for(int i = 0; i < casualRecord.length; i++) {
+			if(casualRecord[i] > 0) {
+				c++;
+			}
+		}
+		return c;
+	}
+
 
 	public int getGenderType() {
 		return (int) fields[FIELD_GENDER];
@@ -235,7 +246,8 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 
 	@Override
 	public int incrementTime(int deltaT, AbstractInfection[] infectionList) {
-		// TODO Auto-generated method stub
+		this.setAge(this.getAge() + deltaT);
+	
 		int res = deltaT;
 		for (int t = 0; t < deltaT; t++) {
 			casualRecordIndex = (casualRecordIndex + 1) % casualRecord.length;

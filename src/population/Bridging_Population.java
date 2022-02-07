@@ -1,14 +1,10 @@
 package population;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
-import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
-import org.apache.commons.math3.optim.univariate.BrentOptimizer;
-import org.apache.commons.math3.optim.univariate.SearchInterval;
-import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
 
 import availability.AbstractAvailability;
 import person.AbstractIndividualInterface;
@@ -17,6 +13,7 @@ import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
 import relationship.RelationshipMap;
 import relationship.SingleRelationship;
+import util.ArrayUtilsRandomGenerator;
 
 public class Bridging_Population extends AbstractFieldsArrayPopulation {
 
@@ -37,29 +34,20 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 			// Lee E, Mao L, Broady T, et al. Gay Community Periodic Survey: Melbourne 2018.
 			// Sydney: Centre for Social Research in Health, UNSW Sydney, 2018.
 			new float[][] { { 1, 1 }, { 1, 1 }, { 0.33f, 0.33f + 0.26f }, { 0.33f, 0.33f + 0.26f } },
-			// FIELD_MAX_CASUAL_PARTNER_NUM_PROB
-			// float[GENDER]{CUMUL_PROB_1, CUMUL_PROB_2, ... , MAX_PARTNER_1 , MAX_PARTNER_2
-			// ...}}
-			// Default:
-			// National Centre in HIV Epidemiology and Clinical Research. Phase A of the
-			// National Gay Men’s Syphilis Action Plan:
-			// Modelling evidence and research on acceptability of interventions for
-			// controlling syphilis in Australia.
-			// Sydney: National Centre in HIV Epidemiology and Clinical Research, 2009.
-			// Fogarty A, Mao L, Zablotska Manos I, et al.
-			// The Health in Men and Positive Health cohorts: A comparison of trends in the
-			// health and sexual behaviour of
-			// HIV-negative and HIV-positive gay men, 2002-2005. Sydney: National Centre in
-			// HIV Social Research, 2006.
-			new float[][] { { 1, 0 }, { 1, 0 }, { 0.51f, 10 }, { 0.51f, 10 } },
+			// FIELD_MEAN_CASUAL_PARTNER_NUM
+			// Currently bases on a PossionDistribution
+			new float[] { 0, 0, 10, 10 },
+			// FIELD_MEAN_MSM_REG_PARTNERSHIP_DURATION
+			4.0 * AbstractIndividualInterface.ONE_YEAR,
 
 	};
 
 	public static final int FIELD_POP_COMPOSITION = AbstractFieldsArrayPopulation.LENGTH_FIELDS;
 	public static final int FIELD_CONTACT_MAP = FIELD_POP_COMPOSITION + 1;
 	public static final int FIELD_PARTNER_TYPE_PROB = FIELD_CONTACT_MAP + 1;
-	public static final int FIELD_MAX_CASUAL_PARTNER_NUM_PROB = FIELD_PARTNER_TYPE_PROB + 1;
-	public static final int LENGTH_FIELDS_BRIDGING_POP = FIELD_PARTNER_TYPE_PROB + 1;
+	public static final int FIELD_MEAN_CASUAL_PARTNER_NUM = FIELD_PARTNER_TYPE_PROB + 1;
+	public static final int FIELD_MEAN_MSM_REG_PARTNERSHIP_DURATION = FIELD_PARTNER_TYPE_PROB + 1;
+	public static final int LENGTH_FIELDS_BRIDGING_POP = FIELD_MEAN_MSM_REG_PARTNERSHIP_DURATION + 1;
 
 	public static final int CONTACT_MAP_ALL = 0;
 	public static final int CONTACT_MAP_HETRO = CONTACT_MAP_ALL + 1;
@@ -68,6 +56,8 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 	public static final int RELMAP_HETRO = 0;
 	public static final int RELMAP_MSM = 1;
 	public static final int RELMAP_TOTAL = 2;
+
+	private AbstractIntegerDistribution msm_reg_partner_duration;
 
 	public Bridging_Population(long seed) {
 		setSeed(seed);
@@ -81,23 +71,24 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 		super.setFields(newFields);
 	}
 
+	public Class<? extends Object> getFieldsClass(int fieldIndex) {
+		return this.getFields()[fieldIndex].getClass();
+	}
+
 	@Override
-	protected SingleRelationship formRelationship(AbstractIndividualInterface[] pair, RelationshipMap relMap, int d,
-			int mapType) {
+	protected SingleRelationship formRelationship(AbstractIndividualInterface[] pair, RelationshipMap relMap,
+			int duration, int mapType) {
 
 		ContactMap cMapSpec = null;
 		Integer[] link = new Integer[pair.length];
 		SingleRelationship rel;
 		ContactMap cMapAll = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL];
 
-		// 0b00 = Female, 0b01 = Hetro_male, Ob10 = MSMO, 0b11 = MSMW
-		int contactType = ((Person_Bridging_Pop) pair[0]).getGenderType()
-				& ((Person_Bridging_Pop) pair[1]).getGenderType();
-
-		if (contactType == 0) { // Hetro sex involving female
+		if (mapType == 0) { // Hetro sex involving female
 			cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_HETRO];
-		} else if (contactType == 0b10) { // Involve MSM
+		} else { // Involve MSM
 			cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_MSM];
+
 		}
 
 		for (int i = 0; i < pair.length; i++) {
@@ -116,6 +107,7 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 		Arrays.sort(link);
 
 		rel = new SingleRelationship(link);
+
 		if (relMap.addEdge(link[0], link[1], rel)) {
 
 			Integer[] c = Arrays.copyOf(link, link.length);
@@ -126,10 +118,59 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 				cMapSpec.addEdge(c[0], c[1], c);
 			}
 
+			rel.setDurations(duration);
+
 			return rel;
 		} else {
 			return null;
 		}
+	}
+
+	protected boolean seekingCasualToday(Person_Bridging_Pop person) {
+		int maxCasual = (int) person
+				.getParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_CASUAL_PARTNERS_6_MONTHS));
+		boolean seekCasual = false;
+
+		if (maxCasual > 0) {
+			int numCasual = person.getNumCasualInRecord();
+			seekCasual = getRNG().nextInt(6 * 30) < (maxCasual - numCasual);
+		}
+		return seekCasual;
+	}
+
+	protected void formCasualPartnership(ArrayList<Person_Bridging_Pop> casualListMSM) {
+		ContactMap[] cMaps = new ContactMap[] { ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL],
+				((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_MSM] };
+
+		Person_Bridging_Pop[] casualMSMArr = casualListMSM.toArray(new Person_Bridging_Pop[casualListMSM.size()]);
+		ArrayUtilsRandomGenerator.shuffleArray(casualMSMArr, getRNG());
+
+		for (int i = 0; (i + 1) < casualMSMArr.length; i += 2) {
+			Person_Bridging_Pop[] pair = new Person_Bridging_Pop[] { casualMSMArr[i], casualMSMArr[i + 1] };
+
+			// For consistency
+			if (pair[0].getId() > pair[1].getId()) {
+				pair[0] = casualMSMArr[i + 1];
+				pair[1] = casualMSMArr[i];
+			}
+
+			// Form casual pairing if there are not already in a regular partnership
+			if ((this.getRelMap()[RELMAP_MSM]).containsEdge(pair[0].getId(), pair[1].getId())) {
+				for (int c = 0; c < cMaps.length; c++) {
+					for (int p = 0; p < pair.length; p++) {
+						if (!cMaps[c].containsVertex(pair[p].getId())) {
+							cMaps[c].addVertex(pair[p].getId());
+						}
+					}
+
+					cMaps[c].addEdge(pair[0].getId(), pair[1].getId(),
+							new Integer[] { pair[0].getId(), pair[1].getId() });
+				}
+
+			}
+
+		}
+
 	}
 
 	@Override
@@ -152,7 +193,9 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 
 		int popPt = 0;
 		float[][] partner_type = (float[][]) getFields()[FIELD_PARTNER_TYPE_PROB];
-		float[][] max_casual_partners = (float[][]) getFields()[FIELD_MAX_CASUAL_PARTNER_NUM_PROB];
+		float[] mean_casual_partners = (float[]) getFields()[FIELD_MEAN_CASUAL_PARTNER_NUM];
+
+		ArrayList<Person_Bridging_Pop> casualListMSM = new ArrayList<>();
 
 		for (int i = 0; i < popSizes.length; i++) {
 
@@ -165,8 +208,6 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 				pop[popPt] = new Person_Bridging_Pop(popPt + 1, i, 18 * AbstractIndividualInterface.ONE_YEAR_INT,
 						getGlobalTime(), // Initial age - might not be used.
 						3); // 3 sites
-
-				// TODO Set individual behavior
 
 				Person_Bridging_Pop person = (Person_Bridging_Pop) pop[popPt];
 
@@ -196,36 +237,15 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 				}
 				// Set max. number of casual in 6 months
 				if (canCasual) {
-
 					if (dist == null) {
-						// float[GENDER]{CUMUL_PROB, MAX_PARTNER}}
-						float[] p_casual_prob = max_casual_partners[i];
-
-						final float targetCDF = p_casual_prob[0];
-						final int targetVal = (int) p_casual_prob[1];
-						final float init_lamda = targetVal;
-
-						final double RELATIVE_TOLERANCE = 0.005;
-						final double ABSOLUTE_TOLERANCE = 0.001;
-						final BrentOptimizer OPTIMIZER = new BrentOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE);
-						final SearchInterval interval = new SearchInterval(1, 100, init_lamda);
-						final UnivariateObjectiveFunction func = new UnivariateObjectiveFunction(
-								new UnivariateFunction() {
-									@Override
-									public double value(double x) {
-										PoissonDistribution func_dist = new PoissonDistribution(x);
-										return func_dist.cumulativeProbability(targetVal) - targetCDF;
-									}
-								});
-
-						double bestFit = OPTIMIZER.optimize(func, GoalType.MINIMIZE, interval).getPoint();
-						dist = new PoissonDistribution(bestFit);
-
+						dist = new PoissonDistribution(mean_casual_partners[i]);
 					}
-
 					person.setParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_CASUAL_PARTNERS_6_MONTHS),
 							dist.sample());
 
+					if (seekingCasualToday(person) && (0b10 & person.getGenderType()) != 0) {
+						casualListMSM.add(person);
+					}
 				}
 
 				if (i != Person_Bridging_Pop.GENDER_TYPE_MSMO) {
@@ -247,13 +267,72 @@ public class Bridging_Population extends AbstractFieldsArrayPopulation {
 		avail[RELMAP_HETRO].setParameter(Bridging_Population_Availability.BIPARTITE_MAPPING, true);
 		avail[RELMAP_MSM] = new Bridging_Population_Availability(getRNG());
 		avail[RELMAP_MSM].setParameter(Bridging_Population_Availability.BIPARTITE_MAPPING, false);
+		
+		// TODO: Form regular partnership - Hetro
+
+		// Form regular partnership - MSM
+
+		msm_reg_partner_duration = new PoissonDistribution(
+				(double) getFields()[FIELD_MEAN_MSM_REG_PARTNERSHIP_DURATION]);
+		avail[RELMAP_MSM].setAvailablePopulation(relMaps[RELMAP_MSM].getPersonsAvailable(null, this.getLocalData()));
+
+		int numMSM_Pair = avail[RELMAP_MSM].generatePairing();
+		AbstractIndividualInterface[][] pairs = avail[RELMAP_MSM].getPairing();
+		for (int p = 0; p < numMSM_Pair; p++) {
+			formRelationship(pairs[p], relMaps[RELMAP_MSM], msm_reg_partner_duration.sample(), 1);
+
+		}
+
+		// Form casual partnership - MSM
+		
+		formCasualPartnership(casualListMSM);
 
 	}
 
 	@Override
 	public void advanceTimeStep(int deltaT) {
+		incrementTime(deltaT);
+
 		// TODO Auto-generated method stub
 
+		updatePairs();
+
+	}
+
+	protected void updatePairs() {
+
+		for (int map = 0; map < getRelMap().length; map++) {
+
+			RelationshipMap relMap = getRelMap()[map];
+
+			// Update existing
+			SingleRelationship[] relArr = relMap.getRelationshipArray();
+
+			if (relMap.edgeSet().size() != relArr.length) {
+				relArr = relMap.edgeSet().toArray(new SingleRelationship[relMap.edgeSet().size()]);
+			}
+
+			for (SingleRelationship relArr1 : relArr) {
+				if (relArr1.incrementTime(1) <= 0) {
+					relMap.removeEdge(relArr1);
+				}
+			}
+
+			// No need to be sorted
+			getAvailability()[map].setAvailablePopulation(getRelMap()[map].getPersonsAvailable(null, getLocalData()));
+
+			// Generate new pairing
+			int pairNum = getAvailability()[map].generatePairing();
+			AbstractIndividualInterface[][] pairs = getAvailability()[map].getPairing();
+			for (int pairId = 0; pairId < pairNum; pairId++) {
+				int duration = -1;
+				if (map == RELMAP_MSM) {
+					duration = msm_reg_partner_duration.sample();
+				}
+				formRelationship(pairs[pairId], getRelMap()[map], duration, map);
+
+			}
+		}
 	}
 
 }
