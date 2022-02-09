@@ -43,11 +43,11 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	public static final int FIELD_AGE = FIELD_GENDER + 1;
 	public static final int FIELD_ENTER_POP_AT_AGE = FIELD_AGE + 1;
 	public static final int FIELD_ENTER_POP_AT_TIME = FIELD_ENTER_POP_AT_AGE + 1;
-	public static final int FIELD_MAX_REGULAR_PARTNER = FIELD_ENTER_POP_AT_TIME + 1;
-	public static final int FIELD_MAX_CASUAL_PARTNERS_6_MONTHS = FIELD_MAX_REGULAR_PARTNER + 1;
+	public static final int FIELD_MAX_REGULAR_PARTNER_12_MONTHS = FIELD_ENTER_POP_AT_TIME + 1;
+	public static final int FIELD_MAX_CASUAL_PARTNERS_12_MONTHS = FIELD_MAX_REGULAR_PARTNER_12_MONTHS + 1;
 
 	// Int[] field
-	public static final int FIELD_INFECT_STAT = FIELD_MAX_CASUAL_PARTNERS_6_MONTHS + 1;
+	public static final int FIELD_INFECT_STAT = FIELD_MAX_CASUAL_PARTNERS_12_MONTHS + 1;
 	public static final int FIELD_LAST_INFECTED_AT_AGE = FIELD_INFECT_STAT + 1;
 	public static final int FIELD_TIME_UNTIL_NEXT_STAGE = FIELD_LAST_INFECTED_AT_AGE + 1;
 	public static final int FIELD_NUM_PARTNER = FIELD_TIME_UNTIL_NEXT_STAGE + 1;
@@ -66,8 +66,12 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	private final Pattern PARAM_PATTERN = Pattern.compile("\\d+");
 
 	// Casual encounter record
-	protected int[] casualRecord = new int[6 * 30];
+	protected int[] casualRecord = new int[ONE_YEAR_INT];
 	protected int casualRecordIndex = 0;
+	
+	// Regular partner record - 12 months
+	protected int[] regularRecord = new int[ONE_YEAR_INT];
+	protected int regularRecordIndex = 0;
 
 	public Person_Bridging_Pop(int id, int gender, int startingAge, int startingTime, int numInfection) {
 		super();
@@ -89,10 +93,22 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 		casualRecord[casualRecordIndex] = p.getId();
 	}
 	
+	public void addRegularPartner(AbstractIndividualInterface p) {
+		regularRecord[regularRecordIndex] = p.getId();
+	}
+	
+	public int getNumRegularInRecrod() {
+		return getNumInRecord(regularRecord);
+	}
+	
 	public int getNumCasualInRecord() {
+		return getNumInRecord(casualRecord);
+	}
+	
+	private int getNumInRecord(int [] record) {
 		int c = 0;
-		for(int i = 0; i < casualRecord.length; i++) {
-			if(casualRecord[i] > 0) {
+		for(int i = 0; i < record.length; i++) {
+			if(record[i] > 0) {
 				c++;
 			}
 		}
@@ -249,11 +265,18 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 		this.setAge(this.getAge() + deltaT);
 	
 		int res = deltaT;
-		for (int t = 0; t < deltaT; t++) {
+		for (int t = 0; t < deltaT; t++) {			
+			
 			casualRecordIndex = (casualRecordIndex + 1) % casualRecord.length;
 			if (casualRecord[casualRecordIndex] != 0) {
 				// Remove casual from record
 				casualRecord[casualRecordIndex] = 0;
+			}
+			
+			regularRecordIndex = (regularRecordIndex + 1) % regularRecord.length;
+			if (regularRecord[regularRecordIndex] != 0) {
+				// Remove regular from record
+				casualRecord[regularRecordIndex] = 0;
 			}
 		}
 		return res;
