@@ -22,31 +22,13 @@ import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
-import transform.ParameterConstraintTransform;
 import util.PersonClassifier;
 import util.PropValUtils;
 
 public class Simulation_ClusterModel implements SimulationInterface {
 
-	public static final Object[] DEFAULT_BRIDGING_SIM_FIELDS = {
-			// FIELD_MAX_CASUAL_PARTNER_NUM_PROB
-			// float[GENDER]{CUMUL_PROB_1, CUMUL_PROB_2, ... , MAX_PARTNER_1 , MAX_PARTNER_2
-			// ...}}
-			// Default:
-			// National Centre in HIV Epidemiology and Clinical Research. Phase A of the
-			// National Gay Men’s Syphilis Action Plan:
-			// Modelling evidence and research on acceptability of interventions for
-			// controlling syphilis in Australia.
-			// Sydney: National Centre in HIV Epidemiology and Clinical Research, 2009.
-			// Fogarty A, Mao L, Zablotska Manos I, et al.
-			// The Health in Men and Positive Health cohorts: A comparison of trends in the
-			// health and sexual behaviour of
-			// HIV-negative and HIV-positive gay men, 2002-2005. Sydney: National Centre in
-			// HIV Social Research, 2006.d
-			new float[][] { { 1, 0 }, { 1, 0 }, { 0.51f, 10 }, { 0.51f, 10 } }, };
-
-	public static final int FIELD_MAX_CASUAL_PARTNER_NUM_PROB = Runnable_ClusterModel.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD;
-	public static final int LENGTH_SIM_CLUSTER_MODEL_FIELD = FIELD_MAX_CASUAL_PARTNER_NUM_PROB + 1;
+	public static final Object[] DEFAULT_BRIDGING_SIM_FIELDS = {};
+	public static final int LENGTH_SIM_CLUSTER_MODEL_FIELD =  Runnable_ClusterModel.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD;
 
 	public static final String POP_PROP_INIT_PREFIX = "POP_PROP_INIT_PREFIX_";
 	public static final String POP_PROP_INIT_PREFIX_CLASS = "POP_PROP_INIT_PREFIX_CLASS_";

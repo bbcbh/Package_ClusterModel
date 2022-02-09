@@ -46,7 +46,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					4f * AbstractIndividualInterface.ONE_YEAR_INT },
 			// FIELD_MEAN_CASUAL_PARTNER_IN_12_MONTHS
 			// Currently bases on a PossionDistribution
-			new float[] { 0, 0, 20, 20 },
+			new float[] { 0, 0, 20.55f, 20.55f },
 
 	};
 
