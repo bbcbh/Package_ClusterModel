@@ -45,7 +45,7 @@ public class Availability_Bridging_Population extends AbstractAvailability {
 		if (isBipartitieMapping) {
 			for (int i = 0; i < candidate.length; i++) {
 				if (available[i].length == numPairs) {
-					candidate[i] = Arrays.copyOf(candidate[i], candidate[i].length);
+					candidate[i] = Arrays.copyOf(available[i], available[i].length);
 				} else {
 					candidate[i] = ArrayUtilsRandomGenerator.randomSelect(available[i], numPairs, getRNG());
 				}
@@ -64,7 +64,7 @@ public class Availability_Bridging_Population extends AbstractAvailability {
 
 		pairing = new AbstractIndividualInterface[numPairs][2];
 		for (int i = 0; i < pairing.length; i++) {
-			for (int p = 0; p < pairing.length; p++) {
+			for (int p = 0; p < candidate.length; p++) {
 				pairing[i][p] = candidate[p][i];
 			}
 

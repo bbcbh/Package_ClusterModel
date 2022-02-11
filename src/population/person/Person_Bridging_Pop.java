@@ -15,9 +15,9 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 			// FIELD_GENDER
 			0,
 			// FIELD_AGE
-			18 * AbstractIndividualInterface.ONE_YEAR_INT,
+			18.0 * AbstractIndividualInterface.ONE_YEAR_INT,
 			// FIELD_ENTER_POP_AT_AGE
-			18 * AbstractIndividualInterface.ONE_YEAR_INT,
+			18.0 * AbstractIndividualInterface.ONE_YEAR_INT,
 			// FIELD_ENTER_POP_AT_TIME
 			0,
 			// FIELD_MAX_REGULAR_PARTNER
@@ -73,7 +73,7 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	protected int[] regularRecord = new int[ONE_YEAR_INT];
 	protected int regularRecordIndex = 0;
 
-	public Person_Bridging_Pop(int id, int gender, int startingAge, int startingTime, int numInfection) {
+	public Person_Bridging_Pop(int id, int gender, double startingAge, int startingTime, int numInfection) {
 		super();
 		fields[FIELD_ID] = id;
 		fields[FIELD_GENDER] = gender;
@@ -276,7 +276,7 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 			regularRecordIndex = (regularRecordIndex + 1) % regularRecord.length;
 			if (regularRecord[regularRecordIndex] != 0) {
 				// Remove regular from record
-				casualRecord[regularRecordIndex] = 0;
+				regularRecord[regularRecordIndex] = 0;
 			}
 		}
 		return res;

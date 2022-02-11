@@ -3,21 +3,10 @@ package sim;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.math3.analysis.UnivariateFunction;
-import org.apache.commons.math3.distribution.PoissonDistribution;
-import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
-import org.apache.commons.math3.optim.univariate.BrentOptimizer;
-import org.apache.commons.math3.optim.univariate.SearchInterval;
-import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
-
-import optimisation.AbstractParameterOptimiser;
-import optimisation.AbstractResidualFunc;
-import optimisation.LineSearchOptimisier;
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
