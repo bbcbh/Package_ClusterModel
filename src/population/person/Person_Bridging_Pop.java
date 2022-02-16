@@ -122,7 +122,7 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 
 	@Override
 	public double getAge() {
-		return (double) fields[FIELD_AGE];
+		return ((Number) fields[FIELD_AGE]).doubleValue();
 	}
 
 	@Override

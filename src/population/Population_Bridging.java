@@ -1,5 +1,7 @@
 package population;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Set;
@@ -38,7 +40,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			// FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS
 			// float[GENDER][MEAN_PARTNER_IN_12_MONTHS]
 			// Default: Hetro ASHR2 (16 - 30) , MSM - ASHR2
-			new float[] { (1.4f + 1.4f) / 2, (1.0f + 1.1f) / 2, 6.8f, 6.8f },
+			new float[] { (1.0f + 1.1f) / 2, (1.4f + 1.4f) / 2, 6.8f, 6.8f },
 			// FIELD_MEAN_REG_PARTNERSHIP_DUR
 			// float[]{HETRO, MSM}
 			// Default: Hetro (weight ave from ASHR), MSM - see tech appendix
@@ -79,6 +81,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private ArrayList<Person_Bridging_Pop> casualListMSM = new ArrayList<>();
 
 	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[RELMAP_TOTAL];
+
+	private boolean printStatus = false;
+
+	public void setPrintStatus(boolean printStatus) {
+		this.printStatus = printStatus;
+	}
 
 	public Population_Bridging(long seed) {
 		setSeed(seed);
@@ -122,29 +130,16 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				relMap.addVertex(pair[i].getId());
 			}
 
-			if (cMapAll != null) {
-				if (!cMapAll.containsVertex(pair[i].getId())) {
-					cMapAll.addVertex(pair[i].getId());
-				}
-				if (!cMapSpec.containsVertex(pair[i].getId())) {
-					cMapSpec.addVertex(pair[i].getId());
-				}
-			}
 			link[i] = pair[i].getId();
 		}
+
+		checkContactMaps(link, new ContactMap[] { cMapAll, cMapSpec });
 
 		rel = new SingleRelationship(link);
 
 		if (relMap.addEdge(link[0], link[1], rel)) {
 			Integer[] c = Arrays.copyOf(link, link.length);
-			if (cMapAll != null) {
-				if (!cMapAll.containsEdge(c)) {
-					cMapAll.addEdge(c[0], c[1], c);
-				}
-				if (!cMapSpec.containsEdge(c)) {
-					cMapSpec.addEdge(c[0], c[1], c);
-				}
-			}
+
 			rel.setDurations(duration);
 			for (int p = 0; p < pair.length; p++) {
 				((Person_Bridging_Pop) pair[p]).addRegularPartner(pair[(p + 1) % 2]);
@@ -197,21 +192,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			// Form casual pairing if there are not already in a regular partnership
 			if (!(this.getRelMap()[RELMAP_MSM]).containsEdge(pair[0].getId(), pair[1].getId())) {
 
+				for (int p = 0; p < pair.length; p++) {
+					pair[p].addCasualPartner(pair[(p + 1) % 2]);
+				}
 				numCasualPartnership[partPt] = new Person_Bridging_Pop[] { pair[0], pair[1] };
 
-				for (int c = 0; c < cMaps.length; c++) {
-					if (cMaps[c] != null) {
-						for (int p = 0; p < pair.length; p++) {
-							if (!cMaps[c].containsVertex(pair[p].getId())) {
-								cMaps[c].addVertex(pair[p].getId());
-							}
-							pair[p].addCasualPartner(pair[(p + 1) % 2]);
-						}
-						cMaps[c].addEdge(pair[0].getId(), pair[1].getId(),
-								new Integer[] { pair[0].getId(), pair[1].getId() });
-					}
-
-				}
+				checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId() }, cMaps);
 
 				partPt++;
 
@@ -324,20 +310,6 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		formRegularPartnership(population_num_partner_in_last_12_months); // All 0 during init.
 
-		System.out.println("# relationship - initial");
-
-		for (int r = 0; r < getRelMap().length; r++) {
-			System.out.println(String.format("RelMap #%d: %d", r, getRelMap()[r].edgeSet().size()));
-		}
-
-		Person_Bridging_Pop[][] casualPartnerFormed = formCasualPartnership();
-		System.out.println("# casual partnership - initial");
-		for (int c = 0; c < casualPartnerFormed.length; c++) {
-			System.out.println(String.format("#%d: <%d (%d), %d (%d)>", c, casualPartnerFormed[c][0].getId(),
-					casualPartnerFormed[c][0].getGenderType(), casualPartnerFormed[c][1].getId(),
-					casualPartnerFormed[c][1].getGenderType()));
-		}
-
 	}
 
 	@Override
@@ -362,14 +334,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			population_num_partner_in_last_12_months[genderType] += numReg12Months + numCas12Months;
 
-			// TODO Fill partnership status array
-			
-			if(seekingRegularToday(person)) {
-				canSeekRelPartners[genderType].add(person);				
+			if (seekingRegularToday(person)) {
+				canSeekRelPartners[genderType].add(person);
 			}
-			
+
 			RelationshipMap[] relMap = getRelMap();
-			boolean hasRel;			
+			boolean hasRel;
 
 			switch (genderType) {
 			case Person_Bridging_Pop.GENDER_TYPE_MSMO:
@@ -381,11 +351,10 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				break;
 			default:
 				hasRel = relMap[RELMAP_HETRO].degreeOf(person.getId()) > 0;
-			}			
-			if(hasRel) {
+			}
+			if (hasRel) {
 				hasRelPartners[genderType].add(person);
-			}		
-			
+			}
 
 			if (genderType == Person_Bridging_Pop.GENDER_TYPE_MSMO
 					|| genderType == Person_Bridging_Pop.GENDER_TYPE_MSMW) {
@@ -397,18 +366,47 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		}
 
+		if (printStatus) {
+			System.out.println(String.format("# partner in last 12 month = %s, - Day %d",
+					Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
+		}
+
 		formRegularPartnership(population_num_partner_in_last_12_months);
 		formCasualPartnership();
 
+	}
+
+	public String printCurrentPartnershipStatus() {
+
+		StringWriter strWri = new StringWriter();
+		PrintWriter pWri = new PrintWriter(strWri);
+
+		pWri.println(String.format("# relationship - Day %d", getGlobalTime()));
+
+		for (int r = 0; r < getRelMap().length; r++) {
+			pWri.println(String.format("RelMap #%d: %d", r, getRelMap()[r].edgeSet().size()));
+		}
+
+		Person_Bridging_Pop[][] casualPartnerFormed = formCasualPartnership();
+		pWri.println(String.format("# casual partnership - Day %d", getGlobalTime()));
+		for (int c = 0; c < casualPartnerFormed.length; c++) {
+			pWri.println(String.format("#%d: <%d (%d), %d (%d)>", c, casualPartnerFormed[c][0].getId(),
+					casualPartnerFormed[c][0].getGenderType(), casualPartnerFormed[c][1].getId(),
+					casualPartnerFormed[c][1].getGenderType()));
+		}
+
+		return strWri.toString();
 	}
 
 	protected void formRegularPartnership(int[] population_num_partner_in_last_12_months) {
 
 		AbstractIndividualInterface[][] candidates = new AbstractIndividualInterface[LENGTH_GENDER][];
 
-		float[] mean_target = Arrays.copyOf((float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]), LENGTH_GENDER);
+		float[] mean_target = Arrays.copyOf((float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]),
+				LENGTH_GENDER);
 		int[] numInGrp = (int[]) (getFields()[FIELD_POP_COMPOSITION]);
 		int[] formOrBreak = new int[LENGTH_GENDER];
+
 		for (int g = 0; g < mean_target.length; g++) {
 			mean_target[g] = mean_target[g] * numInGrp[g] - population_num_partner_in_last_12_months[g];
 			formOrBreak[g] = Math.round(mean_target[g]);
@@ -452,6 +450,20 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			for (SingleRelationship relArr1 : relArr) {
 				if (relArr1.incrementTime(1) <= 0) {
 					relMap.removeEdge(relArr1);
+				} else {
+					Integer[] link = relArr1.getLinks();
+
+					ContactMap cMapAll = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL];
+					ContactMap cMapSpec;
+
+					if (map == 0) { // Hetro sex involving female
+						cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_HETRO];
+					} else { // Involve MSM
+						cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_MSM];
+					}
+
+					checkContactMaps(link, new ContactMap[] { cMapAll, cMapSpec });
+
 				}
 			}
 
@@ -487,6 +499,22 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				formRelationship(pairs[pairId], getRelMap()[map], duration, map);
 
 			}
+		}
+	}
+
+	private void checkContactMaps(Integer[] link, ContactMap[] cMaps) {
+		for (ContactMap c : cMaps) {
+			if (c != null) {
+				for (Integer p : link) {
+					if (!c.containsVertex(p)) {
+						c.addVertex(p);
+					}
+				}
+				if (!c.containsEdge(link[0], link[1])) {
+					c.addEdge(link[0], link[1], link);
+				}
+			}
+
 		}
 	}
 

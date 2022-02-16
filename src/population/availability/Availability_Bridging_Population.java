@@ -31,6 +31,9 @@ public class Availability_Bridging_Population extends AbstractAvailability {
 		if (available != null) {
 			numPairs = isBipartitieMapping ? Integer.MAX_VALUE : 0;
 			for (int i = 0; i < available.length; i++) {
+				if(available[i] == null) {
+					available[i] = new AbstractIndividualInterface[0];
+				}							
 				if (isBipartitieMapping) {
 					numPairs = Math.min(numPairs, available[i].length);
 				} else {
