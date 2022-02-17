@@ -63,25 +63,38 @@ public class Runnable_ClusterModel implements Runnable {
 		if(printStatus) {
 			population.setPrintStatus(printStatus);
 		}
+		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE];
+		
+		if (contactMapValidRange[0]  == 0) {
+			gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+			for (int i = 0; i < gen_cMap.length; i++) {
+				gen_cMap[i] = new ContactMap();
+			}
+			
+		}
+		
 		population.initialise();
 		if (printStatus) {
+			System.out.println();
 			System.out.println(population.printCurrentPartnershipStatus());
 		}
 
-		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE];
+		
 
 		for (int s = 0; s < numSnaps; s++) {
 			for (int f = 0; f < snapFreq; f++) {
-				if (population.getGlobalTime() + 1 == contactMapValidRange[0]) {
+				if (contactMapValidRange[0] != 0 
+						&& population.getGlobalTime()  == contactMapValidRange[0]) {
 					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
 					for (int i = 0; i < gen_cMap.length; i++) {
 						gen_cMap[i] = new ContactMap();
-					}
-				} else if (population.getGlobalTime() + 1 == contactMapValidRange[1]) {
-					ContactMap[] cMapR = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
-					for (int i = 0; i < cMapR.length; i++) {
-						cMapR[i] = null;
-					}
+					}					
+					
+				} else if (population.getGlobalTime() == contactMapValidRange[1]) {								
+					// Set to null					
+					population.setParameter("Population_Bridging.FIELD_CONTACT_MAP", 
+							Population_Bridging.FIELD_CONTACT_MAP, new ContactMap[gen_cMap.length]);
+					
 				}
 				population.advanceTimeStep(1);
 

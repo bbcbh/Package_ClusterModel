@@ -24,6 +24,10 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 			0,
 			// FIELD_MAX_CASUAL_PARTNERS_6_MONTHS
 			0,
+			// FIELD_LAST_REGULAR_PARTNER_AT_AGE
+			-1,
+			// FIELD_LAST_CASUAL_PARNTER_AT_AGE
+			-1,
 			// FIELD_INFECT_STAT
 			new int[0],
 			// FIELD_LAST_INFECTED_AT_AGE
@@ -45,9 +49,11 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	public static final int FIELD_ENTER_POP_AT_TIME = FIELD_ENTER_POP_AT_AGE + 1;
 	public static final int FIELD_MAX_REGULAR_PARTNER_12_MONTHS = FIELD_ENTER_POP_AT_TIME + 1;
 	public static final int FIELD_MAX_CASUAL_PARTNERS_12_MONTHS = FIELD_MAX_REGULAR_PARTNER_12_MONTHS + 1;
+	public static final int FIELD_LAST_REGULAR_PARTNER_AT_AGE = FIELD_MAX_CASUAL_PARTNERS_12_MONTHS + 1;
+	public static final int FIELD_LAST_CASUAL_PARNTER_AT_AGE = FIELD_LAST_REGULAR_PARTNER_AT_AGE + 1;
 
 	// Int[] field
-	public static final int FIELD_INFECT_STAT = FIELD_MAX_CASUAL_PARTNERS_12_MONTHS + 1;
+	public static final int FIELD_INFECT_STAT = FIELD_LAST_CASUAL_PARNTER_AT_AGE + 1;
 	public static final int FIELD_LAST_INFECTED_AT_AGE = FIELD_INFECT_STAT + 1;
 	public static final int FIELD_TIME_UNTIL_NEXT_STAGE = FIELD_LAST_INFECTED_AT_AGE + 1;
 	public static final int FIELD_NUM_PARTNER = FIELD_TIME_UNTIL_NEXT_STAGE + 1;
@@ -91,13 +97,15 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 
 	public void addCasualPartner(AbstractIndividualInterface p) {
 		casualRecord[casualRecordIndex] = p.getId();
+		fields[FIELD_LAST_CASUAL_PARNTER_AT_AGE] = (int) p.getAge();
 	}
 	
 	public void addRegularPartner(AbstractIndividualInterface p) {
 		regularRecord[regularRecordIndex] = p.getId();
+		fields[FIELD_LAST_REGULAR_PARTNER_AT_AGE] = (int) p.getAge();
 	}
 	
-	public int getNumRegularInRecrod() {
+	public int getNumRegularInRecord() {
 		return getNumInRecord(regularRecord);
 	}
 	
@@ -179,6 +187,10 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 					value.toString()));
 		}
 		return res;
+	}
+	
+	public Object getField(int id){
+		return fields[id];
 	}
 
 	@Override

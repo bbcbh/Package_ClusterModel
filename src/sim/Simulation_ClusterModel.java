@@ -206,7 +206,7 @@ public class Simulation_ClusterModel implements SimulationInterface {
 			}
 		}
 
-		showStrStatus(String.format("Time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
+		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
 
 		contactMapSet = new HashMap<Long, ContactMap[]>();
 
@@ -221,11 +221,8 @@ public class Simulation_ClusterModel implements SimulationInterface {
 				Set<ContactMap> cluster = cMapAll.getContactCluster();
 
 				showStrStatus(String.format("Number of clusters = %d", cluster.size()));
-				int counter = 0;
-				for (ContactMap c : cluster) {
-					showStrStatus(String.format("C#%d: size %d", counter, c.vertexSet().size()));
-					counter++;
-				}
+			
+				
 
 			}
 		}
