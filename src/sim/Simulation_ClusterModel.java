@@ -173,7 +173,7 @@ public class Simulation_ClusterModel implements SimulationInterface {
 
 			Runnable_ClusterModel r = new Runnable_ClusterModel();
 			runnable[i] = r;
-			
+
 			r.setPopulation(population);
 			r.setNumSnaps(numSnap);
 			r.setSnapFreq(snapFreq);
@@ -206,27 +206,13 @@ public class Simulation_ClusterModel implements SimulationInterface {
 			}
 		}
 
-		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
-
 		contactMapSet = new HashMap<Long, ContactMap[]>();
 
-		if (runnable.length == 1) {
-
-			for (int r = 0; r < runnable.length; r++) {
-
-				contactMapSet.put(runnable[r].getPopulation().getSeed(), runnable[r].getGen_cMap());
-
-				ContactMap[] cMap = runnable[r].getGen_cMap();
-				ContactMap cMapAll = cMap[Population_Bridging.CONTACT_MAP_ALL];
-				Set<ContactMap> cluster = cMapAll.getContactCluster();
-
-				showStrStatus(String.format("Number of clusters = %d", cluster.size()));
-			
-				
-
-			}
+		for (int r = 0; r < runnable.length; r++) {
+			contactMapSet.put(runnable[r].getPopulation().getSeed(), runnable[r].getGen_cMap());
 		}
 
+		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
 	}
 
 	private void showStrStatus(String string) {

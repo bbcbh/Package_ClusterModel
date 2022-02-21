@@ -43,7 +43,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			// MSM:
 			// Lee E, Mao L, Broady T, et al. Gay Community Periodic Survey: Melbourne 2018.
 			// Sydney: Centre for Social Research in Health, UNSW Sydney, 2018.
-			new float[][] { { 1 - 0.053f, 1 - 0.053f }, { 1 - 0.027f, 1 - 0.027f }, { 0.33f, 0.33f + 0.26f },
+			new float[][] { { 1 - 0.027f, 1 - 0.027f }, { 1 - 0.053f, 1 - 0.053f }, { 0.33f, 0.33f + 0.26f },
 					{ 0.33f, 0.33f + 0.26f } },
 			// FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS
 			// float[GENDER][MEAN_PARTNER_IN_12_MONTHS]
