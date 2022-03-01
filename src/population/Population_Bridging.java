@@ -1,5 +1,6 @@
 package population;
 
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -104,9 +105,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[RELMAP_TOTAL];
 
-	private boolean printStatus = false;
+	private PrintStream printStatus = null;
 
-	public void setPrintStatus(boolean printStatus) {
+	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
 	}
 
@@ -486,8 +487,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		}
 
-		if (printStatus) {
-			System.out.println(String.format("# partners in last 12 months = %s - Day %d",
+		if (printStatus != null) {
+			printStatus.println(String.format("# partners in last 12 months = %s - Day %d",
 					Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
 		}
 		updateRelRelationshipMap();
@@ -519,11 +520,13 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		if (casualPartnerFormed != null) {
 			pWri.println(String.format("# casual partnership - Day %d", getGlobalTime()));
+			
 			for (int c = 0; c < casualPartnerFormed.length; c++) {
 				pWri.println(String.format("#%d: <%d (%d), %d (%d)>", c, casualPartnerFormed[c][0].getId(),
 						casualPartnerFormed[c][0].getGenderType(), casualPartnerFormed[c][1].getId(),
 						casualPartnerFormed[c][1].getGenderType()));
 			}
+			
 		}
 
 		return strWri.toString();

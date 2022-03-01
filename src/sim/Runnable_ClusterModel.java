@@ -1,5 +1,8 @@
 package sim;
 
+import java.io.PrintStream;
+import java.io.PrintWriter;
+
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import relationship.ContactMap;
@@ -20,7 +23,7 @@ public class Runnable_ClusterModel implements Runnable {
 	private int snapFreq;
 	private Object[] runnable_fields = new Object[LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD];
 	private ContactMap[] gen_cMap = null;
-	private boolean printStatus = false;
+	private PrintStream printStatus = null;
 
 	public Runnable_ClusterModel() {
 		super();
@@ -45,7 +48,7 @@ public class Runnable_ClusterModel implements Runnable {
 		this.snapFreq = snapFreq;
 	}
 
-	public void setPrintStatus(boolean printStatus) {
+	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
 	}
 
@@ -60,7 +63,7 @@ public class Runnable_ClusterModel implements Runnable {
 	@Override
 	public void run() {
 		
-		if(printStatus) {
+		if(printStatus != null) {
 			population.setPrintStatus(printStatus);
 		}
 		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE];
@@ -74,12 +77,10 @@ public class Runnable_ClusterModel implements Runnable {
 		}
 		
 		population.initialise();
-		if (printStatus) {
-			System.out.println();
-			System.out.println(population.printCurrentPartnershipStatus());
+		if (printStatus != null) {
+			printStatus.println();
+			printStatus.println(population.printCurrentPartnershipStatus());
 		}
-
-		
 
 		for (int s = 0; s < numSnaps; s++) {
 			for (int f = 0; f < snapFreq; f++) {
@@ -99,10 +100,13 @@ public class Runnable_ClusterModel implements Runnable {
 				population.advanceTimeStep(1);
 
 			}
-			if (printStatus) {
-				System.out.println(population.printCurrentPartnershipStatus());
+			if (printStatus != null) {
+				printStatus.println(population.printCurrentPartnershipStatus());
 			}
-
+		}
+		
+		if (printStatus != null) {
+			printStatus.close();
 		}
 
 	}

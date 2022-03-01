@@ -2,6 +2,7 @@ package sim;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -34,6 +35,13 @@ public class Simulation_ClusterModel implements SimulationInterface {
 	protected boolean stopNextTurn = false;
 	protected Properties loadedProperties = null; // From .prop file, if any
 	protected transient Map<Long, ContactMap[]> contactMapSet = null;
+	protected transient Map<Long, Runnable_ClusterModel> runnablesMap = null;
+	
+	protected boolean printOutput = false;		
+	
+	public void setPrintOutput(boolean printOutput) {
+		this.printOutput = printOutput;
+	}
 
 	public Simulation_ClusterModel() {
 
@@ -47,6 +55,12 @@ public class Simulation_ClusterModel implements SimulationInterface {
 			}
 		}
 	}
+
+	public Map<Long, Runnable_ClusterModel> getRunnables() {
+		return runnablesMap;
+	}
+
+	
 
 	public Map<Long, ContactMap[]> getContactMapSet() {
 		return contactMapSet;
@@ -157,7 +171,8 @@ public class Simulation_ClusterModel implements SimulationInterface {
 		int numInPool = 0;
 		long tic = System.currentTimeMillis();
 
-		Runnable_ClusterModel[] runnable = new Runnable_ClusterModel[numSim];
+		Runnable_ClusterModel[] runnables = new Runnable_ClusterModel[numSim];
+		runnablesMap = new HashMap<Long, Runnable_ClusterModel>();
 
 		if (useParallel) {
 			executor = Executors.newFixedThreadPool(numThreads);
@@ -172,23 +187,34 @@ public class Simulation_ClusterModel implements SimulationInterface {
 			}
 
 			Runnable_ClusterModel r = new Runnable_ClusterModel();
-			runnable[i] = r;
-
+			
+			
+			runnables[i] = r;
 			r.setPopulation(population);
 			r.setNumSnaps(numSnap);
 			r.setSnapFreq(snapFreq);
-			r.setPrintStatus(numSim == 1);
-
+		
+			
 			for (int f = 0; f < Runnable_ClusterModel.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD; f++) {
 				if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + f] != null) {
 					r.getRunnable_fields()[f] = simFields[f + Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
 				}
 			}
+			
+			runnablesMap.put(r.getPopulation().getSeed(), r);
+			
+			
+			if(printOutput) {
+				PrintStream outputPS = new PrintStream(new File(baseDir, String.format("Output_%d.txt", i)));
+				outputPS.println(String.format("Seed = %d", r.getPopulation().getSeed()));
+				runnables[i].setPrintStatus(outputPS);
+			}
+			
 
 			if (!useParallel) {
-				runnable[i].run();
+				runnables[i].run();
 			} else {
-				executor.submit(runnable[i]);
+				executor.submit(runnables[i]);
 				numInPool++;
 				if (numInPool == numThreads) {
 					executor.shutdown();
@@ -208,8 +234,8 @@ public class Simulation_ClusterModel implements SimulationInterface {
 
 		contactMapSet = new HashMap<Long, ContactMap[]>();
 
-		for (int r = 0; r < runnable.length; r++) {
-			contactMapSet.put(runnable[r].getPopulation().getSeed(), runnable[r].getGen_cMap());
+		for (int r = 0; r < runnables.length; r++) {
+			contactMapSet.put(runnables[r].getPopulation().getSeed(), runnables[r].getGen_cMap());
 		}
 
 		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
@@ -219,5 +245,7 @@ public class Simulation_ClusterModel implements SimulationInterface {
 		System.out.println(string);
 
 	}
+	
+	
 
 }
