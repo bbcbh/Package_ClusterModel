@@ -19,7 +19,7 @@ import relationship.ContactMap;
 import util.PersonClassifier;
 import util.PropValUtils;
 
-public class Simulation_ClusterModel implements SimulationInterface {
+public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 	public static final Object[] DEFAULT_BRIDGING_SIM_FIELDS = {};
 	public static final int LENGTH_SIM_CLUSTER_MODEL_FIELD = 0;
@@ -28,14 +28,14 @@ public class Simulation_ClusterModel implements SimulationInterface {
 	public static final String POP_PROP_INIT_PREFIX_CLASS = "POP_PROP_INIT_PREFIX_CLASS_";
 
 	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-			+ Runnable_ClusterModel.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD + LENGTH_SIM_CLUSTER_MODEL_FIELD];
+			+ Runnable_ClusterModelGeneration.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD + LENGTH_SIM_CLUSTER_MODEL_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
 
 	protected File baseDir = null;
 	protected boolean stopNextTurn = false;
 	protected Properties loadedProperties = null; // From .prop file, if any
 	protected transient Map<Long, ContactMap[]> contactMapSet = null;
-	protected transient Map<Long, Runnable_ClusterModel> runnablesMap = null;
+	protected transient Map<Long, Runnable_ClusterModelGeneration> runnablesMap = null;
 	
 	protected boolean printOutput = false;		
 	
@@ -43,10 +43,10 @@ public class Simulation_ClusterModel implements SimulationInterface {
 		this.printOutput = printOutput;
 	}
 
-	public Simulation_ClusterModel() {
+	public Simulation_ClusterModelGeneration() {
 
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Runnable_ClusterModel.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD;
+				+ Runnable_ClusterModelGeneration.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD;
 		for (int i = 0; i < simFields.length; i++) {
 			// All simulation levels
 			if (i >= sim_offset) {
@@ -56,7 +56,7 @@ public class Simulation_ClusterModel implements SimulationInterface {
 		}
 	}
 
-	public Map<Long, Runnable_ClusterModel> getRunnables() {
+	public Map<Long, Runnable_ClusterModelGeneration> getRunnables() {
 		return runnablesMap;
 	}
 
@@ -171,8 +171,8 @@ public class Simulation_ClusterModel implements SimulationInterface {
 		int numInPool = 0;
 		long tic = System.currentTimeMillis();
 
-		Runnable_ClusterModel[] runnables = new Runnable_ClusterModel[numSim];
-		runnablesMap = new HashMap<Long, Runnable_ClusterModel>();
+		Runnable_ClusterModelGeneration[] runnables = new Runnable_ClusterModelGeneration[numSim];
+		runnablesMap = new HashMap<Long, Runnable_ClusterModelGeneration>();
 
 		if (useParallel) {
 			executor = Executors.newFixedThreadPool(numThreads);
@@ -186,7 +186,7 @@ public class Simulation_ClusterModel implements SimulationInterface {
 				}
 			}
 
-			Runnable_ClusterModel r = new Runnable_ClusterModel();
+			Runnable_ClusterModelGeneration r = new Runnable_ClusterModelGeneration();
 			
 			
 			runnables[i] = r;
@@ -195,7 +195,7 @@ public class Simulation_ClusterModel implements SimulationInterface {
 			r.setSnapFreq(snapFreq);
 		
 			
-			for (int f = 0; f < Runnable_ClusterModel.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD; f++) {
+			for (int f = 0; f < Runnable_ClusterModelGeneration.LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD; f++) {
 				if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + f] != null) {
 					r.getRunnable_fields()[f] = simFields[f + Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
 				}
