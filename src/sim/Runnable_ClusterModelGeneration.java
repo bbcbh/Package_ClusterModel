@@ -1,7 +1,6 @@
 package sim;
 
 import java.io.PrintStream;
-import java.io.PrintWriter;
 
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
