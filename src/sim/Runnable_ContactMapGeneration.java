@@ -6,7 +6,7 @@ import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import relationship.ContactMap;
 
-public class Runnable_ClusterModelGeneration implements Runnable {
+public class Runnable_ContactMapGeneration implements Runnable {
 
 	public static final Object[] DEFAULT_BRIDGING_RUNNABLE_FIELDS = {
 			// RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE
@@ -24,7 +24,7 @@ public class Runnable_ClusterModelGeneration implements Runnable {
 	private ContactMap[] gen_cMap = null;
 	private PrintStream printStatus = null;
 
-	public Runnable_ClusterModelGeneration() {
+	public Runnable_ContactMapGeneration() {
 		super();
 		for (int i = 0; i < DEFAULT_BRIDGING_RUNNABLE_FIELDS.length; i++) {
 			runnable_fields[i] = DEFAULT_BRIDGING_RUNNABLE_FIELDS[i];
