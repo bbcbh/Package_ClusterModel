@@ -1,5 +1,6 @@
 package population;
 
+import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -7,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Set;
 
 import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
@@ -20,6 +20,7 @@ import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
 import relationship.RelationshipMap;
 import relationship.SingleRelationship;
+import relationship.SingleRelationshipTimeStamp;
 import util.ArrayUtilsRandomGenerator;
 
 public class Population_Bridging extends AbstractFieldsArrayPopulation {
@@ -80,7 +81,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			// FIELD_MEAN_CASUAL_PARTNER_IN_12_MONTHS
 			// Currently bases on a PossionDistribution from MSM
 			// Assumption for Hetro
-			new float[] {20.55f, 20.55f, 20.55f, 20.55f },
+			new float[] { 20.55f, 20.55f, 20.55f, 20.55f },
 
 	};
 
@@ -104,7 +105,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	public static final int RELMAP_HETRO = 0;
 	public static final int RELMAP_MSM = 1;
-	public static final int RELMAP_TOTAL = 2;
+	public static final int LENGTH_RELMAP = 2;
 
 	public static final int CONTACT_MAP_EDGE_P1 = 0;
 	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;
@@ -124,12 +125,19 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
 
-	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[RELMAP_TOTAL];
+	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 
 	private PrintStream printStatus = null;
+	
+	// TODO: Debug print - might remove in the final version
+	private PrintStream[] partnerDistPrint = new PrintStream[LENGTH_GENDER];
+	private java.io.File partnerDistPrintFolder = null;
 
 	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
+	}	
+	public void setPartnerDistPrintFolder(java.io.File partnerDistPrintFolder) {
+		this.partnerDistPrintFolder = partnerDistPrintFolder;
 	}
 
 	public Population_Bridging(long seed) {
@@ -148,6 +156,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			hasRelPartners[g] = new ArrayList<Person_Bridging_Pop>();
 			canSeekCasPartners[g] = new ArrayList<Person_Bridging_Pop>();
 		}
+		
+		
 
 	}
 
@@ -161,7 +171,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		ContactMap cMapSpec = null;
 		Integer[] link = new Integer[LENGTH_CONTACT_MAP_EDGE];
-		SingleRelationship rel;
+		SingleRelationshipTimeStamp rel;
 		ContactMap cMapAll = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL];
 
 		if (mapType == 0) { // Hetro sex involving female
@@ -183,7 +193,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		checkContactMaps(link, new ContactMap[] { cMapAll, cMapSpec });
 
-		rel = new SingleRelationship(new Integer[] { link[0], link[1] });
+		rel = new SingleRelationshipTimeStamp(new Integer[] { link[0], link[1] });
+		rel.setRelStartTime(getGlobalTime());
 
 		if (relMap.addEdge(link[0], link[1], rel)) {
 			rel.setDurations(duration);
@@ -201,7 +212,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		int maxReg = (Integer) person
 				.getParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_REGULAR_PARTNER_12_MONTHS));
 
-		int numReg = person.getNumRegularInRecord();
+		int numReg = getNumRegularPartnersCurrently(person);
+
 		boolean seekRegular = maxReg > 0; // numReg;
 
 		if (((float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS])).length == LENGTH_GENDER) {
@@ -344,7 +356,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public void initialise() {
 
 		// Initialise relationship map
-		RelationshipMap[] relMaps = new RelationshipMap[RELMAP_TOTAL];
+		RelationshipMap[] relMaps = new RelationshipMap[LENGTH_RELMAP];
 		relMaps[RELMAP_HETRO] = new RelationshipMap();
 		relMaps[RELMAP_MSM] = new RelationshipMap();
 		this.setRelMap(relMaps);
@@ -354,6 +366,19 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
 		regPartDuration[RELMAP_MSM] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_MSM],
 				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
+		
+		// Initalise dist print folder (might remove later)
+		
+		if (partnerDistPrintFolder != null) {
+			for (int i = 0; i < partnerDistPrint.length; i++) {
+				try {
+					partnerDistPrint[i] = new PrintStream(
+							new java.io.File(partnerDistPrintFolder, "Gender_" + i + ".csv"));
+				} catch (FileNotFoundException e) {
+					e.printStackTrace(System.err);
+				}
+			}
+		}
 
 		// Initialise population
 		int[] popSizes = (int[]) getFields()[FIELD_POP_COMPOSITION];
@@ -473,7 +498,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		// Set availability
 
-		AbstractAvailability[] avail = new AbstractAvailability[RELMAP_TOTAL];
+		AbstractAvailability[] avail = new AbstractAvailability[LENGTH_RELMAP];
 
 		avail[RELMAP_HETRO] = new Availability_Bridging_Population(getRNG());
 		avail[RELMAP_HETRO].setParameter(Availability_Bridging_Population.BIPARTITE_MAPPING, true);
@@ -536,7 +561,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			Person_Bridging_Pop person = (Person_Bridging_Pop) p;
 			person.incrementTime(deltaT, getInfList());
 			int genderType = person.getGenderType();
-			int numReg12Months = person.getNumRegularInRecord();
+			int numReg12Months = getNumRegularPartnersCurrently(person);
 			int numCas12Months = person.getNumCasualInRecord();
 			int numPart12Months = numReg12Months + numCas12Months;
 			int cPt = -1;
@@ -591,9 +616,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				@Override
 				public int compare(Person_Bridging_Pop o1, Person_Bridging_Pop o2) {
 					int cP1 = findPartnershipCatogories(field_mean_number_partner, numCat,
-							o1.getNumRegularInRecord() + o1.getNumCasualInRecord());
+							getNumRegularPartnersCurrently(o1) + o1.getNumCasualInRecord());
 					int cP2 = findPartnershipCatogories(field_mean_number_partner, numCat,
-							o2.getNumRegularInRecord() + o2.getNumCasualInRecord());
+							getNumRegularPartnersCurrently(o2) + o2.getNumCasualInRecord());
 
 					if (cP1 == cP2) {
 						return Integer.compare(o1.getId(), o2.getId());
@@ -625,12 +650,22 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					pri.println(String.format(" %d: %s", g,
 							Arrays.toString(Arrays.copyOfRange(population_num_partner_in_last_12_months,
 									numCat + g * numCat, 2 * numCat + g * numCat))));
+					
+					
+					partnerDistPrint[g].print(getGlobalTime());
+					
+					if(partnerDistPrintFolder != null) {
+					for(int n = 0; n < numCat; n++) {
+						partnerDistPrint[g].print(',');
+						partnerDistPrint[g].print(population_num_partner_in_last_12_months[numCat + g * numCat + n]);
+					}
+					partnerDistPrint[g].println();
+					}
 				}
 
 				pri.close();
 				printStatus.println(wri.toString());
 				System.out.println(wri.toString());
-
 			}
 
 			printStatus.println("Has Regular Partners:");
@@ -646,6 +681,23 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		updateRelRelationshipMap();
 		formPartnerships(population_num_partner_in_last_12_months);
 
+	}
+
+	private int getNumRegularPartnersCurrently(Person_Bridging_Pop person) {
+		int numReg12Currently = person.getNumRegularInRecord();
+		// Has current partner with partnership longer for 12 months
+		for (int r = 0; r < LENGTH_RELMAP; r++) {
+			if (getRelMap()[r].containsVertex(person.getId()) && getRelMap()[r].degreeOf(person.getId()) > 0) {
+				for (SingleRelationship rel : getRelMap()[r].edgesOf(person.getId())) {
+					if (((SingleRelationshipTimeStamp) rel).getRelStartTime() < getGlobalTime()
+							- AbstractIndividualInterface.ONE_YEAR_INT) {
+						numReg12Currently++;
+					}
+				}
+			}
+		}
+
+		return numReg12Currently;
 	}
 
 	private int findPartnershipCatogories(float[] field_mean_number_partner, int numCat, int numPart12Months) {
@@ -767,7 +819,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 						if (partformed.length == LENGTH_GENDER) {
 							partformed[person.getGenderType()]++;
 						} else {
-							int numPartIn12Months = person.getNumCasualInRecord() + person.getNumRegularInRecord();
+							int numPartIn12Months = person.getNumCasualInRecord()
+									+ getNumRegularPartnersCurrently(person);
 							int cPt = 0;
 							for (int cI = 0; cI < numCat; cI++) {
 								if (numPartIn12Months > field_mean_number_partner[1 + cI]) {
@@ -823,7 +876,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				}
 
 			}
-		} else {			
+		} else {
 
 			for (int g = 0; g < LENGTH_GENDER; g++) {
 
@@ -833,27 +886,30 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				ArrayList<Person_Bridging_Pop> seekingList = new ArrayList<>();
 				int[] catOffset = Arrays.copyOf(categories_offset[g], categories_offset[g].length);
 
+
 				for (int c = numCat - 1; c > 0; c--) {
 
 					int pickedForCatgoriesToday = diffByCatgories[c];
+					
+					// TODO: At this stage trial and errors
 					pickedForCatgoriesToday = (int) Math
-							.ceil((1.0f * pickedForCatgoriesToday) / AbstractIndividualInterface.ONE_YEAR_INT);
+							.ceil((1.0f * pickedForCatgoriesToday) / (AbstractIndividualInterface.ONE_YEAR_INT/30.0f));
 
 					while (pickedForCatgoriesToday > 0) {
-						// Add candidate from smallest categories
-						int selCat = c-1;
-						while (selCat >= 0 && catOffset[selCat] == 0) {							
-							selCat--;											
-						}						
-						
+						// Add candidate from next smallest categories
+						int selCat = c - 1;
+						while (selCat >= 0 && catOffset[selCat] == 0) {
+							selCat--;
+						}
+
 						if (selCat >= 0) {
-							
+
 							int startOff = 0;
-							
-							for(int i = 0; i < selCat; i++) {
+
+							for (int i = 0; i < selCat; i++) {
 								startOff += catOffset[i];
 							}
-							
+
 							int selCandidate = startOff + getRNG().nextInt(catOffset[selCat]);
 
 							Person_Bridging_Pop candidate = candidateCollection[g].remove(selCandidate);
@@ -864,7 +920,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 							}
 							pickedForCatgoriesToday--;
 							catOffset[selCat]--;
-						}else {
+						} else {
 							break;
 						}
 					}

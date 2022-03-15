@@ -184,6 +184,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					population.getFields()[f] = simFields[f];
 				}
 			}
+			
+			population.setPartnerDistPrintFolder(baseDir);
 
 			Runnable_ContactMapGeneration r = new Runnable_ContactMapGeneration();
 			
