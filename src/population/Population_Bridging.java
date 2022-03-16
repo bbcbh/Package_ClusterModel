@@ -892,9 +892,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					int pickedForCatgoriesToday = diffByCatgories[c];
 					
 					// TODO: At this stage trial and errors
-					int perDaySeekfactor = 1;					
+					int perDaySeekfactor = AbstractIndividualInterface.ONE_YEAR_INT;					
 					pickedForCatgoriesToday = ((int) (pickedForCatgoriesToday/perDaySeekfactor));
-					int remainder = pickedForCatgoriesToday % perDaySeekfactor;
+					int remainder = diffByCatgories[c] % perDaySeekfactor;
 
 					if(remainder != 0) {
 						if(getRNG().nextInt(perDaySeekfactor) < remainder) {
