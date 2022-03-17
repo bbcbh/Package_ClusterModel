@@ -729,17 +729,23 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			pop_diff = new int[field_mean_target.length];
 			int numCat = field_mean_target.length / (1 + LENGTH_GENDER);
+			
+			
+			// TODO: Adjustment on pop-diff - this stage trial and errors
+			float adj = 1.05f;
 
 			for (int g = 0; g < LENGTH_GENDER; g++) {
 				for (int c = 0; c < numCat; c++) {
 					int pdIndex = numCat + g * numCat + c;
 
-					pop_diff[pdIndex] = Math.round(field_mean_target[pdIndex] * numInGrp[g]
+					pop_diff[pdIndex] = Math.round(field_mean_target[pdIndex] * numInGrp[g] * adj
 							- population_num_partner_in_last_12_months[pdIndex]);
 
 				}
 
 			}
+			
+			
 		}
 		return pop_diff;
 
@@ -891,8 +897,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 					int pickedForCatgoriesToday = diffByCatgories[c];
 					
-					// TODO: At this stage trial and errors
-					int perDaySeekfactor = AbstractIndividualInterface.ONE_YEAR_INT;					
+					// TODO: Adjustment perDaySeekfactor - this stage trial and errors
+					
+					int perDaySeekfactor = AbstractIndividualInterface.ONE_YEAR_INT/14;					
 					pickedForCatgoriesToday = ((int) (pickedForCatgoriesToday/perDaySeekfactor));
 					int remainder = diffByCatgories[c] % perDaySeekfactor;
 
