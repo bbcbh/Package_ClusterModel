@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Set;
 
 import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
@@ -124,20 +125,30 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private transient int[][] canSeekCasPartners_catorgories_offset = new int[LENGTH_GENDER][];
 
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
-
 	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 
-	private PrintStream printStatus = null;
-	
+	private transient HashMap<String, Object> stepwise_output = null;
+	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
+
 	// TODO: Debug print - might remove in the final version
 	private PrintStream[] partnerDistPrint = new PrintStream[LENGTH_GENDER];
 	private java.io.File partnerDistPrintFolder = null;
+	private PrintStream printStatus = null;
 
 	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
-	}	
+	}
+
 	public void setPartnerDistPrintFolder(java.io.File partnerDistPrintFolder) {
 		this.partnerDistPrintFolder = partnerDistPrintFolder;
+	}
+
+	public HashMap<String, Object> getStepwise_output() {
+		return stepwise_output;
+	}
+
+	public void setStepwise_output(HashMap<String, Object> stepwise_output) {
+		this.stepwise_output = stepwise_output;
 	}
 
 	public Population_Bridging(long seed) {
@@ -156,8 +167,6 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			hasRelPartners[g] = new ArrayList<Person_Bridging_Pop>();
 			canSeekCasPartners[g] = new ArrayList<Person_Bridging_Pop>();
 		}
-		
-		
 
 	}
 
@@ -366,9 +375,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
 		regPartDuration[RELMAP_MSM] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_MSM],
 				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
-		
+
 		// Initalise dist print folder (might remove later)
-		
+
 		if (partnerDistPrintFolder != null) {
 			for (int i = 0; i < partnerDistPrint.length; i++) {
 				try {
@@ -397,7 +406,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		int numCat = field_mean_number_partner.length / (LENGTH_GENDER + 1);
 
-		if (field_mean_number_partner.length != LENGTH_GENDER) {
+		if (field_mean_number_partner.length != LENGTH_GENDER && printStatus != null) {
 			int[] numInGrp = (int[]) (getFields()[FIELD_POP_COMPOSITION]);
 			StringWriter wri = new StringWriter();
 			PrintWriter pri = new PrintWriter(wri);
@@ -415,7 +424,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			pri.close();
 			printStatus.println(wri.toString());
-			System.out.println(wri.toString());
+			if (!printStatus.equals(System.out)) {
+				System.out.println(wri.toString());
+			}
 		}
 
 		if (numCat > 0) {
@@ -505,6 +516,10 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		avail[RELMAP_MSM] = new Availability_Bridging_Population(getRNG());
 		avail[RELMAP_MSM].setParameter(Availability_Bridging_Population.BIPARTITE_MAPPING, false);
 		this.setAvailability(avail);
+
+		if (stepwise_output != null) {
+			stepwise_output.put(STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS, population_num_partner_in_last_12_months);
+		}
 
 		formPartnerships(population_num_partner_in_last_12_months);
 
@@ -640,8 +655,10 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				printStatus.println(String.format("# partners in last 12 months = %s - Day %d",
 						Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
 
-				System.out.println(String.format("# partners in last 12 months = %s - Day %d",
-						Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
+				if (!printStatus.equals(System.out)) {
+					System.out.println(String.format("# partners in last 12 months = %s - Day %d",
+							Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
+				}
 			} else {
 				StringWriter wri = new StringWriter();
 				PrintWriter pri = new PrintWriter(wri);
@@ -650,35 +667,43 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					pri.println(String.format(" %d: %s", g,
 							Arrays.toString(Arrays.copyOfRange(population_num_partner_in_last_12_months,
 									numCat + g * numCat, 2 * numCat + g * numCat))));
-					
-					
-					partnerDistPrint[g].print(getGlobalTime());
-					
-					if(partnerDistPrintFolder != null) {
-					for(int n = 0; n < numCat; n++) {
-						partnerDistPrint[g].print(',');
-						partnerDistPrint[g].print(population_num_partner_in_last_12_months[numCat + g * numCat + n]);
-					}
-					partnerDistPrint[g].println();
+
+					if (partnerDistPrintFolder != null) {
+						partnerDistPrint[g].print(getGlobalTime());
+
+						for (int n = 0; n < numCat; n++) {
+							partnerDistPrint[g].print(',');
+							partnerDistPrint[g]
+									.print(population_num_partner_in_last_12_months[numCat + g * numCat + n]);
+						}
+						partnerDistPrint[g].println();
 					}
 				}
 
 				pri.close();
 				printStatus.println(wri.toString());
-				System.out.println(wri.toString());
+				if (!printStatus.equals(System.out)) {
+					System.out.println(wri.toString());
+				}
 			}
 
-			printStatus.println("Has Regular Partners:");
-			for (int i = 0; i < hasRelPartners.length; i++) {
-				printStatus.println(String.format(" %d: %d", i, hasRelPartners[i].size()));
-			}
-			printStatus.println("Seeking Casual Partners:");
-			for (int i = 0; i < canSeekCasPartners.length; i++) {
-				printStatus.println(String.format(" %d: %d", i, canSeekCasPartners[i].size()));
+			if (!printStatus.equals(System.out)) {
+				printStatus.println("Has Regular Partners:");
+				for (int i = 0; i < hasRelPartners.length; i++) {
+					printStatus.println(String.format(" %d: %d", i, hasRelPartners[i].size()));
+				}
+				printStatus.println("Seeking Casual Partners:");
+				for (int i = 0; i < canSeekCasPartners.length; i++) {
+					printStatus.println(String.format(" %d: %d", i, canSeekCasPartners[i].size()));
+				}
 			}
 
 		}
 		updateRelRelationshipMap();
+
+		if (stepwise_output != null) {
+			stepwise_output.put(STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS, population_num_partner_in_last_12_months);
+		}
 		formPartnerships(population_num_partner_in_last_12_months);
 
 	}
@@ -729,23 +754,18 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			pop_diff = new int[field_mean_target.length];
 			int numCat = field_mean_target.length / (1 + LENGTH_GENDER);
-			
-			
-			// TODO: Adjustment on pop-diff - this stage trial and errors
-			float adj = 1.05f;
 
 			for (int g = 0; g < LENGTH_GENDER; g++) {
 				for (int c = 0; c < numCat; c++) {
 					int pdIndex = numCat + g * numCat + c;
 
-					pop_diff[pdIndex] = Math.round(field_mean_target[pdIndex] * numInGrp[g] * adj
+					pop_diff[pdIndex] = Math.round(field_mean_target[pdIndex] * numInGrp[g]
 							- population_num_partner_in_last_12_months[pdIndex]);
 
 				}
 
 			}
-			
-			
+
 		}
 		return pop_diff;
 
@@ -892,19 +912,16 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				ArrayList<Person_Bridging_Pop> seekingList = new ArrayList<>();
 				int[] catOffset = Arrays.copyOf(categories_offset[g], categories_offset[g].length);
 
-
 				for (int c = numCat - 1; c > 0; c--) {
 
 					int pickedForCatgoriesToday = diffByCatgories[c];
-					
-					// TODO: Adjustment perDaySeekfactor - this stage trial and errors
-					
-					int perDaySeekfactor = AbstractIndividualInterface.ONE_YEAR_INT/14;					
-					pickedForCatgoriesToday = ((int) (pickedForCatgoriesToday/perDaySeekfactor));
+
+					int perDaySeekfactor = AbstractIndividualInterface.ONE_YEAR_INT;
+					pickedForCatgoriesToday = ((int) (pickedForCatgoriesToday / perDaySeekfactor));
 					int remainder = diffByCatgories[c] % perDaySeekfactor;
 
-					if(remainder != 0) {
-						if(getRNG().nextInt(perDaySeekfactor) < remainder) {
+					if (remainder != 0) {
+						if (getRNG().nextInt(perDaySeekfactor) < remainder) {
 							pickedForCatgoriesToday++;
 						}
 					}
