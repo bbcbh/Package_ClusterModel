@@ -2,6 +2,7 @@ package sim;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,12 +25,12 @@ public class Runnable_ContactMapTranmission implements Runnable {
 
 	// FIELD_POP_COMPOSITION
 	// int[] {NUM_FEMALE, NUM_MALE, NUM_MSMO, NUM_MSMW}
-	final int[] POP_COMPOSITION;
+	final int[] cumulative_pop_composition;
 	final ContactMap BASE_CONTACT_MAP;
 	final int NUM_TIME_STEPS;
 	final long seed;
 
-	double[] INCUBATION_RANGE = new double[] { 3, 3 }; // 3 - 5 days
+	int[] INCUBATION_RANGE = new int[] { 3, 3 }; // 3 - 5 days
 	double[] INFECTIOUS_DIST_PARAM = new double[] { 15 * 7, 5 * 7 };
 	double[] TRANS_MF = new double[] { 0.2, 0.05 };
 	double[] TRANS_FM = new double[] { 0.4, 0.10 };
@@ -44,10 +45,22 @@ public class Runnable_ContactMapTranmission implements Runnable {
 	protected transient HashMap<Integer, ArrayList<Integer>> recovery_schedule;
 	protected transient HashMap<Integer, double[]> trans_prob;
 
+	private transient HashMap<String, Object> sim_output = null;
+	public static final String SIM_OUTPUT_TRANMISSION_MAP = "SIM_OUTPUT_TRANMISSION_MAP";
+	public static final String SIM_OUTPUT_CLUSTERS = "SIM_OUTPUT_CLUSTERS";
+
 	public Runnable_ContactMapTranmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
 			int NUM_TIME_STEPS) {
 		super();
-		this.POP_COMPOSITION = POP_COMPOSITION;
+
+		this.cumulative_pop_composition = new int[POP_COMPOSITION.length];
+		int offset = 0;
+
+		for (int g = 0; g < this.cumulative_pop_composition.length; g++) {
+			this.cumulative_pop_composition[g] = offset + POP_COMPOSITION[g];
+			offset += POP_COMPOSITION[g];
+		}
+
 		this.BASE_CONTACT_MAP = BASE_CONTACT_MAP;
 		this.NUM_TIME_STEPS = NUM_TIME_STEPS;
 		this.seed = seed;
@@ -61,32 +74,45 @@ public class Runnable_ContactMapTranmission implements Runnable {
 
 		infectious_period = generateGammaDistribution(INFECTIOUS_DIST_PARAM);
 		tran_FM = generateBetaDistribution(TRANS_FM);
-		tran_MF =  generateBetaDistribution(TRANS_MF);
+		tran_MF = generateBetaDistribution(TRANS_MF);
 		tran_MM = generateBetaDistribution(TRANS_MM);
 
 		incubation_schedule = new HashMap<>();
 		recovery_schedule = new HashMap<>();
 		trans_prob = new HashMap<>();
+		sim_output = new HashMap<>();
+	}
 
+	public HashMap<String, Object> getSim_output() {
+		return sim_output;
 	}
-	
+
 	protected GammaDistribution generateGammaDistribution(double[] input) {
-		return  new GammaDistribution(RNG, input[0], 1.0f / input[1]);
-	}
-	
-	protected BetaDistribution generateBetaDistribution(double[] input) {
-        // For Beta distribution, 
-        // alpha = mean*(mean*(1-mean)/variance - 1)
-        // beta = (1-mean)*(mean*(1-mean)/variance - 1)
+		// For Gamma distribution
+        // shape = alpha = mean*mean / variance = mean / scale
+        // scale = 1/ (beta or lambda or rate) =  variance / mean;
         double[] res = new double[2];
         double var = input[1] * input[1];
-        double rP = input[0] * (1 - input[0]) / var - 1;
-        //alpha
-        res[0] = rP * input[0];
-        //beta
-        res[1] = rP * (1 - input[0]);        
-        return new BetaDistribution(RNG, res[0], res[1]);       
-    }
+        // rate or 1/ beta or lambda
+        res[1] = var/input[0];
+        //shape or alpha
+        res[0] = input[0] / res[1];	        
+		return new GammaDistribution(RNG, res[0] , res[1]);
+	}
+
+	protected BetaDistribution generateBetaDistribution(double[] input) {
+		// For Beta distribution,
+		// alpha = mean*(mean*(1-mean)/variance - 1)
+		// beta = (1-mean)*(mean*(1-mean)/variance - 1)
+		double[] res = new double[2];
+		double var = input[1] * input[1];
+		double rP = input[0] * (1 - input[0]) / var - 1;
+		// alpha
+		res[0] = rP * input[0];
+		// beta
+		res[1] = rP * (1 - input[0]);
+		return new BetaDistribution(RNG, res[0], res[1]);
+	}
 
 	public int addInfected(Integer infectedId, int recoveredAt) {
 		int key = Collections.binarySearch(currently_infectious, infectedId);
@@ -121,12 +147,15 @@ public class Runnable_ContactMapTranmission implements Runnable {
 	}
 
 	public int getGenderType(Integer personId) {
-		for (int i = 0; i < Population_Bridging.LENGTH_GENDER; i++) {
-			if (personId < POP_COMPOSITION[i]) {
-				return i;
-			}
+
+		int index = Arrays.binarySearch(cumulative_pop_composition, personId);
+
+		if (index < 0) {
+			return ~index;
+		} else {
+			return index + 1;
 		}
-		return -1;
+
 	}
 
 	public ContactMap getTransmissionMap() {
@@ -181,12 +210,13 @@ public class Runnable_ContactMapTranmission implements Runnable {
 				for (Integer infectious : currently_infectious) {
 					if (cMap.containsVertex(infectious)) {
 						Set<Integer[]> edges = cMap.edgesOf(infectious);
+						double[] trans = trans_prob.get(infectious);
 
-						for (Integer[] e : edges) {														
-							
-							if (currentTime <=  e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME] 
-									&&  currentTime< (e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME] 
-											+  e[Population_Bridging.CONTACT_MAP_EDGE_DURATION])) {
+						for (Integer[] e : edges) {
+
+							if (currentTime >= e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
+									&& currentTime < (e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
+											+ e[Population_Bridging.CONTACT_MAP_EDGE_DURATION])) {
 
 								int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
 										? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
@@ -195,8 +225,7 @@ public class Runnable_ContactMapTranmission implements Runnable {
 								if (Collections.binarySearch(currently_infectious, partner) < 0) {
 
 									boolean tranmitted = false;
-									double[] trans = trans_prob.get(infectious);
-
+									
 									if (getGenderType(infectious) == Population_Bridging.GENDER_HETRO_FEMALE) {
 										tranmitted = RNG.nextDouble() < trans[0];
 									} else if (getGenderType(partner) == Population_Bridging.GENDER_HETRO_FEMALE) {
@@ -206,6 +235,16 @@ public class Runnable_ContactMapTranmission implements Runnable {
 									}
 
 									if (tranmitted) {
+										
+										Integer incubation_end_at = currentTime + INCUBATION_RANGE[0] + RNG.nextInt(INCUBATION_RANGE[1]);
+										ArrayList<Integer> ent = incubation_schedule.get(incubation_end_at);
+										if(ent == null) {
+											ent = new ArrayList<>();
+											incubation_schedule.put(incubation_end_at, ent);
+										}
+										ent.add(partner);
+										
+										
 										Integer[] tranmission_edge = new Integer[] { infectious, partner, currentTime };
 										if (!transmissionMap.containsVertex(infectious)) {
 											transmissionMap.addVertex(infectious);
@@ -218,7 +257,8 @@ public class Runnable_ContactMapTranmission implements Runnable {
 
 								}
 
-							} else {
+							} else if (currentTime >= (e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
+											+ e[Population_Bridging.CONTACT_MAP_EDGE_DURATION])){
 								removeEdges.add(e);
 							}
 						}
@@ -230,6 +270,13 @@ public class Runnable_ContactMapTranmission implements Runnable {
 				}
 
 			}
+			// End of simulations
+			
+			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);
+			Set<ContactMap> clusters = transmissionMap.getContactCluster();
+			
+			sim_output.put(SIM_OUTPUT_CLUSTERS, clusters);
+			
 		}
 
 	}

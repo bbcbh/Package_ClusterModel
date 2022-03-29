@@ -130,10 +130,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private transient HashMap<String, Object> stepwise_output = null;
 	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 
+	private PrintStream printStatus = null;
+	
 	// TODO: Debug print - might remove in the final version
 	private PrintStream[] partnerDistPrint = new PrintStream[LENGTH_GENDER];
 	private java.io.File partnerDistPrintFolder = null;
-	private PrintStream printStatus = null;
+	
 
 	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
