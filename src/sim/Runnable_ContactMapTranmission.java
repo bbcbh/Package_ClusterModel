@@ -48,6 +48,9 @@ public class Runnable_ContactMapTranmission implements Runnable {
 	private transient HashMap<String, Object> sim_output = null;
 	public static final String SIM_OUTPUT_TRANMISSION_MAP = "SIM_OUTPUT_TRANMISSION_MAP";
 	public static final String SIM_OUTPUT_CLUSTERS = "SIM_OUTPUT_CLUSTERS";
+	
+	
+	public String runnableId = null;
 
 	public Runnable_ContactMapTranmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
 			int NUM_TIME_STEPS) {
@@ -66,6 +69,20 @@ public class Runnable_ContactMapTranmission implements Runnable {
 		this.seed = seed;
 
 	}
+	
+	
+
+	public String getRunnableId() {
+		return runnableId;
+	}
+
+
+
+	public void setRunnableId(String runnableId) {
+		this.runnableId = runnableId;
+	}
+
+
 
 	public void initialse() {
 		transmissionMap = new ContactMap();
@@ -276,6 +293,11 @@ public class Runnable_ContactMapTranmission implements Runnable {
 			Set<ContactMap> clusters = transmissionMap.getContactCluster();
 			
 			sim_output.put(SIM_OUTPUT_CLUSTERS, clusters);
+			
+			
+			if(runnableId != null) {
+				System.out.println(String.format("Thread <%s> completed.", runnableId));
+			}
 			
 		}
 
