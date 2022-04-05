@@ -143,7 +143,7 @@ public class Optimisation_Factory {
 						}
 					}
 	
-					population.setPrintStatus(System.out);
+					//population.setPrintStatus(System.out);
 					population.initialise();
 	
 					int[] population_num_partner_in_last_12_months_total = new int[field_mean_num_partners.length];
@@ -186,7 +186,7 @@ public class Optimisation_Factory {
 						} else {
 							for (int c = 0; c < numCat; c++) {
 								int pdIndex = numCat + g * numCat + c;
-								diff = gender_weight[g] * ((
+								diff = gender_weight[g] * (((double)
 										population_num_partner_in_last_12_months_total[pdIndex]) / sampleCount
 										- Math.round(default_mean_num_partners[pdIndex] * numInPop[g]));
 								residue += Math.pow(diff, 2);
