@@ -8,26 +8,26 @@ import relationship.ContactMap;
 
 public class Runnable_ContactMapGeneration implements Runnable {
 
-	public static final Object[] DEFAULT_BRIDGING_RUNNABLE_FIELDS = {
-			// RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE
+	public static final Object[] DEFAULT_RUNNABLE_MAP_GEN_FIELDS = {
+			// RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE
 			new int[] { 30, 30 + AbstractIndividualInterface.ONE_YEAR_INT },
 
 	};
 
-	public static final int RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE = 0;
-	public static final int LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD = RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE + 1;
+	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE = 0;
+	public static final int LENGTH_RUNNABLE_MAP_GEN_FIELD = RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE + 1;
 
 	private Population_Bridging population;
 	private int numSnaps;
 	private int snapFreq;
-	private Object[] runnable_fields = new Object[LENGTH_RUNNABLE_CLUSTER_MODEL_FIELD];
+	private Object[] runnable_fields = new Object[LENGTH_RUNNABLE_MAP_GEN_FIELD];
 	private ContactMap[] gen_cMap = null;
 	private PrintStream printStatus = null;
 
 	public Runnable_ContactMapGeneration() {
 		super();
-		for (int i = 0; i < DEFAULT_BRIDGING_RUNNABLE_FIELDS.length; i++) {
-			runnable_fields[i] = DEFAULT_BRIDGING_RUNNABLE_FIELDS[i];
+		for (int i = 0; i < DEFAULT_RUNNABLE_MAP_GEN_FIELDS.length; i++) {
+			runnable_fields[i] = DEFAULT_RUNNABLE_MAP_GEN_FIELDS[i];
 		}
 	}
 
@@ -65,7 +65,7 @@ public class Runnable_ContactMapGeneration implements Runnable {
 		if(printStatus != null) {
 			population.setPrintStatus(printStatus);
 		}
-		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_VALID_RANGE];
+		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
 		
 		if (contactMapValidRange[0]  == 0) {
 			gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
