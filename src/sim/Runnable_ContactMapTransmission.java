@@ -317,27 +317,27 @@ public class Runnable_ContactMapTransmission implements Runnable {
 
 			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS; currentTime++) {
 
-				for (int s = 0; s < SITE_LENGTH; s++) {
+				for (int site_src = 0; site_src < SITE_LENGTH; site_src++) {
 					// Update infectious
-					ArrayList<Integer> becomeInfectiousToday = incubation_schedule[s].remove(currentTime);
+					ArrayList<Integer> becomeInfectiousToday = incubation_schedule[site_src].remove(currentTime);
 
 					if (becomeInfectiousToday != null) {
 						for (Integer i : becomeInfectiousToday) {
-							int recoveredAt = (int) Math.round(infectious_period[s].sample()) + currentTime;
-							addInfected(i, s, recoveredAt);
+							int recoveredAt = (int) Math.round(infectious_period[site_src].sample()) + currentTime;
+							addInfected(i, site_src, recoveredAt);
 						}
 					}
 
 					// Update recovery
-					ArrayList<Integer> recoveredToday = recovery_schedule[s].remove(currentTime);
+					ArrayList<Integer> recoveredToday = recovery_schedule[site_src].remove(currentTime);
 					if (recoveredToday != null) {
 						for (Integer i : recoveredToday) {
-							removeInfected(i, s);
+							removeInfected(i, site_src);
 						}
 					}
 
 					// Transmission
-					for (Integer infectious : currently_infectious[s]) {
+					for (Integer infectious : currently_infectious[site_src]) {
 						if (cMap.containsVertex(infectious)) {
 							Set<Integer[]> edges = cMap.edgesOf(infectious);
 							double[][] trans = trans_prob.get(infectious);
@@ -352,14 +352,14 @@ public class Runnable_ContactMapTransmission implements Runnable {
 											? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
 											: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
 
-									for (int st = 0; st < SITE_LENGTH; st++) {
-										if (trans[s][st] != 0) {
+									for (int site_target = 0; site_target < SITE_LENGTH; site_target++) {
+										if (trans[site_src][site_target] != 0) {
 											// Transmission is possible
-											if (Collections.binarySearch(currently_infectious[st], partner) < 0) {
+											if (Collections.binarySearch(currently_infectious[site_target], partner) < 0) {
 
 												int actType;
 												// Determine act type
-												switch (s) {
+												switch (site_src) {
 												case SITE_VAGINA:
 													actType = ACT_INDEX_GENITAL;
 													break;
@@ -370,7 +370,7 @@ public class Runnable_ContactMapTransmission implements Runnable {
 													actType = ACT_INDEX_ANAL;
 													break;
 												default:
-													switch (st) {
+													switch (site_target) {
 													case SITE_VAGINA:
 														actType = ACT_INDEX_GENITAL;
 														break;
@@ -390,18 +390,21 @@ public class Runnable_ContactMapTransmission implements Runnable {
 													int g_s = getGenderType(infectious);
 													int g_t = getGenderType(partner);
 													double actProb = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ])[actType][g_s][g_t];
-													double transProb = trans[s][st];
-													tranmitted &= RNG.nextDouble() < (actProb * transProb);
+													double transProb = trans[site_src][site_target];
+													tranmitted &= actProb > 0;
+													if (tranmitted) {
+														tranmitted &= RNG.nextDouble() < (actProb * transProb);
+													}
 												}
 
 												if (tranmitted) {
 													Integer incubation_end_at = currentTime
-															+ (int) incubation_period[st].sample();
-													ArrayList<Integer> ent = incubation_schedule[st]
+															+ (int) incubation_period[site_target].sample();
+													ArrayList<Integer> ent = incubation_schedule[site_target]
 															.get(incubation_end_at);
 													if (ent == null) {
 														ent = new ArrayList<>();
-														incubation_schedule[st].put(incubation_end_at, ent);
+														incubation_schedule[site_target].put(incubation_end_at, ent);
 													}
 													ent.add(partner);
 
