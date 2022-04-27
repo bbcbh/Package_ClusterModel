@@ -3,7 +3,9 @@ package optimisation;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.InvalidPropertiesFormatException;
@@ -32,6 +34,7 @@ public class Optimisation_Factory {
 			final double[][] boundaries) throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 		
 		final File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
+		final File outputFile = new File(baseDir, String.format("Opt_output_%d.txt", System.currentTimeMillis()));
 	
 		if (propFile.exists()) {
 	
@@ -193,9 +196,21 @@ public class Optimisation_Factory {
 							}
 						}
 					}
+					
+					String outputString = String.format("x = %s, R = %.4f, Time req. = %.3fs", Arrays.toString(point),
+							residue, (System.currentTimeMillis() - tic) / 1000f);
 	
-					System.out.println(String.format("x = %s, R = %.4f. Time req. = %.3fs", Arrays.toString(point),
-							residue, (System.currentTimeMillis() - tic) / 1000f));
+					System.out.println(outputString);					
+					try {
+						PrintWriter pWri = new PrintWriter(new FileWriter(outputFile, true));
+						pWri.println(outputString);
+						pWri.close();											
+					
+					}catch(IOException ex) {
+						ex.printStackTrace(System.err);
+					}
+					
+					
 	
 					return residue;
 				}
@@ -208,10 +223,20 @@ public class Optimisation_Factory {
 			NelderMeadSimplex simplex = new NelderMeadSimplex(init_val_bounded.length);
 			ObjectiveFunction objFunc = new ObjectiveFunction(wrapper);
 	
-			PointValuePair var = optimizer.optimize(new MaxEval(1000), objFunc, simplex, GoalType.MINIMIZE,
+			PointValuePair var = optimizer.optimize(new MaxEval(100), objFunc, simplex, GoalType.MINIMIZE,
 					new InitialGuess(wrapper.boundedToUnbounded(init_val_bounded)));
 	
-			System.out.println("Optimised value = " + Arrays.toString(wrapper.unboundedToBounded(var.getPoint())));
+			
+			String outputString = "Optimised value = " + Arrays.toString(wrapper.unboundedToBounded(var.getPoint()));
+			System.out.println(outputString);						
+			try {
+				PrintWriter pWri = new PrintWriter(new FileWriter(outputFile, true));
+				pWri.println(outputString);
+				pWri.close();											
+			
+			}catch(IOException ex) {
+				ex.printStackTrace(System.err);
+			}
 	
 		}
 	}
