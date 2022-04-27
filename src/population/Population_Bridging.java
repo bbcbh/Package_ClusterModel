@@ -36,7 +36,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			// int[] {NUM_FEMALE, NUM_MALE, NUM_MSMO, NUM_MSMW}
 			new int[] { 5000, 5000, 200, 50 },
 			// FIELD_CONTACT_MAP
-			new ContactMap[3],
+			new ContactMap[1],
 			// FIELD_PARTNER_TYPE_PROB
 			// float[GENDER]{CUMUL_REG_ONLY, CUMUL_CAS_ONLY}
 			// Default:
@@ -101,18 +101,19 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int LENGTH_GENDER = GENDER_MSMW + 1;
 
 	public static final int CONTACT_MAP_ALL = 0;
-	public static final int CONTACT_MAP_HETRO = CONTACT_MAP_ALL + 1;
-	public static final int CONTACT_MAP_MSM = CONTACT_MAP_HETRO + 1;
 
 	public static final int RELMAP_HETRO = 0;
 	public static final int RELMAP_MSM = 1;
 	public static final int LENGTH_RELMAP = 2;
 
 	// Format in contact map: {p1, p2, start time_1, duration_1, ...}
+	// CONTACT_MAP_EDGE_DURATION = -1 -> Removal
+	// CONTACT_MAP_EDGE_DURATION = 0 -> Update
+	
 	public static final int CONTACT_MAP_EDGE_P1 = 0;
-	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;	
+	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;
 	public static final int CONTACT_MAP_EDGE_START_TIME = CONTACT_MAP_EDGE_P2 + 1;
-	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1;
+	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1; 
 	public static final int LENGTH_CONTACT_MAP_EDGE = CONTACT_MAP_EDGE_DURATION + 1;
 
 	@SuppressWarnings("unchecked")
@@ -132,11 +133,10 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 
 	private PrintStream printStatus = null;
-	
+
 	// TODO: Debug print - might remove in the final version
 	private PrintStream[] partnerDistPrint = new PrintStream[LENGTH_GENDER];
 	private java.io.File partnerDistPrintFolder = null;
-	
 
 	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
@@ -181,16 +181,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	protected SingleRelationship formRelationship(AbstractIndividualInterface[] pair, RelationshipMap relMap,
 			int duration, int mapType) {
 
-		ContactMap cMapSpec = null;
 		Integer[] link = new Integer[LENGTH_CONTACT_MAP_EDGE];
 		SingleRelationshipTimeStamp rel;
 		ContactMap cMapAll = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL];
-
-		if (mapType == 0) { // Hetro sex involving female
-			cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_HETRO];
-		} else { // Involve MSM
-			cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_MSM];
-		}
 
 		for (int i = 0; i < pair.length; i++) {
 			if (!relMap.containsVertex(pair[i].getId())) {
@@ -203,7 +196,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		link[CONTACT_MAP_EDGE_START_TIME] = getGlobalTime();
 		link[CONTACT_MAP_EDGE_DURATION] = duration;
 
-		checkContactMaps(link, new ContactMap[] { cMapAll, cMapSpec });
+		checkContactMaps(link, new ContactMap[] { cMapAll });
 
 		rel = new SingleRelationshipTimeStamp(new Integer[] { link[0], link[1] });
 		rel.setRelStartTime(getGlobalTime());
@@ -285,8 +278,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			int numMSMCasualToFormed = casualMSMArr.length / 2;
 
 			if (numMSMCasualToFormed > 0) {
-				cMaps = new ContactMap[] { ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL],
-						((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_MSM] };
+				cMaps = new ContactMap[] { ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL] };
 
 				ArrayUtilsRandomGenerator.shuffleArray(casualMSMArr, getRNG());
 
@@ -324,8 +316,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			if (numHetroCasualToFormed > 0) {
 
-				cMaps = new ContactMap[] { ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL],
-						((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_HETRO] };
+				cMaps = new ContactMap[] { ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL] };
 
 				Person_Bridging_Pop[] casualFemale = casualCandidate[GENDER_HETRO_FEMALE];
 				Person_Bridging_Pop[] casualMale = Arrays.copyOf(casualCandidate[GENDER_HETRO_MALE],
@@ -979,25 +970,18 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			}
 
 			ContactMap cMapAll = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL];
-			ContactMap cMapSpec;
-
-			if (map == 0) { // Hetro sex involving female
-				cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_HETRO];
-			} else { // Involve MSM
-				cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_MSM];
-			}
 
 			for (SingleRelationship rel : relArr) {
 				Integer[] link = rel.getLinks();
 				link = Arrays.copyOf(link, LENGTH_CONTACT_MAP_EDGE);
-				link[CONTACT_MAP_EDGE_START_TIME] = getGlobalTime();
+				link[CONTACT_MAP_EDGE_START_TIME] = ((SingleRelationshipTimeStamp) rel).getRelStartTime();
 				if (rel.incrementTime(1) <= 0) {
 					relMap.removeEdge(rel);
-					link[CONTACT_MAP_EDGE_DURATION] = -1;
+					link[CONTACT_MAP_EDGE_DURATION] = -1; 
 				} else {
-					link[CONTACT_MAP_EDGE_DURATION] = (int) rel.getDurations();
+					link[CONTACT_MAP_EDGE_DURATION] =  0;
 				}
-				checkContactMaps(link, new ContactMap[] { cMapAll, cMapSpec });
+				checkContactMaps(link, new ContactMap[] { cMapAll });
 			}
 		}
 	}
@@ -1005,6 +989,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private void checkContactMaps(Integer[] link, ContactMap[] cMaps) {
 		for (ContactMap c : cMaps) {
 			if (c != null) {
+
 				if (!c.containsVertex(link[CONTACT_MAP_EDGE_P1])) {
 					c.addVertex(link[CONTACT_MAP_EDGE_P1]);
 				}
@@ -1012,18 +997,38 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					c.addVertex(link[CONTACT_MAP_EDGE_P2]);
 				}
 
-				if (!c.containsEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2])
-						&& link[CONTACT_MAP_EDGE_DURATION] > 0) {
-					c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], link);
-				}else {
+				if (!c.containsEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2])) {
+					if (link[CONTACT_MAP_EDGE_DURATION] >= 0) {
+						c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], link);
+					} else {
+						System.err.println(String.format("checkContactMaps: Edge of %d duration not added.",
+								link[CONTACT_MAP_EDGE_DURATION]));
+					}
+				} else {
+					// Edge already existed
 					Integer[] e = c.getEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2]);
-					c.removeEdge(e);
-					e = Arrays.copyOf(e, e.length+2);
-					e[e.length-1] = link[CONTACT_MAP_EDGE_DURATION];
-					e[e.length-2] = link[CONTACT_MAP_EDGE_START_TIME];
-					c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], e);					
+					int lastRelStart = e[e.length - 2].intValue();
+					if (link[CONTACT_MAP_EDGE_DURATION] < 0) {
+						e[e.length - 1] = getGlobalTime() - lastRelStart;
+					} else {
+						if (link[CONTACT_MAP_EDGE_DURATION] > 0) {
+							// Extend edge
+							c.removeEdge(e);
+							e = Arrays.copyOf(e, e.length + 2);
+							e[e.length - 1] = link[CONTACT_MAP_EDGE_DURATION];
+							e[e.length - 2] = link[CONTACT_MAP_EDGE_START_TIME];
+							c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], e);
+						} else {
+							// Update edge		
+							e[e.length-1] = Math.max(e[e.length-1], 
+									getGlobalTime() -lastRelStart);
+							
+
+						}
+					}
+
 				}
-				
+
 			}
 		}
 
@@ -1062,13 +1067,6 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		RelationshipMap tarMap = getRelMap()[tarMapIndex];
 		ContactMap cMapAll = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL];
-		ContactMap cMapSpec;
-
-		if (tarMapIndex == RELMAP_HETRO) { // Hetro sex involving female
-			cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_HETRO];
-		} else { // Involve MSM
-			cMapSpec = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_MSM];
-		}
 
 		if (tarMap.containsVertex(breakRelPerson.getId())) {
 			Set<SingleRelationship> edgeSet = tarMap.edgesOf(breakRelPerson.getId());
@@ -1088,10 +1086,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 				// Update contact map
 				Integer[] link = relRemove.getLinks();
-				link = Arrays.copyOf(link, LENGTH_CONTACT_MAP_EDGE);
-				link[CONTACT_MAP_EDGE_START_TIME] = getGlobalTime();
+				link = Arrays.copyOf(link, LENGTH_CONTACT_MAP_EDGE);				
 				link[CONTACT_MAP_EDGE_DURATION] = -1;
-				checkContactMaps(link, new ContactMap[] { cMapAll, cMapSpec });
+				checkContactMaps(link, new ContactMap[] { cMapAll });
 
 				tarMap.removeEdge(relRemove);
 
