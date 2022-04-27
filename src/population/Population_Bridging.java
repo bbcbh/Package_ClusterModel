@@ -108,8 +108,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int RELMAP_MSM = 1;
 	public static final int LENGTH_RELMAP = 2;
 
+	// Format in contact map: {p1, p2, start time_1, duration_1, ...}
 	public static final int CONTACT_MAP_EDGE_P1 = 0;
-	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;
+	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;	
 	public static final int CONTACT_MAP_EDGE_START_TIME = CONTACT_MAP_EDGE_P2 + 1;
 	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1;
 	public static final int LENGTH_CONTACT_MAP_EDGE = CONTACT_MAP_EDGE_DURATION + 1;
@@ -1014,19 +1015,15 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				if (!c.containsEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2])
 						&& link[CONTACT_MAP_EDGE_DURATION] > 0) {
 					c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], link);
-				}
-				if (c.containsEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2])
-						&& link[CONTACT_MAP_EDGE_DURATION] > 0) {
+				}else {
 					Integer[] e = c.getEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2]);
-					e[CONTACT_MAP_EDGE_DURATION] += link[CONTACT_MAP_EDGE_DURATION];
+					c.removeEdge(e);
+					e = Arrays.copyOf(e, e.length+2);
+					e[e.length-1] = link[CONTACT_MAP_EDGE_DURATION];
+					e[e.length-2] = link[CONTACT_MAP_EDGE_START_TIME];
+					c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], e);					
 				}
-
-				if (c.containsEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2])
-						&& link[CONTACT_MAP_EDGE_DURATION] < 0) {
-					Integer[] e = c.getEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2]);
-					e[CONTACT_MAP_EDGE_DURATION] = link[CONTACT_MAP_EDGE_START_TIME] - e[CONTACT_MAP_EDGE_START_TIME];
-
-				}
+				
 			}
 		}
 
