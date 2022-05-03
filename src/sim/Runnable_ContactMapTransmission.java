@@ -141,10 +141,10 @@ public class Runnable_ContactMapTransmission implements Runnable {
 	protected transient HashMap<Integer, double[][]> trans_prob;
 
 	private transient HashMap<String, Object> sim_output = null;
-	
+
 	public static final String SIM_OUTPUT_TRANMISSION_MAP = "SIM_OUTPUT_TRANMISSION_MAP";
 	public static final String SIM_OUTPUT_CLUSTERS = "SIM_OUTPUT_CLUSTERS";
-	
+
 	public String runnableId = null;
 
 	public Runnable_ContactMapTransmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
@@ -342,34 +342,28 @@ public class Runnable_ContactMapTransmission implements Runnable {
 							double[][] trans = trans_prob.get(infectious);
 
 							for (Integer[] e : edges) {
+								int startIndex = Population_Bridging.CONTACT_MAP_EDGE_START_TIME;
+								
+								while (startIndex < e.length) {									
+									int durationIndex = startIndex+1;
 
-								if (currentTime >= e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
-										&& currentTime < (e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
-												+ e[Population_Bridging.CONTACT_MAP_EDGE_DURATION])) {
+									if (currentTime >= e[startIndex]
+											&& currentTime < (e[startIndex]
+													+ e[durationIndex])) {
 
-									int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
-											? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
-											: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
+										int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
+												? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
+												: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
 
-									for (int site_target = 0; site_target < SITE_LENGTH; site_target++) {
-										if (trans[site_src][site_target] != 0) {
-											// Transmission is possible
-											if (Collections.binarySearch(currently_infectious[site_target], partner) < 0) {
+										for (int site_target = 0; site_target < SITE_LENGTH; site_target++) {
+											if (trans[site_src][site_target] != 0) {
+												// Transmission is possible
+												if (Collections.binarySearch(currently_infectious[site_target],
+														partner) < 0) {
 
-												int actType;
-												// Determine act type
-												switch (site_src) {
-												case SITE_VAGINA:
-													actType = ACT_INDEX_GENITAL;
-													break;
-												case SITE_OROPHARYNX:
-													actType = ACT_INDEX_FELLATIO;
-													break;
-												case SITE_RECTUM:
-													actType = ACT_INDEX_ANAL;
-													break;
-												default:
-													switch (site_target) {
+													int actType;
+													// Determine act type
+													switch (site_src) {
 													case SITE_VAGINA:
 														actType = ACT_INDEX_GENITAL;
 														break;
@@ -380,49 +374,63 @@ public class Runnable_ContactMapTransmission implements Runnable {
 														actType = ACT_INDEX_ANAL;
 														break;
 													default:
-														actType = -1;
+														switch (site_target) {
+														case SITE_VAGINA:
+															actType = ACT_INDEX_GENITAL;
+															break;
+														case SITE_OROPHARYNX:
+															actType = ACT_INDEX_FELLATIO;
+															break;
+														case SITE_RECTUM:
+															actType = ACT_INDEX_ANAL;
+															break;
+														default:
+															actType = -1;
+														}
 													}
-												}
-												boolean tranmitted = actType != -1;
+													boolean tranmitted = actType != -1;
 
-												if (tranmitted) {
-													int g_s = getGenderType(infectious);
-													int g_t = getGenderType(partner);
-													double actProb = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ])[actType][g_s][g_t];
-													double transProb = trans[site_src][site_target];
-													tranmitted &= actProb > 0;
 													if (tranmitted) {
-														tranmitted &= RNG.nextDouble() < (actProb * transProb);
-													}
-												}
-
-												if (tranmitted) {
-													Integer incubation_end_at = currentTime
-															+ (int) incubation_period[site_target].sample();
-													ArrayList<Integer> ent = incubation_schedule[site_target]
-															.get(incubation_end_at);
-													if (ent == null) {
-														ent = new ArrayList<>();
-														incubation_schedule[site_target].put(incubation_end_at, ent);
-													}
-													ent.add(partner);
-
-													if (!transmissionMap.containsVertex(infectious)) {
-														transmissionMap.addVertex(infectious);
-													}
-													if (!transmissionMap.containsVertex(partner)) {
-														transmissionMap.addVertex(partner);
+														int g_s = getGenderType(infectious);
+														int g_t = getGenderType(partner);
+														double actProb = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ])[actType][g_s][g_t];
+														double transProb = trans[site_src][site_target];
+														tranmitted &= actProb > 0;
+														if (tranmitted) {
+															tranmitted &= RNG.nextDouble() < (actProb * transProb);
+														}
 													}
 
-													Integer[] existEdge = transmissionMap.getEdge(infectious,
-															infectious);
+													if (tranmitted) {
+														Integer incubation_end_at = currentTime
+																+ (int) incubation_period[site_target].sample();
+														ArrayList<Integer> ent = incubation_schedule[site_target]
+																.get(incubation_end_at);
+														if (ent == null) {
+															ent = new ArrayList<>();
+															incubation_schedule[site_target].put(incubation_end_at,
+																	ent);
+														}
+														ent.add(partner);
 
-													if (existEdge == null) {
-														existEdge = new Integer[] { infectious, partner, currentTime,
-																1 << actType };
-														transmissionMap.addEdge(infectious, partner, existEdge);
-													} else {
-														existEdge[existEdge.length - 1] |= 1 << actType;
+														if (!transmissionMap.containsVertex(infectious)) {
+															transmissionMap.addVertex(infectious);
+														}
+														if (!transmissionMap.containsVertex(partner)) {
+															transmissionMap.addVertex(partner);
+														}
+
+														Integer[] existEdge = transmissionMap.getEdge(infectious,
+																infectious);
+
+														if (existEdge == null) {
+															existEdge = new Integer[] { infectious, partner,
+																	currentTime, 1 << actType };
+															transmissionMap.addEdge(infectious, partner, existEdge);
+														} else {
+															existEdge[existEdge.length - 1] |= 1 << actType;
+														}
+
 													}
 
 												}
@@ -431,11 +439,11 @@ public class Runnable_ContactMapTransmission implements Runnable {
 
 										}
 
+									} else if (currentTime >= (e[startIndex] + e[durationIndex]) 
+											&& startIndex+2 > e.length) {
+										removeEdges.add(e);
 									}
-
-								} else if (currentTime >= (e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
-										+ e[Population_Bridging.CONTACT_MAP_EDGE_DURATION])) {
-									removeEdges.add(e);
+									startIndex += 2;																	
 								}
 							}
 						}
