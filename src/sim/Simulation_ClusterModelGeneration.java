@@ -1,14 +1,23 @@
 package sim;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.InvalidPropertiesFormatException;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
@@ -33,13 +42,21 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	protected File baseDir = null;
 	protected boolean stopNextTurn = false;
 	protected Properties loadedProperties = null; // From .prop file, if any
+	protected ArrayList<Long> skipSeeds = null;
 	protected transient Map<Long, ContactMap[]> contactMapSet = null;
 	protected transient Map<Long, Runnable_ContactMapGeneration> runnablesMap = null;
-	
-	protected boolean printOutput = false;		
-	
+
+	protected boolean printOutput = false;
+
+	public static final String FILENAME_FORMAT_ALL_CMAP = "All_ContactMap_%d_%d.csv";
+
 	public void setPrintOutput(boolean printOutput) {
 		this.printOutput = printOutput;
+	}
+
+	public void setSkipSeeds(ArrayList<Long> skipSeeds) {
+		this.skipSeeds = skipSeeds;
+		Collections.sort(this.skipSeeds);
 	}
 
 	public Simulation_ClusterModelGeneration() {
@@ -58,8 +75,6 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public Map<Long, Runnable_ContactMapGeneration> getRunnables() {
 		return runnablesMap;
 	}
-
-	
 
 	public Map<Long, ContactMap[]> getContactMapSet() {
 		return contactMapSet;
@@ -178,52 +193,56 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		}
 
 		for (int i = 0; i < numSim; i++) {
-			Population_Bridging population = new Population_Bridging(rngBase.nextLong());
-			for (int f = 0; f < Population_Bridging.LENGTH_FIELDS_BRIDGING_POP; f++) {
-				if (simFields[f] != null) {
-					population.getFields()[f] = simFields[f];
-				}
-			}
-			
-			population.setPartnerDistPrintFolder(baseDir);
+			long popSeed = rngBase.nextLong();
 
-			Runnable_ContactMapGeneration r = new Runnable_ContactMapGeneration();
-			
-			
-			runnables[i] = r;
-			r.setPopulation(population);
-			r.setNumSnaps(numSnap);
-			r.setSnapFreq(snapFreq);
-		
-			
-			for (int f = 0; f < Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
-				if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + f] != null) {
-					r.getRunnable_fields()[f] = simFields[f + Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
-				}
-			}
-			
-			runnablesMap.put(r.getPopulation().getSeed(), r);
-			
-			
-			if(printOutput) {
-				PrintStream outputPS = new PrintStream(new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed())));
-				outputPS.println(String.format("Seed = %d", r.getPopulation().getSeed()));
-				runnables[i].setPrintStatus(outputPS);
-			}
-			
+			if (Collections.binarySearch(skipSeeds, popSeed) < 0) {
 
-			if (!useParallel) {
-				runnables[i].run();
-			} else {
-				executor.submit(runnables[i]);
-				numInPool++;
-				if (numInPool == numThreads) {
-					executor.shutdown();
-					if (!executor.awaitTermination(2, TimeUnit.DAYS)) {
-						showStrStatus("Thread time-out!");
+				Population_Bridging population = new Population_Bridging(popSeed);
+				for (int f = 0; f < Population_Bridging.LENGTH_FIELDS_BRIDGING_POP; f++) {
+					if (simFields[f] != null) {
+						population.getFields()[f] = simFields[f];
 					}
-					numInPool = 0;
 				}
+
+				population.setPartnerDistPrintFolder(baseDir);
+
+				Runnable_ContactMapGeneration r = new Runnable_ContactMapGeneration();
+
+				runnables[i] = r;
+				r.setPopulation(population);
+				r.setNumSnaps(numSnap);
+				r.setSnapFreq(snapFreq);
+
+				for (int f = 0; f < Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
+					if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + f] != null) {
+						r.getRunnable_fields()[f] = simFields[f + Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
+					}
+				}
+
+				runnablesMap.put(r.getPopulation().getSeed(), r);
+
+				if (printOutput) {
+					PrintStream outputPS = new PrintStream(
+							new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed())));
+					outputPS.println(String.format("Seed = %d", r.getPopulation().getSeed()));
+					runnables[i].setPrintStatus(outputPS);
+				}
+
+				if (!useParallel) {
+					runnables[i].run();
+				} else {
+					executor.submit(runnables[i]);
+					numInPool++;
+					if (numInPool == numThreads) {
+						executor.shutdown();
+						if (!executor.awaitTermination(2, TimeUnit.DAYS)) {
+							showStrStatus("Thread time-out!");
+						}
+						numInPool = 0;
+					}
+				}
+			}else {
+				showStrStatus(String.format("Contact cluster with seed of %d skipped", seed));
 			}
 		}
 		if (useParallel && numInPool != 0) {
@@ -246,7 +265,80 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		System.out.println(string);
 
 	}
-	
-	
+
+	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
+		File baseDir = null;
+		File propFile = null;
+		File[] preGenClusterFile = new File[0];
+		ArrayList<Long> preGenClusterSeed = new ArrayList<>();
+
+		if (args.length > 0) {
+			baseDir = new File(args[0]);
+		} else {
+			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY",
+					Simulation_ClusterModelGeneration.class.getName()));
+			System.exit(0);
+		}
+
+		if (baseDir != null) {
+			if (baseDir.isDirectory()) {
+				// Reading of PROP file
+				propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
+				FileInputStream fIS = new FileInputStream(propFile);
+				Properties prop = new Properties();
+				prop.loadFromXML(fIS);
+				fIS.close();
+				System.out.println(String.format("Properties file < %s > loaded.", propFile.getAbsolutePath()));
+
+				// Check for cluster generated previously
+				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "\\\\d+");
+
+				preGenClusterFile = baseDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return pathname.isFile() && Pattern.matches(REGEX_STR, pathname.getName());
+
+					}
+				});
+
+				Pattern p = Pattern.compile(FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(\\\\d+)"));
+
+				for (int i = 0; i < preGenClusterFile.length; i++) {
+					Matcher m = p.matcher(preGenClusterFile[i].getName());
+					if (m.matches()) {
+						long seed = Long.parseLong(m.group(1));
+						preGenClusterSeed.add(seed);
+						System.out.println(String.format("ContactMap for seed #%d located at %s", seed,
+								preGenClusterFile[i].getAbsolutePath()));
+					}
+				}
+
+				Simulation_ClusterModelGeneration sim = new Simulation_ClusterModelGeneration();
+				sim.setBaseDir(baseDir);
+				sim.setSkipSeeds(preGenClusterSeed);
+				sim.loadProperties(prop);
+				sim.setPrintOutput(true);
+
+				sim.generateOneResultSet();
+
+				Map<Long, ContactMap[]> collection = sim.getContactMapSet();
+
+				for (Long seed : collection.keySet()) {
+					ContactMap cMap = collection.get(seed)[0]; // All
+					File allContactFile = new File(baseDir,
+							String.format(FILENAME_FORMAT_ALL_CMAP, seed, cMap.vertexSet().size()));
+					BufferedWriter fileWriAll = new BufferedWriter(new FileWriter(allContactFile));
+					fileWriAll.append(cMap.toFullString());
+					fileWriAll.close();
+
+					System.out.println("ContactMap (All) exported to " + allContactFile.getAbsolutePath());
+
+				}
+
+			}
+
+		}
+
+	}
 
 }
