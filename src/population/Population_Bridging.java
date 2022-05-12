@@ -418,9 +418,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			pri.close();
 			printStatus.println(wri.toString());
-			if (!printStatus.equals(System.out)) {
-				System.out.println(wri.toString());
-			}
+			//if (!printStatus.equals(System.out)) {
+			//	System.out.println(wri.toString());
+			//}
 		}
 
 		if (numCat > 0) {
@@ -649,10 +649,10 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				printStatus.println(String.format("# partners in last 12 months = %s - Day %d",
 						Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
 
-				if (!printStatus.equals(System.out)) {
-					System.out.println(String.format("# partners in last 12 months = %s - Day %d",
-							Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
-				}
+				//if (!printStatus.equals(System.out)) {
+				//	System.out.println(String.format("# partners in last 12 months = %s - Day %d",
+				//			Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
+				//}
 			} else {
 				StringWriter wri = new StringWriter();
 				PrintWriter pri = new PrintWriter(wri);
@@ -676,9 +676,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 				pri.close();
 				printStatus.println(wri.toString());
-				if (!printStatus.equals(System.out)) {
-					System.out.println(wri.toString());
-				}
+				//if (!printStatus.equals(System.out)) {
+				//	System.out.println(wri.toString());
+				//}
 			}
 
 			if (!printStatus.equals(System.out)) {
