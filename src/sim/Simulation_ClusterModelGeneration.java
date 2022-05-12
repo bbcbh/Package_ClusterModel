@@ -206,7 +206,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 			
 			
 			if(printOutput) {
-				PrintStream outputPS = new PrintStream(new File(baseDir, String.format("Output_%d.txt", i)));
+				PrintStream outputPS = new PrintStream(new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed())));
 				outputPS.println(String.format("Seed = %d", r.getPopulation().getSeed()));
 				runnables[i].setPrintStatus(outputPS);
 			}
