@@ -76,10 +76,12 @@ public class Runnable_ContactMapGeneration implements Runnable {
 		}
 		
 		population.initialise();
+		/*
 		if (printStatus != null) {
 			printStatus.println();
 			printStatus.println(population.printCurrentPartnershipStatus());
 		}
+		*/
 
 		for (int s = 0; s < numSnaps; s++) {
 			for (int f = 0; f < snapFreq; f++) {
@@ -99,9 +101,11 @@ public class Runnable_ContactMapGeneration implements Runnable {
 				population.advanceTimeStep(1);
 
 			}
+			/*
 			if (printStatus != null) {
 				printStatus.println(population.printCurrentPartnershipStatus());
 			}
+			*/
 		}
 		
 		if (printStatus != null) {
