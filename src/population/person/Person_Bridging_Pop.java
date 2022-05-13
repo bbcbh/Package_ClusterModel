@@ -106,6 +106,7 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface {
 	}
 	
 	public int getNumRegularInRecord() {
+
 		return getNumInRecord(regularRecord);
 	}
 	

@@ -94,8 +94,7 @@ public class Optimisation_Factory {
 							population.getFields()[f] = sim.simFields[f];
 						}
 					}
-					population.setPrintStatus(null);
-					population.setPartnerDistPrintFolder(null);
+					population.setPrintStatus(null);					
 	
 					HashMap<String, Object> stepwiseOutput = new HashMap<>();
 	

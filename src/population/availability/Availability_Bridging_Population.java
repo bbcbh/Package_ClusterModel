@@ -20,9 +20,8 @@ public class Availability_Bridging_Population extends AbstractAvailability {
 
 	public static final String BIPARTITE_MAPPING = "BIPARTITE_MAPPING";
 
-	public Availability_Bridging_Population(RandomGenerator RNG) {
+	public Availability_Bridging_Population(RandomGenerator RNG) {		
 		super(RNG);
-
 	}
 
 	@Override

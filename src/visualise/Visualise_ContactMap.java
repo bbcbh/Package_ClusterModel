@@ -13,8 +13,7 @@ public class Visualise_ContactMap extends JGraphXAdapter<Integer, Integer[]> {
 	protected static final String EDGE_STYLE = "EDGE_STYLE";
 
 	public Visualise_ContactMap(ContactMap cmap) {
-		super(cmap);
-
+		super(cmap);		
 		Map<String, Object> edge_style = this.getStylesheet().getDefaultEdgeStyle();
 		edge_style.put(mxConstants.STYLE_FONTSIZE, 0);
 		//edge_style.put(mxConstants.STYLE_ENDARROW, mxConstants.ARROW_OVAL);

@@ -1,6 +1,5 @@
 package population;
 
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -134,17 +133,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private PrintStream printStatus = null;
 
-	// TODO: Debug print - might remove in the final version
-	private PrintStream[] partnerDistPrint = new PrintStream[LENGTH_GENDER];
-	private java.io.File partnerDistPrintFolder = null;
-
 	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
-	}
-
-	public void setPartnerDistPrintFolder(java.io.File partnerDistPrintFolder) {
-		this.partnerDistPrintFolder = partnerDistPrintFolder;
-	}
+	}	
 
 	public HashMap<String, Object> getStepwise_output() {
 		return stepwise_output;
@@ -232,6 +223,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				seekRegular = getRNG().nextInt(noPWin) < (maxReg - numReg);
 			}
 		}
+		
+		
 
 		return seekRegular;
 	}
@@ -368,20 +361,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		regPartDuration[RELMAP_HETRO] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_HETRO],
 				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
 		regPartDuration[RELMAP_MSM] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_MSM],
-				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
-
-		// Initalise dist print folder (might remove later)
-
-		if (partnerDistPrintFolder != null) {
-			for (int i = 0; i < partnerDistPrint.length; i++) {
-				try {
-					partnerDistPrint[i] = new PrintStream(
-							new java.io.File(partnerDistPrintFolder, "Gender_" + i + ".csv"));
-				} catch (FileNotFoundException e) {
-					e.printStackTrace(System.err);
-				}
-			}
-		}
+				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);		
 
 		// Initialise population
 		int[] popSizes = (int[]) getFields()[FIELD_POP_COMPOSITION];
@@ -661,17 +641,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					pri.println(String.format(" %d: %s", g,
 							Arrays.toString(Arrays.copyOfRange(population_num_partner_in_last_12_months,
 									numCat + g * numCat, 2 * numCat + g * numCat))));
-
-					if (partnerDistPrintFolder != null) {
-						partnerDistPrint[g].print(getGlobalTime());
-
-						for (int n = 0; n < numCat; n++) {
-							partnerDistPrint[g].print(',');
-							partnerDistPrint[g]
-									.print(population_num_partner_in_last_12_months[numCat + g * numCat + n]);
-						}
-						partnerDistPrint[g].println();
-					}
+					
 				}
 
 				pri.close();

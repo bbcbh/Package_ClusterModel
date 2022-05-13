@@ -51,7 +51,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public static final String FILENAME_FORMAT_ALL_CMAP = "All_ContactMap_%d_%d.csv";
 
 	public void setPrintOutput(boolean printOutput) {
-		this.printOutput = printOutput;
+		this.printOutput = printOutput;		
 	}
 
 	public void setSkipSeeds(ArrayList<Long> skipSeeds) {
@@ -202,9 +202,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					if (simFields[f] != null) {
 						population.getFields()[f] = simFields[f];
 					}
-				}
-
-				population.setPartnerDistPrintFolder(baseDir);
+				}				
 
 				Runnable_ContactMapGeneration r = new Runnable_ContactMapGeneration();
 
@@ -317,7 +315,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				sim.setBaseDir(baseDir);
 				sim.setSkipSeeds(preGenClusterSeed);
 				sim.loadProperties(prop);
-				sim.setPrintOutput(true);
+				sim.setPrintOutput(false);
 
 				sim.generateOneResultSet();
 
