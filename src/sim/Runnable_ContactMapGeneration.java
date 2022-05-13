@@ -1,5 +1,9 @@
 package sim;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintStream;
 
 import person.AbstractIndividualInterface;
@@ -24,11 +28,17 @@ public class Runnable_ContactMapGeneration implements Runnable {
 	private ContactMap[] gen_cMap = null;
 	private PrintStream printStatus = null;
 
+	private File baseDir = null;
+
 	public Runnable_ContactMapGeneration() {
 		super();
 		for (int i = 0; i < DEFAULT_RUNNABLE_MAP_GEN_FIELDS.length; i++) {
 			runnable_fields[i] = DEFAULT_RUNNABLE_MAP_GEN_FIELDS[i];
 		}
+	}
+
+	public void setBaseDir(File baseDir) {
+		this.baseDir = baseDir;
 	}
 
 	public Object[] getRunnable_fields() {
@@ -61,53 +71,67 @@ public class Runnable_ContactMapGeneration implements Runnable {
 
 	@Override
 	public void run() {
-		
-		if(printStatus != null) {
+
+		if (printStatus != null) {
 			population.setPrintStatus(printStatus);
 		}
 		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
-		
-		if (contactMapValidRange[0]  == 0) {
+
+		if (contactMapValidRange[0] == 0) {
 			gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
 			for (int i = 0; i < gen_cMap.length; i++) {
 				gen_cMap[i] = new ContactMap();
 			}
-			
+
 		}
-		
+
 		population.initialise();
 		/*
-		if (printStatus != null) {
-			printStatus.println();
-			printStatus.println(population.printCurrentPartnershipStatus());
-		}
-		*/
+		 * if (printStatus != null) { printStatus.println();
+		 * printStatus.println(population.printCurrentPartnershipStatus()); }
+		 */
 
 		for (int s = 0; s < numSnaps; s++) {
 			for (int f = 0; f < snapFreq; f++) {
-				if (contactMapValidRange[0] != 0 
-						&& population.getGlobalTime()  == contactMapValidRange[0]) {
+				if (contactMapValidRange[0] != 0 && population.getGlobalTime() == contactMapValidRange[0]) {
 					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
 					for (int i = 0; i < gen_cMap.length; i++) {
 						gen_cMap[i] = new ContactMap();
-					}					
-					
-				} else if (population.getGlobalTime() == contactMapValidRange[1]) {								
-					// Set to null					
-					population.setParameter("Population_Bridging.FIELD_CONTACT_MAP", 
+					}
+
+				} else if (population.getGlobalTime() == contactMapValidRange[1]) {
+					// Set to null
+					population.setParameter("Population_Bridging.FIELD_CONTACT_MAP",
 							Population_Bridging.FIELD_CONTACT_MAP, new ContactMap[gen_cMap.length]);
-					
+
 				}
 				population.advanceTimeStep(1);
 
 			}
-			/*
-			if (printStatus != null) {
-				printStatus.println(population.printCurrentPartnershipStatus());
-			}
-			*/
 		}
+
+		if (baseDir != null) {
+
+			ContactMap cMap = gen_cMap[0];
+			File allContactFile = new File(baseDir,
+					String.format(Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP,
+							population.getSeed(),
+							cMap.vertexSet().size()));
+			
 		
+			BufferedWriter fileWriAll;
+			try {
+				fileWriAll = new BufferedWriter(new FileWriter(allContactFile));
+				fileWriAll.append(cMap.toFullString());
+				fileWriAll.close();
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+				System.out.println(cMap.toFullString());
+			}
+			
+			
+		}
+
 		if (printStatus != null) {
 			printStatus.close();
 		}

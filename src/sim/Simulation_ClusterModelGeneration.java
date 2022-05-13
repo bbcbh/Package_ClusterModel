@@ -1,10 +1,8 @@
 package sim;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -202,7 +200,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					if (simFields[f] != null) {
 						population.getFields()[f] = simFields[f];
 					}
-				}				
+				}
+		
 
 				Runnable_ContactMapGeneration r = new Runnable_ContactMapGeneration();
 
@@ -210,6 +209,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				r.setPopulation(population);
 				r.setNumSnaps(numSnap);
 				r.setSnapFreq(snapFreq);
+				r.setBaseDir(baseDir);
 
 				for (int f = 0; f < Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
 					if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + f] != null) {
@@ -316,22 +316,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				sim.setSkipSeeds(preGenClusterSeed);
 				sim.loadProperties(prop);
 				sim.setPrintOutput(false);
-
-				sim.generateOneResultSet();
-
-				Map<Long, ContactMap[]> collection = sim.getContactMapSet();
-
-				for (Long seed : collection.keySet()) {
-					ContactMap cMap = collection.get(seed)[0]; // All
-					File allContactFile = new File(baseDir,
-							String.format(FILENAME_FORMAT_ALL_CMAP, seed, cMap.vertexSet().size()));
-					BufferedWriter fileWriAll = new BufferedWriter(new FileWriter(allContactFile));
-					fileWriAll.append(cMap.toFullString());
-					fileWriAll.close();
-
-					System.out.println("ContactMap (All) exported to " + allContactFile.getAbsolutePath());
-
-				}
+				sim.generateOneResultSet(); 
+				
 
 			}
 
