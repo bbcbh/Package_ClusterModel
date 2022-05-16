@@ -651,6 +651,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				//}
 			}
 
+			/*
 			if (!printStatus.equals(System.out)) {
 				printStatus.println("Has Regular Partners:");
 				for (int i = 0; i < hasRelPartners.length; i++) {
@@ -661,6 +662,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					printStatus.println(String.format(" %d: %d", i, canSeekCasPartners[i].size()));
 				}
 			}
+			*/
 
 		}
 		updateRelRelationshipMap();
