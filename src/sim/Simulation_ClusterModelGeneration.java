@@ -49,7 +49,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public static final String FILENAME_FORMAT_ALL_CMAP = "All_ContactMap_%d_%d.csv";
 
 	public void setPrintOutput(boolean printOutput) {
-		this.printOutput = printOutput;		
+		this.printOutput = printOutput;
 	}
 
 	public void setSkipSeeds(ArrayList<Long> skipSeeds) {
@@ -193,7 +193,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		for (int i = 0; i < numSim; i++) {
 			long popSeed = rngBase.nextLong();
 
-			if (Collections.binarySearch(skipSeeds, popSeed) < 0) {
+			if (skipSeeds == null || Collections.binarySearch(skipSeeds, popSeed) < 0) {
 
 				Population_Bridging population = new Population_Bridging(popSeed);
 				for (int f = 0; f < Population_Bridging.LENGTH_FIELDS_BRIDGING_POP; f++) {
@@ -201,7 +201,6 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 						population.getFields()[f] = simFields[f];
 					}
 				}
-		
 
 				Runnable_ContactMapGeneration r = new Runnable_ContactMapGeneration();
 
@@ -239,9 +238,10 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 						numInPool = 0;
 					}
 				}
-			}else {
-				showStrStatus(String.format("Contact cluster with seed of %d skipped", seed));
+			} else {
+				showStrStatus(String.format("Contact cluster with seed of %d skipped", popSeed));
 			}
+
 		}
 		if (useParallel && numInPool != 0) {
 			executor.shutdown();
@@ -270,8 +270,17 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		File[] preGenClusterFile = new File[0];
 		ArrayList<Long> preGenClusterSeed = new ArrayList<>();
 
+		boolean printOut = false;
+
 		if (args.length > 0) {
 			baseDir = new File(args[0]);
+
+			for (int i = 1; i < args.length; i++) {
+				if (args[i].equals("-printOutput")) {
+					printOut = true;
+				}
+			}
+
 		} else {
 			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY",
 					Simulation_ClusterModelGeneration.class.getName()));
@@ -315,9 +324,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				sim.setBaseDir(baseDir);
 				sim.setSkipSeeds(preGenClusterSeed);
 				sim.loadProperties(prop);
-				sim.setPrintOutput(false);
-				sim.generateOneResultSet(); 
-				
+				sim.setPrintOutput(printOut);
+				sim.generateOneResultSet();
 
 			}
 

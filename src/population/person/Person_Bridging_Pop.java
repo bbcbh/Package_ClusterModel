@@ -1,5 +1,6 @@
 package population.person;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -7,7 +8,9 @@ import java.util.regex.Pattern;
 import infection.AbstractInfection;
 import person.AbstractIndividualInterface;
 
-public class Person_Bridging_Pop implements AbstractIndividualInterface {
+public class Person_Bridging_Pop implements AbstractIndividualInterface, Serializable {
+	
+	private static final long serialVersionUID = -3399097120064941730L;
 
 	private Object[] fields = new Object[] {
 			// FIELD_ID
