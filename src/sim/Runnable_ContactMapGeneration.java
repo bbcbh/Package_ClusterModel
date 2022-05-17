@@ -184,37 +184,7 @@ public class Runnable_ContactMapGeneration implements Runnable {
 					if (exportFreq > 0) {
 						long snapTime = System.currentTimeMillis();
 						if (snapTime - lastExportTime > exportFreq) {
-
-							try {
-								File exportFile = new File(baseDir,
-										String.format(EXPORT_POP_FILENAME, population.getSeed(), snapTime));
-								ObjectOutputStream outStream = new ObjectOutputStream(
-										new BufferedOutputStream(new FileOutputStream(exportFile)));
-								population.encodePopToStream(outStream);
-								outStream.close();
-
-								// Remove old snapshot file
-
-								String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
-								final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
-
-								oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
-									@Override
-									public boolean accept(File pathname) {
-										return pathname.getName().startsWith(fileCheckPrefix)
-												&& !pathname.equals(exportFile);
-									}
-								});
-
-								for (File df : oldPopulationSnapFiles) {
-									Files.delete(df.toPath());
-								}
-
-							} catch (IOException ex) {
-								ex.printStackTrace(System.err);
-
-							}
-
+							exportPopSnap(snapTime);
 							lastExportTime = snapTime;
 						}
 
@@ -241,6 +211,8 @@ public class Runnable_ContactMapGeneration implements Runnable {
 				e.printStackTrace(System.err);
 				System.out.println(cMap.toFullString());
 			}
+			
+			exportPopSnap(System.currentTimeMillis());
 
 		}
 
@@ -248,6 +220,40 @@ public class Runnable_ContactMapGeneration implements Runnable {
 			printStatus.close();
 		}
 
+	}
+
+
+	private void exportPopSnap(long snapTime) {
+		File[] oldPopulationSnapFiles;
+		try {
+			File exportFile = new File(baseDir,
+					String.format(EXPORT_POP_FILENAME, population.getSeed(), snapTime));
+			ObjectOutputStream outStream = new ObjectOutputStream(
+					new BufferedOutputStream(new FileOutputStream(exportFile)));
+			population.encodePopToStream(outStream);
+			outStream.close();
+
+			// Remove old snapshot file
+
+			String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
+			final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
+
+			oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pathname.getName().startsWith(fileCheckPrefix)
+							&& !pathname.equals(exportFile);
+				}
+			});
+
+			for (File df : oldPopulationSnapFiles) {
+				Files.delete(df.toPath());
+			}
+
+		} catch (IOException ex) {
+			ex.printStackTrace(System.err);
+
+		}
 	}
 
 }
