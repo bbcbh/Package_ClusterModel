@@ -1,5 +1,6 @@
 package population;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -14,6 +15,7 @@ import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 
 import availability.AbstractAvailability;
+import infection.AbstractInfection;
 import person.AbstractIndividualInterface;
 import population.availability.Availability_Bridging_Population;
 import population.person.Person_Bridging_Pop;
@@ -108,11 +110,11 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	// Format in contact map: {p1, p2, start time_1, duration_1, ...}
 	// CONTACT_MAP_EDGE_DURATION = -1 -> Removal
 	// CONTACT_MAP_EDGE_DURATION = 0 -> Update
-	
+
 	public static final int CONTACT_MAP_EDGE_P1 = 0;
 	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;
 	public static final int CONTACT_MAP_EDGE_START_TIME = CONTACT_MAP_EDGE_P2 + 1;
-	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1; 
+	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1;
 	public static final int LENGTH_CONTACT_MAP_EDGE = CONTACT_MAP_EDGE_DURATION + 1;
 
 	@SuppressWarnings("unchecked")
@@ -126,16 +128,17 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private transient int[][] canSeekCasPartners_catorgories_offset = new int[LENGTH_GENDER][];
 
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
+	private transient HashMap<String, Object> stepwise_output = null;
+
 	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 
-	private transient HashMap<String, Object> stepwise_output = null;
 	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 
 	private PrintStream printStatus = null;
 
 	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
-	}	
+	}
 
 	public HashMap<String, Object> getStepwise_output() {
 		return stepwise_output;
@@ -162,6 +165,52 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			canSeekCasPartners[g] = new ArrayList<Person_Bridging_Pop>();
 		}
 
+	}
+
+	public static Population_Bridging decodeFromStream(java.io.ObjectInputStream inStr)
+			throws IOException, ClassNotFoundException {
+		int globalTime = inStr.readInt();
+		AbstractInfection[] infList = (AbstractInfection[]) inStr.readObject();
+		Object[] decoded_fields = (Object[]) inStr.readObject();
+
+		Population_Bridging pop = new Population_Bridging((long) decoded_fields[0]);
+
+		if (decoded_fields.length != pop.getFields().length) {
+			int oldLen = decoded_fields.length;
+			decoded_fields = Arrays.copyOf(decoded_fields, pop.getFields().length);
+			for (int i = oldLen; i < decoded_fields.length; i++) {
+				decoded_fields[i] = pop.getFields()[i];
+			}
+		}
+		pop.setGlobalTime(globalTime);
+		pop.setInfList(infList);
+		pop.setFields(decoded_fields);
+
+		// Initiation of transient fields
+		pop.initialiseTransientFields();
+
+		return pop;
+
+	}
+
+	private void initialiseTransientFields() {
+		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
+		int numCat = field_mean_number_partner.length / (LENGTH_GENDER + 1);
+
+		if (numCat > 0) {
+			for (int g = 0; g < LENGTH_GENDER; g++) {
+				canSeekRelPartners_catorgories_offset[g] = new int[numCat];
+				hasRelPartners_catorgories_offset[g] = new int[numCat];
+				canSeekCasPartners_catorgories_offset[g] = new int[numCat];
+			}
+
+		}
+
+		float[] meanRelDur = (float[]) getFields()[FIELD_MEAN_REG_PARTNERSHIP_DUR];
+		regPartDuration[RELMAP_HETRO] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_HETRO],
+				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
+		regPartDuration[RELMAP_MSM] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_MSM],
+				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
 	}
 
 	public Class<? extends Object> getFieldsClass(int fieldIndex) {
@@ -223,8 +272,6 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				seekRegular = getRNG().nextInt(noPWin) < (maxReg - numReg);
 			}
 		}
-		
-		
 
 		return seekRegular;
 	}
@@ -361,7 +408,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		regPartDuration[RELMAP_HETRO] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_HETRO],
 				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
 		regPartDuration[RELMAP_MSM] = new PoissonDistribution(getRNG(), meanRelDur[RELMAP_MSM],
-				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);		
+				PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
 
 		// Initialise population
 		int[] popSizes = (int[]) getFields()[FIELD_POP_COMPOSITION];
@@ -398,9 +445,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			pri.close();
 			printStatus.println(wri.toString());
-			//if (!printStatus.equals(System.out)) {
-			//	System.out.println(wri.toString());
-			//}
+			// if (!printStatus.equals(System.out)) {
+			// System.out.println(wri.toString());
+			// }
 		}
 
 		if (numCat > 0) {
@@ -629,10 +676,11 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				printStatus.println(String.format("# partners in last 12 months = %s - Day %d",
 						Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
 
-				//if (!printStatus.equals(System.out)) {
-				//	System.out.println(String.format("# partners in last 12 months = %s - Day %d",
-				//			Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
-				//}
+				// if (!printStatus.equals(System.out)) {
+				// System.out.println(String.format("# partners in last 12 months = %s - Day
+				// %d",
+				// Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
+				// }
 			} else {
 				StringWriter wri = new StringWriter();
 				PrintWriter pri = new PrintWriter(wri);
@@ -641,28 +689,26 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					pri.println(String.format(" %d: %s", g,
 							Arrays.toString(Arrays.copyOfRange(population_num_partner_in_last_12_months,
 									numCat + g * numCat, 2 * numCat + g * numCat))));
-					
+
 				}
 
 				pri.close();
 				printStatus.println(wri.toString());
-				//if (!printStatus.equals(System.out)) {
-				//	System.out.println(wri.toString());
-				//}
+				// if (!printStatus.equals(System.out)) {
+				// System.out.println(wri.toString());
+				// }
 			}
 
 			/*
-			if (!printStatus.equals(System.out)) {
-				printStatus.println("Has Regular Partners:");
-				for (int i = 0; i < hasRelPartners.length; i++) {
-					printStatus.println(String.format(" %d: %d", i, hasRelPartners[i].size()));
-				}
-				printStatus.println("Seeking Casual Partners:");
-				for (int i = 0; i < canSeekCasPartners.length; i++) {
-					printStatus.println(String.format(" %d: %d", i, canSeekCasPartners[i].size()));
-				}
-			}
-			*/
+			 * if (!printStatus.equals(System.out)) {
+			 * printStatus.println("Has Regular Partners:"); for (int i = 0; i <
+			 * hasRelPartners.length; i++) { printStatus.println(String.format(" %d: %d", i,
+			 * hasRelPartners[i].size())); }
+			 * printStatus.println("Seeking Casual Partners:"); for (int i = 0; i <
+			 * canSeekCasPartners.length; i++) {
+			 * printStatus.println(String.format(" %d: %d", i,
+			 * canSeekCasPartners[i].size())); } }
+			 */
 
 		}
 		updateRelRelationshipMap();
@@ -949,9 +995,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				link[CONTACT_MAP_EDGE_START_TIME] = ((SingleRelationshipTimeStamp) rel).getRelStartTime();
 				if (rel.incrementTime(1) <= 0) {
 					relMap.removeEdge(rel);
-					link[CONTACT_MAP_EDGE_DURATION] = -1; 
+					link[CONTACT_MAP_EDGE_DURATION] = -1;
 				} else {
-					link[CONTACT_MAP_EDGE_DURATION] =  0;
+					link[CONTACT_MAP_EDGE_DURATION] = 0;
 				}
 				checkContactMaps(link, new ContactMap[] { cMapAll });
 			}
@@ -991,10 +1037,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 							e[e.length - 2] = link[CONTACT_MAP_EDGE_START_TIME];
 							c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], e);
 						} else {
-							// Update edge		
-							e[e.length-1] = Math.max(e[e.length-1], 
-									getGlobalTime() -lastRelStart);
-							
+							// Update edge
+							e[e.length - 1] = Math.max(e[e.length - 1], getGlobalTime() - lastRelStart);
 
 						}
 					}
@@ -1058,7 +1102,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 				// Update contact map
 				Integer[] link = relRemove.getLinks();
-				link = Arrays.copyOf(link, LENGTH_CONTACT_MAP_EDGE);				
+				link = Arrays.copyOf(link, LENGTH_CONTACT_MAP_EDGE);
 				link[CONTACT_MAP_EDGE_DURATION] = -1;
 				checkContactMaps(link, new ContactMap[] { cMapAll });
 

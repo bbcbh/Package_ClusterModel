@@ -3,6 +3,7 @@ package sim;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -186,9 +187,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		Runnable_ContactMapGeneration[] runnables = new Runnable_ContactMapGeneration[numSim];
 		runnablesMap = new HashMap<Long, Runnable_ContactMapGeneration>();
 
-		if (useParallel) {
-			executor = Executors.newFixedThreadPool(numThreads);
-		}
+		
 
 		for (int i = 0; i < numSim; i++) {
 			long popSeed = rngBase.nextLong();
@@ -218,9 +217,10 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 				runnablesMap.put(r.getPopulation().getSeed(), r);
 
-				if (printOutput) {
-					PrintStream outputPS = new PrintStream(
-							new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed())));
+				if (printOutput) {					
+					File outputFile = new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed()));
+					FileOutputStream fOut = new FileOutputStream(outputFile, true);
+					PrintStream outputPS = new PrintStream(fOut);
 					outputPS.println(String.format("Seed = %d", r.getPopulation().getSeed()));
 					runnables[i].setPrintStatus(outputPS);
 				}
@@ -228,6 +228,9 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				if (!useParallel) {
 					runnables[i].run();
 				} else {
+					if (executor == null) {
+						executor = Executors.newFixedThreadPool(numThreads);
+					}								
 					executor.submit(runnables[i]);
 					numInPool++;
 					if (numInPool == numThreads) {
@@ -236,6 +239,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 							showStrStatus("Thread time-out!");
 						}
 						numInPool = 0;
+						executor = null;
 					}
 				}
 			} else {
@@ -243,11 +247,13 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 			}
 
 		}
-		if (useParallel && numInPool != 0) {
+		if (useParallel && executor != null) {
 			executor.shutdown();
 			if (!executor.awaitTermination(2, TimeUnit.DAYS)) {
 				showStrStatus("Thread time-out!");
 			}
+			numInPool = 0;
+			executor = null;
 		}
 
 		contactMapSet = new HashMap<Long, ContactMap[]>();

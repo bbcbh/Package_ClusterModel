@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- WARNING: Eclipse auto-generated file.
+              Any modifications will be overwritten.
+              To include a user specific buildfile here, simply create one in the same
+              directory with the processing instruction <?eclipse.ant.import?>
+              as the first entry and export the buildfile again. --><project basedir="." default="build" name="Package_ClusterModel">
+    <property environment="env"/>
+    <property name="RNG.location" value="../RNG"/>
+    <property name="Package_BaseModel.location" value="../Package_BaseModel"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="16"/>
+    <property name="source" value="16"/>
+    <path id="Maven Dependencies.libraryclasspath">
+        <pathelement location="../../../.m2/repository/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar"/>
+        <pathelement location="../../../.m2/repository/org/jgrapht/jgrapht-core/1.0.1/jgrapht-core-1.0.1.jar"/>
+        <pathelement location="../../../.m2/repository/org/jgrapht/jgrapht-ext/1.0.1/jgrapht-ext-1.0.1.jar"/>
+        <pathelement location="../../../.m2/repository/org/tinyjee/jgraphx/jgraphx/2.0.0.1/jgraphx-2.0.0.1.jar"/>
+        <pathelement location="../../../.m2/repository/jgraph/jgraph/5.13.0.0/jgraph-5.13.0.0.jar"/>
+        <pathelement location="../../../.m2/repository/org/antlr/antlr4-runtime/4.5.3/antlr4-runtime-4.5.3.jar"/>
+        <pathelement location="../../../.m2/repository/org/apache/commons/commons-compress/1.21/commons-compress-1.21.jar"/>
+        <pathelement location="../../../.m2/repository/commons-io/commons-io/2.11.0/commons-io-2.11.0.jar"/>
+    </path>
+    <path id="RNG.classpath">
+        <pathelement location="${RNG.location}/target/classes"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="Package_BaseModel.classpath">
+        <pathelement location="${Package_BaseModel.location}/target/classes"/>
+        <path refid="RNG.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="Package_ClusterModel.classpath">
+        <pathelement location="target/classes"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+        <path refid="Package_BaseModel.classpath"/>
+        <path refid="RNG.classpath"/>
+    </path>
+    <path id="run.Test_ContactMapFitting.classpath">
+        <path refid="Package_ClusterModel.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Test_PossionDistFit.classpath">
+        <path refid="Package_ClusterModel.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Test_Simulation_ClusterModel.classpath">
+        <path refid="Package_ClusterModel.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Test_TranmissionClusterAnalysis.classpath">
+        <path refid="Package_ClusterModel.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Visualise_ContactMap.classpath">
+        <path refid="Package_ClusterModel.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Simulation_ClusterModelGeneration.classpath">
+        <path refid="Package_ClusterModel.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <target name="init">
+        <mkdir dir="target/classes"/>
+        <copy includeemptydirs="false" todir="target/classes">
+            <fileset dir="src">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="target/classes"/>
+    </target>
+    <target depends="clean" name="cleanall">
+        <ant antfile="build.xml" dir="${RNG.location}" inheritAll="false" target="clean"/>
+        <ant antfile="build.xml" dir="${Package_BaseModel.location}" inheritAll="false" target="clean"/>
+    </target>
+    <target depends="build-subprojects,build-project" name="build"/>
+    <target name="build-subprojects">
+        <ant antfile="build.xml" dir="${RNG.location}" inheritAll="false" target="build-project">
+            <propertyset>
+                <propertyref name="build.compiler"/>
+            </propertyset>
+        </ant>
+        <ant antfile="build.xml" dir="${Package_BaseModel.location}" inheritAll="false" target="build-project">
+            <propertyset>
+                <propertyref name="build.compiler"/>
+            </propertyset>
+        </ant>
+    </target>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="target/classes" includeantruntime="false" source="${source}" target="${target}">
+            <src path="src"/>
+            <classpath refid="Package_ClusterModel.classpath"/>
+        </javac>
+    </target>
+    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+    <target description="copy Eclipse compiler jars to ant lib directory" name="init-eclipse-compiler">
+        <copy todir="${ant.library.dir}">
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </copy>
+        <unzip dest="${ant.library.dir}">
+            <patternset includes="jdtCompilerAdapter.jar"/>
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </unzip>
+    </target>
+    <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
+        <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+        <antcall target="build"/>
+    </target>
+    <target name="Test_ContactMapFitting">
+        <java classname="test.Test_ContactMapFitting" failonerror="true" fork="yes">
+            <classpath refid="run.Test_ContactMapFitting.classpath"/>
+        </java>
+    </target>
+    <target name="Test_PossionDistFit">
+        <java classname="test.Test_PossionDistFit" failonerror="true" fork="yes">
+            <classpath refid="run.Test_PossionDistFit.classpath"/>
+        </java>
+    </target>
+    <target name="Test_Simulation_ClusterModel">
+        <java classname="test.Test_Simulation_ClusterModel" failonerror="true" fork="yes">
+            <classpath refid="run.Test_Simulation_ClusterModel.classpath"/>
+        </java>
+    </target>
+    <target name="Test_TranmissionClusterAnalysis">
+        <java classname="test.Test_TranmissionClusterAnalysis" failonerror="true" fork="yes">
+            <classpath refid="run.Test_TranmissionClusterAnalysis.classpath"/>
+        </java>
+    </target>
+    <target name="Visualise_ContactMap">
+        <java classname="visualise.Visualise_ContactMap" failonerror="true" fork="yes">
+            <classpath refid="run.Visualise_ContactMap.classpath"/>
+        </java>
+    </target>
+    <target name="Simulation_ClusterModelGeneration">
+        <java classname="sim.Simulation_ClusterModelGeneration" failonerror="true" fork="yes">
+            <classpath refid="run.Simulation_ClusterModelGeneration.classpath"/>
+        </java>
+    </target>
+</project>

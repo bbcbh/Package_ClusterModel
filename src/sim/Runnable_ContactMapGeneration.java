@@ -1,14 +1,22 @@
 package sim;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
@@ -80,87 +88,139 @@ public class Runnable_ContactMapGeneration implements Runnable {
 
 	@Override
 	public void run() {
+		
+		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];		
+		// Check for previous snapshot
 
-		if (printStatus != null) {
-			population.setPrintStatus(printStatus);
-		}
-		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
+		String regEx_PopSnap = EXPORT_POP_FILENAME.replaceFirst("%d", Long.toString(population.getSeed()))
+				.replaceFirst("%d", "(\\\\d+)");
 
-		if (contactMapValidRange[0] == 0) {
-			gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
-			for (int i = 0; i < gen_cMap.length; i++) {
-				gen_cMap[i] = new ContactMap();
+		final Pattern pattern_pop_snap = Pattern.compile(regEx_PopSnap);
+
+		File[] oldPopulationSnapFiles;
+		int skipTimeUntil = -1;
+
+		oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return Pattern.matches(regEx_PopSnap, pathname.getName());
+			}
+		});
+
+		if (oldPopulationSnapFiles.length == 0) {
+			if (printStatus != null) {
+				population.setPrintStatus(printStatus);
+			}
+			
+			if (contactMapValidRange[0] == 0) {
+				gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+				for (int i = 0; i < gen_cMap.length; i++) {
+					gen_cMap[i] = new ContactMap();
+				}
+			}
+			
+			population.initialise();
+		} else {
+
+			if (oldPopulationSnapFiles.length > 1) {
+				Arrays.sort(oldPopulationSnapFiles, new Comparator<File>() {
+					@Override
+					public int compare(File o1, File o2) {
+						Matcher m1 = pattern_pop_snap.matcher(o1.getName());
+						m1.matches();
+						long t1 = Long.parseLong(m1.group(1));
+						Matcher m2 = pattern_pop_snap.matcher(o2.getName());
+						m2.matches();
+						long t2 = Long.parseLong(m2.group(1));
+
+						return Long.compare(t1, t2);
+					}
+				});
 			}
 
-		}
+			File prevSnapFile = oldPopulationSnapFiles[oldPopulationSnapFiles.length - 1];
 
-		population.initialise();
-		/*
-		 * if (printStatus != null) { printStatus.println();
-		 * printStatus.println(population.printCurrentPartnershipStatus()); }
-		 */
+			System.out.print(String.format("Reusing population snapshot file %s....", prevSnapFile.getName()));
+			try {
+				ObjectInputStream objIn = new ObjectInputStream(
+						new BufferedInputStream(new FileInputStream(prevSnapFile)));
+				Population_Bridging snapPop = Population_Bridging.decodeFromStream(objIn);
+				this.setPopulation(snapPop);
+				objIn.close();
+				System.out.println(String.format(" SUCCESS, with global time set at %d.", population.getGlobalTime()));
+				skipTimeUntil = population.getGlobalTime();
+				gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+				
+			} catch (Exception e) {
+				System.out.println(" FAILED. Initialising a new population instead.");
+				population.initialise();
+			}
+			
+			if (printStatus != null) {
+				population.setPrintStatus(printStatus);
+			}
+		}
 
 		long lastExportTime = System.currentTimeMillis();
 		final long exportFreq = (long) runnable_fields[RUNNABLE_FILED_EXPORT_FREQ];
+		int stepCount = 0;
 
 		for (int s = 0; s < numSnaps; s++) {
-			for (int f = 0; f < snapFreq; f++) {
-				if (contactMapValidRange[0] != 0 && population.getGlobalTime() == contactMapValidRange[0]) {
-					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
-					for (int i = 0; i < gen_cMap.length; i++) {
-						gen_cMap[i] = new ContactMap();
+			for (int f = 0; f < snapFreq; f++) {				
+				if (stepCount >= skipTimeUntil) {
+					if (contactMapValidRange[0] != 0 && population.getGlobalTime() == contactMapValidRange[0]) {
+						gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+						for (int i = 0; i < gen_cMap.length; i++) {
+							gen_cMap[i] = new ContactMap();
+						}
+					} else if (population.getGlobalTime() == contactMapValidRange[1]) {
+						// Set to null
+						population.setParameter("Population_Bridging.FIELD_CONTACT_MAP",
+								Population_Bridging.FIELD_CONTACT_MAP, new ContactMap[gen_cMap.length]);
+
 					}
+					population.advanceTimeStep(1);
+					
+					if (exportFreq > 0) {
+						long snapTime = System.currentTimeMillis();
+						if (snapTime - lastExportTime > exportFreq) {
 
-				} else if (population.getGlobalTime() == contactMapValidRange[1]) {
-					// Set to null
-					population.setParameter("Population_Bridging.FIELD_CONTACT_MAP",
-							Population_Bridging.FIELD_CONTACT_MAP, new ContactMap[gen_cMap.length]);
+							try {
+								File exportFile = new File(baseDir,
+										String.format(EXPORT_POP_FILENAME, population.getSeed(), snapTime));
+								ObjectOutputStream outStream = new ObjectOutputStream(
+										new BufferedOutputStream(new FileOutputStream(exportFile)));
+								population.encodePopToStream(outStream);
+								outStream.close();
 
-				}
+								// Remove old snapshot file
 
-				population.advanceTimeStep(1);
+								String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
+								final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
 
-				if (exportFreq > 0) {
-					long snapTime = System.currentTimeMillis();
-					if (snapTime - lastExportTime > exportFreq) {
+								oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
+									@Override
+									public boolean accept(File pathname) {
+										return pathname.getName().startsWith(fileCheckPrefix)
+												&& !pathname.equals(exportFile);
+									}
+								});
 
-						try {
-							File exportFile = new File(baseDir,
-									String.format(EXPORT_POP_FILENAME, population.getSeed(), snapTime));
-							ObjectOutputStream outStream = new ObjectOutputStream(new FileOutputStream(exportFile));														
-							population.encodePopToStream(outStream);
-							outStream.close();
-							
-							// Remove old snapshot file							
-							
-							String fileCheck = 
-									String.format(EXPORT_POP_FILENAME,population.getSeed(),0);							
-							final String fileCheckPrefix = fileCheck.substring(0, fileCheck.length()-1);
-							
-							File[] oldSnap = baseDir.listFiles(new FileFilter() {								
-								@Override
-								public boolean accept(File pathname) {																											
-									return pathname.getName().startsWith(fileCheckPrefix) && 
-										!pathname.equals(exportFile);
+								for (File df : oldPopulationSnapFiles) {
+									Files.delete(df.toPath());
 								}
-							});
-							
-							for(File df : oldSnap) {
-								Files.delete(df.toPath());
+
+							} catch (IOException ex) {
+								ex.printStackTrace(System.err);
+
 							}
- 							
-						
-							
 
-						} catch (IOException ex) {
-							ex.printStackTrace(System.err);
-
+							lastExportTime = snapTime;
 						}
 
-						lastExportTime = snapTime;
 					}
-
 				}
+				stepCount++;
 
 			}
 		}
