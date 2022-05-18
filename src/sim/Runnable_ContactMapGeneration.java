@@ -22,7 +22,7 @@ import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import relationship.ContactMap;
 
-public class Runnable_ContactMapGeneration implements Runnable {
+public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap {
 
 	public static final Object[] DEFAULT_RUNNABLE_MAP_GEN_FIELDS = {
 			// RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE
@@ -45,21 +45,12 @@ public class Runnable_ContactMapGeneration implements Runnable {
 	private ContactMap[] gen_cMap = null;
 	private PrintStream printStatus = null;
 
-	private File baseDir = null;
 
 	public Runnable_ContactMapGeneration() {
 		super();
 		for (int i = 0; i < DEFAULT_RUNNABLE_MAP_GEN_FIELDS.length; i++) {
 			runnable_fields[i] = DEFAULT_RUNNABLE_MAP_GEN_FIELDS[i];
 		}
-	}
-
-	public void setBaseDir(File baseDir) {
-		this.baseDir = baseDir;
-	}
-
-	public Object[] getRunnable_fields() {
-		return runnable_fields;
 	}
 
 	public void setNumSnaps(int numSnaps) {
@@ -84,6 +75,11 @@ public class Runnable_ContactMapGeneration implements Runnable {
 
 	public void setPopulation(Population_Bridging population) {
 		this.population = population;
+	}
+	
+	@Override
+	public Object[] getRunnable_fields() {		
+		return runnable_fields;
 	}
 
 	@Override
@@ -255,5 +251,7 @@ public class Runnable_ContactMapGeneration implements Runnable {
 
 		}
 	}
+
+	
 
 }

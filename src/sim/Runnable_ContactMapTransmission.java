@@ -1,9 +1,12 @@
 package sim;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -20,7 +23,7 @@ import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
 
-public class Runnable_ContactMapTransmission implements Runnable {
+public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMap {
 
 	public static final int ACT_INDEX_GENITAL = 0;
 	public static final int ACT_INDEX_ANAL = ACT_INDEX_GENITAL + 1;
@@ -31,6 +34,8 @@ public class Runnable_ContactMapTransmission implements Runnable {
 	public static final int SITE_RECTUM = SITE_PENIS + 1;
 	public static final int SITE_OROPHARYNX = SITE_RECTUM + 1;
 	public static final int SITE_LENGTH = SITE_OROPHARYNX + 1;
+
+	public static final String FILENAME_FORMAT_TRANSMISSION_CMAP = "Transmission_Map_%s_%d.csv";
 
 	// Transmission
 	private static double[] DEFAULT_TRANS_V2P = new double[] { 0.4, 0.10 };
@@ -145,8 +150,6 @@ public class Runnable_ContactMapTransmission implements Runnable {
 	public static final String SIM_OUTPUT_TRANMISSION_MAP = "SIM_OUTPUT_TRANMISSION_MAP";
 	public static final String SIM_OUTPUT_CLUSTERS = "SIM_OUTPUT_CLUSTERS";
 
-	public String runnableId = null;
-
 	public Runnable_ContactMapTransmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
 			int NUM_TIME_STEPS) {
 		super();
@@ -165,12 +168,9 @@ public class Runnable_ContactMapTransmission implements Runnable {
 
 	}
 
-	public String getRunnableId() {
-		return runnableId;
-	}
-
-	public void setRunnableId(String runnableId) {
-		this.runnableId = runnableId;
+	@Override
+	public Object[] getRunnable_fields() {
+		return runnable_fields;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -343,13 +343,12 @@ public class Runnable_ContactMapTransmission implements Runnable {
 
 							for (Integer[] e : edges) {
 								int startIndex = Population_Bridging.CONTACT_MAP_EDGE_START_TIME;
-								
-								while (startIndex < e.length) {									
-									int durationIndex = startIndex+1;
+
+								while (startIndex < e.length) {
+									int durationIndex = startIndex + 1;
 
 									if (currentTime >= e[startIndex]
-											&& currentTime < (e[startIndex]
-													+ e[durationIndex])) {
+											&& currentTime < (e[startIndex] + e[durationIndex])) {
 
 										int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
 												? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
@@ -439,11 +438,11 @@ public class Runnable_ContactMapTransmission implements Runnable {
 
 										}
 
-									} else if (currentTime >= (e[startIndex] + e[durationIndex]) 
-											&& startIndex+2 > e.length) {
+									} else if (currentTime >= (e[startIndex] + e[durationIndex])
+											&& startIndex + 2 > e.length) {
 										removeEdges.add(e);
 									}
-									startIndex += 2;																	
+									startIndex += 2;
 								}
 							}
 						}
@@ -458,12 +457,48 @@ public class Runnable_ContactMapTransmission implements Runnable {
 			// End of simulations
 
 			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);
-			Set<ContactMap> clusters = transmissionMap.getContactCluster();
+			Set<ContactMap> clustersSet = transmissionMap.getContactCluster();
 
-			sim_output.put(SIM_OUTPUT_CLUSTERS, clusters);
+			sim_output.put(SIM_OUTPUT_CLUSTERS, clustersSet);
 
 			if (runnableId != null) {
 				System.out.println(String.format("Thread <%s> completed.", runnableId));
+			}
+
+			// Display clusters as CSV
+
+			ContactMap[] clusters = clustersSet.toArray(new ContactMap[clustersSet.size()]);
+
+			if (clusters.length > 0) {
+				Arrays.sort(clusters, new Comparator<ContactMap>() {
+					@Override
+					public int compare(ContactMap o1, ContactMap o2) {
+						return Integer.compare(o1.vertexSet().size(), o2.vertexSet().size());
+					}
+				});
+
+				for (int cI = 0; cI < clusters.length; cI++) {
+					ContactMap c = clusters[cI];
+					File clusterExport = new File(baseDir, String.format("TransMap_%d", this.seed));
+					clusterExport.mkdirs();
+					clusterExport = new File(clusterExport,
+							String.format(FILENAME_FORMAT_TRANSMISSION_CMAP, Long.toString(this.seed), cI));
+
+					try {
+						PrintWriter expWri = new PrintWriter(clusterExport);
+						expWri.println(c.toFullString());
+						expWri.close();
+					} catch (IOException ex) {
+						ex.printStackTrace(System.err);
+
+						System.out.println(String.format("Transmission map <%d, %d>", this.seed, cI));
+						System.out.println(c.toFullString());
+						System.out.println();
+
+					}
+
+				}
+
 			}
 
 		}
