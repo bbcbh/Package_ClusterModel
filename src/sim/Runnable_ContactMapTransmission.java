@@ -269,16 +269,18 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 		}
 	}
 
-	public int getGenderType(Integer personId) {
-
-		int index = Arrays.binarySearch(cumulative_pop_composition, personId);
+	public int getGenderType(Integer personId) {		
+		return getGenderType(personId, cumulative_pop_composition);		
+	}
+	
+	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
+		int index = Arrays.binarySearch(cumul_pop_comp, personId);
 
 		if (index < 0) {
 			return ~index;
 		} else {
 			return index + 1;
 		}
-
 	}
 
 	public ContactMap getTransmissionMap() {

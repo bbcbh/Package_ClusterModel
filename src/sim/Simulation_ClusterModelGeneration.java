@@ -28,14 +28,14 @@ import util.PropValUtils;
 
 public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
-	public static final Object[] DEFAULT_BRIDGING_SIM_FIELDS = {};
-	public static final int LENGTH_SIM_CLUSTER_MODEL_FIELD = 0;
+	public static final Object[] DEFAULT_BRIDGING_MAP_GEN_SIM_FIELDS = {};
+	public static final int LENGTH_BRIDGING_MAP_GEN_SIM_FIELD = 0;
 
 	public static final String POP_PROP_INIT_PREFIX = "POP_PROP_INIT_PREFIX_";
 	public static final String POP_PROP_INIT_PREFIX_CLASS = "POP_PROP_INIT_PREFIX_CLASS_";
 
 	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-			+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD + LENGTH_SIM_CLUSTER_MODEL_FIELD];
+			+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD + LENGTH_BRIDGING_MAP_GEN_SIM_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
 
 	protected File baseDir = null;
@@ -65,8 +65,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		for (int i = 0; i < simFields.length; i++) {
 			// All simulation levels
 			if (i >= sim_offset) {
-				simFields[i] = DEFAULT_BRIDGING_SIM_FIELDS[i - sim_offset];
-				simFieldClass[i] = DEFAULT_BRIDGING_SIM_FIELDS[i - sim_offset].getClass();
+				simFields[i] = DEFAULT_BRIDGING_MAP_GEN_SIM_FIELDS[i - sim_offset];
+				simFieldClass[i] = DEFAULT_BRIDGING_MAP_GEN_SIM_FIELDS[i - sim_offset].getClass();
 			}
 		}
 	}
