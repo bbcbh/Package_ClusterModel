@@ -43,7 +43,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	};
 
 	public static final int BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION = 0;
-	public static final int LENGTH_BRIDGING_MAP_TRANS_SIM_FIELD = 0;
+	public static final int LENGTH_BRIDGING_MAP_TRANS_SIM_FIELD = BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION  +1;
 
 	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 			+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD
@@ -190,10 +190,18 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			int g = Runnable_ContactMapTransmission.getGenderType(v, cumul_pop);
 			personStat[g].add(v);
 		}
+		
+		int[] personCount = new int[personStat.length];		
+		for(int i = 0; i < personCount.length; i++) {
+			personCount[i] = personStat[i].size();
+		}
+		System.out.println(String.format("Number of indivduals in contact map = %s", Arrays.toString(personCount)));
 
-		System.out.println(String.format("Number of indivdual in contact map = %s", Arrays.toString(personStat)));
-
-		float[][] seedInfectParam = (float[][]) simFields[BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION];
+		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+				+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD
+				+ Simulation_ClusterModelGeneration.LENGTH_BRIDGING_MAP_GEN_SIM_FIELD;
+		
+		float[][] seedInfectParam = (float[][]) simFields[sim_offset + BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION];
 		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Runnable_ContactMapTransmission.SITE_LENGTH];
 
 		for (int g = 0; g < seedInfectParam.length; g++) {
@@ -201,6 +209,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				float seedProp = seedInfectParam[g][s];
 				if (seedProp < 1) {
 					seedInfectNum[g][s] = Math.round(personStat[g].size() * seedProp);
+				}else {
+					seedInfectNum[g][s] = Math.round(seedInfectParam[g][s]);
 				}
 			}
 		}
@@ -224,7 +234,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			// Add infected
 			for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
 				for (int site = 0; site < Runnable_ContactMapTransmission.SITE_LENGTH; site++) {
-					if (seedInfectNum[gender][site] > 1) {						
+					if (seedInfectNum[gender][site] > 0) {						
 						Integer[] seedInf = util.ArrayUtilsRandomGenerator.randomSelect(
 								personStat[gender].toArray(new Integer[personStat[gender].size()]),
 								seedInfectNum[gender][site], rngBase);
@@ -232,7 +242,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						for(Integer inf: seedInf) {
 							runnable[s].addInfected(inf, site, startTime + 180);													
 						}
-						System.out.println(String.format("Seeding %s of gender #%d at site #%d for %s", 
+						System.out.println(String.format("Seeding %s of gender #%d at site #%d", 
 								Arrays.toString(seedInf), gender, site));						
 					}
 				}
@@ -266,7 +276,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException {
+	public static void launch(String[] args) throws IOException, InterruptedException {
 		File baseDir = null;
 		File propFile = null;
 

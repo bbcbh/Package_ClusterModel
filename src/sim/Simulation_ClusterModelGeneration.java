@@ -270,7 +270,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 	}
 
-	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
+	public static void launch(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 		File baseDir = null;
 		File propFile = null;
 		File[] preGenClusterFile = new File[0];

@@ -279,7 +279,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 		if (index < 0) {
 			return ~index;
 		} else {
-			return index + 1;
+			return index;
 		}
 	}
 
