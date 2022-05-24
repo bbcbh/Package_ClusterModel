@@ -11,6 +11,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -43,7 +44,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	};
 
 	public static final int BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION = 0;
-	public static final int LENGTH_BRIDGING_MAP_TRANS_SIM_FIELD = BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION  +1;
+	public static final int LENGTH_BRIDGING_MAP_TRANS_SIM_FIELD = BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION + 1;
 
 	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 			+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD
@@ -133,7 +134,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		int numSnap = 1;
 		int snapFreq = 1;
 		int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
-		int startTime = 2781;
+		
 
 		if (loadedProperties != null) {
 			if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL])) {
@@ -163,14 +164,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				pop_composition = (int[]) PropValUtils.propStrToObject(loadedProperties.getProperty(popCompositionKey),
 						int[].class);
 			}
-			
-			String contactMapRange =  POP_PROP_INIT_PREFIX
-					+ Integer.toString(Runnable_ContactMapGeneration.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
-			
-			if (loadedProperties.containsKey(contactMapRange)) {
-				startTime = ((int[]) PropValUtils.propStrToObject(loadedProperties.getProperty(contactMapRange),
-						int[].class))[0];
-			}
 		}
 
 		// Map stat
@@ -190,9 +183,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			int g = Runnable_ContactMapTransmission.getGenderType(v, cumul_pop);
 			personStat[g].add(v);
 		}
-		
-		int[] personCount = new int[personStat.length];		
-		for(int i = 0; i < personCount.length; i++) {
+
+		int[] personCount = new int[personStat.length];
+		for (int i = 0; i < personCount.length; i++) {
 			personCount[i] = personStat[i].size();
 		}
 		System.out.println(String.format("Number of indivduals in contact map = %s", Arrays.toString(personCount)));
@@ -200,7 +193,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelGeneration.LENGTH_BRIDGING_MAP_GEN_SIM_FIELD;
-		
+
 		float[][] seedInfectParam = (float[][]) simFields[sim_offset + BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION];
 		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Runnable_ContactMapTransmission.SITE_LENGTH];
 
@@ -209,7 +202,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				float seedProp = seedInfectParam[g][s];
 				if (seedProp < 1) {
 					seedInfectNum[g][s] = Math.round(personStat[g].size() * seedProp);
-				}else {
+				} else {
 					seedInfectNum[g][s] = Math.round(seedInfectParam[g][s]);
 				}
 			}
@@ -229,21 +222,34 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			runnable[s] = new Runnable_ContactMapTransmission(simSeed, pop_composition, baseContactMap,
 					numSnap * snapFreq);
 
+			runnable[s].setBaseDir(baseDir);
+
 			runnable[s].initialse();
 
 			// Add infected
 			for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
 				for (int site = 0; site < Runnable_ContactMapTransmission.SITE_LENGTH; site++) {
-					if (seedInfectNum[gender][site] > 0) {						
+					if (seedInfectNum[gender][site] > 0) {
 						Integer[] seedInf = util.ArrayUtilsRandomGenerator.randomSelect(
 								personStat[gender].toArray(new Integer[personStat[gender].size()]),
 								seedInfectNum[gender][site], rngBase);
-						
-						for(Integer inf: seedInf) {
-							runnable[s].addInfected(inf, site, startTime + 180);													
+
+						for (Integer infected : seedInf) {
+
+							int firstContactTime = Integer.MAX_VALUE;
+
+							Set<Integer[]> edgesOfInfected = baseContactMap.edgesOf(infected);
+
+							for (Integer[] e : edgesOfInfected) {											
+								firstContactTime = Math.min(firstContactTime, e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]);
+							}
+
+							if (firstContactTime != Integer.MAX_VALUE) {
+								runnable[s].addInfected(infected, site, firstContactTime + 180);
+							}
 						}
-						System.out.println(String.format("Seeding %s of gender #%d at site #%d", 
-								Arrays.toString(seedInf), gender, site));						
+						System.out.println(String.format("Seeding %s of gender #%d at site #%d",
+								Arrays.toString(seedInf), gender, site));
 					}
 				}
 			}
