@@ -308,7 +308,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				// Check for contact cluster generated
 
-				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "\\\\d+");
+				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "-{0,1}(?!0)\\\\d+");
 
 				preGenClusterMap = baseDir.listFiles(new FileFilter() {
 					@Override

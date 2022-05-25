@@ -304,7 +304,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				System.out.println(String.format("Properties file < %s > loaded.", propFile.getAbsolutePath()));
 
 				// Check for cluster generated previously
-				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "\\\\d+");
+				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "-{0,1}(?!0)\\\\d+");
 
 				preGenClusterFile = baseDir.listFiles(new FileFilter() {
 					@Override
@@ -314,7 +314,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					}
 				});
 
-				Pattern p = Pattern.compile(FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(\\\\d+)"));
+				Pattern p = Pattern.compile(FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
 
 				for (int i = 0; i < preGenClusterFile.length; i++) {
 					Matcher m = p.matcher(preGenClusterFile[i].getName());
