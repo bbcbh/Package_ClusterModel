@@ -35,7 +35,9 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	public static final int SITE_OROPHARYNX = SITE_RECTUM + 1;
 	public static final int SITE_LENGTH = SITE_OROPHARYNX + 1;
 
-	public static final String FILENAME_FORMAT_TRANSMISSION_CMAP = "Transmission_Map_%s_%d.csv";
+	public static final String FILENAME_FORMAT_TRANSMISSION_CMAP = "Seed_%s_TransmissionMap_%d.csv";
+	public static final String DIRNAME_FORMAT_TRANSMISSION_CMAP = "TransMap_%d";
+	public static final String FILENAME_FORMAT_INDEX_CASE_LIST = "Seed_%d_IndexCases.txt";
 
 	// Transmission
 	private static double[] DEFAULT_TRANS_V2P = new double[] { 0.4, 0.10 };
@@ -269,10 +271,10 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 		}
 	}
 
-	public int getGenderType(Integer personId) {		
-		return getGenderType(personId, cumulative_pop_composition);		
+	public int getGenderType(Integer personId) {
+		return getGenderType(personId, cumulative_pop_composition);
 	}
-	
+
 	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
 		int index = Arrays.binarySearch(cumul_pop_comp, personId);
 
@@ -292,9 +294,16 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 
 		int startTime = Integer.MAX_VALUE;
 
-		// Set initial start time
-		for (ArrayList<Integer> currently_infectious_by_site : currently_infectious) {
+		int[][] seedInfected = new int[currently_infectious.length][];
+
+		// Store initially infected and set initial start time
+		for (int site = 0; site < currently_infectious.length; site++) {
+			ArrayList<Integer> currently_infectious_by_site = currently_infectious[site];
+			seedInfected[site] = new int[currently_infectious_by_site.size()];
+			int c = 0;
 			for (Integer infectious : currently_infectious_by_site) {
+				seedInfected[site][c] = infectious;
+				c++;
 				if (BASE_CONTACT_MAP.containsVertex(infectious)) {
 					Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(infectious);
 					for (Integer[] e : edges) {
@@ -305,6 +314,16 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 		}
 
 		if (startTime < Integer.MAX_VALUE) {
+
+			StringBuilder seedInfectedStr = new StringBuilder();
+			for (int site = 0; site < seedInfected.length; site++) {
+				for (int i = 0; i < seedInfected[site].length; i++) {
+					seedInfectedStr.append(site);
+					seedInfectedStr.append(',');
+					seedInfectedStr.append(seedInfected[site][i]);
+					seedInfectedStr.append('\n');
+				}
+			}
 
 			ContactMap cMap;
 			try {
@@ -471,34 +490,48 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 
 			ContactMap[] clusters = clustersSet.toArray(new ContactMap[clustersSet.size()]);
 
-			if (clusters.length > 0) {
-				Arrays.sort(clusters, new Comparator<ContactMap>() {
-					@Override
-					public int compare(ContactMap o1, ContactMap o2) {
-						return Integer.compare(o1.vertexSet().size(), o2.vertexSet().size());
-					}
-				});
+			Arrays.sort(clusters, new Comparator<ContactMap>() {
+				@Override
+				public int compare(ContactMap o1, ContactMap o2) {
+					return Integer.compare(o1.vertexSet().size(), o2.vertexSet().size());
+				}
+			});
+
+			File clusterExport = new File(baseDir, String.format(DIRNAME_FORMAT_TRANSMISSION_CMAP, this.seed));
+			clusterExport.mkdirs();
+
+			File printFile;
+			PrintWriter expWri;
+
+			try {
+
+				printFile = new File(clusterExport, String.format(FILENAME_FORMAT_INDEX_CASE_LIST, this.seed));
+
+				expWri = new PrintWriter(printFile);
+				expWri.println(seedInfectedStr.toString());
+				expWri.close();
 
 				for (int cI = 0; cI < clusters.length; cI++) {
 					ContactMap c = clusters[cI];
-					File clusterExport = new File(baseDir, String.format("TransMap_%d", this.seed));
-					clusterExport.mkdirs();
-					clusterExport = new File(clusterExport,
+
+					printFile = new File(clusterExport,
 							String.format(FILENAME_FORMAT_TRANSMISSION_CMAP, Long.toString(this.seed), cI));
 
-					try {
-						PrintWriter expWri = new PrintWriter(clusterExport);
-						expWri.println(c.toFullString());
-						expWri.close();
-					} catch (IOException ex) {
-						ex.printStackTrace(System.err);
+					expWri = new PrintWriter(printFile);
+					expWri.println(c.toFullString());
+					expWri.close();
 
-						System.out.println(String.format("Transmission map <%d, %d>", this.seed, cI));
-						System.out.println(c.toFullString());
-						System.out.println();
-
-					}
-
+				}
+			} catch (IOException ex) {
+				ex.printStackTrace(System.err);
+				System.out.println("Index case:");
+				System.out.println(seedInfectedStr.toString());
+				
+				for (int cI = 0; cI < clusters.length; cI++) {
+					ContactMap c = clusters[cI];
+					System.out.println(String.format("Transmission map <%d, %d>", this.seed, cI));
+					System.out.println(c.toFullString());
+					System.out.println();
 				}
 
 			}
