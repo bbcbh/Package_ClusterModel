@@ -9,16 +9,17 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
@@ -44,8 +45,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 	public static final String FILENAME_TRANSMAP_ZIP_PREFIX = "All_transmap";
-	public static final String REGEX_TRANSMISSION_CMAP_DIR = Runnable_ContactMapTransmission.DIRNAME_FORMAT_TRANSMISSION_CMAP
-			.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+	public static final String REGEX_TRANSMISSION_CMAP_DIR = 
+			Runnable_ContactMapTransmission.DIRNAME_FORMAT_TRANSMISSION_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+	public static final String REGEX_INDEX_CASE_LIST = 
+			Runnable_ContactMapTransmission.FILENAME_FORMAT_INDEX_CASE_LIST.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS = {
 			// BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION
@@ -225,22 +228,35 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		int inExec = 0;
 
 		Runnable_ContactMapTransmission[] runnable = new Runnable_ContactMapTransmission[numSim];
+		File clusterExport7z = new File(baseDir, FILENAME_TRANSMAP_ZIP_PREFIX + ".7z");
+		ArrayList<Long> completedSeed = new ArrayList<>();
+		if (clusterExport7z.exists()) {
+			SevenZFile inputZip = new SevenZFile(clusterExport7z);
+			Pattern p_seedIndexList = Pattern.compile(REGEX_INDEX_CASE_LIST);
+			SevenZArchiveEntry inputEnt;
+			while ((inputEnt = inputZip.getNextEntry()) != null) {
+				String entName = inputEnt.getName();				
+				Matcher m = p_seedIndexList.matcher(entName);
+				if(m.matches()) {
+					completedSeed.add(Long.parseLong(m.group(1)));
+				}							
+			}
+			inputZip.close();
+		}
+
+		Collections.sort(completedSeed);
 
 		for (int s = 0; s < numSim; s++) {
 			long simSeed = rngBase.nextLong();
-
 			boolean runSim = true;
-			// TODO: Check for entries generated previously
-			if (new File(baseDir, Runnable_ContactMapTransmission.DIRNAME_FORMAT_TRANSMISSION_CMAP).exists()) {
+			if (Collections.binarySearch(completedSeed, simSeed) >= 0) {
 				System.out.println(String.format("Transmission map under seed #%d already generated.", simSeed));
 				runSim = false;
 			}
 
 			if (runSim) {
-
 				runnable[s] = new Runnable_ContactMapTransmission(simSeed, pop_composition, baseContactMap,
 						numSnap * snapFreq);
-
 				runnable[s].setBaseDir(baseDir);
 
 				runnable[s].initialse();
@@ -333,57 +349,60 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		File[] transMapDirs = baseDir.listFiles(new FileFilter() {
-			@Override
-			public boolean accept(File pathname) {
-				return pathname.isDirectory() && Pattern.matches(REGEX_TRANSMISSION_CMAP_DIR, pathname.getName());
 
+	@Override
+	public boolean accept(File pathname) {
+		return pathname.isDirectory() && Pattern.matches(REGEX_TRANSMISSION_CMAP_DIR, pathname.getName());
+
+	}});
+
+	if(transMapDirs.length>0){
+
+	SevenZOutputFile outputZip = new SevenZOutputFile(clusterExport7z);
+
+	if(preZip!=null)
+	{
+		SevenZFile inputZip = new SevenZFile(preZip);
+		SevenZArchiveEntry inputEnt;
+		final int BUFFER = 2048;
+		byte[] buf = new byte[BUFFER];
+		while ((inputEnt = inputZip.getNextEntry()) != null) {
+			outputZip.putArchiveEntry(inputEnt);
+			int count;
+			while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
+				outputZip.write(Arrays.copyOf(buf, count));
 			}
-		});
-
-		if (transMapDirs.length > 0) {
-			SevenZOutputFile outputZip = new SevenZOutputFile(clusterExport7z);
-			
-			if(preZip != null) {				
-				SevenZFile inputZip = new SevenZFile(preZip);
-				SevenZArchiveEntry inputEnt;
-				final int BUFFER = 2048;
-		        byte[] buf = new byte[BUFFER];		        
-				while((inputEnt = inputZip.getNextEntry()) != null) {					
-					outputZip.putArchiveEntry(inputEnt);
-					int count;
-					while((count = inputZip.read(buf, 0, BUFFER)) != -1){
-						outputZip.write(Arrays.copyOf(buf, count));						
-					}					
-					outputZip.closeArchiveEntry();					
-				}									
-				inputZip.close();
-			}						
-			
-
-			File[] entFiles;
-			SevenZArchiveEntry entry;
-			FileInputStream fIn;
-
-			for (int dI = 0; dI < transMapDirs.length; dI++) {
-				entFiles = transMapDirs[dI].listFiles();
-				for (int fI = 0; fI < entFiles.length; fI++) {
-					entry = outputZip.createArchiveEntry(entFiles[fI], entFiles[fI].getName());
-					outputZip.putArchiveEntry(entry);
-					fIn = new FileInputStream(entFiles[fI]);
-					outputZip.write(fIn);
-					outputZip.closeArchiveEntry();
-					fIn.close();
-				}
-
-			}
-			outputZip.close();
-			// Clean up
-			for (int dI = 0; dI < transMapDirs.length; dI++) {
-				FileUtils.deleteDirectory(transMapDirs[dI]);
-			}
-
+			outputZip.closeArchiveEntry();
 		}
+		inputZip.close();
 	}
+
+	File[] entFiles;
+	SevenZArchiveEntry entry;
+	FileInputStream fIn;
+
+	for(
+	int dI = 0;dI<transMapDirs.length;dI++)
+	{
+		entFiles = transMapDirs[dI].listFiles();
+		for (int fI = 0; fI < entFiles.length; fI++) {
+			entry = outputZip.createArchiveEntry(entFiles[fI], entFiles[fI].getName());
+			outputZip.putArchiveEntry(entry);
+			fIn = new FileInputStream(entFiles[fI]);
+			outputZip.write(fIn);
+			outputZip.closeArchiveEntry();
+			fIn.close();
+		}
+
+	}outputZip.close();
+	// Clean up
+	for(
+	int dI = 0;dI<transMapDirs.length;dI++)
+	{
+		FileUtils.deleteDirectory(transMapDirs[dI]);
+	}
+
+	}}
 
 	public static void launch(String[] args) throws IOException, InterruptedException {
 		File baseDir = null;

@@ -380,7 +380,9 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 												// Transmission is possible
 												if (Collections.binarySearch(currently_infectious[site_target],
 														partner) < 0) {
-
+													
+													int g_s = getGenderType(infectious);
+													int g_t = getGenderType(partner);
 													int actType;
 													// Determine act type
 													switch (site_src) {
@@ -411,8 +413,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 													boolean tranmitted = actType != -1;
 
 													if (tranmitted) {
-														int g_s = getGenderType(infectious);
-														int g_t = getGenderType(partner);
+														
 														double actProb = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ])[actType][g_s][g_t];
 														double transProb = trans[site_src][site_target];
 														tranmitted &= actProb > 0;
@@ -441,7 +442,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 														}
 
 														Integer[] existEdge = transmissionMap.getEdge(infectious,
-																infectious);
+																partner);
 
 														if (existEdge == null) {
 															existEdge = new Integer[] { infectious, partner,
