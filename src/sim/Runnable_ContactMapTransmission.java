@@ -33,11 +33,18 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	public static final int SITE_PENIS = SITE_VAGINA + 1;
 	public static final int SITE_RECTUM = SITE_PENIS + 1;
 	public static final int SITE_OROPHARYNX = SITE_RECTUM + 1;
-	public static final int SITE_LENGTH = SITE_OROPHARYNX + 1;
+	public static final int LENGTH_SITE = SITE_OROPHARYNX + 1;
 
 	public static final String FILENAME_FORMAT_TRANSMISSION_CMAP = "Seed_%s_TransmissionMap_%d.csv";
 	public static final String DIRNAME_FORMAT_TRANSMISSION_CMAP = "TransMap_%d";
 	public static final String FILENAME_FORMAT_INDEX_CASE_LIST = "Seed_%d_IndexCases.txt";
+	
+	
+	public static final int TRANSMAP_EDGE_INFECTIOUS = 0;
+	public static final int TRANSMAP_EDGE_SUSCEPTIBLE = TRANSMAP_EDGE_INFECTIOUS + 1;
+	public static final int TRANSMAP_EDGE_START_TIME = TRANSMAP_EDGE_SUSCEPTIBLE + 1;
+	public static final int TRANSMAP_EDGE_ACT_INVOLVED = TRANSMAP_EDGE_START_TIME + 1;
+	public static final int LENGTH_TRANSMAP_EDGE = TRANSMAP_EDGE_ACT_INVOLVED + 1;
 
 	// Transmission
 	private static double[] DEFAULT_TRANS_V2P = new double[] { 0.4, 0.10 };
@@ -138,9 +145,9 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	private ContactMap transmissionMap;
 	private RandomGenerator RNG;
 
-	protected transient RealDistribution[][] tranmissionMatrix = new RealDistribution[SITE_LENGTH][SITE_LENGTH];
-	protected transient RealDistribution[] infectious_period = new RealDistribution[SITE_LENGTH];
-	protected transient RealDistribution[] incubation_period = new RealDistribution[SITE_LENGTH];
+	protected transient RealDistribution[][] tranmissionMatrix = new RealDistribution[LENGTH_SITE][LENGTH_SITE];
+	protected transient RealDistribution[] infectious_period = new RealDistribution[LENGTH_SITE];
+	protected transient RealDistribution[] incubation_period = new RealDistribution[LENGTH_SITE];
 
 	protected transient ArrayList<Integer>[] currently_infectious;
 	protected transient HashMap<Integer, ArrayList<Integer>>[] incubation_schedule;
@@ -205,11 +212,11 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 		}
 
 		// Lists
-		currently_infectious = new ArrayList[SITE_LENGTH];
-		incubation_schedule = new HashMap[SITE_LENGTH];
-		recovery_schedule = new HashMap[SITE_LENGTH];
+		currently_infectious = new ArrayList[LENGTH_SITE];
+		incubation_schedule = new HashMap[LENGTH_SITE];
+		recovery_schedule = new HashMap[LENGTH_SITE];
 
-		for (int s = 0; s < SITE_LENGTH; s++) {
+		for (int s = 0; s < LENGTH_SITE; s++) {
 			currently_infectious[s] = new ArrayList<>();
 			incubation_schedule[s] = new HashMap<>();
 			recovery_schedule[s] = new HashMap<>();
@@ -238,13 +245,13 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 
 			// Transmission probability
 			if (!trans_prob.containsKey(infectedId)) {
-				double[][] trans = new double[SITE_LENGTH][SITE_LENGTH];
+				double[][] trans = new double[LENGTH_SITE][LENGTH_SITE];
 				int gender = getGenderType(infectedId);
-				for (int sf = 0; sf < SITE_LENGTH; sf++) {
+				for (int sf = 0; sf < LENGTH_SITE; sf++) {
 					boolean sample = (gender == Person_Bridging_Pop.GENDER_TYPE_FEMALE) ? sf != SITE_PENIS
 							: sf != SITE_VAGINA;
 					if (sample) {
-						for (int st = 0; st < SITE_LENGTH; st++) {
+						for (int st = 0; st < LENGTH_SITE; st++) {
 							if (tranmissionMatrix[sf][st] != null) {
 								trans[sf][st] = tranmissionMatrix[sf][st].sample();
 							}
@@ -266,7 +273,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	}
 
 	public void removeInfected(Integer infectedId) {
-		for (int s = 0; s < SITE_LENGTH; s++) {
+		for (int s = 0; s < LENGTH_SITE; s++) {
 			removeInfected(infectedId, s);
 		}
 	}
@@ -337,7 +344,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 
 			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS; currentTime++) {
 
-				for (int site_src = 0; site_src < SITE_LENGTH; site_src++) {
+				for (int site_src = 0; site_src < LENGTH_SITE; site_src++) {
 					// Update infectious
 					ArrayList<Integer> becomeInfectiousToday = incubation_schedule[site_src].remove(currentTime);
 
@@ -375,7 +382,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 												? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
 												: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
 
-										for (int site_target = 0; site_target < SITE_LENGTH; site_target++) {
+										for (int site_target = 0; site_target < LENGTH_SITE; site_target++) {
 											if (trans[site_src][site_target] != 0) {
 												// Transmission is possible
 												if (Collections.binarySearch(currently_infectious[site_target],
@@ -445,11 +452,14 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 																partner);
 
 														if (existEdge == null) {
-															existEdge = new Integer[] { infectious, partner,
-																	currentTime, 1 << actType };
+															existEdge = new Integer[LENGTH_TRANSMAP_EDGE];
+															existEdge[TRANSMAP_EDGE_INFECTIOUS] = infectious;
+															existEdge[TRANSMAP_EDGE_SUSCEPTIBLE] = partner;
+															existEdge[TRANSMAP_EDGE_START_TIME] = currentTime;															
+															existEdge[TRANSMAP_EDGE_ACT_INVOLVED] = 1 << actType ;
 															transmissionMap.addEdge(infectious, partner, existEdge);
 														} else {
-															existEdge[existEdge.length - 1] |= 1 << actType;
+															existEdge[TRANSMAP_EDGE_ACT_INVOLVED] |= 1 << actType;
 														}
 
 													}

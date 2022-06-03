@@ -213,7 +213,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				+ Simulation_ClusterModelGeneration.LENGTH_BRIDGING_MAP_GEN_SIM_FIELD;
 
 		float[][] seedInfectParam = (float[][]) simFields[sim_offset + BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION];
-		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Runnable_ContactMapTransmission.SITE_LENGTH];
+		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Runnable_ContactMapTransmission.LENGTH_SITE];
 
 		for (int g = 0; g < seedInfectParam.length; g++) {
 			for (int s = 0; s < seedInfectParam[g].length; s++) {
@@ -270,7 +270,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				// Add infected
 				for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
-					for (int site = 0; site < Runnable_ContactMapTransmission.SITE_LENGTH; site++) {
+					for (int site = 0; site < Runnable_ContactMapTransmission.LENGTH_SITE; site++) {
 						if (seedInfectNum[gender][site] > 0) {
 							Integer[] seedInf = util.ArrayUtilsRandomGenerator.randomSelect(
 									personStat[gender].toArray(new Integer[personStat[gender].size()]),
