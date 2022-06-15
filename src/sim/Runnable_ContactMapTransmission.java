@@ -17,6 +17,7 @@ import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
+import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import population.person.Person_Bridging_Pop;
 import random.MersenneTwisterRandomGenerator;
@@ -38,8 +39,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	public static final String FILENAME_FORMAT_TRANSMISSION_CMAP = "Seed_%s_TransmissionMap_%d.csv";
 	public static final String DIRNAME_FORMAT_TRANSMISSION_CMAP = "TransMap_%d";
 	public static final String FILENAME_FORMAT_INDEX_CASE_LIST = "Seed_%d_IndexCases.txt";
-	
-	
+
 	public static final int TRANSMAP_EDGE_INFECTIOUS = 0;
 	public static final int TRANSMAP_EDGE_SUSCEPTIBLE = TRANSMAP_EDGE_INFECTIOUS + 1;
 	public static final int TRANSMAP_EDGE_START_TIME = TRANSMAP_EDGE_SUSCEPTIBLE + 1;
@@ -80,6 +80,12 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	// 10.1371/journal.pcbi.1009385
 	private static double DEFAULT_ACT_ANAL_FREQ_MSM = (1.6 + 2.4) / 2 / 7;
 	private static double DEFAULT_ACT_FELLATIO_FREQ_MSM = (1.6 + 2.4) / 2 / 7;
+	private static double[] DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM = new double[] { 20 };
+	private static double[] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_LOW_RISK = new double[] { 0.375, 1, 720, 360, 90 };
+	private static double[] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_HIGH_RISK = new double[] { 0.05, 0.49, 0.71, 1, 720,
+			360, 180, 120, 90 };
+	private static double[][] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM = new double[][] {
+			DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_LOW_RISK, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_HIGH_RISK };
 
 	public static final int RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ = 0;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_MAP_TRANSMISSION_RATE = RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ
@@ -87,6 +93,10 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	public static final int RUNNABLE_FIELD_TRANSMISSION_MAP_INFECTIOUS_PERIOD = RUNNABLE_FIELD_TRANSMISSION_MAP_TRANSMISSION_RATE
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_MAP_INCUBATION_PERIOD = RUNNABLE_FIELD_TRANSMISSION_MAP_INFECTIOUS_PERIOD
+			+ 1;
+	public static final int RUNNABLE_FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS = RUNNABLE_FIELD_TRANSMISSION_MAP_INFECTIOUS_PERIOD
+			+ 1;
+	public static final int RUNNABLE_FIELD_TESTING_BY_RISK_CATEGORIES = RUNNABLE_FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS
 			+ 1;
 
 	public Object[] runnable_fields = {
@@ -132,6 +142,12 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 			// double[SITE]
 			new double[][] { DEFAULT_INCUBATION_RANGE, DEFAULT_INCUBATION_RANGE, DEFAULT_INCUBATION_RANGE,
 					DEFAULT_INCUBATION_RANGE },
+			// RUNNABLE_FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS
+			new double[][] { null, null, DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM,
+					DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM },
+			// RUNNABLE_FIELD_TESTING_BY_RISK_CATEGORIES
+			new double[][][] { null, null, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM,
+					DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM },
 
 	};
 
@@ -152,7 +168,12 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	protected transient ArrayList<Integer>[] currently_infectious;
 	protected transient HashMap<Integer, ArrayList<Integer>>[] incubation_schedule;
 	protected transient HashMap<Integer, ArrayList<Integer>>[] recovery_schedule;
+
+	protected transient HashMap<Integer, ArrayList<Integer>> testing_schedule;
 	protected transient HashMap<Integer, double[][]> trans_prob;
+
+	protected transient HashMap<Integer, Integer> risk_cat_map;
+	protected transient int firstSeedTime = Integer.MAX_VALUE;
 
 	private transient HashMap<String, Object> sim_output = null;
 
@@ -220,20 +241,85 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 			currently_infectious[s] = new ArrayList<>();
 			incubation_schedule[s] = new HashMap<>();
 			recovery_schedule[s] = new HashMap<>();
+
 		}
 
 		trans_prob = new HashMap<>();
 		sim_output = new HashMap<>();
+		testing_schedule = new HashMap<>();
+		risk_cat_map = new HashMap<>();
 	}
 
 	public HashMap<String, Object> getSim_output() {
 		return sim_output;
 	}
 
-	public int addInfected(Integer infectedId, int site, int recoveredAt) {
+	public void scheduleNextTest(Integer personId, int lastTestTime) {
+		// TODO: Check method
+		int genderType = getGenderType(personId);
+
+		double[][] testRate = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TESTING_BY_RISK_CATEGORIES])[genderType];
+		if (testRate != null) {
+			int riskCat = Math.max(0, getRiskCategories(personId, genderType));
+			double[] testRateByCat = testRate[riskCat];
+			int divder = (testRateByCat.length - 1) / 2;
+
+			double p = RNG.nextDouble();
+			int pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
+			if (pI < 0) {
+				pI = ~pI;
+			}
+
+			double testGapTime = (testRateByCat[divder + pI] + testRateByCat[divder + pI + 1]) / 2;
+			testGapTime *= 1 + RNG.nextGaussian() / 10;
+
+			ArrayList<Integer> testEnt = testing_schedule.get((int) Math.round(lastTestTime + (testGapTime)));
+			if(testEnt == null) {
+				testEnt = new ArrayList<>();
+				testing_schedule.put(personId, testEnt);
+			}
+			testEnt.add(personId);		
+
+		}
+
+	}
+
+	private int getRiskCategories(Integer personId, int genderType) {
+
+		if (risk_cat_map.containsKey(personId)) {
+			return risk_cat_map.get(personId);
+		} else {
+
+			int riskCat = -1;
+
+			double[] riskCatList = ((double[][]) runnable_fields[RUNNABLE_FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS])[genderType];
+			if (riskCatList != null) {
+				int numCasual = 0;
+				Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
+				for (Integer[] e : edges) {
+					if (e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
+							&& e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME] < firstSeedTime + NUM_TIME_STEPS
+							&& e[Population_Bridging.CONTACT_MAP_EDGE_DURATION] == 1) {
+						numCasual++;
+					}
+				}
+				double numCasual1Year = ((double) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual
+						/ NUM_TIME_STEPS;
+				riskCat = Arrays.binarySearch(riskCatList, numCasual1Year);
+			}
+
+			risk_cat_map.put(personId, riskCat);
+
+			return riskCat;
+		}
+
+	}
+
+	public int addInfected(Integer infectedId, int site, int firstContactTime, int recoveredAt) {
 		int key = Collections.binarySearch(currently_infectious[site], infectedId);
 		if (key < 0) {
 			currently_infectious[site].add(~key, infectedId);
+			firstSeedTime = Math.min(firstSeedTime, firstContactTime);
 
 			// Recovery
 			ArrayList<Integer> sch = recovery_schedule[site].get(recoveredAt);
@@ -299,7 +385,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 	@Override
 	public void run() {
 
-		int startTime = Integer.MAX_VALUE;
+		int startTime = firstSeedTime;
 
 		int[][] seedInfected = new int[currently_infectious.length][];
 
@@ -311,12 +397,6 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 			for (Integer infectious : currently_infectious_by_site) {
 				seedInfected[site][c] = infectious;
 				c++;
-				if (BASE_CONTACT_MAP.containsVertex(infectious)) {
-					Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(infectious);
-					for (Integer[] e : edges) {
-						startTime = Math.min(startTime, e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]);
-					}
-				}
 			}
 		}
 
@@ -351,7 +431,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 					if (becomeInfectiousToday != null) {
 						for (Integer i : becomeInfectiousToday) {
 							int recoveredAt = (int) Math.round(infectious_period[site_src].sample()) + currentTime;
-							addInfected(i, site_src, recoveredAt);
+							addInfected(i, site_src, currentTime, recoveredAt);
 						}
 					}
 
@@ -387,7 +467,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 												// Transmission is possible
 												if (Collections.binarySearch(currently_infectious[site_target],
 														partner) < 0) {
-													
+
 													int g_s = getGenderType(infectious);
 													int g_t = getGenderType(partner);
 													int actType;
@@ -420,7 +500,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 													boolean tranmitted = actType != -1;
 
 													if (tranmitted) {
-														
+
 														double actProb = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ])[actType][g_s][g_t];
 														double transProb = trans[site_src][site_target];
 														tranmitted &= actProb > 0;
@@ -455,8 +535,8 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 															existEdge = new Integer[LENGTH_TRANSMAP_EDGE];
 															existEdge[TRANSMAP_EDGE_INFECTIOUS] = infectious;
 															existEdge[TRANSMAP_EDGE_SUSCEPTIBLE] = partner;
-															existEdge[TRANSMAP_EDGE_START_TIME] = currentTime;															
-															existEdge[TRANSMAP_EDGE_ACT_INVOLVED] = 1 << actType ;
+															existEdge[TRANSMAP_EDGE_START_TIME] = currentTime;
+															existEdge[TRANSMAP_EDGE_ACT_INVOLVED] = 1 << actType;
 															transmissionMap.addEdge(infectious, partner, existEdge);
 														} else {
 															existEdge[TRANSMAP_EDGE_ACT_INVOLVED] |= 1 << actType;
@@ -480,6 +560,8 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 						}
 					}
 				}
+				
+				// TODO: Testing
 
 				for (Integer[] e : removeEdges) {
 					cMap.removeEdge(e);
@@ -537,7 +619,7 @@ public class Runnable_ContactMapTransmission extends Abstract_Runnable_ContactMa
 				ex.printStackTrace(System.err);
 				System.out.println("Index case:");
 				System.out.println(seedInfectedStr.toString());
-				
+
 				for (int cI = 0; cI < clusters.length; cI++) {
 					ContactMap c = clusters[cI];
 					System.out.println(String.format("Transmission map <%d, %d>", this.seed, cI));
