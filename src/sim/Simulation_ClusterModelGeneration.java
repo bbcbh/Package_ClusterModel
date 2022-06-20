@@ -187,8 +187,6 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		Runnable_ContactMapGeneration[] runnables = new Runnable_ContactMapGeneration[numSim];
 		runnablesMap = new HashMap<Long, Runnable_ContactMapGeneration>();
 
-		
-
 		for (int i = 0; i < numSim; i++) {
 			long popSeed = rngBase.nextLong();
 
@@ -217,10 +215,18 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 				runnablesMap.put(r.getPopulation().getSeed(), r);
 
-				if (printOutput) {					
-					File outputFile = new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed()));
-					FileOutputStream fOut = new FileOutputStream(outputFile, true);
-					PrintStream outputPS = new PrintStream(fOut);
+				if (printOutput) {
+					PrintStream outputPS;
+					if (numThreads < 0) { 
+						System.out.println("Debug: Output print to console called by PROP_USE_PARALLEL < 0");
+						outputPS = System.out;
+
+					} else {
+						File outputFile = new File(baseDir,
+								String.format("Output_%d.txt", r.getPopulation().getSeed()));
+						FileOutputStream fOut = new FileOutputStream(outputFile, true);
+						outputPS = new PrintStream(fOut);
+					}
 					outputPS.println(String.format("Seed = %d", r.getPopulation().getSeed()));
 					runnables[i].setPrintStatus(outputPS);
 				}
@@ -230,7 +236,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				} else {
 					if (executor == null) {
 						executor = Executors.newFixedThreadPool(numThreads);
-					}								
+					}
 					executor.submit(runnables[i]);
 					numInPool++;
 					if (numInPool == numThreads) {
@@ -270,7 +276,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 	}
 
-	public static void launch(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
+	public static void launch(String[] args)
+			throws InvalidPropertiesFormatException, IOException, InterruptedException {
 		File baseDir = null;
 		File propFile = null;
 		File[] preGenClusterFile = new File[0];
