@@ -342,7 +342,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				casualPartnerFormed = Arrays.copyOf(casualPartnerFormed,
 						casualPartnerFormed.length + numMSMCasualToFormed);
 
-				//TODO: Assortative mixing (MSM)
+				// TODO: Assortative mixing (MSM)
 				Arrays.sort(casualMSMArr, COMPARATOR_CASUAL_MIXING);
 
 				ArrayList<Person_Bridging_Pop> casualMSMList = new ArrayList<>(List.of(casualMSMArr));
@@ -353,15 +353,15 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 							.getParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_CASUAL_PARTNERS_12_MONTHS)));
 				}
 
-				while (numMSMCasualToFormed > 0 && casualMSMList.size() > 1) {
+				while (numMSMCasualToFormed > 0 && casualMSMList.size() > 2) {
 
 					int src_index = getRNG().nextInt(casualMSMList.size());
 					Person_Bridging_Pop src_person = casualMSMList.remove(src_index);
 					Integer src_max = msm_max_partner.remove(src_index);
 
 					int tar_index;
-					Person_Bridging_Pop tar_person;
-					Integer tar_max;
+					Person_Bridging_Pop tar_person = null;
+					
 
 					boolean randMix = true;
 
@@ -370,63 +370,82 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 						randMix = part_type[PARTNER_TYPE_ASSORTATIVITY] < getRNG().nextFloat();
 					}
 
-					if (randMix || casualMSMList.size() == 1) {
-						tar_index = getRNG().nextInt(casualMSMList.size());
-					} else {
+					ArrayList<Person_Bridging_Pop> tar_list = new ArrayList<>(casualMSMList);
+					ArrayList<Integer> tar_max_partner = new ArrayList<>(msm_max_partner);
+					RelationshipMap relMapCheck = this.getRelMap()[RELMAP_MSM];
 
-						int minIndex = Collections.binarySearch(msm_max_partner, src_max - CASUAL_MIXING_SD_RANGE);
-						int maxIndex = Collections.binarySearch(msm_max_partner, src_max + CASUAL_MIXING_SD_RANGE);
-
-						if (minIndex < 0) {
-							minIndex = ~minIndex;
-						}
-						if (maxIndex < 0) {
-							maxIndex = ~maxIndex;
-						}
-
-						if (maxIndex > minIndex) {
-							float sd = (maxIndex - minIndex) / 2f;
-							tar_index = -1;
-							// Resample until have a valid match
-							while (tar_index < 0 || tar_index >= casualMSMList.size()) {								
-								tar_index = (int) Math.round(getRNG().nextGaussian() * sd + src_index);
-							}
+					while (tar_person == null && !tar_list.isEmpty()) {
+						// Try to find a partner
+						if (randMix || tar_list.size() == 1) {
+							tar_index = getRNG().nextInt(tar_list.size());
 						} else {
-							tar_index = Math.min(casualMSMList.size()-1, minIndex);
-						}						
-						
-					}
+							int minIndex = Collections.binarySearch(tar_max_partner, src_max - CASUAL_MIXING_SD_RANGE);
+							int maxIndex = Collections.binarySearch(tar_max_partner, src_max + CASUAL_MIXING_SD_RANGE);
 
-					tar_person = casualMSMList.remove(tar_index);
-					tar_max = msm_max_partner.remove(tar_index);
+							if (minIndex < 0) {
+								minIndex = ~minIndex;
+							}
+							if (maxIndex < 0) {
+								maxIndex = ~maxIndex;
+							}
 
-					Person_Bridging_Pop[] pair = new Person_Bridging_Pop[] { src_person, tar_person };
-
-					// For consistency
-					if (pair[0].getId() > pair[1].getId()) {
-						pair[0] = tar_person;
-						pair[1] = src_person;
-					}
-
-					if (!(this.getRelMap()[RELMAP_MSM]).containsEdge(pair[0].getId(), pair[1].getId())) {
-						for (int p = 0; p < pair.length; p++) {
-							pair[p].addCasualPartner(pair[(p + 1) % 2]);
+							if (maxIndex > minIndex) {
+								float sd = (maxIndex - minIndex) / 2f;
+								tar_index = -1;
+								// Resample until have a valid match
+								while (tar_index < 0 || tar_index >= casualMSMList.size()) {
+									tar_index = (int) Math.round(getRNG().nextGaussian() * sd + src_index);
+								}
+							} else {
+								// Go back to random if SD = 0;
+								tar_index = getRNG().nextInt(tar_list.size());
+							}
 						}
-						casualPartnerFormed[partPt] = new Person_Bridging_Pop[] { pair[0], pair[1] };
-						checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), 1 }, cMaps);
-						partPt++;
+
+						tar_person = tar_list.remove(tar_index);
+						tar_max_partner.remove(tar_index);
 						
-					} else {
-						// Reset array
-						casualMSMList.add(tar_index, tar_person);						
-						msm_max_partner.add(tar_index, tar_max);												
-						casualMSMList.add(src_index, src_person);
-						msm_max_partner.add(src_index, src_max);
-					}					
-					numMSMCasualToFormed--;
+						Person_Bridging_Pop[] pair = new Person_Bridging_Pop[] { src_person, tar_person };
+
+						// For consistency
+						if (pair[0].getId() > pair[1].getId()) {
+							pair[0] = tar_person;
+							pair[1] = src_person;
+						}
+
+						if (relMapCheck.containsEdge(pair[0].getId(), pair[1].getId())) {							
+							tar_person = null;
+						}
+
+						if (tar_person != null) {
+							// Add casual partner
+							for (int p = 0; p < pair.length; p++) {
+								pair[p].addCasualPartner(pair[(p + 1) % 2]);
+							}
+							casualPartnerFormed[partPt] = new Person_Bridging_Pop[] { pair[0], pair[1] };
+							checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), 1 },
+									cMaps);
+
+							// Clean up casualMSMList
+							int removeIndex = -1;
+							for (int r = 0; r < casualMSMList.size(); r++) {
+								Person_Bridging_Pop removePerson = casualMSMList.get(r);
+								if (removePerson.getId() == tar_person.getId()) {
+									removeIndex = r;
+									break;
+								}
+							}
+							casualMSMList.remove(removeIndex);
+							msm_max_partner.remove(removeIndex);
+
+							partPt++;
+							numMSMCasualToFormed--;
+						}
+					}
+
 				}
 			}
-		}				
+		}
 		if (partPt < casualPartnerFormed.length) {
 			casualPartnerFormed = Arrays.copyOf(casualPartnerFormed, partPt);
 		}
@@ -451,7 +470,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				System.arraycopy(casualCandidate[GENDER_MSMW], 0, casualMale, casualCandidate[GENDER_HETRO_MALE].length,
 						casualCandidate[GENDER_MSMW].length);
 
-				//TODO: Assortative mixing (Hetrosexual)
+				// TODO: Assortative mixing (Hetrosexual)
 				Arrays.sort(casualFemale, COMPARATOR_CASUAL_MIXING);
 				Arrays.sort(casualMale, COMPARATOR_CASUAL_MIXING);
 
@@ -509,7 +528,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 							maxIndex = ~maxIndex;
 						}
 
-						if (maxIndex > minIndex ) {
+						if (maxIndex > minIndex) {
 							float sd = (maxIndex - minIndex) / 2f;
 
 							int centrePt = Collections.binarySearch(tar_max_list, src_max);
@@ -519,12 +538,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 							tar_index = -1;
 							// Resample until have a valid match
-							while (tar_index < 0 || tar_index >= tar_list.size()) {															
-								
+							while (tar_index < 0 || tar_index >= tar_list.size()) {
+
 								tar_index = (int) Math.round(getRNG().nextGaussian() * sd + centrePt);
 							}
 						} else {
-							tar_index = Math.min(tar_list.size()-1,  minIndex);
+							tar_index = Math.min(tar_list.size() - 1, minIndex);
 
 						}
 					}
@@ -544,11 +563,11 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 						casualPartnerFormed[partPt] = new Person_Bridging_Pop[] { pair[0], pair[1] };
 						checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), 1 }, cMaps);
 						partPt++;
-						
+
 					} else {
 						tar_list.add(tar_index, tar_person);
 						tar_max_list.add(tar_index, tar_max);
-						
+
 						src_list.add(src_index, src_person);
 						src_max_list.add(src_index, src_max);
 					}
@@ -563,7 +582,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 					tar_list = src_list_temp;
 					tar_max_list = src_max_list_temp;
-					
+
 					numHetroCasualToFormed--;
 
 				}
@@ -574,7 +593,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		if (partPt < casualPartnerFormed.length) {
 			casualPartnerFormed = Arrays.copyOf(casualPartnerFormed, partPt);
 		}
-		
+
 		System.out.printf("# casual = %d at  t = %d\n", casualPartnerFormed.length, getGlobalTime());
 	}
 
