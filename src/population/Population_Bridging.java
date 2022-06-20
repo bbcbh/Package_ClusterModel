@@ -383,13 +383,17 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 						if (maxIndex < 0) {
 							maxIndex = ~maxIndex;
 						}
-						float sd = (maxIndex - minIndex) / 2f;
 
-						tar_index = -1;
+						if (maxIndex > minIndex) {
+							float sd = (maxIndex - minIndex) / 2f;
+							tar_index = -1;
+							// Resample until have a valid match
+							while (tar_index < 0 || tar_index >= casualMSMList.size()) {
+								tar_index = (int) Math.round(getRNG().nextGaussian() * sd + src_index);
 
-						// Resample until have a valid match
-						while (tar_index < 0 || tar_index >= casualMSMList.size()) {
-							tar_index = (int) Math.round(getRNG().nextGaussian() * sd + src_index);
+							}
+						} else {
+							tar_index = minIndex;
 						}
 
 					}
@@ -487,7 +491,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 					float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_person.getGenderType()];
 					if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {
-						randMix =  part_type[PARTNER_TYPE_ASSORTATIVITY] < getRNG().nextFloat();
+						randMix = part_type[PARTNER_TYPE_ASSORTATIVITY] < getRNG().nextFloat();
 					}
 
 					if (randMix) {
@@ -503,18 +507,23 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 						if (maxIndex < 0) {
 							maxIndex = ~maxIndex;
 						}
-						float sd = (maxIndex - minIndex) / 2f;
 
-						
-						int centrePt = Collections.binarySearch(tar_max_list, src_max);
-						if (centrePt < 0) {
-							tar_index = ~centrePt;
-						}			
-						
-						tar_index = -1;						
-						// Resample until have a valid match
-						while (tar_index < 0 || tar_index >= tar_list.size()) {
-							tar_index = (int) Math.round(getRNG().nextGaussian() * sd + centrePt);
+						if (maxIndex > minIndex ) {
+							float sd = (maxIndex - minIndex) / 2f;
+
+							int centrePt = Collections.binarySearch(tar_max_list, src_max);
+							if (centrePt < 0) {
+								tar_index = ~centrePt;
+							}
+
+							tar_index = -1;
+							// Resample until have a valid match
+							while (tar_index < 0 || tar_index >= tar_list.size()) {
+								tar_index = (int) Math.round(getRNG().nextGaussian() * sd + centrePt);
+							}
+						} else {
+							tar_index = minIndex;
+
 						}
 					}
 
