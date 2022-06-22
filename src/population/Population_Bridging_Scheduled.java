@@ -177,7 +177,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			candidates_reg.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);
 			candidates_cas.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);	
 			
-			// TODO: Current progress - Form partnership on a twelve months schedule
+			// TODO: Current progress - Form partnership on a 12 months schedule
 
 			int[] pop_diff_num_partner_12_months = cal_pop_diff_num_partner(population_num_partner_in_last_12_months);
 			int numCat = pop_diff_num_partner_12_months.length / (1 + LENGTH_GENDER);
