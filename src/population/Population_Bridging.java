@@ -345,109 +345,18 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				// Assortative mixing (MSM)
 				Arrays.sort(casualMSMArr, COMPARATOR_CASUAL_MIXING);
 
-				ArrayList<Person_Bridging_Pop> casualMSMList = new ArrayList<>(List.of(casualMSMArr));
-				ArrayList<Integer> msm_max_partner = new ArrayList<>();
+				ArrayList<Person_Bridging_Pop> casualMSM_Person_List = new ArrayList<>(List.of(casualMSMArr));
+				ArrayList<Integer> casualMSM_MaxP_List = new ArrayList<>();
 
-				for (Person_Bridging_Pop msm : casualMSMList) {
-					msm_max_partner.add((int) msm
+				for (Person_Bridging_Pop msm : casualMSM_Person_List) {
+					casualMSM_MaxP_List.add((int) msm
 							.getParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_CASUAL_PARTNERS_12_MONTHS)));
 				}
 
-				while (numMSMCasualToFormed > 0 && casualMSMList.size() > 2) {
-
-					int src_index = getRNG().nextInt(casualMSMList.size());
-					Person_Bridging_Pop src_person = casualMSMList.remove(src_index);
-					Integer src_max = msm_max_partner.remove(src_index);
-
-					int tar_index;
-					Person_Bridging_Pop tar_person = null;
-					
-
-					boolean randMix = true;
-
-					float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_person.getGenderType()];
-					if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {
-						randMix = part_type[PARTNER_TYPE_ASSORTATIVITY] < getRNG().nextFloat();
-					}
-
-					ArrayList<Person_Bridging_Pop> tar_list = new ArrayList<>(casualMSMList);
-					ArrayList<Integer> tar_max_partner = new ArrayList<>(msm_max_partner);
-					RelationshipMap relMapCheck = this.getRelMap()[RELMAP_MSM];
-
-					while (tar_person == null && !tar_list.isEmpty()) {
-						// Try to find a partner
-						if (randMix || tar_list.size() == 1) {
-							tar_index = getRNG().nextInt(tar_list.size());
-						} else {
-							int minIndex = Collections.binarySearch(tar_max_partner, src_max - CASUAL_MIXING_SD_RANGE);
-							int maxIndex = Collections.binarySearch(tar_max_partner, src_max + CASUAL_MIXING_SD_RANGE);
-
-							if (minIndex < 0) {
-								minIndex = ~minIndex;
-							}
-							if (maxIndex < 0) {
-								maxIndex = ~maxIndex;
-							}
-
-							if (maxIndex > minIndex) {
-								float sd = (maxIndex - minIndex) / 2f;
-								tar_index = -1;
-								// Resample until have a valid match
-								while (tar_index < 0 || tar_index >= casualMSMList.size()) {
-									tar_index = (int) Math.round(getRNG().nextGaussian() * sd + src_index);
-								}
-							} else {
-								// Go back to random if SD = 0;
-								tar_index = getRNG().nextInt(tar_list.size());
-							}
-						}
-
-						tar_person = tar_list.remove(tar_index);
-						tar_max_partner.remove(tar_index);
-						
-						Person_Bridging_Pop[] pair = new Person_Bridging_Pop[] { src_person, tar_person };
-
-						// For consistency
-						if (pair[0].getId() > pair[1].getId()) {
-							pair[0] = tar_person;
-							pair[1] = src_person;
-						}
-
-						if (relMapCheck.containsEdge(pair[0].getId(), pair[1].getId())) {							
-							tar_person = null;
-						}
-
-						if (tar_person != null) {
-							// Add casual partner
-							for (int p = 0; p < pair.length; p++) {
-								pair[p].addCasualPartner(pair[(p + 1) % 2]);
-							}
-							casualPartnerFormed[partPt] = new Person_Bridging_Pop[] { pair[0], pair[1] };
-							checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), 1 },
-									cMaps);
-
-							// Clean up casualMSMList
-							int removeIndex = -1;
-							for (int r = 0; r < casualMSMList.size(); r++) {
-								Person_Bridging_Pop removePerson = casualMSMList.get(r);
-								if (removePerson.getId() == tar_person.getId()) {
-									removeIndex = r;
-									break;
-								}
-							}
-							casualMSMList.remove(removeIndex);
-							msm_max_partner.remove(removeIndex);
-
-							partPt++;
-							numMSMCasualToFormed--;
-						}
-					}
-
-				}
+				partPt = casualPartnerPairing(partPt, casualMSM_Person_List, casualMSM_MaxP_List, 
+						casualMSM_Person_List, casualMSM_MaxP_List,
+						this.getRelMap()[RELMAP_MSM], false, numMSMCasualToFormed, cMaps);
 			}
-		}
-		if (partPt < casualPartnerFormed.length) {
-			casualPartnerFormed = Arrays.copyOf(casualPartnerFormed, partPt);
 		}
 
 		// Heterosexual
@@ -491,101 +400,16 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				casualPartnerFormed = Arrays.copyOf(casualPartnerFormed,
 						casualPartnerFormed.length + numHetroCasualToFormed);
 
-				ArrayList<Person_Bridging_Pop> src_list = f_list.size() > m_list.size() ? m_list : f_list;
-				ArrayList<Person_Bridging_Pop> tar_list = src_list == f_list ? m_list : f_list;
+				boolean src_is_female = f_list.size() < m_list.size();
 
+				ArrayList<Person_Bridging_Pop> src_list = src_is_female ? f_list : m_list;
 				ArrayList<Integer> src_max_list = src_list == f_list ? f_max : m_max;
-				ArrayList<Integer> tar_max_list = tar_list == f_list ? f_max : m_max;
+				ArrayList<Person_Bridging_Pop> tar_base_list = src_is_female ? m_list : f_list;
+				ArrayList<Integer> tar_base_max_list = src_is_female ? m_max : f_max;						
+			
 
-				while (numHetroCasualToFormed > 0 && src_list.size() > 0) {
-
-					int src_index = getRNG().nextInt(src_list.size());
-					Person_Bridging_Pop src_person = src_list.remove(src_index);
-					int src_max = src_max_list.remove(src_index);
-
-					int tar_index;
-					Person_Bridging_Pop tar_person;
-					int tar_max;
-
-					boolean randMix = true;
-
-					float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_person.getGenderType()];
-					if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {
-						randMix = part_type[PARTNER_TYPE_ASSORTATIVITY] < getRNG().nextFloat();
-					}
-
-					if (randMix || tar_list.size() == 1) {
-						tar_index = getRNG().nextInt(tar_list.size());
-					} else {
-
-						int minIndex = Collections.binarySearch(tar_max_list, src_max - CASUAL_MIXING_SD_RANGE);
-						int maxIndex = Collections.binarySearch(tar_max_list, src_max + CASUAL_MIXING_SD_RANGE);
-
-						if (minIndex < 0) {
-							minIndex = ~minIndex;
-						}
-						if (maxIndex < 0) {
-							maxIndex = ~maxIndex;
-						}
-
-						if (maxIndex > minIndex) {
-							float sd = (maxIndex - minIndex) / 2f;
-
-							int centrePt = Collections.binarySearch(tar_max_list, src_max);
-							if (centrePt < 0) {
-								tar_index = ~centrePt;
-							}
-
-							tar_index = -1;
-							// Resample until have a valid match
-							while (tar_index < 0 || tar_index >= tar_list.size()) {
-
-								tar_index = (int) Math.round(getRNG().nextGaussian() * sd + centrePt);
-							}
-						} else {
-							tar_index = Math.min(tar_list.size() - 1, minIndex);
-
-						}
-					}
-
-					tar_person = tar_list.remove(tar_index);
-					tar_max = tar_max_list.remove(tar_index);
-
-					Person_Bridging_Pop[] pair = new Person_Bridging_Pop[] { src_person, tar_person };
-					if (!src_person.isMale()) {
-						pair = new Person_Bridging_Pop[] { tar_person, src_person };
-					}
-
-					if (!(this.getRelMap()[RELMAP_HETRO]).containsEdge(pair[0].getId(), pair[1].getId())) {
-						for (int p = 0; p < pair.length; p++) {
-							pair[p].addCasualPartner(pair[(p + 1) % 2]);
-						}
-						casualPartnerFormed[partPt] = new Person_Bridging_Pop[] { pair[0], pair[1] };
-						checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), 1 }, cMaps);
-						partPt++;
-
-					} else {
-						tar_list.add(tar_index, tar_person);
-						tar_max_list.add(tar_index, tar_max);
-
-						src_list.add(src_index, src_person);
-						src_max_list.add(src_index, src_max);
-					}
-
-					// Swap list around
-
-					ArrayList<Person_Bridging_Pop> src_list_temp = src_list;
-					ArrayList<Integer> src_max_list_temp = src_max_list;
-
-					src_list = tar_list;
-					src_max_list = tar_max_list;
-
-					tar_list = src_list_temp;
-					tar_max_list = src_max_list_temp;
-
-					numHetroCasualToFormed--;
-
-				}
+				partPt = casualPartnerPairing(partPt, src_list, src_max_list, tar_base_list, tar_base_max_list,
+						this.getRelMap()[RELMAP_HETRO], true, numHetroCasualToFormed, cMaps);
 
 			}
 		}
@@ -594,7 +418,137 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			casualPartnerFormed = Arrays.copyOf(casualPartnerFormed, partPt);
 		}
 
-		System.out.printf("# casual = %d at  t = %d\n", casualPartnerFormed.length, getGlobalTime());
+		//System.out.printf("# casual = %d at  t = %d\n", casualPartnerFormed.length, getGlobalTime());
+	}
+
+	private int casualPartnerPairing(int partershipPt, ArrayList<Person_Bridging_Pop> src_list,
+			ArrayList<Integer> src_max_list, ArrayList<Person_Bridging_Pop> tar_base_list,
+			ArrayList<Integer> tar_base_max_list, RelationshipMap relMapCheck, boolean rel_order_by_gender,
+			int numCasualToFormed, ContactMap[] existingContactMap) {
+		
+		while (numCasualToFormed > 0 && src_list.size() > 0) {
+
+			int src_index = getRNG().nextInt(src_list.size());
+			Person_Bridging_Pop src_person = src_list.remove(src_index);
+			Integer src_max = src_max_list.remove(src_index);
+
+			Person_Bridging_Pop tar_person = null;
+
+			boolean randMix = true;
+
+			float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_person.getGenderType()];
+			if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {
+				randMix = part_type[PARTNER_TYPE_ASSORTATIVITY] < getRNG().nextFloat();
+			}
+
+			ArrayList<Person_Bridging_Pop> tar_list = new ArrayList<>(tar_base_list);
+			ArrayList<Integer> tar_max_partner = new ArrayList<>(tar_base_max_list);
+
+			while (tar_person == null && !tar_list.isEmpty()) {
+
+				tar_person = findPartnerFromList(randMix, src_person, src_max, tar_list, tar_max_partner, relMapCheck);
+
+				if (tar_person != null) {
+					Person_Bridging_Pop[] pair;
+
+					// For consistency
+					if (rel_order_by_gender) {
+						if (src_person.getGenderType() == Population_Bridging.GENDER_HETRO_FEMALE) {
+							pair = new Person_Bridging_Pop[] { tar_person, src_person };
+						} else {
+							pair = new Person_Bridging_Pop[] { src_person, tar_person };
+						}
+					} else {
+						if (src_person.getId() > tar_person.getId()) {
+							pair = new Person_Bridging_Pop[] { tar_person, src_person };
+						} else {
+							pair = new Person_Bridging_Pop[] { src_person, tar_person };
+						}
+					}
+
+					// Add casual partner
+					for (int p = 0; p < pair.length; p++) {
+						pair[p].addCasualPartner(pair[(p + 1) % 2]);
+					}
+
+					casualPartnerFormed[partershipPt] = new Person_Bridging_Pop[] { pair[0], pair[1] };
+					checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), 1 },
+							existingContactMap);
+
+					// Clean up relevant list
+					int removeIndex = -1;
+					for (int r = 0; r < tar_base_list.size(); r++) {
+						Person_Bridging_Pop removePerson = tar_base_list.get(r);
+						if (removePerson.getId() == tar_person.getId()) {
+							removeIndex = r;
+							break;
+						}
+					}
+					if (removeIndex >= 0) {
+						tar_base_list.remove(removeIndex);
+						tar_base_max_list.remove(removeIndex);
+					}
+
+					partershipPt++;
+					numCasualToFormed--;
+				}
+			}
+
+		}
+		return partershipPt;
+	}
+
+	private Person_Bridging_Pop findPartnerFromList(boolean randomMixing, Person_Bridging_Pop src_person,
+			Integer src_behavior, ArrayList<Person_Bridging_Pop> list_tar, ArrayList<Integer> list_tar_behavior,
+			RelationshipMap relMap_check) {
+		int tar_index;
+		Person_Bridging_Pop tar_person;
+		if (randomMixing || list_tar.size() == 1) {
+			tar_index = getRNG().nextInt(list_tar.size());
+		} else {
+			int[] indices = new int[] {
+					Collections.binarySearch(list_tar_behavior, src_behavior - CASUAL_MIXING_SD_RANGE),
+					Collections.binarySearch(list_tar_behavior, src_behavior),
+					Collections.binarySearch(list_tar_behavior, src_behavior + CASUAL_MIXING_SD_RANGE), };
+
+			for (int i = 0; i < indices.length; i++) {
+				if (indices[i] < 0) {
+					indices[i] = ~indices[i];
+				}
+			}
+
+			if (indices[2] > indices[0]) {
+				float sd = (indices[2] - indices[0]) / 2f;
+				tar_index = -1;
+				// Resample until have a valid match
+				while (tar_index < 0 || tar_index >= list_tar.size()) {
+					tar_index = (int) Math.round(getRNG().nextGaussian() * sd + indices[1]);
+				}
+			} else {
+				// Go back to random if SD = 0 (e.g. all the same);
+				tar_index = getRNG().nextInt(list_tar.size());
+			}
+		}
+
+		tar_person = list_tar.remove(tar_index);
+		list_tar_behavior.remove(tar_index);
+
+		if (relMap_check != null) {
+			// For consistency
+			boolean swapPerson;
+
+			if ((src_person.getGenderType() & tar_person.getGenderType()) == Population_Bridging.GENDER_HETRO_FEMALE) {
+				swapPerson = src_person.getGenderType() == Population_Bridging.GENDER_HETRO_FEMALE;
+			} else {
+				swapPerson = src_person.getId() > tar_person.getId();
+			}
+
+			if (relMap_check.containsEdge(swapPerson ? tar_person.getId() : src_person.getId(),
+					!swapPerson ? tar_person.getId() : src_person.getId())) {
+				tar_person = null;
+			}
+		}
+		return tar_person;
 	}
 
 	@Override
