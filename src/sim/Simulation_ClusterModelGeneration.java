@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
+import population.Population_Bridging_Scheduled;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
@@ -192,7 +193,15 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 			if (skipSeeds == null || Collections.binarySearch(skipSeeds, popSeed) < 0) {
 
-				Population_Bridging population = new Population_Bridging(popSeed);
+				Population_Bridging population;
+
+				if (Population_Bridging_Scheduled.class.getName()
+						.equals(loadedProperties.get(SimulationInterface.PROP_POP_TYPE))) {
+					population = new Population_Bridging_Scheduled(popSeed);
+
+				} else {
+					population = new Population_Bridging(popSeed);
+				}
 				for (int f = 0; f < Population_Bridging.LENGTH_FIELDS_BRIDGING_POP; f++) {
 					if (simFields[f] != null) {
 						population.getFields()[f] = simFields[f];
@@ -217,7 +226,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 				if (printOutput) {
 					PrintStream outputPS;
-					if (numThreads < 0) { 
+					if (numThreads < 0) {
 						System.out.println("Debug: Output print to console called by PROP_USE_PARALLEL < 0");
 						outputPS = System.out;
 

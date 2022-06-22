@@ -135,7 +135,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private transient int[][] canSeekCasPartners_catorgories_offset = new int[LENGTH_GENDER][];
 
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
-	private transient HashMap<String, Object> stepwise_output = null;
+	protected transient HashMap<String, Object> stepwise_output = null;
 
 	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 
@@ -152,7 +152,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private static final int CASUAL_MIXING_SD_RANGE = 2;
 
-	private PrintStream printStatus = null;
+	protected PrintStream printStatus = null;
 
 	public void setPrintStatus(PrintStream printStatus) {
 		this.printStatus = printStatus;
@@ -211,7 +211,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	}
 
-	private void initialiseTransientFields() {
+	protected void initialiseTransientFields() {
 		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
 		int numCat = field_mean_number_partner.length / (LENGTH_GENDER + 1);
 
@@ -342,7 +342,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				casualPartnerFormed = Arrays.copyOf(casualPartnerFormed,
 						casualPartnerFormed.length + numMSMCasualToFormed);
 
-				// TODO: Assortative mixing (MSM)
+				// Assortative mixing (MSM)
 				Arrays.sort(casualMSMArr, COMPARATOR_CASUAL_MIXING);
 
 				ArrayList<Person_Bridging_Pop> casualMSMList = new ArrayList<>(List.of(casualMSMArr));
@@ -470,7 +470,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				System.arraycopy(casualCandidate[GENDER_MSMW], 0, casualMale, casualCandidate[GENDER_HETRO_MALE].length,
 						casualCandidate[GENDER_MSMW].length);
 
-				// TODO: Assortative mixing (Hetrosexual)
+				// Assortative mixing (Hetrosexual)
 				Arrays.sort(casualFemale, COMPARATOR_CASUAL_MIXING);
 				Arrays.sort(casualMale, COMPARATOR_CASUAL_MIXING);
 
@@ -923,7 +923,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	}
 
-	private int getNumRegularPartnersCurrently(Person_Bridging_Pop person) {
+	protected int getNumRegularPartnersCurrently(Person_Bridging_Pop person) {
 		int numReg12Currently = person.getNumRegularInRecord();
 		// Has current partner with partnership longer for 12 months
 		for (int r = 0; r < LENGTH_RELMAP; r++) {
@@ -940,7 +940,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		return numReg12Currently;
 	}
 
-	private int findPartnershipCatogories(float[] field_mean_number_partner, int numCat, int numPart12Months) {
+	protected int findPartnershipCatogories(float[] field_mean_number_partner, int numCat, int numPart12Months) {
 		int cPt = Arrays.binarySearch(field_mean_number_partner, 0, numCat, numPart12Months);
 		if (cPt < 0) {
 			cPt = ~cPt;
@@ -951,7 +951,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		return cPt;
 	}
 
-	private int[] cal_pop_diff_num_partner(int[] population_num_partner_in_last_12_months) {
+	protected int[] cal_pop_diff_num_partner(int[] population_num_partner_in_last_12_months) {
 		float[] field_mean_target = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
 		int[] numInGrp = (int[]) (getFields()[FIELD_POP_COMPOSITION]);
 		int[] pop_diff;
@@ -1207,7 +1207,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		}
 	}
 
-	private void checkContactMaps(Integer[] link, ContactMap[] cMaps) {
+	protected void checkContactMaps(Integer[] link, ContactMap[] cMaps) {
 		for (ContactMap c : cMaps) {
 			if (c != null) {
 
@@ -1253,7 +1253,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	}
 
-	private void removeSingleRelationship(Person_Bridging_Pop breakRelPerson) {
+	protected void removeSingleRelationship(Person_Bridging_Pop breakRelPerson) {
 
 		int tarMapIndex = -1;
 

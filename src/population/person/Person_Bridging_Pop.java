@@ -109,7 +109,6 @@ public class Person_Bridging_Pop implements AbstractIndividualInterface, Seriali
 	}
 	
 	public int getNumRegularInRecord() {
-
 		return getNumInRecord(regularRecord);
 	}
 	
