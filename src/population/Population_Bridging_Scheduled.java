@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -145,8 +146,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		if (reqPartnerScheduling) {
 			lastPartnershipScheduling = getGlobalTime();
 
-			
-
 			ArrayList<Person_Bridging_Pop> candidates_any = new ArrayList<>(getPop().length);
 			ArrayList<Person_Bridging_Pop> candidates_reg = new ArrayList<>(getPop().length);
 			ArrayList<Person_Bridging_Pop> candidates_cas = new ArrayList<>(getPop().length);
@@ -155,6 +154,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			int[] gender_count_reg = new int[LENGTH_GENDER];
 			int[] gender_count_cas = new int[LENGTH_GENDER];
 
+			HashMap<Integer, int[]> rel_status = new HashMap<>();
+
 			for (AbstractIndividualInterface absPerson : getPop()) {
 				Person_Bridging_Pop person = (Person_Bridging_Pop) absPerson;
 				int[] rc = getNumPartnerSought(person);
@@ -162,6 +163,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				if (rc[0] + rc[1] > 0) {
 					candidates_any.add(person);
 					gender_count_any[person.getGenderType()]++;
+					rel_status.put(person.getId(), rc);
 				}
 				if (rc[0] > 0) {
 					candidates_reg.add(person);
@@ -175,8 +177,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			candidates_any.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);
 			candidates_reg.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);
-			candidates_cas.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);	
-			
+			candidates_cas.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);
+
 			// TODO: Current progress - Form partnership on a 12 months schedule
 
 			int[] pop_diff_num_partner_12_months = cal_pop_diff_num_partner(population_num_partner_in_last_12_months);
@@ -186,11 +188,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				for (int c = numCat - 1; c >= 0; c++) {
 					int pdIndex = numCat + g * numCat + c;
 					int numToSeek = pop_diff_num_partner_12_months[pdIndex];
-					
-					
-					
-					
-					
 
 				}
 			}
@@ -257,13 +254,16 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		public int compare(AbstractIndividualInterface o1, AbstractIndividualInterface o2) {
 			int cmp;
 			if (o1 instanceof Person_Bridging_Pop && o2 instanceof Person_Bridging_Pop) {
-
 				cmp = Integer.compare(((Person_Bridging_Pop) o1).getGenderType(),
 						((Person_Bridging_Pop) o2).getGenderType());
 				if (cmp == 0) {
-					cmp = Integer.compare(o1.getId(), o2.getId());
+					int[] rc1 = getNumPartnerSought((Person_Bridging_Pop) o1);
+					int[] rc2 = getNumPartnerSought((Person_Bridging_Pop) o2);
+					cmp = Integer.compare(rc1[0] + rc1[1], rc2[0] + rc2[1]);
+					if (cmp == 0) {
+						cmp = Integer.compare(o1.getId(), o2.getId());
+					}
 				}
-				return cmp;
 			} else {
 				int g1 = o1.isMale() ? 1 : 0;
 				int g2 = o2.isMale() ? 1 : 0;
@@ -271,9 +271,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				if (cmp == 0) {
 					cmp = Integer.compare(o1.getId(), o2.getId());
 				}
-				return cmp;
-
 			}
+			return cmp;
 		}
 
 	};
