@@ -196,7 +196,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				Population_Bridging population;
 
 				if (Population_Bridging_Scheduled.class.getName()
-						.equals(loadedProperties.get(SimulationInterface.PROP_POP_TYPE))) {
+						.equals(loadedProperties.get(
+								SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
 					population = new Population_Bridging_Scheduled(popSeed);
 
 				} else {

@@ -5,10 +5,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 
 import infection.AbstractInfection;
 import person.AbstractIndividualInterface;
@@ -23,7 +21,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 	protected HashMap<Integer, ArrayList<Integer[]>> schedule_partnership;
 
-	protected transient int lastPartnershipScheduling = 0;
+	protected transient int lastPartnershipScheduling = -1;
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
 	public static final int SCHEDULE_PARTNERSHIP_P2 = SCHEDULE_PARTNERSHIP_P1 + 1;
@@ -140,58 +138,93 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	@Override
 	public void formPartnerships(int[] population_num_partner_in_last_12_months) {
 
-		boolean reqPartnerScheduling = getGlobalTime() == lastPartnershipScheduling
-				+ AbstractIndividualInterface.ONE_YEAR_INT;
+		boolean reqPartnerScheduling = (lastPartnershipScheduling < 0)
+				|| (getGlobalTime() == lastPartnershipScheduling + AbstractIndividualInterface.ONE_YEAR_INT);
 
 		if (reqPartnerScheduling) {
 			lastPartnershipScheduling = getGlobalTime();
 
-			ArrayList<Person_Bridging_Pop> candidates_any = new ArrayList<>(getPop().length);
-			ArrayList<Person_Bridging_Pop> candidates_reg = new ArrayList<>(getPop().length);
-			ArrayList<Person_Bridging_Pop> candidates_cas = new ArrayList<>(getPop().length);
+			int numCat = population_num_partner_in_last_12_months.length / (1 + LENGTH_GENDER);
+			float[] cat_value = Arrays.copyOf((float[]) getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS], numCat);
 
-			int[] gender_count_any = new int[LENGTH_GENDER];
-			int[] gender_count_reg = new int[LENGTH_GENDER];
-			int[] gender_count_cas = new int[LENGTH_GENDER];
+			int[][] candidates_any = new int[getPop().length][LENGTH_COMPARATOR_BY_PARTNERSHIP_SOUGHT];
 
-			HashMap<Integer, int[]> rel_status = new HashMap<>();
+			int[] gender_end = new int[LENGTH_GENDER];
+
+			int pI = 0;
 
 			for (AbstractIndividualInterface absPerson : getPop()) {
 				Person_Bridging_Pop person = (Person_Bridging_Pop) absPerson;
 				int[] rc = getNumPartnerSought(person);
-
-				if (rc[0] + rc[1] > 0) {
-					candidates_any.add(person);
-					gender_count_any[person.getGenderType()]++;
-					rel_status.put(person.getId(), rc);
-				}
-				if (rc[0] > 0) {
-					candidates_reg.add(person);
-					gender_count_reg[person.getGenderType()]++;
-				}
-				if (rc[1] > 0) {
-					candidates_cas.add(person);
-					gender_count_cas[person.getGenderType()]++;
-				}
+				candidates_any[pI][COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID] = person.getId();
+				candidates_any[pI][COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_GENDER] = person.getGenderType();
+				candidates_any[pI][COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_NUM_TO_SOUGHT] = rc[0] + rc[1];
+				gender_end[person.getGenderType()]++;
+				pI++;
 			}
 
-			candidates_any.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);
-			candidates_reg.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);
-			candidates_cas.sort(COMPARATOR_BY_PARTNERSHIP_SOUGHT);
+			Arrays.sort(candidates_any, COMPARATOR_BY_PARTNERSHIP_SOUGHT);
+		
+			HashMap<Integer, int[]> numSoughtThisRound = new HashMap<>();
 
-			// TODO: Current progress - Form partnership on a 12 months schedule
+			
 
 			int[] pop_diff_num_partner_12_months = cal_pop_diff_num_partner(population_num_partner_in_last_12_months);
-			int numCat = pop_diff_num_partner_12_months.length / (1 + LENGTH_GENDER);
-
-			for (int g = 0; g < LENGTH_GENDER; g++) {
-				for (int c = numCat - 1; c >= 0; c++) {
+			for (int c = numCat - 1; c >= 0; c++) {
+				for (int g = 0; g < LENGTH_GENDER; g++) {
+					int g_start = g > 0 ? gender_end[g - 1] : 0;
+					int g_end = gender_end[g];
 					int pdIndex = numCat + g * numCat + c;
-					int numToSeek = pop_diff_num_partner_12_months[pdIndex];
+					while (pop_diff_num_partner_12_months[pdIndex] > 0) {
+						int numPartToSought = (int) cat_value[c];
+						int maxPart = (c + 1 < cat_value.length) ? (int) cat_value[c + 1] : 60;
+						numPartToSought += getRNG().nextInt(maxPart - numPartToSought);
+
+						int src_start = ~Arrays.binarySearch(candidates_any, g_start, g_end,
+								new int[] { -1, g, numPartToSought }, COMPARATOR_BY_PARTNERSHIP_SOUGHT);
+
+						int src_end = ~Arrays.binarySearch(candidates_any, g_start, g_end,
+								new int[] { Integer.MAX_VALUE, g, numPartToSought }, COMPARATOR_BY_PARTNERSHIP_SOUGHT);
+						
+						int candidate_index = src_start + getRNG().nextInt(src_end-src_start);
+						int[] cmp_ent = candidates_any[candidate_index];
+						
+						Person_Bridging_Pop src_person = (Person_Bridging_Pop)
+								getLocalData().get(cmp_ent[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID]);															
+						
+						int[] numSoughted_src = numSoughtThisRound.get(cmp_ent[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID]);
+						
+						if(numSoughted_src == null) {
+							numSoughted_src = new int[1];
+							numSoughtThisRound.put(cmp_ent[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID], numSoughted_src);
+						}
+
+						while (numPartToSought > 0) {
+							
+							// TODO: Current progress - Form partnership on a 12 months schedule
+							
+							
+							
+							numSoughted_src[0]++;
+
+							numPartToSought--;
+						}
+						
+						
+						int adjC = Arrays.binarySearch(cat_value, numSoughted_src[0]);
+						if(adjC < 0) {
+							adjC = ~adjC;
+						}																		
+						int adjpdIndex =  numCat + g * numCat + adjC;
+						
+
+						pop_diff_num_partner_12_months[adjpdIndex]--;
+						
+					}
 
 				}
-			}
 
+			}
 		}
 
 		ArrayList<Integer[]> partnerships = schedule_partnership.remove(getGlobalTime());
@@ -236,7 +269,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			}
 		}
-
 	}
 
 	private int[] getNumPartnerSought(Person_Bridging_Pop person) {
@@ -249,29 +281,30 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		return rc;
 	}
 
-	private final Comparator<AbstractIndividualInterface> COMPARATOR_BY_PARTNERSHIP_SOUGHT = new Comparator<AbstractIndividualInterface>() {
+	private static int COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID = 0;
+	private static int COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_GENDER = COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID;
+	private static int COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_NUM_TO_SOUGHT = COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_GENDER
+			+ 1;
+	private static int LENGTH_COMPARATOR_BY_PARTNERSHIP_SOUGHT = COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_NUM_TO_SOUGHT
+			+ 1;
+
+	private final Comparator<int[]> COMPARATOR_BY_PARTNERSHIP_SOUGHT = new Comparator<int[]>() {
+
 		@Override
-		public int compare(AbstractIndividualInterface o1, AbstractIndividualInterface o2) {
+		public int compare(int[] o1, int[] o2) {
 			int cmp;
-			if (o1 instanceof Person_Bridging_Pop && o2 instanceof Person_Bridging_Pop) {
-				cmp = Integer.compare(((Person_Bridging_Pop) o1).getGenderType(),
-						((Person_Bridging_Pop) o2).getGenderType());
+
+			cmp = Float.compare(o1[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_GENDER],
+					o2[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_GENDER]);
+			if (cmp == 0) {
+				cmp = Float.compare(o1[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_NUM_TO_SOUGHT],
+						o2[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_NUM_TO_SOUGHT]);
 				if (cmp == 0) {
-					int[] rc1 = getNumPartnerSought((Person_Bridging_Pop) o1);
-					int[] rc2 = getNumPartnerSought((Person_Bridging_Pop) o2);
-					cmp = Integer.compare(rc1[0] + rc1[1], rc2[0] + rc2[1]);
-					if (cmp == 0) {
-						cmp = Integer.compare(o1.getId(), o2.getId());
-					}
-				}
-			} else {
-				int g1 = o1.isMale() ? 1 : 0;
-				int g2 = o2.isMale() ? 1 : 0;
-				cmp = Integer.compare(g1, g2);
-				if (cmp == 0) {
-					cmp = Integer.compare(o1.getId(), o2.getId());
+					cmp = Float.compare(o1[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID],
+							o2[COMPARATOR_BY_PARTNERSHIP_SOUGHT_INDEX_ID]);
 				}
 			}
+
 			return cmp;
 		}
 
