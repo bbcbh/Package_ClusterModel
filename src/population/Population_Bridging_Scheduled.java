@@ -356,7 +356,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 							tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY]--;
 
-							if (tar_sough_partner_type_index == SOUGHT_REG) {
+							if (tar_sough_partner_type_index == SOUGHT_REG ) {
 								tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_REG]--;
 							} else if (tar_sough_partner_type_index == SOUGHT_CAS) {
 								tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_CAS]--;
