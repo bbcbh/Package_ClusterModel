@@ -25,8 +25,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
 	public static final int SCHEDULE_PARTNERSHIP_P2 = SCHEDULE_PARTNERSHIP_P1 + 1;
-	public static final int SCHEDULE_PARTNERSHIP_DUR = SCHEDULE_PARTNERSHIP_P2 + 1;
-	public static final int LENGTH_SCHEDULE_PARTNERSHIP = SCHEDULE_PARTNERSHIP_DUR + 1;
+	public static final int SCHEDULE_PARTNERSHIP_TYPE = SCHEDULE_PARTNERSHIP_P2 + 1;
+	public static final int LENGTH_SCHEDULE_PARTNERSHIP = SCHEDULE_PARTNERSHIP_TYPE + 1;
 
 	public Population_Bridging_Scheduled(long seed) {
 		super(seed);
@@ -182,6 +182,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					candidates[a][pI] = ent;
 				}
 				gender_end[person.getGenderType()]++;
+
 				pI++;
 			}
 
@@ -197,6 +198,13 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					int pdIndex = numCat + g * numCat + c;
 
 					while (pop_diff_num_partner_12_months[pdIndex] > schedule_current_length[pdIndex]) {
+
+						//int[][] sort_up_to = new int[LENGTH_SOUGHT][2];
+						//for (int s = 0; s < LENGTH_SOUGHT; s++) {
+						//	sort_up_to[s][1] = 0;
+						//	sort_up_to[s][0] = candidates[s].length;
+						//}
+
 						int numPartToSought_min = (int) cat_value[c];
 						int numPartToSought_max = (c + 1 < cat_value.length) ? (int) cat_value[c + 1] : 60;
 
@@ -244,6 +252,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						boolean onlySoughtCas = src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_MAX_REG] == 0;
 						int maxToSought = src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY];
 
+						//sort_up_to[SOUGHT_ANY][0] = Math.min(sort_up_to[SOUGHT_ANY][0], src_candidate_index);
+						//sort_up_to[SOUGHT_ANY][1] = Math.max(sort_up_to[SOUGHT_ANY][1], src_candidate_index);
+
 						int[] tar_possible_gender;
 
 						switch (src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_GENDER]) {
@@ -271,10 +282,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							tar_sough_partner_type_index = SOUGHT_CAS;
 							tar_binary_key_num_sought_partner_type_index = ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_CAS;
 						}
-
-						Person_Bridging_Pop src_person = (Person_Bridging_Pop) getLocalData()
-								.get(src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_ID]);
-
+					
 						int[][] candidateRangeByGender = new int[tar_possible_gender.length][2];
 						int[] totalLength = new int[tar_possible_gender.length];
 
@@ -290,14 +298,14 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							binary_key[ComparatorByPartnershipSought.INDEX_ID] = -1;
 
 							candidateRangeByGender[cG][0] = ~Arrays.binarySearch(
-									candidates[tar_sough_partner_type_index], g_start, g_end, binary_key,
+									candidates[tar_sough_partner_type_index], cg_start, cg_end, binary_key,
 									comparators[tar_sough_partner_type_index]);
 
 							binary_key[tar_binary_key_num_sought_partner_type_index] = Integer.MAX_VALUE;
 							binary_key[ComparatorByPartnershipSought.INDEX_ID] = Integer.MAX_VALUE;
 
 							candidateRangeByGender[cG][1] = ~Arrays.binarySearch(
-									candidates[tar_sough_partner_type_index], g_start, g_end, binary_key,
+									candidates[tar_sough_partner_type_index], cg_start, cg_end, binary_key,
 									comparators[tar_sough_partner_type_index]);
 
 							totalLength[cG] = candidateRangeByGender[cG][1] - candidateRangeByGender[cG][0];
@@ -311,29 +319,50 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						int nextTarPt = 0;
 
 						for (int i = 0; i < tar_index.length && nextTarPt < tar_index.length; i++) {
-							if (getRNG().nextInt( totalLength[totalLength.length] - i) < (tar_index.length - nextTarPt)) {
+							if (getRNG()
+									.nextInt(totalLength[totalLength.length] - i) < (tar_index.length - nextTarPt)) {
 								tar_index[nextTarPt] = i;
 								nextTarPt++;
 							}
 						}
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						
-						
 
 						// TODO: Current progress - Form partnership on a 12 months schedule
-						
-						
-						
+						int offset_row = 0;
+						int offset = 0;
+						for (int i = 0; i < tar_index.length; i++) {
+							while (tar_index[i] > totalLength[offset_row]) {
+								offset += totalLength[offset_row];
+								offset_row++;
+							}
+
+							int[] tar_candidate_cmp_ent = candidates[tar_sough_partner_type_index][tar_index[i]
+									- offset];
+							
+							//sort_up_to[tar_sough_partner_type_index][0] = Math.min(sort_up_to[tar_sough_partner_type_index][0], tar_sough_partner_type_index);
+							//sort_up_to[tar_sough_partner_type_index][1] = Math.max(sort_up_to[tar_sough_partner_type_index][1], tar_sough_partner_type_index);
+
+							Integer partner_form_time = getGlobalTime()
+									+ getRNG().nextInt(AbstractIndividualInterface.ONE_YEAR_INT);
+							
+							
+							Integer[] schedule_partnership_ent = new Integer[LENGTH_SCHEDULE_PARTNERSHIP];
+							
+							schedule_partnership_ent[SCHEDULE_PARTNERSHIP_P1] = src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_ID];
+							schedule_partnership_ent[SCHEDULE_PARTNERSHIP_P2] = tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_ID];
+							schedule_partnership_ent[SCHEDULE_PARTNERSHIP_TYPE] = tar_sough_partner_type_index;					
+							
+							ArrayList<Integer[]> partnerships = schedule_partnership.get(partner_form_time);
+							if(partnerships == null) {
+								partnerships = new ArrayList<>();
+								schedule_partnership.put(partner_form_time, partnerships);
+							}
+							partnerships.add(schedule_partnership_ent);
+							
+							
+
+							// TODO: Update schedule_current_length
+
+						}
 
 						int adjC = Arrays.binarySearch(cat_value, tar_index.length);
 						if (adjC < 0) {
@@ -342,9 +371,16 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						int adjpdIndex = numCat + g * numCat + adjC;
 
 						schedule_current_length[adjpdIndex]++;
-						
-						
-						//Update candidiate range
+
+						// Update candidate arrays
+						for (int s = 0; s < LENGTH_SOUGHT; s++) {
+							//if (sort_up_to[s][0] <= sort_up_to[s][1]) {
+							//	Arrays.sort(candidates[s], sort_up_to[s][0], sort_up_to[s][1], comparators[s]);
+							//} else {
+								Arrays.sort(candidates[s], comparators[s]);
+							//}
+
+						}
 
 					}
 
@@ -362,9 +398,19 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						(Person_Bridging_Pop) getLocalData().get(edge[SCHEDULE_PARTNERSHIP_P1]),
 						(Person_Bridging_Pop) getLocalData().get(edge[SCHEDULE_PARTNERSHIP_P2]), };
 
-				int duration = edge[SCHEDULE_PARTNERSHIP_DUR];
+				// For consistency
+				if (pair[1].getGenderType() == Person_Bridging_Pop.GENDER_TYPE_FEMALE
+						|| pair[1].getId() < pair[0].getId()) {					
+					Person_Bridging_Pop temp = pair[0];
+					pair[0] = pair[1];
+					pair[1] = temp;
+				}
 
-				if (duration > 1) { // Regular
+				int partnershipType = edge[SCHEDULE_PARTNERSHIP_TYPE];
+				
+				// TODO: create partnership based on type
+
+				if (partnershipType > 1) { // Regular
 					int mapType;
 					if (pair[1].getGenderType() == GENDER_FEMALE || pair[0].getGenderType() == GENDER_FEMALE) {
 						mapType = RELMAP_HETRO;
@@ -377,7 +423,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						removeSingleRelationship(pair[p]);
 					}
 
-					formRelationship(pair, getRelMap()[mapType], duration, mapType);
+					formRelationship(pair, getRelMap()[mapType], partnershipType, mapType);
 
 				} else { // Casual
 					ContactMap[] cMaps = new ContactMap[] {
@@ -388,7 +434,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						pair[p].addCasualPartner(pair[(p + 1) % 2]);
 					}
 
-					checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), duration },
+					checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), partnershipType },
 							cMaps);
 				}
 
