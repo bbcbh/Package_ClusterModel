@@ -102,8 +102,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int PARTNER_TYPE_INDEX_CAS_ONLY = PARTNER_TYPE_INDEX_REG_ONLY + 1;
 	public static final int PARTNER_TYPE_ASSORTATIVITY = PARTNER_TYPE_INDEX_CAS_ONLY + 1;
 
-	public static final int GENDER_HETRO_FEMALE = 0;
-	public static final int GENDER_HETRO_MALE = GENDER_HETRO_FEMALE + 1;
+	public static final int GENDER_FEMALE = 0;
+	public static final int GENDER_HETRO_MALE = GENDER_FEMALE + 1;
 	public static final int GENDER_MSMO = GENDER_HETRO_MALE + 1;
 	public static final int GENDER_MSMW = GENDER_MSMO + 1;
 	public static final int LENGTH_GENDER = GENDER_MSMW + 1;
@@ -360,19 +360,19 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		}
 
 		// Heterosexual
-		if (casualCandidate[GENDER_HETRO_FEMALE].length > 0
+		if (casualCandidate[GENDER_FEMALE].length > 0
 				&& (casualCandidate[GENDER_HETRO_MALE].length + casualCandidate[GENDER_MSMW].length) > 0)
 
 		{
 
-			int numHetroCasualToFormed = Math.min(casualCandidate[GENDER_HETRO_FEMALE].length,
+			int numHetroCasualToFormed = Math.min(casualCandidate[GENDER_FEMALE].length,
 					casualCandidate[GENDER_HETRO_MALE].length + casualCandidate[GENDER_MSMW].length);
 
 			if (numHetroCasualToFormed > 0) {
 
 				cMaps = new ContactMap[] { ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL] };
 
-				Person_Bridging_Pop[] casualFemale = casualCandidate[GENDER_HETRO_FEMALE];
+				Person_Bridging_Pop[] casualFemale = casualCandidate[GENDER_FEMALE];
 				Person_Bridging_Pop[] casualMale = Arrays.copyOf(casualCandidate[GENDER_HETRO_MALE],
 						casualCandidate[GENDER_HETRO_MALE].length + casualCandidate[GENDER_MSMW].length);
 
@@ -453,7 +453,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 					// For consistency
 					if (rel_order_by_gender) {
-						if (src_person.getGenderType() == Population_Bridging.GENDER_HETRO_FEMALE) {
+						if (src_person.getGenderType() == Population_Bridging.GENDER_FEMALE) {
 							pair = new Person_Bridging_Pop[] { tar_person, src_person };
 						} else {
 							pair = new Person_Bridging_Pop[] { src_person, tar_person };
@@ -537,8 +537,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			// For consistency
 			boolean swapPerson;
 
-			if ((src_person.getGenderType() & tar_person.getGenderType()) == Population_Bridging.GENDER_HETRO_FEMALE) {
-				swapPerson = src_person.getGenderType() == Population_Bridging.GENDER_HETRO_FEMALE;
+			if ((src_person.getGenderType() & tar_person.getGenderType()) == Population_Bridging.GENDER_FEMALE) {
+				swapPerson = src_person.getGenderType() == Population_Bridging.GENDER_FEMALE;
 			} else {
 				swapPerson = src_person.getId() > tar_person.getId();
 			}
@@ -981,7 +981,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			if (map == RELMAP_HETRO) {
 				availiablePerson[0] = candidates[GENDER_HETRO_MALE];
-				availiablePerson[1] = candidates[GENDER_HETRO_FEMALE];
+				availiablePerson[1] = candidates[GENDER_FEMALE];
 			} else {
 				availiablePerson[0] = candidates[GENDER_MSMO];
 				availiablePerson[1] = new AbstractIndividualInterface[0];

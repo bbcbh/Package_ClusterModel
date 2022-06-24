@@ -109,14 +109,14 @@ public class Optimisation_Factory {
 						break;
 					case 2:
 						// Hetro female and all msm
-						var_by_gender[Population_Bridging.GENDER_HETRO_FEMALE] = point[0];
+						var_by_gender[Population_Bridging.GENDER_FEMALE] = point[0];
 						var_by_gender[Population_Bridging.GENDER_HETRO_MALE] = point[0];
 						var_by_gender[Population_Bridging.GENDER_MSMO] = point[1];
 						var_by_gender[Population_Bridging.GENDER_MSMW] = point[1];
 						break;
 					case 3:
 						// Hetro female, MSMO and MSMW
-						var_by_gender[Population_Bridging.GENDER_HETRO_FEMALE] = point[0];
+						var_by_gender[Population_Bridging.GENDER_FEMALE] = point[0];
 						var_by_gender[Population_Bridging.GENDER_HETRO_MALE] = point[0];
 						var_by_gender[Population_Bridging.GENDER_MSMO] = point[1];
 						var_by_gender[Population_Bridging.GENDER_MSMW] = point[2];
