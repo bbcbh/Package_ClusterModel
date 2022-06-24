@@ -317,7 +317,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							}
 						}
 
-					
 						int offset_row = 0;
 						int offset = 0;
 						for (int i = 0; i < tar_index.length; i++) {
@@ -356,10 +355,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 							tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY]--;
 
-							if (tar_sough_partner_type_index == SOUGHT_REG ) {
-
+							switch (tar_sough_partner_type_index) {
+							case SOUGHT_REG:
 								tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_REG]--;
-							} else if (tar_sough_partner_type_index == SOUGHT_CAS) {
+							case SOUGHT_CAS:
 								tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_CAS]--;
 							}
 
