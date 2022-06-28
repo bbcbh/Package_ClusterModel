@@ -397,6 +397,23 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 								tar_candidate_index = ~tar_candidate_index;
 							}
 							partnered_with[i] = target_candidates[tar_candidate_index];
+							
+							// For unlikely case of picking the same person again 							
+							if(tar_candidate_index == src_candidate_index) {
+								if(cumul_weight_lastIndex > 1) {								
+									// Pick again
+									i--;
+								}else {
+									// No other available 
+									partnered_with = new int[0][];
+									break;
+								}
+								
+							
+							}
+							
+							
+							
 							cumul_weight_lastIndex--;
 						}
 
