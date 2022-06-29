@@ -229,18 +229,18 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					int src_gender_index_end = gender_end[src_gender];
 					int src_pdIndex = numCat + src_gender * numCat + src_cat_index;
 
-					while (pop_diff_num_partner_12_months[src_pdIndex] > scheduled_pop_diff_so_far[src_pdIndex]) {
+					determine_src_candidate: while (pop_diff_num_partner_12_months[src_pdIndex] > scheduled_pop_diff_so_far[src_pdIndex]) {
 
 						int numPartToSought_max = (int) categories_values[src_cat_index];
 						int numPartToSought_min = ((src_cat_index == 0) ? 0
 								: (int) categories_values[src_cat_index - 1]) + 1;
-						int range = numPartToSought_max - numPartToSought_min;
+						int numPartToSought_range = numPartToSought_max - numPartToSought_min;
 
 						int[] numPartToSoughtAdj = new int[] { numPartToSought_min, numPartToSought_min, };
 
-						if (range > 1) {
+						if (numPartToSought_range > 1) {
 							for (int i = 0; i < numPartToSoughtAdj.length; i++) {
-								numPartToSoughtAdj[i] += getRNG().nextInt(range);
+								numPartToSoughtAdj[i] += getRNG().nextInt(numPartToSought_range);
 							}
 						}
 
@@ -254,7 +254,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 							binary_key[ComparatorByPartnershipSought.INDEX_ID] = -1;
 							binary_key[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY] = numPartToSoughtAdj[0];
-							src_index[0] = ~Arrays.binarySearch(candidates[0], src_gender_index_start,
+							src_index[0] = ~Arrays.binarySearch(candidates[CANDIDATE_ARRAY_SOUGHT_ANY], src_gender_index_start,
 									src_gender_index_end, binary_key, comparators[CANDIDATE_ARRAY_SOUGHT_ANY]);
 
 							binary_key[ComparatorByPartnershipSought.INDEX_ID] = Integer.MAX_VALUE;
@@ -266,12 +266,16 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							numPartToSoughtAdj[0]--;
 							numPartToSoughtAdj[1]++;
 
-							if (numPartToSoughtAdj[0] < numPartToSought_min
-									&& numPartToSoughtAdj[1] > numPartToSought_max) {
-								numPartToSoughtAdj = null;
-							} else {
-								numPartToSoughtAdj[0] = Math.max(numPartToSought_min, numPartToSoughtAdj[0]);
-								numPartToSoughtAdj[1] = Math.min(numPartToSought_max, numPartToSoughtAdj[1]);
+							if (src_index[1] == src_index[0]) {
+								if (src_index[0] >= src_gender_index_end) {
+									// No more candidate that can sought required number of partners
+									break determine_src_candidate;
+								
+
+								} else {
+									numPartToSoughtAdj[0] = Math.max(numPartToSought_min, numPartToSoughtAdj[0]);
+									numPartToSoughtAdj[1] = Math.min(numPartToSought_max, numPartToSoughtAdj[1]);
+								}
 							}
 						}
 
@@ -352,10 +356,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						int[][] target_candidates = new int[totalLength[totalLength.length - 1]][];
 
 						int offset = 0;
-						for (int cG = 0; cG < candidateRangeByGender.length; cG++) {
+						for (int cG = 0; cG < candidateRangeByGender.length; cG++) {						 							
+							int copyLength = candidateRangeByGender[cG][1] - candidateRangeByGender[cG][0];
 							System.arraycopy(candidates[tar_sought_candidate_partner_type_index],
-									candidateRangeByGender[cG][0], target_candidates, offset, totalLength[cG]);
-							offset += totalLength[cG];
+									candidateRangeByGender[cG][0], target_candidates, offset, copyLength);
+							offset += copyLength;
 						}
 
 						Arrays.sort(target_candidates, new Comparator<int[]>() {
@@ -397,27 +402,25 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 								tar_candidate_index = ~tar_candidate_index;
 							}
 							partnered_with[i] = target_candidates[tar_candidate_index];
-							
-							// For unlikely case of picking the same person again 							
-							if(tar_candidate_index == src_candidate_index) {
-								if(cumul_weight_lastIndex > 1) {								
+
+							// For unlikely case of picking the same person again
+							if (tar_candidate_index == src_candidate_index) {
+								if (cumul_weight_lastIndex > 1) {
 									// Pick again
 									i--;
-								}else {
-									// No other available 
+								} else {
+									// No other available
 									partnered_with = new int[0][];
 									break;
 								}
-								
-							
+
 							}
-							
-							
-							
+
 							cumul_weight_lastIndex--;
 						}
 
-						// TODO: Current check
+						boolean[] gender_to_be_updated = new boolean[LENGTH_GENDER];
+						Arrays.fill(gender_to_be_updated, false);
 
 						for (int i = 0; i < partnered_with.length; i++) {
 							int[] tar_candidate_cmp_ent = partnered_with[i];
@@ -454,22 +457,28 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							updateScheduledPopDiff(scheduled_pop_diff_so_far, src_candidate_cmp_ent, categories_values);
 							updateScheduledPopDiff(scheduled_pop_diff_so_far, tar_candidate_cmp_ent, categories_values);
 
-							// Update candidate arrays
-							for (int s = 0; s < LENGTH_CANDIDATE_ARRAY; s++) {
-								int tar_gender = tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_GENDER];
-								int start_g = 0;
-								if(tar_gender != 0) {
-									start_g = gender_end[tar_gender-1];
-								}								
-								Arrays.sort(candidates[s], start_g, gender_end[tar_gender], comparators[s]);
-								if(src_gender!= tar_gender) {
-									Arrays.sort(candidates[s], src_gender_index_start, src_gender_index_end, comparators[s]);
-								}																
-							}
+							gender_to_be_updated[tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_GENDER]] |= true;
 						}
 
+						// Update candidate array
+						gender_to_be_updated[src_gender] = true;
+						updateCandidateArrays(candidates, comparators, gender_end, gender_to_be_updated);
+						
+						// Debug statement
+						System.out.printf("# to filled for (gender, catorgory) of (%d, %d)  =  %d out of %d\n", src_gender,
+								src_cat_index, scheduled_pop_diff_so_far[src_pdIndex],
+								pop_diff_num_partner_12_months[src_pdIndex]);
+						
 					}
 
+					// Debug statement					
+					for (int g = 0; g < LENGTH_GENDER; g++) {
+						int pdI = numCat + g * numCat;
+						System.out.printf(" %d : %s\n", g,
+								Arrays.toString(Arrays.copyOfRange(scheduled_pop_diff_so_far, pdI, pdI + numCat)));
+					}
+
+					System.out.println();
 				}
 
 			}
@@ -527,6 +536,22 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		}
 	}
 
+	private void updateCandidateArrays(int[][][] candidates, ComparatorByPartnershipSought[] comparators,
+			int[] gender_end, boolean[] gender_to_be_updated) {
+		for (int s = 0; s < LENGTH_CANDIDATE_ARRAY; s++) {
+			for (int g = 0; g < gender_to_be_updated.length; g++) {
+				if (gender_to_be_updated[g]) {
+					int start_g = 0;
+					if (start_g != 0) {
+						start_g = gender_end[g - 1];
+					}
+					Arrays.sort(candidates[s], start_g, gender_end[g], comparators[s]);
+				}
+			}
+
+		}
+	}
+
 	private void fillCandidateList(int[][][] candidates, ComparatorByPartnershipSought[] comparators,
 			int[] gender_end) {
 		int pI = 0;
@@ -560,17 +585,17 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 	private void updateScheduledPopDiff(int[] scheduled_pop_diff_so_far, int[] candidate_cmp_ent,
 			float[] categories_values) {
-		int tar_num_partner_currently = Math.max(candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_MAX_REG],
+		int num_partner_currently = Math.max(candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_MAX_REG],
 				candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_MAX_CAS])
 				- candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY];
 
-		int catAdj_prev = Arrays.binarySearch(categories_values, tar_num_partner_currently - 1);
+		int catAdj_prev = Arrays.binarySearch(categories_values, num_partner_currently - 1);
 
 		if (catAdj_prev < 0) {
 			catAdj_prev = ~catAdj_prev;
 		}
 
-		int catAdj = Arrays.binarySearch(categories_values, tar_num_partner_currently);
+		int catAdj = Arrays.binarySearch(categories_values, num_partner_currently);
 		if (catAdj < 0) {
 			catAdj = ~catAdj;
 		}
@@ -580,7 +605,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					+ candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_GENDER] * categories_values.length + catAdj;
 			scheduled_pop_diff_so_far[adj_partner_dist_index]++;
 
-			if (catAdj_prev > 1) {
+			if (catAdj_prev > 0) {
 				// Subtract previous if it already schedule previously
 				adj_partner_dist_index = categories_values.length
 						+ candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_GENDER] * categories_values.length
