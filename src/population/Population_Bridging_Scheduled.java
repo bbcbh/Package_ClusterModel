@@ -336,15 +336,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							int tar_gender = tar_possible_gender[cG];
 							int cg_start = tar_gender > 0 ? gender_end[tar_gender - 1] : 0;
 							int cg_end = gender_end[tar_gender];
+							
 							Arrays.sort(candidates, cg_start, cg_end,
 									comparators[tar_sought_candidate_partner_type_index]);
-						}
-
-						for (int cG = 0; cG < tar_possible_gender.length; cG++) {
-							int tar_gender = tar_possible_gender[cG];
-							int cg_start = tar_gender > 0 ? gender_end[tar_gender - 1] : 0;
-							int cg_end = gender_end[tar_gender];
-
+							
 							// At least seek one partner
 							binary_key[ComparatorByPartnershipSought.INDEX_GENDER] = tar_gender;
 							binary_key[tar_sought_comparator_partner_type_index] = 1;
@@ -375,7 +370,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						int offset = 0;
 						for (int cG = 0; cG < candidateRangeByGender.length; cG++) {
 							int copyLength = candidateRangeByGender[cG][1] - candidateRangeByGender[cG][0];
-							System.arraycopy(candidates[tar_sought_candidate_partner_type_index],
+							System.arraycopy(candidates,
 									candidateRangeByGender[cG][0], target_candidates, offset, copyLength);
 							offset += copyLength;
 						}
