@@ -137,7 +137,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
 	protected transient HashMap<String, Object> stepwise_output = null;
 
-	private AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
+	protected AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 
 	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 

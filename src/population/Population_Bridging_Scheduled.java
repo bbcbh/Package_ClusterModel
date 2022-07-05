@@ -14,6 +14,7 @@ import infection.AbstractInfection;
 import person.AbstractIndividualInterface;
 import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
+import relationship.RelationshipMap;
 
 public class Population_Bridging_Scheduled extends Population_Bridging {
 	/**
@@ -134,10 +135,17 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		int[] population_num_partner_in_last_12_months = new int[field_mean_number_partner.length];
 		int numCat = field_mean_number_partner.length / (LENGTH_GENDER + 1);
 
+		
 		boolean reportPartnerStat = getGlobalTime() == lastPartnershipScheduling
-				+ AbstractIndividualInterface.ONE_YEAR_INT;
+				+ AbstractIndividualInterface.ONE_YEAR_INT+1;
 
-		reportPartnerStat = true; // TODO: Debug for advanceTimeStep (Schedule)
+		//TODO: Debug print partner stat statement
+		reportPartnerStat |= getGlobalTime() == lastPartnershipScheduling
+				+ AbstractIndividualInterface.ONE_YEAR_INT-1;
+		
+		reportPartnerStat |= getGlobalTime() == lastPartnershipScheduling
+				+ AbstractIndividualInterface.ONE_YEAR_INT+1;
+		
 
 		for (AbstractIndividualInterface p : this.getPop()) {
 			Person_Bridging_Pop person = (Person_Bridging_Pop) p;
@@ -170,7 +178,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					PrintWriter pri = new PrintWriter(wri);
 					pri.println(String.format("# partners in last 12 months -  Day %d\n", getGlobalTime()));
 					for (int g = 0; g < LENGTH_GENDER; g++) {
-						pri.printf(" %d: %s", g,
+						pri.printf(" %d: %s\n", g,
 								Arrays.toString(Arrays.copyOfRange(population_num_partner_in_last_12_months,
 										numCat + g * numCat, 2 * numCat + g * numCat)));
 					}
@@ -194,7 +202,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	private static final int CANDIDATE_ARRAY_CURRENTLY_SCHEDULED = 0;
 	private static final int CANDIDATE_ARRAY_SOUGHT_ANY = CANDIDATE_ARRAY_CURRENTLY_SCHEDULED + 1;
 	private static final int CANDIDATE_ARRAY_SOUGHT_REG = CANDIDATE_ARRAY_SOUGHT_ANY + 1;
-	private static final int CANDIDATE_ARRAY_SOUGHT_CAS = CANDIDATE_ARRAY_SOUGHT_REG + 1;	
+	private static final int CANDIDATE_ARRAY_SOUGHT_CAS = CANDIDATE_ARRAY_SOUGHT_REG + 1;
 
 	private boolean debug = true;
 
@@ -256,6 +264,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						Arrays.sort(candidates, src_gender_index_start, src_gender_index_end,
 								comparators[CANDIDATE_ARRAY_CURRENTLY_SCHEDULED]);
 
+						boolean reachfirstMaxRange = false;
+
 						while (src_index_range[1] == src_index_range[0] && numPartToSoughtAdj != null) {
 
 							binary_key[ComparatorByPartnershipSought.INDEX_ID] = -1;
@@ -274,9 +284,14 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									&& numPartToSoughtAdj[1] == numPartToSought_max;
 
 							if (src_index_range[1] == src_index_range[0]) {
-								if (alreadyAtMaxRange && src_index_range[0] >= src_gender_index_end) {
-									// No more candidate that can sought required number of partners
-									break determine_src_candidate;
+								if (alreadyAtMaxRange) {
+									if (reachfirstMaxRange) {
+										// No more candidate that can sought required number of partners
+										break determine_src_candidate;
+									} else {
+										reachfirstMaxRange = true; // Try one more time
+									}
+
 								} else {
 									numPartToSoughtAdj[0]--;
 									numPartToSoughtAdj[1]++;
@@ -336,10 +351,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							int tar_gender = tar_possible_gender[cG];
 							int cg_start = tar_gender > 0 ? gender_end[tar_gender - 1] : 0;
 							int cg_end = gender_end[tar_gender];
-							
+
 							Arrays.sort(candidates, cg_start, cg_end,
 									comparators[tar_sought_candidate_partner_type_index]);
-							
+
 							// At least seek one partner
 							binary_key[ComparatorByPartnershipSought.INDEX_GENDER] = tar_gender;
 							binary_key[tar_sought_comparator_partner_type_index] = 1;
@@ -370,8 +385,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						int offset = 0;
 						for (int cG = 0; cG < candidateRangeByGender.length; cG++) {
 							int copyLength = candidateRangeByGender[cG][1] - candidateRangeByGender[cG][0];
-							System.arraycopy(candidates,
-									candidateRangeByGender[cG][0], target_candidates, offset, copyLength);
+							System.arraycopy(candidates, candidateRangeByGender[cG][0], target_candidates, offset,
+									copyLength);
 							offset += copyLength;
 						}
 
@@ -445,17 +460,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							int[] tar_candidate_cmp_ent = partnered_with[i];
 
 							Integer partner_form_time = getGlobalTime()
-									+ getRNG().nextInt(AbstractIndividualInterface.ONE_YEAR_INT);
+									+ getRNG().nextInt(AbstractIndividualInterface.ONE_YEAR_INT - 1);
 
 							// Determine if it can be a regular or casual partnership
 							int partnership_type = tar_sought_candidate_partner_type_index;
-							if (tar_sought_candidate_partner_type_index == CANDIDATE_ARRAY_SOUGHT_ANY) {
-								if (tar_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_REG] > 0) {
-									partnership_type = CANDIDATE_ARRAY_SOUGHT_REG;
-								} else {
-									partnership_type = CANDIDATE_ARRAY_SOUGHT_CAS;
-								}
-							}
 
 							Integer[] schedule_partnership_ent = new Integer[LENGTH_SCHEDULE_PARTNERSHIP];
 
@@ -470,8 +478,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							}
 							partnerships.add(schedule_partnership_ent);
 
-							updateCandidateComparatorEntry(tar_candidate_cmp_ent, partnership_type);
-							updateCandidateComparatorEntry(src_candidate_cmp_ent, partnership_type);
+							updateCandidateComparatorEntry(tar_candidate_cmp_ent);
+							updateCandidateComparatorEntry(src_candidate_cmp_ent);
 
 							updateScheduledPopDiff(scheduled_pop_diff_so_far, src_candidate_cmp_ent, categories_values);
 							updateScheduledPopDiff(scheduled_pop_diff_so_far, tar_candidate_cmp_ent, categories_values);
@@ -485,6 +493,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			// Debug statement
 			if (debug) {
+				System.out.printf("Schedule Partnership at Day %d:\n", getGlobalTime());
 				for (int g = 0; g < LENGTH_GENDER; g++) {
 					int pdI = numCat + g * numCat;
 					System.out.printf(" %d : %s\n", g,
@@ -496,7 +505,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 		ArrayList<Integer[]> partnerships = schedule_partnership.remove(getGlobalTime());
 
-		// TODO: Check actual formation of partnership
+		// The formation of partnership
 		if (partnerships != null) {
 			for (Integer[] edge : partnerships) {
 				Person_Bridging_Pop[] pair = new Person_Bridging_Pop[] {
@@ -511,22 +520,42 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					pair[1] = temp;
 				}
 
+				int relmapType;
+				if (pair[1].getGenderType() == GENDER_FEMALE || pair[0].getGenderType() == GENDER_FEMALE) {
+					relmapType = RELMAP_HETRO;
+				} else {
+					relmapType = RELMAP_MSM;
+				}
+
 				int partnershipType = edge[SCHEDULE_PARTNERSHIP_TYPE];
 
-				if (partnershipType > 1) { // Regular
-					int mapType;
-					if (pair[1].getGenderType() == GENDER_FEMALE || pair[0].getGenderType() == GENDER_FEMALE) {
-						mapType = RELMAP_HETRO;
-					} else {
-						mapType = RELMAP_MSM;
+				if (partnershipType == CANDIDATE_ARRAY_SOUGHT_ANY) {
+					RelationshipMap relMap = getRelMap()[relmapType];
+
+					boolean hasExistingRegPartner = false;
+					for (int p = 0; p < 2; p++) {
+						hasExistingRegPartner |= relMap.containsVertex(pair[p].getId())
+								&& relMap.degreeOf(pair[p].getId()) > 0;
 					}
+
+					if (hasExistingRegPartner) {
+						partnershipType = CANDIDATE_ARRAY_SOUGHT_CAS;
+					} else {
+						partnershipType = CANDIDATE_ARRAY_SOUGHT_REG;
+					}
+
+				}
+
+				if (partnershipType == CANDIDATE_ARRAY_SOUGHT_REG) { // Regular
 
 					// Assume no concurrency
 					for (int p = 0; p < pair.length; p++) {
 						removeSingleRelationship(pair[p]);
 					}
 
-					formRelationship(pair, getRelMap()[mapType], partnershipType, mapType);
+					int duration = regPartDuration[relmapType].sample();
+
+					formRelationship(pair, getRelMap()[relmapType], duration, relmapType);
 
 				} else { // Casual
 					ContactMap[] cMaps = new ContactMap[] {
@@ -537,9 +566,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						pair[p].addCasualPartner(pair[(p + 1) % 2]);
 					}
 
-					checkContactMaps(
-							new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), partnershipType },
-							cMaps);
+					// Casual partnership of duration of 1 day
+					checkContactMaps(new Integer[] { pair[0].getId(), pair[1].getId(), getGlobalTime(), 1 }, cMaps);
 				}
 
 			}
@@ -604,7 +632,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		}
 	}
 
-	private void updateCandidateComparatorEntry(int[] candidate_cmp_ent, int partner_type_index) {
+	private void updateCandidateComparatorEntry(int[] candidate_cmp_ent) {
 		candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY]--;
 		if (candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_REG] > 0) {
 			candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_REG]--;
