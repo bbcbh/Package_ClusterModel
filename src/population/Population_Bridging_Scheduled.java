@@ -176,7 +176,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					}
 					printStatus.println(wri.toString());
 					pri.close();
-					
 
 				}
 
@@ -206,10 +205,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		boolean reqPartnerScheduling = (lastPartnershipScheduling < 0)
 				|| (getGlobalTime() == lastPartnershipScheduling + AbstractIndividualInterface.ONE_YEAR_INT);
 
-		int schedule_range = lastPartnershipScheduling < 0 ? AbstractIndividualInterface.ONE_YEAR_INT : 0;
-
-		// TODO: Daily implementation
-		schedule_range = AbstractIndividualInterface.ONE_YEAR_INT;
+		int schedule_range = AbstractIndividualInterface.ONE_YEAR_INT;
 
 		if (reqPartnerScheduling) {
 
@@ -229,11 +225,12 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_CAS),
 					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_CURRENT_ANY), };
 
-			fillCandidateList(candidates, gender_end, schedule_range==0);
-			
-			int[] pop_demand_num_partner_12_months = cal_pop_diff_num_partner(new int[population_num_partner_in_last_12_months.length]);
+			fillCandidateList(candidates, gender_end, schedule_range == 0);
+
+			int[] pop_demand_num_partner_12_months = cal_pop_diff_num_partner(
+					new int[population_num_partner_in_last_12_months.length]);
 			int[] addressed_demand_so_far = new int[population_num_partner_in_last_12_months.length];
-			int[] binary_key = new int[ComparatorByPartnershipSought.LENGTH_COMPARATOR_BY_PARTNERSHIP_SOUGHT];			
+			int[] binary_key = new int[ComparatorByPartnershipSought.LENGTH_COMPARATOR_BY_PARTNERSHIP_SOUGHT];
 
 			for (int src_cat_index = numCat - 1; src_cat_index > 0; src_cat_index--) {
 				for (int src_gender = 0; src_gender < LENGTH_GENDER; src_gender++) {
@@ -247,7 +244,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						int numPartToSought_max = (int) categories_values[src_cat_index];
 						int numPartToSought_min = ((src_cat_index == 0) ? 0
 								: (int) categories_values[src_cat_index - 1]) + 1;
-						int numPartToSought_range = numPartToSought_max - numPartToSought_min;
 
 						Arrays.fill(binary_key, 0);
 						binary_key[ComparatorByPartnershipSought.INDEX_GENDER] = src_gender;
@@ -329,14 +325,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 								src_candidate_cmp_ent = src_candidates[getRNG().nextInt(src_candidates.length)];
 							}
 						} else {
-							// Initial version (i.e. first year)
-							int[] numPartToSoughtAdj = new int[] { numPartToSought_min, numPartToSought_min, };
-							if (numPartToSought_range > 1) {
-								for (int i = 0; i < numPartToSoughtAdj.length; i++) {
-									numPartToSoughtAdj[i] += getRNG().nextInt(numPartToSought_range);
-								}
-							}
-							Arrays.sort(numPartToSoughtAdj);
+							// Non-daily version
+							int[] numPartToSoughtAdj = new int[] { numPartToSought_min, numPartToSought_max, };
 							int[] src_index_range = new int[2];
 
 							Arrays.fill(binary_key, 0);
@@ -345,13 +335,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							Arrays.sort(candidates, src_gender_index_start, src_gender_index_end,
 									comparators[CANDIDATE_ARRAY_SCHEDULE_LIMIT]);
 
-							boolean reachfirstMaxRange = false;
-
 							while (src_index_range[1] == src_index_range[0] && numPartToSoughtAdj != null) {
 
 								binary_key[ComparatorByPartnershipSought.INDEX_ID] = -1;
 								binary_key[ComparatorByPartnershipSought.INDEX_SCHEDULE_LIMIT] = numPartToSoughtAdj[0];
-
 								src_index_range[0] = ~Arrays.binarySearch(candidates, src_gender_index_start,
 										src_gender_index_end, binary_key, comparators[CANDIDATE_ARRAY_SCHEDULE_LIMIT]);
 
@@ -360,25 +347,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 								src_index_range[1] = ~Arrays.binarySearch(candidates, src_gender_index_start,
 										src_gender_index_end, binary_key, comparators[CANDIDATE_ARRAY_SCHEDULE_LIMIT]);
 
-								// Extend range (if needed)
-								boolean alreadyAtMaxRange = numPartToSoughtAdj[0] == numPartToSought_min
-										&& numPartToSoughtAdj[1] == numPartToSought_max;
-
 								if (src_index_range[1] == src_index_range[0]) {
-									if (alreadyAtMaxRange) {
-										if (reachfirstMaxRange) {
-											// No more candidate that can sought required number of partners
-											break determine_src_candidate;
-										} else {
-											reachfirstMaxRange = true; // Try one more time
-										}
+									// No more candidate that can sought required number of partners
+									break determine_src_candidate;
 
-									} else {
-										numPartToSoughtAdj[0]--;
-										numPartToSoughtAdj[1]++;
-										numPartToSoughtAdj[0] = Math.max(numPartToSought_min, numPartToSoughtAdj[0]);
-										numPartToSoughtAdj[1] = Math.min(numPartToSought_max, numPartToSoughtAdj[1]);
-									}
 								}
 							}
 
