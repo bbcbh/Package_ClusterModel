@@ -86,6 +86,7 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 	@Override
 	public void run() {
 
+		long tic = System.currentTimeMillis();
 		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
 		// Check for previous snapshot
 
@@ -153,15 +154,15 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 					popFileloaded = true;
 
 				} catch (Exception e) {
-					System.out.println(" FAILED. Trying next snapshot file (if any).");	
-					FileUtils.deleteQuietly(prevSnapFile);					
+					System.out.println(" FAILED. Trying next snapshot file (if any).");
+					FileUtils.deleteQuietly(prevSnapFile);
 				}
 
 			}
-			
-			if(!popFileloaded) {
+
+			if (!popFileloaded) {
 				System.out.println("Reusing population snapshot FAILED. Initialising a new population instead.");
-				
+
 				if (printStatus != null) {
 					population.setPrintStatus(printStatus);
 				}
@@ -172,7 +173,7 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 					}
 				}
 				population.initialise();
-				
+
 			}
 
 			if (printStatus != null) {
@@ -214,6 +215,10 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 			}
 		}
 
+		if (printStatus != null) {
+			printStatus.printf("Run time (simulation only) = %.3f seconds\n", (System.currentTimeMillis() - tic) / 1000f);
+		}
+
 		if (baseDir != null) {
 
 			ContactMap cMap = gen_cMap[0];
@@ -232,6 +237,10 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 			}
 
 			exportPopSnap(System.currentTimeMillis());
+			
+			if (printStatus != null) {
+				printStatus.printf("Runtime (incl. export pop) = %.3f seconds\n", (System.currentTimeMillis() - tic) / 1000f);
+			}
 
 		}
 

@@ -63,13 +63,16 @@ public class Visualise_ContactMap extends JGraphXAdapter<Integer, Integer[]> {
 			for (Integer v : vMap.keySet()) {
 				mxICell cell = vMap.get(v);
 
-				if (v >= popComposition[0] + popComposition[1] + popComposition[2]) {
+				if (v > popComposition[0] + popComposition[1] + popComposition[2]) {
 					mxStyleUtils.setCellStyles(mxGraph.getModel(), new mxICell[] { cell }, mxConstants.STYLE_FILLCOLOR,
 							"#00FFFF");					
-				} else if (v >= popComposition[0] + popComposition[1]) {
+				} else if (v > popComposition[0] + popComposition[1]) {
 					mxStyleUtils.setCellStyles(mxGraph.getModel(), new mxICell[] { cell }, mxConstants.STYLE_FILLCOLOR,
 							"#00FF00");
-				} else if (v < popComposition[0]) {
+				} else if (v > popComposition[0]) {
+					mxStyleUtils.setCellStyles(mxGraph.getModel(), new mxICell[] { cell }, mxConstants.STYLE_FILLCOLOR,
+							"#0000FF");
+				} else {
 					mxStyleUtils.setCellStyles(mxGraph.getModel(), new mxICell[] { cell }, mxConstants.STYLE_FILLCOLOR,
 							"#FF0000");
 				}
@@ -101,31 +104,5 @@ public class Visualise_ContactMap extends JGraphXAdapter<Integer, Integer[]> {
 			}
 		}
 	}
-
-	/*
-	 * public static void main(String[] arg) { ContactMap test = new ContactMap();
-	 * for (int i = 0; i < 10; i++) { test.addVertex(i + 1); }
-	 * 
-	 * test.addEdge(1, 2); test.addEdge(2, 3); test.addEdge(3, 1); test.addEdge(4,
-	 * 5); test.addEdge(6, 8); test.addEdge(8, 9);
-	 * 
-	 * Visualise_ContactMap mxGraph = new Visualise_ContactMap(test);
-	 * 
-	 * HashMap<Integer, mxICell> vMap = mxGraph.getVertexToCellMap(); for (Integer v
-	 * : vMap.keySet()) { mxICell cell = vMap.get(v); if ((v % 2) == 0) {
-	 * 
-	 * mxStyleUtils.setCellStyles(mxGraph.getModel(),new mxICell[] {cell},
-	 * mxConstants.STYLE_FILLCOLOR, "#FF0000"); } }
-	 * 
-	 * mxIGraphLayout layout = new mxCircleLayout(mxGraph);
-	 * layout.execute(mxGraph.getDefaultParent()); mxGraph.setCellsLocked(true);
-	 * 
-	 * 
-	 * mxGraphComponent graphComponent = new mxGraphComponent(mxGraph); JFrame
-	 * testFrame = new JFrame("Test");
-	 * testFrame.getContentPane().add(graphComponent);
-	 * 
-	 * testFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-	 * testFrame.setSize(400, 320); testFrame.setVisible(true); }
-	 */
+	
 }
