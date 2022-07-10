@@ -284,13 +284,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							for (int i = 0; i < seedInf.length; i++) {
 								Integer infected = seedInf[i];
 
-								int firstContactTime = contactMapTimeRange[0]; // Start only from valid range
+								int firstContactTime = contactMapTimeRange[1]; // Start only from valid range
 
 								Set<Integer[]> edgesOfInfected = baseContactMap.edgesOf(infected);
 
 								for (Integer[] e : edgesOfInfected) {
-									firstContactTime = Math.max(firstContactTime,
+									firstContactTime = Math.min(firstContactTime,
 											e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]);
+								}
+								
+								if(firstContactTime == contactMapTimeRange[1]) {
+									firstContactTime = contactMapTimeRange[0];
 								}
 
 								seedTime[i] = firstContactTime;
