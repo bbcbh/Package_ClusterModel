@@ -323,15 +323,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					zipTransmissionMaps();
 				}
 			}
-			if (exec != null && inExec != 0) {
-				exec.shutdown();
-				if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
-					System.err.println("Thread time-out!");
-				}
-				inExec = 0;
-				exec = null;
-				zipTransmissionMaps();
+			
+		}
+		if (exec != null && inExec != 0) {
+			exec.shutdown();
+			if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+				System.err.println("Thread time-out!");
 			}
+			inExec = 0;
+			exec = null;
+			zipTransmissionMaps();
 		}
 
 	}
