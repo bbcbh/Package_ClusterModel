@@ -195,7 +195,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	private static final int CANDIDATE_ARRAY_SOUGHT_ANY = CANDIDATE_ARRAY_SCHEDULE_LIMIT + 1;
 	private static final int CANDIDATE_ARRAY_SOUGHT_REG = CANDIDATE_ARRAY_SOUGHT_ANY + 1;
 	private static final int CANDIDATE_ARRAY_SOUGHT_CAS = CANDIDATE_ARRAY_SOUGHT_REG + 1;
-	private static final int CANDIDATE_ARRAY_CURRENTLY_HAS = CANDIDATE_ARRAY_SOUGHT_CAS + 1;
+
 
 	private final boolean scheduling_debug = !true;
 
@@ -222,8 +222,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_SCHEDULE_LIMIT),
 					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY),
 					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_REG),
-					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_CAS),
-					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_CURRENT_ANY), };
+					new ComparatorByPartnershipSought(ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_CAS) };
 
 			fillCandidateList(candidates, gender_end, schedule_range == 0);
 
