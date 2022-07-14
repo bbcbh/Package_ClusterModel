@@ -1,6 +1,7 @@
 package population;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	protected HashMap<Integer, ArrayList<Integer[]>> schedule_partnership;
 
 	protected transient int lastPartnershipScheduling = -1;
-	protected transient boolean fitHighActFirst = true;
+	protected transient boolean fitHighActFirst = false;
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
 	public static final int SCHEDULE_PARTNERSHIP_P2 = SCHEDULE_PARTNERSHIP_P1 + 1;
@@ -46,8 +47,14 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
 
 		for (int i = 0; i < field_mean_number_partner.length; i++) {
-			fitHighActFirst &= field_mean_number_partner[i] >= 0;
+			fitHighActFirst |= field_mean_number_partner[i] < 0;
 			field_mean_number_partner[i] = Math.abs(field_mean_number_partner[i]);
+		}
+
+		if (fitHighActFirst && printStatus != null) {
+			for (PrintStream out : printStatus) {
+				out.println("Parntership will be allocated to high activity groups first.");
+			}
 		}
 
 		super.initialise();
@@ -60,8 +67,14 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
 
 		for (int i = 0; i < field_mean_number_partner.length; i++) {
-			fitHighActFirst &= field_mean_number_partner[i] >= 0;
+			fitHighActFirst &= field_mean_number_partner[i] < 0;
 			field_mean_number_partner[i] = Math.abs(field_mean_number_partner[i]);
+		}
+
+		if (fitHighActFirst && printStatus != null) {
+			for (PrintStream out : printStatus) {
+				out.println("Parntership will be allocated to high activity groups first.");
+			}
 		}
 
 		super.initialiseTransientFields();
@@ -186,8 +199,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		if (reportPartnerStat) {
 			if (printStatus != null) {
 				if (population_num_partner_in_last_12_months.length == LENGTH_GENDER) {
-					printStatus.printf("# partners in last 12 months = %s - Day %d\n",
-							Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime());
+					for (PrintStream out : printStatus) {
+						out.printf("# partners in last 12 months = %s - Day %d\n",
+								Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime());
+					}
 				} else {
 					StringWriter wri = new StringWriter();
 					PrintWriter pri = new PrintWriter(wri);
@@ -197,7 +212,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 								Arrays.toString(Arrays.copyOfRange(population_num_partner_in_last_12_months,
 										numCat + g * numCat, 2 * numCat + g * numCat)));
 					}
-					printStatus.println(wri.toString());
+					for (PrintStream out : printStatus) {
+						out.println(wri.toString());
+					}
 					pri.close();
 
 				}
@@ -449,8 +466,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							}
 							partnered_with[i] = target_candidates[tar_candidate_index];
 							num_partner_found++;
-							
-							
 
 							// Re-pick if the same person was picked
 							if (partnered_with[i][ComparatorByPartnershipSought.INDEX_ID] == src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_ID]) {
@@ -469,8 +484,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 								}
 								i--;
 							}
-							cumul_weight_lastIndex--;							
-							
+							cumul_weight_lastIndex--;
+
 						}
 
 						if (num_partner_found < partnered_with.length) {

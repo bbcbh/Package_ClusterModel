@@ -195,9 +195,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 				Population_Bridging population;
 
-				if (Population_Bridging_Scheduled.class.getName()
-						.equals(loadedProperties.get(
-								SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
+				if (Population_Bridging_Scheduled.class.getName().equals(
+						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
 					population = new Population_Bridging_Scheduled(popSeed);
 
 				} else {
@@ -226,18 +225,21 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				runnablesMap.put(r.getPopulation().getSeed(), r);
 
 				if (printOutput) {
-					PrintStream outputPS;
+					PrintStream[] outputPS;
+
 					if (numThreads < 0) {
+						outputPS = new PrintStream[2];
 						System.out.println("Debug: Output print to console called by PROP_USE_PARALLEL < 0");
-						outputPS = System.out;
+						outputPS[1] = System.out;
 
 					} else {
-						File outputFile = new File(baseDir,
-								String.format("Output_%d.txt", r.getPopulation().getSeed()));
-						FileOutputStream fOut = new FileOutputStream(outputFile, true);
-						outputPS = new PrintStream(fOut);
+						outputPS = new PrintStream[1];
 					}
-					outputPS.println(String.format("Seed = %d", r.getPopulation().getSeed()));
+					File outputFile = new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed()));
+					FileOutputStream fOut = new FileOutputStream(outputFile, true);
+					outputPS[0] = new PrintStream(fOut);
+
+					outputPS[0].println(String.format("Seed = %d", r.getPopulation().getSeed()));
 					runnables[i].setPrintStatus(outputPS);
 				}
 

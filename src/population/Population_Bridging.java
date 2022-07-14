@@ -152,9 +152,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private static final int CASUAL_MIXING_SD_RANGE = 2;
 
-	protected PrintStream printStatus = null;
+	protected PrintStream[] printStatus = null;
 
-	public void setPrintStatus(PrintStream printStatus) {
+	public void setPrintStatus(PrintStream[] printStatus) {
 		this.printStatus = printStatus;
 	}
 
@@ -599,10 +599,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			}
 
 			pri.close();
-			printStatus.println(wri.toString());
-			// if (!printStatus.equals(System.out)) {
-			// System.out.println(wri.toString());
-			// }
+			if (printStatus != null) {
+				for (PrintStream out : printStatus) {
+					out.println(wri.toString());
+				}
+			}
+
 		}
 
 		if (numCat > 0) {
@@ -661,8 +663,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					casual_partner_dist_by_gender_grp = new PoissonDistribution(getRNG(),
 							mean_casual_partners[genderGrpIndex], PoissonDistribution.DEFAULT_EPSILON,
 							PoissonDistribution.DEFAULT_MAX_ITERATIONS);
-				}				
-				
+				}
+
 				initialiseNumPartners(person, genderGrpIndex, g, casual_partner_dist_by_gender_grp);
 				popPt++;
 
@@ -690,12 +692,10 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	}
 
+	protected void initialiseNumPartners(Person_Bridging_Pop person, int gender_grp_index, int gender_grp_count,
+			AbstractIntegerDistribution casual_partner_dist_by_gender_grp) {
 
-	protected void initialiseNumPartners(Person_Bridging_Pop person, int gender_grp_index,
-			int gender_grp_count, AbstractIntegerDistribution casual_partner_dist_by_gender_grp) {
-		
-		if (!person.getParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_CASUAL_PARTNERS_12_MONTHS))
-				.equals(0)) {
+		if (!person.getParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_CASUAL_PARTNERS_12_MONTHS)).equals(0)) {
 			person.setParameter(Integer.toString(Person_Bridging_Pop.FIELD_MAX_CASUAL_PARTNERS_12_MONTHS),
 					Math.max(1, casual_partner_dist_by_gender_grp.sample()));
 			if (seekingCasualToday(person)) {
@@ -708,7 +708,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			canSeekRelPartners[person.getGenderType()].add(person);
 			canSeekRelPartners_catorgories_offset[person.getGenderType()][0]++;
 		}
-		
+
 	}
 
 	public void formPartnerships(int[] population_num_partner_in_last_12_months) {
@@ -838,14 +838,11 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		if (printStatus != null) {
 			if (population_num_partner_in_last_12_months.length == LENGTH_GENDER) {
-				printStatus.println(String.format("# partners in last 12 months = %s - Day %d",
-						Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
+				for (PrintStream out : printStatus) {
+					out.printf("# partners in last 12 months = %s - Day %d\n",
+							Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime());
+				}
 
-				// if (!printStatus.equals(System.out)) {
-				// System.out.println(String.format("# partners in last 12 months = %s - Day
-				// %d",
-				// Arrays.toString(population_num_partner_in_last_12_months), getGlobalTime()));
-				// }
 			} else {
 				StringWriter wri = new StringWriter();
 				PrintWriter pri = new PrintWriter(wri);
@@ -856,25 +853,15 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 									numCat + g * numCat, 2 * numCat + g * numCat))));
 
 				}
-
 				pri.close();
-				printStatus.println(wri.toString());
-				// if (!printStatus.equals(System.out)) {
-				// System.out.println(wri.toString());
-				// }
+
+				for (PrintStream out : printStatus) {
+					out.println(wri.toString());
+				}
+
 			}
 
-			/*
-			 * if (!printStatus.equals(System.out)) {
-			 * printStatus.println("Has Regular Partners:"); for (int i = 0; i <
-			 * hasRelPartners.length; i++) { printStatus.println(String.format(" %d: %d", i,
-			 * hasRelPartners[i].size())); }
-			 * printStatus.println("Seeking Casual Partners:"); for (int i = 0; i <
-			 * canSeekCasPartners.length; i++) {
-			 * printStatus.println(String.format(" %d: %d", i,
-			 * canSeekCasPartners[i].size())); } }
-			 */
-
+			
 		}
 		updateRelRelationshipMap();
 

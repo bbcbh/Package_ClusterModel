@@ -45,7 +45,7 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 	private int snapFreq;
 	private Object[] runnable_fields = new Object[LENGTH_RUNNABLE_MAP_GEN_FIELD];
 	private ContactMap[] gen_cMap = null;
-	private PrintStream printStatus = null;
+	private PrintStream[] printStatus = null;
 
 	public Runnable_ContactMapGeneration() {
 		super();
@@ -66,7 +66,7 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 		this.snapFreq = snapFreq;
 	}
 
-	public void setPrintStatus(PrintStream printStatus) {
+	public void setPrintStatus(PrintStream[] printStatus) {
 		this.printStatus = printStatus;
 	}
 
@@ -216,7 +216,9 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 		}
 
 		if (printStatus != null) {
-			printStatus.printf("Run time (simulation only) = %.3f seconds\n", (System.currentTimeMillis() - tic) / 1000f);
+			for (PrintStream out : printStatus) {
+				out.printf("Run time (simulation only) = %.3f seconds\n", (System.currentTimeMillis() - tic) / 1000f);
+			}
 		}
 
 		if (baseDir != null) {
@@ -237,15 +239,20 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 			}
 
 			exportPopSnap(System.currentTimeMillis());
-			
+
 			if (printStatus != null) {
-				printStatus.printf("Runtime (incl. export pop) = %.3f seconds\n", (System.currentTimeMillis() - tic) / 1000f);
+				for (PrintStream out : printStatus) {
+					out.printf("Runtime (incl. export pop) = %.3f seconds\n",
+							(System.currentTimeMillis() - tic) / 1000f);
+				}
 			}
 
 		}
 
 		if (printStatus != null) {
-			printStatus.close();
+			for (PrintStream out : printStatus) {
+				out.close();
+			}
 		}
 
 	}
