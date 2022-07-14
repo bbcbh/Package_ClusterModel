@@ -25,6 +25,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	protected HashMap<Integer, ArrayList<Integer[]>> schedule_partnership;
 
 	protected transient int lastPartnershipScheduling = -1;
+	protected transient boolean fitHighActFirst = true;
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
 	public static final int SCHEDULE_PARTNERSHIP_P2 = SCHEDULE_PARTNERSHIP_P1 + 1;
@@ -40,7 +41,29 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	}
 
 	@Override
+	public void initialise() {
+		// Check to see if fitting of low activity group first
+		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
+
+		for (int i = 0; i < field_mean_number_partner.length; i++) {
+			fitHighActFirst &= field_mean_number_partner[i] >= 0;
+			field_mean_number_partner[i] = Math.abs(field_mean_number_partner[i]);
+		}
+
+		super.initialise();
+	}
+
+	@Override
 	protected void initialiseTransientFields() {
+
+		// Check to see if fitting of low activity group first
+		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
+
+		for (int i = 0; i < field_mean_number_partner.length; i++) {
+			fitHighActFirst &= field_mean_number_partner[i] >= 0;
+			field_mean_number_partner[i] = Math.abs(field_mean_number_partner[i]);
+		}
+
 		super.initialiseTransientFields();
 		lastPartnershipScheduling = 0;
 	}
@@ -196,7 +219,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	private static final int CANDIDATE_ARRAY_SOUGHT_REG = CANDIDATE_ARRAY_SOUGHT_ANY + 1;
 	private static final int CANDIDATE_ARRAY_SOUGHT_CAS = CANDIDATE_ARRAY_SOUGHT_REG + 1;
 
-
 	private final boolean scheduling_debug = !true;
 
 	@Override
@@ -231,7 +253,24 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			int[] addressed_demand_so_far = new int[population_num_partner_in_last_12_months.length];
 			int[] binary_key = new int[ComparatorByPartnershipSought.LENGTH_COMPARATOR_BY_PARTNERSHIP_SOUGHT];
 
-			for (int src_cat_index = numCat - 1; src_cat_index > 0; src_cat_index--) {
+			int[] src_cat_order = new int[numCat - 1];
+			Arrays.fill(src_cat_order, -1);
+			int src_cat_order_pt = 0;
+
+			if (fitHighActFirst) {
+				// Order by activity (highest to lowest)
+				for (int src_cat_index = numCat - 1; src_cat_index > 0; src_cat_index--) {
+					src_cat_order[src_cat_order_pt] = src_cat_index;
+					src_cat_order_pt++;
+				}
+			} else {
+				for (int src_cat_index = 1; src_cat_index < numCat; src_cat_index++) {
+					src_cat_order[src_cat_order_pt] = src_cat_index;
+					src_cat_order_pt++;
+				}
+			}
+
+			for (int src_cat_index : src_cat_order) {
 				for (int src_gender = 0; src_gender < LENGTH_GENDER; src_gender++) {
 					int src_gender_index_start = src_gender > 0 ? gender_end[src_gender - 1] : 0;
 					int src_gender_index_end = gender_end[src_gender];
@@ -249,7 +288,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 						int[] src_candidate_cmp_ent;
 
-						// Non-daily version
 						int[] numPartToSoughtAdj = new int[] { numPartToSought_min, numPartToSought_max, };
 						int[] src_index_range = new int[2];
 
@@ -387,7 +425,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						int num_partner_found = 0;
 
 						// Choose partnership based on number sought
-						for (int i = 0; i < partnered_with.length; i++) {
+						for (int i = 0; i < partnered_with.length && cumul_weight_lastIndex >= 0; i++) {
 							if (tar_candidate_index != -1) {
 								if (tar_candidate_index >= cumul_weight.length) {
 									// Already removed?
@@ -411,10 +449,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							}
 							partnered_with[i] = target_candidates[tar_candidate_index];
 							num_partner_found++;
+							
+							
 
 							// Re-pick if the same person was picked
-							if (partnered_with[i][ComparatorByPartnershipSought.INDEX_ID] 
-									== src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_ID]) {
+							if (partnered_with[i][ComparatorByPartnershipSought.INDEX_ID] == src_candidate_cmp_ent[ComparatorByPartnershipSought.INDEX_ID]) {
 								num_partner_found--;
 								for (int rI = tar_candidate_index; rI < target_candidates.length - 1; rI++) {
 									target_candidates[rI] = target_candidates[rI + 1];
@@ -430,7 +469,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 								}
 								i--;
 							}
-							cumul_weight_lastIndex--;
+							cumul_weight_lastIndex--;							
+							
 						}
 
 						if (num_partner_found < partnered_with.length) {
@@ -471,7 +511,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					}
 
 				}
-
 			}
 
 			// Debug statement
