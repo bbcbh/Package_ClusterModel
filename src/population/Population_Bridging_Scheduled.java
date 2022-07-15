@@ -296,7 +296,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					int src_gender_index_end = gender_end[src_gender];
 					int src_pdIndex = numCat + src_gender * numCat + src_cat_index;
 
-					if (!fitHighActFirst) {
+					if (scheduling_debug) {
 
 						if (pop_demand_num_partner_12_months[src_pdIndex] > addressed_demand_so_far[src_pdIndex]) {
 
