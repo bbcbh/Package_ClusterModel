@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
 
@@ -386,41 +387,34 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 								int tar_sought_candidate_partner_type_index;
 								int tar_sought_comparator_partner_type_index;
-								int[] src_candidate_arrayIndex;
+
+								ArrayList<int[]> src_candidate_list = new ArrayList<>(
+										List.of(src_candidate_cmp_ent_array));
 
 								// Sought Reg Only
 								if (end_regOnly > 0) {
-									src_candidate_arrayIndex = util.ArrayUtilsRandomGenerator.randomSelectIndex(
-											src_candidate_cmp_ent_array, end_regOnly, 0, end_regOnly, getRNG());
+									
+									int[] validRange = new int[] {0, end_regOnly};								
 									tar_sought_candidate_partner_type_index = CANDIDATE_ARRAY_SOUGHT_REG;
 									tar_sought_comparator_partner_type_index = ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_REG;
 
+									Collections.shuffle(src_candidate_list.subList(validRange[0], validRange[1]),
+											new Random(getRNG().nextLong()));
+									
 									int[][] target_candidates = generateTargetCandidateArray(candidates, comparators,
 											gender_end, tar_possible_gender, tar_sought_candidate_partner_type_index,
 											tar_sought_comparator_partner_type_index);
 
 									ArrayList<int[]> target_candidate_list = new ArrayList<>(
 											List.of(target_candidates));
+									
+									Comparator<int[]> target_candidates_comparator = generateTargetCandidatesComparator(
+											tar_sought_comparator_partner_type_index);
 
-									final int comparator_partner_type_index = tar_sought_comparator_partner_type_index;
+									Collections.sort(target_candidate_list, target_candidates_comparator);
 
-									Comparator<int[]> targetListComparator = new Comparator<int[]>() {
-										@Override
-										public int compare(int[] o1, int[] o2) {
-											int cmp = Integer.compare(o1[comparator_partner_type_index],
-													o2[comparator_partner_type_index]);
-											if (cmp == 0) {
-												cmp = Integer.compare(o1[ComparatorByPartnershipSought.INDEX_ID],
-														o2[ComparatorByPartnershipSought.INDEX_ID]);
-											}
-											return cmp;
-										}
-									};
-
-									Collections.sort(target_candidate_list, targetListComparator);
-
-									for (int src_array_index = 0; src_array_index < src_candidate_arrayIndex.length; src_array_index++) {
-										int[] src_candidate_cmp_ent = src_candidate_cmp_ent_array[src_candidate_arrayIndex[src_array_index]];
+									for (int src_array_index = validRange[0]; src_array_index < validRange[1]; src_array_index++) {
+										int[] src_candidate_cmp_ent = src_candidate_list.get(src_array_index);
 
 										ArrayList<int[]> src_specific_candidate_list = new ArrayList<>(
 												target_candidate_list);
@@ -429,7 +423,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 										// Remove self (if found)
 										int excl_index = Collections.binarySearch(src_specific_candidate_list,
-												binary_key, targetListComparator);
+												binary_key, target_candidates_comparator);
 
 										if (excl_index >= 0) {
 											src_specific_candidate_list.remove(excl_index);
@@ -518,15 +512,15 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 											if (tar_candidate_cmp_ent[tar_sought_candidate_partner_type_index] != 0) {
 												insertPt = ~Collections.binarySearch(target_candidate_list,
-														tar_candidate_cmp_ent, targetListComparator);
+														tar_candidate_cmp_ent, target_candidates_comparator);
 												target_candidate_list.add(insertPt, tar_candidate_cmp_ent);
 											}
 
 											for (int uI = partnerIndex
 													+ 1; uI < parnter_index_to_target_candidate_list.length; uI++) {
 
-												if (parnter_index_to_target_candidate_list[partnerIndex]< parnter_index_to_target_candidate_list[uI]  
-														&& parnter_index_to_target_candidate_list[uI] < insertPt  ) {
+												if (parnter_index_to_target_candidate_list[partnerIndex] < parnter_index_to_target_candidate_list[uI]
+														&& parnter_index_to_target_candidate_list[uI] < insertPt) {
 													parnter_index_to_target_candidate_list[uI]--;
 
 												} else if (parnter_index_to_target_candidate_list[uI] < parnter_index_to_target_candidate_list[partnerIndex]
@@ -538,15 +532,15 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 										}
 
 									}
-									//TODO: Implementation up to here
+									// TODO: Implementation up to here
 								}
 
 								// Sought Cas Only
 
-								if (end_regOnly > end_regOnly) {
-									src_candidate_arrayIndex = util.ArrayUtilsRandomGenerator.randomSelectIndex(
-											src_candidate_cmp_ent_array, end_casOnly - end_regOnly, end_regOnly,
-											end_casOnly - end_regOnly, getRNG());
+								if (end_casOnly > end_regOnly) {
+									
+									Collections.shuffle(src_candidate_list.subList(end_regOnly, end_casOnly),
+											new Random(getRNG().nextLong()));								
 									tar_sought_candidate_partner_type_index = CANDIDATE_ARRAY_SOUGHT_CAS;
 									tar_sought_comparator_partner_type_index = ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_CAS;
 
@@ -554,10 +548,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 								// Seek both
 								if (src_candidate_cmp_ent_array.length > end_casOnly) {
-									src_candidate_arrayIndex = util.ArrayUtilsRandomGenerator.randomSelectIndex(
-											src_candidate_cmp_ent_array,
-											src_candidate_cmp_ent_array.length - end_casOnly, end_casOnly,
-											src_candidate_cmp_ent_array.length - end_casOnly, getRNG());
+									Collections.shuffle(src_candidate_list.subList(end_casOnly, src_candidate_list.size()),
+											new Random(getRNG().nextLong()));	
 									tar_sought_candidate_partner_type_index = CANDIDATE_ARRAY_SOUGHT_ANY;
 									tar_sought_comparator_partner_type_index = ComparatorByPartnershipSought.INDEX_NUM_TO_SOUGHT_ANY;
 
@@ -864,6 +856,22 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			}
 		}
+	}
+
+	private static Comparator<int[]> generateTargetCandidatesComparator(final int comparator_partner_type_index) {
+		Comparator<int[]> target_candidates_comparator = new Comparator<int[]>() {
+			@Override
+			public int compare(int[] o1, int[] o2) {
+				int cmp = Integer.compare(o1[comparator_partner_type_index],
+						o2[comparator_partner_type_index]);
+				if (cmp == 0) {
+					cmp = Integer.compare(o1[ComparatorByPartnershipSought.INDEX_ID],
+							o2[ComparatorByPartnershipSought.INDEX_ID]);
+				}
+				return cmp;
+			}
+		};
+		return target_candidates_comparator;
 	}
 
 	private int[][] generateTargetCandidateArray(int[][] candidates, ComparatorByPartnershipSought[] comparators,
