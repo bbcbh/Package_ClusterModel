@@ -523,9 +523,19 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							updateScheduledPopDiff(addressed_demand_so_far, tar_candidate_cmp_ent, categories_values);
 						}
 
+						// Debug statement
+						if (scheduling_debug) {
+							System.out.printf(
+									"Schedule Partnership at Day %d: for (source index, gender) = (%d, %d) progress: %d out of %d",
+									getGlobalTime(), src_cat_index, src_gender, addressed_demand_so_far[src_pdIndex],
+									pop_demand_num_partner_12_months[src_pdIndex]);
+							System.out.println();
+						}
+
 					}
 
 				}
+
 			}
 
 			// Debug statement
