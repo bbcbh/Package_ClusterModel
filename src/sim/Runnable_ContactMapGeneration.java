@@ -139,7 +139,9 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 			boolean popFileloaded = false;
 			for (int fI = oldPopulationSnapFiles.length - 1; fI >= 0 && !popFileloaded; fI++) {
 				File prevSnapFile = oldPopulationSnapFiles[fI];
-				System.out.print(String.format("Reusing population snapshot file %s....", prevSnapFile.getName()));
+
+				StringBuilder output = new StringBuilder();
+				output.append(String.format("Reusing population snapshot file %s....", prevSnapFile.getName()));
 
 				try {
 					ObjectInputStream objIn = new ObjectInputStream(
@@ -147,16 +149,17 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 					Population_Bridging snapPop = Population_Bridging.decodeFromStream(objIn);
 					this.setPopulation(snapPop);
 					objIn.close();
-					System.out.println(
-							String.format(" SUCCESS, with global time set at %d.", population.getGlobalTime()));
+					output.append(String.format(" SUCCESS, with global time set at %d.", population.getGlobalTime()));
 					skipTimeUntil = population.getGlobalTime();
 					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
 					popFileloaded = true;
 
 				} catch (Exception e) {
-					System.out.println(" FAILED. Trying next snapshot file (if any).");
+					output.append(" FAILED. Trying next snapshot file (if any).");
 					FileUtils.deleteQuietly(prevSnapFile);
 				}
+
+				System.out.println(output.toString());
 
 			}
 

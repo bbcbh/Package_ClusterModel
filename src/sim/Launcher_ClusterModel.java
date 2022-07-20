@@ -7,12 +7,14 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.InvalidPropertiesFormatException;
 
+import optimisation.Optimisation_Factory;
+
 public class Launcher_ClusterModel {
 
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen or -trans> PROP_FILE_DIRECTORY <...>\n" + "    java %s <-batch> COMMAND_AS_TEXT",
+				"Usage: java %s <-gen, -trans or -opt> PROP_FILE_DIRECTORY <...>\n" + "or    java %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName());
 
 		if (args.length < 1) {
@@ -25,6 +27,9 @@ public class Launcher_ClusterModel {
 				Simulation_ClusterModelGeneration.launch(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-trans".equals(flag)) {
 				Simulation_ClusterModelTransmission.launch(Arrays.copyOfRange(args, 1, args.length));
+			}else if("-opt".equals(flag)) {				
+				Optimisation_Factory.stable_prevalence_by_tranmission_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
+				
 			} else if ("-batch".equals(flag)) {
 				File commands = new File(args[1]);
 				BufferedReader reader = new BufferedReader(new FileReader(commands));
@@ -33,7 +38,7 @@ public class Launcher_ClusterModel {
 					String[] lines = line.split("\\s+");										
 					Launcher_ClusterModel.main(lines);
 				}
-				reader.close();
+				reader.close();					
 
 			} else {
 				System.out.println(USAGE_INFO);
