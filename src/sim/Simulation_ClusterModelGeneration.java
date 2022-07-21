@@ -30,13 +30,14 @@ import util.PropValUtils;
 public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_GEN_SIM_FIELDS = {};
-	public static final int LENGTH_BRIDGING_MAP_GEN_SIM_FIELD = 0;
+	public static final int LENGTH_SIM_MAP_GEN_FIELD = 0;
 
 	public static final String POP_PROP_INIT_PREFIX = "POP_PROP_INIT_PREFIX_";
 	public static final String POP_PROP_INIT_PREFIX_CLASS = "POP_PROP_INIT_PREFIX_CLASS_";
 
 	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-			+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD + LENGTH_BRIDGING_MAP_GEN_SIM_FIELD];
+			+ LENGTH_SIM_MAP_GEN_FIELD
+			+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
 
 	protected File baseDir = null;
@@ -44,7 +45,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	protected Properties loadedProperties = null; // From .prop file, if any
 	protected ArrayList<Long> skipSeeds = null;
 	protected transient Map<Long, ContactMap[]> contactMapSet = null;
-	protected transient Map<Long, Runnable_ContactMapGeneration> runnablesMap = null;
+	protected transient Map<Long, Runnable_ClusterModel_ContactMap_Generation> runnablesMap = null;
 
 	protected boolean printOutput = false;
 
@@ -61,8 +62,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 	public Simulation_ClusterModelGeneration() {
 
-		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
+				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		for (int i = 0; i < simFields.length; i++) {
 			// All simulation levels
 			if (i >= sim_offset) {
@@ -72,7 +73,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		}
 	}
 
-	public Map<Long, Runnable_ContactMapGeneration> getRunnables() {
+	public Map<Long, Runnable_ClusterModel_ContactMap_Generation> getRunnables() {
 		return runnablesMap;
 	}
 
@@ -185,8 +186,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		int numInPool = 0;
 		long tic = System.currentTimeMillis();
 
-		Runnable_ContactMapGeneration[] runnables = new Runnable_ContactMapGeneration[numSim];
-		runnablesMap = new HashMap<Long, Runnable_ContactMapGeneration>();
+		Runnable_ClusterModel_ContactMap_Generation[] runnables = new Runnable_ClusterModel_ContactMap_Generation[numSim];
+		runnablesMap = new HashMap<Long, Runnable_ClusterModel_ContactMap_Generation>();
 
 		for (int i = 0; i < numSim; i++) {
 			long popSeed = rngBase.nextLong();
@@ -208,7 +209,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					}
 				}
 
-				Runnable_ContactMapGeneration r = new Runnable_ContactMapGeneration();
+				Runnable_ClusterModel_ContactMap_Generation r = new Runnable_ClusterModel_ContactMap_Generation();
 
 				runnables[i] = r;
 				r.setPopulation(population);
@@ -216,9 +217,10 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				r.setSnapFreq(snapFreq);
 				r.setBaseDir(baseDir);
 
-				for (int f = 0; f < Runnable_ContactMapGeneration.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
-					if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + f] != null) {
-						r.getRunnable_fields()[f] = simFields[f + Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
+				for (int f = 0; f < Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
+					if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD + f] != null) {
+						r.getRunnable_fields()[f] = simFields[f + LENGTH_SIM_MAP_GEN_FIELD + 
+						                                      Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
 					}
 				}
 

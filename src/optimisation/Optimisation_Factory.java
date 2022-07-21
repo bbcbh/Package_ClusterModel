@@ -1,19 +1,25 @@
 package optimisation;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,18 +38,24 @@ import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
-import sim.Launcher_ClusterModel;
+import relationship.ContactMap;
+import sim.Runnable_ClusterModel_ContactMap_Generation;
+import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
+import sim.Simulation_ClusterModelTransmission;
 import util.PropValUtils;
 
 public class Optimisation_Factory {
+
+	private static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
+	private static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
 	public static void stable_prevalence_by_tranmission_fit_Simplex(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY (double[]) INIT_TRANSMISSION_VALUE (double[][]) BOUNDARIES";
-		if (args.length > 3) {
+		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
 			System.exit(0);
 		} else {
@@ -65,8 +77,11 @@ public class Optimisation_Factory {
 		final File simplexFile = new File(baseDir, SIMPLEX_FILENAME);
 		final Pattern pattern_preSimplexFile = Pattern.compile(String.format("%s_(//d+)", SIMPLEX_FILENAME));
 
-		final String TARGET_PREVAL_STR = "POP_PROP_INIT_PREFIX_14";
-		final int[][] target_infected;
+		final String TARGET_PREVAL_STR = POP_PROP_INIT_PREFIX
+				+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+						+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+						+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+						+ Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION); // "POP_PROP_INIT_PREFIX_14";
 
 		if (propFile.exists()) {
 			FileInputStream fIS = new FileInputStream(propFile);
@@ -76,16 +91,166 @@ public class Optimisation_Factory {
 
 			System.out.println(String.format("Properties file < %s > loaded.", propFile.getAbsolutePath()));
 
+			long seed = System.currentTimeMillis();
+			int numSnap = 1;
+			int snapFreq = 1;
+			int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
+			int numThreads = Runtime.getRuntime().availableProcessors();
+			int[][] target_infected = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
+			int contact_map_start_time = 365;
+
 			if (prop.containsKey(TARGET_PREVAL_STR)) {
 				target_infected = (int[][]) PropValUtils.propStrToObject(prop.getProperty(TARGET_PREVAL_STR),
 						int[][].class);
+			}
+			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
+				seed = Long
+						.parseLong(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
+			}
+			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
+				numSnap = Integer
+						.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
+			}
+			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
+				snapFreq = Integer
+						.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
+			}
+			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL])) {
+				numThreads = Integer.parseInt(
+						prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL]));
+			}
+			String popCompositionKey = POP_PROP_INIT_PREFIX
+					+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+			if (prop.containsKey(popCompositionKey)) {
+				pop_composition = (int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),
+						int[].class);
+			}
+			String contactMapRangeKey = POP_PROP_INIT_PREFIX
+					+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+							+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+							+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
+			if (prop.containsKey(contactMapRangeKey)) {
+				contact_map_start_time = ((int[]) PropValUtils.propStrToObject(prop.getProperty(contactMapRangeKey),
+						int[].class))[0];
+			}
+
+			// Check for contact cluster generated
+
+			final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+
+			File[] preGenClusterFiles = baseDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pathname.isFile() && Pattern.matches(REGEX_STR, pathname.getName());
+
+				}
+			});
+
+			final RandomGenerator RNG;
+			final int NUM_TIME_STEPS_PER_SNAP;
+			final int SNAP_FREQ;
+			final int[] POP_COMPOSITION;
+			final int NUM_THREADS;
+			final ContactMap[] BASE_CONTACT_MAP;
+			final int[][] TARGET_INFECTED;
+			final int START_TIME;
+
+			RNG = new MersenneTwisterRandomGenerator(seed);
+			NUM_TIME_STEPS_PER_SNAP = numSnap;
+			SNAP_FREQ = snapFreq;
+			POP_COMPOSITION = pop_composition;
+			NUM_THREADS = numThreads;
+			TARGET_INFECTED = target_infected;
+			START_TIME = contact_map_start_time;
+
+			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
+
+			int mapIndex = 0;
+			for (File cMap_file : preGenClusterFiles) {
+				long tic = System.currentTimeMillis();
+
+				StringWriter cMap_str = new StringWriter();
+				PrintWriter pWri = new PrintWriter(cMap_str);
+
+				BufferedReader reader = new BufferedReader(new FileReader(cMap_file));
+				String line;
+
+				while ((line = reader.readLine()) != null) {
+					pWri.println(line);
+				}
+
+				pWri.close();
+				reader.close();
+				BASE_CONTACT_MAP[mapIndex] = ContactMap.ContactMapFromFullString(cMap_str.toString());
+				mapIndex++;
+				System.out.printf("ContactMap %s loaded. Time req. = %.3fs\n", cMap_file.getAbsolutePath(),
+						(System.currentTimeMillis() - tic) / 1000f);
+
 			}
 
 			MultivariateFunction func = new MultivariateFunction() {
 				@Override
 				public double value(double[] point) {
-					// TODO: Auto-generated method stub
-					return 0;
+					long sim_seed = RNG.nextLong();
+					Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[BASE_CONTACT_MAP.length];
+					int rId = 0;
+
+					ExecutorService exec = null;
+
+					for (ContactMap c : BASE_CONTACT_MAP) {
+						if (c != null) {
+							runnable[rId] = new Runnable_ClusterModel_Transmission(sim_seed, POP_COMPOSITION, c,
+									NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
+							runnable[rId].setBaseDir(baseDir);
+							runnable[rId].initialse();
+							runnable[rId].allocateSeedInfection(TARGET_INFECTED, START_TIME);
+
+						}
+						rId++;
+					}
+					if (rId == 1 || NUM_THREADS <= 1) {
+						for (int r = 0; r < rId; r++) {
+							runnable[r].run();
+						}
+					} else {
+						exec = Executors.newFixedThreadPool(NUM_THREADS);
+						for (int r = 0; r < rId; r++) {
+							exec.submit(runnable[r]);
+						}
+						try {
+							if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+								throw new InterruptedException("Time out");
+							}
+						} catch (InterruptedException e) {
+							e.printStackTrace(System.err);
+							for (int r = 0; r < rId; r++) {
+								runnable[r].run();
+							}
+						}
+					}
+
+					double sqSum = 0;
+
+					for (int r = 0; r < rId; r++) {
+						@SuppressWarnings("unchecked")
+						HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable[r]
+								.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
+
+						Integer[] keys = infectious_count_map.keySet()
+								.toArray(new Integer[infectious_count_map.size()]);
+						Arrays.sort(keys);
+						for (int k = keys.length - 1; k >= 0; k--) {
+							int[][] inf_count = infectious_count_map.get(keys[k]);
+							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+									sqSum += Math.pow(inf_count[g][s] - TARGET_INFECTED[g][s], 2);
+								}
+							}
+						}
+					}
+
+					return sqSum;
+
 				}
 
 			};

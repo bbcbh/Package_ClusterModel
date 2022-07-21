@@ -2,11 +2,12 @@ package sim;
 
 import java.io.File;
 
-public abstract class Abstract_Runnable_ContactMap implements Runnable {
+import relationship.ContactMap;
+
+public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 	
 	protected String runnableId = null;
 	protected File baseDir = null;
-	
 	
 	public String getRunnableId() {
 		return runnableId;
@@ -21,6 +22,8 @@ public abstract class Abstract_Runnable_ContactMap implements Runnable {
 	}
 
 	public abstract Object[] getRunnable_fields();
+
+	
 	
 
 }

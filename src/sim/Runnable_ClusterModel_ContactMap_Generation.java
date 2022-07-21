@@ -24,7 +24,7 @@ import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import relationship.ContactMap;
 
-public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap {
+public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnable_ClusterModel {
 
 	public static final Object[] DEFAULT_RUNNABLE_MAP_GEN_FIELDS = {
 			// RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE
@@ -47,7 +47,7 @@ public class Runnable_ContactMapGeneration extends Abstract_Runnable_ContactMap 
 	private ContactMap[] gen_cMap = null;
 	private PrintStream[] printStatus = null;
 
-	public Runnable_ContactMapGeneration() {
+	public Runnable_ClusterModel_ContactMap_Generation() {
 		super();
 		for (int i = 0; i < DEFAULT_RUNNABLE_MAP_GEN_FIELDS.length; i++) {
 			runnable_fields[i] = DEFAULT_RUNNABLE_MAP_GEN_FIELDS[i];
