@@ -17,8 +17,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,6 +42,7 @@ import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import sim.Abstract_Runnable_ClusterModel;
 import sim.Runnable_ClusterModel_ContactMap_Generation;
 import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
@@ -165,28 +169,55 @@ public class Optimisation_Factory {
 
 			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
 
-			int mapIndex = 0;
-			for (File cMap_file : preGenClusterFiles) {
-				long tic = System.currentTimeMillis();
+			long tic = System.currentTimeMillis();
 
-				StringWriter cMap_str = new StringWriter();
-				PrintWriter pWri = new PrintWriter(cMap_str);
+			if (NUM_THREADS > 1 || preGenClusterFiles.length > 1) {
+				ExecutorService exec = null;
+				@SuppressWarnings("unchecked")
+				Future<ContactMap>[] cm_futures = new Future[preGenClusterFiles.length];
 
-				BufferedReader reader = new BufferedReader(new FileReader(cMap_file));
-				String line;
-
-				while ((line = reader.readLine()) != null) {
-					pWri.println(line);
+				exec = Executors.newFixedThreadPool(NUM_THREADS);
+				int mapPt = 0;
+				for (File cMap_file : preGenClusterFiles) {
+					Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
+							.generateContactMapCallable(cMap_file);
+					cm_futures[mapPt] = exec.submit(cm_read_callable);
+					mapPt++;
 				}
 
-				pWri.close();
-				reader.close();
-				BASE_CONTACT_MAP[mapIndex] = ContactMap.ContactMapFromFullString(cMap_str.toString());
-				mapIndex++;
-				System.out.printf("ContactMap %s loaded. Time req. = %.3fs\n", cMap_file.getAbsolutePath(),
-						(System.currentTimeMillis() - tic) / 1000f);
+				try {
+					exec.shutdown();
+					if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+						throw new InterruptedException("Time out");
+					}
 
+					for (int c = 0; c < cm_futures.length; c++) {
+						BASE_CONTACT_MAP[c] = cm_futures[c].get();
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace(System.err);
+				}
 			}
+
+			// Non-thread version
+			int cMap_count = 0;
+			for (int c = 0; c < BASE_CONTACT_MAP.length; c++) {
+				if (BASE_CONTACT_MAP[c] == null) {
+					Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
+							.generateContactMapCallable(preGenClusterFiles[c]);
+					try {
+						BASE_CONTACT_MAP[c] = cm_read_callable.call();
+					} catch (Exception e) {
+						e.printStackTrace(System.err);
+					}
+				}
+				if (BASE_CONTACT_MAP[c] != null) {
+					cMap_count++;
+				}
+			}
+
+			System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
+					baseDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
 
 			MultivariateFunction func = new MultivariateFunction() {
 				@Override
@@ -197,11 +228,36 @@ public class Optimisation_Factory {
 
 					ExecutorService exec = null;
 
+					long tic = System.currentTimeMillis();
 					for (ContactMap c : BASE_CONTACT_MAP) {
 						if (c != null) {
 							runnable[rId] = new Runnable_ClusterModel_Transmission(sim_seed, POP_COMPOSITION, c,
 									NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
 							runnable[rId].setBaseDir(baseDir);
+							switch (point.length) {
+
+							case 4:
+								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P
+								double[][][] transmission_rate = (double[][][]) runnable[rId]
+										.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];								
+								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS]
+										[Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM]
+										[Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS]
+										[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX]
+										[Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];																
+
+								break;
+							default:
+								System.err.printf("Optimisation: Parameter intrepretation %s not defined. Exiting...\n",
+										Arrays.toString(point));
+								System.exit(-1);
+
+							}
+
 							runnable[rId].initialse();
 							runnable[rId].allocateSeedInfection(TARGET_INFECTED, START_TIME);
 
@@ -216,7 +272,8 @@ public class Optimisation_Factory {
 						exec = Executors.newFixedThreadPool(NUM_THREADS);
 						for (int r = 0; r < rId; r++) {
 							exec.submit(runnable[r]);
-						}
+						}						
+						exec.shutdown();
 						try {
 							if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
 								throw new InterruptedException("Time out");
@@ -248,6 +305,9 @@ public class Optimisation_Factory {
 							}
 						}
 					}
+
+					System.out.printf("Param = %s, Sq Sum = %d,  Time req = %.3fs\n", Arrays.toString(point), sqSum,
+							(System.currentTimeMillis() - tic) / 1000f);
 
 					return sqSum;
 

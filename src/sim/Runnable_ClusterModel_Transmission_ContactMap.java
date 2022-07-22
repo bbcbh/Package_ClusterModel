@@ -3,6 +3,7 @@ package sim;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
@@ -10,19 +11,19 @@ import java.util.Set;
 import relationship.ContactMap;
 
 public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_ClusterModel_Transmission {
-	
+
 	public static final String FILENAME_FORMAT_TRANSMISSION_CMAP = "Seed_%s_TransmissionMap_%d.csv";
 	public static final String DIRNAME_FORMAT_TRANSMISSION_CMAP = "TransMap_%d";
-	
+
 	public static final int TRANSMAP_EDGE_INFECTIOUS = 0;
 	public static final int TRANSMAP_EDGE_SUSCEPTIBLE = TRANSMAP_EDGE_INFECTIOUS + 1;
 	public static final int TRANSMAP_EDGE_START_TIME = TRANSMAP_EDGE_SUSCEPTIBLE + 1;
 	public static final int TRANSMAP_EDGE_ACT_INVOLVED = TRANSMAP_EDGE_START_TIME + 1;
 	public static final int LENGTH_TRANSMAP_EDGE = TRANSMAP_EDGE_ACT_INVOLVED + 1;
-	
+
 	public static final String SIM_OUTPUT_TRANMISSION_MAP = "SIM_OUTPUT_TRANMISSION_MAP";
 	public static final String SIM_OUTPUT_CLUSTERS = "SIM_OUTPUT_CLUSTERS";
-	
+
 	protected ContactMap transmissionMap = null;
 
 	public Runnable_ClusterModel_Transmission_ContactMap(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
@@ -39,20 +40,20 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 		return transmissionMap;
 	}
 
-
 	/**
 	 * Procedure to call if transmission is successful
+	 * 
 	 * @param currentTime
 	 * @param infectious
 	 * @param partner
 	 * @param site_target
 	 * @param actType
 	 */
-	
+
 	@Override
 	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target,
 			int actType) {
-		
+
 		super.transmission_success(currentTime, infectious, partner, site_target, actType);
 
 		if (transmissionMap != null) {
@@ -64,8 +65,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 				transmissionMap.addVertex(partner);
 			}
 
-			Integer[] existEdge = transmissionMap.getEdge(infectious,
-					partner);
+			Integer[] existEdge = transmissionMap.getEdge(infectious, partner);
 
 			if (existEdge == null) {
 				existEdge = new Integer[LENGTH_TRANSMAP_EDGE];
@@ -80,17 +80,43 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 		}
 	}
 
-	/**
-	 * Procedure that are called after simulations.
-	 * 
-	 * @param seedInfectedStr - A String to store seed infected information
-	 */
+	@Override
+	protected Object[] preSimulation() {
+		Object[] simulation_store = super.preSimulation();
+		int offset = simulation_store.length;
+		simulation_store = Arrays.copyOf(simulation_store, simulation_store.length + 1);
+		int[][] seedInfected = new int[currently_infectious.length][];
+		// Store initially infected
+		for (int site = 0; site < currently_infectious.length; site++) {
+			ArrayList<Integer> currently_infectious_by_site = currently_infectious[site];
+			seedInfected[site] = new int[currently_infectious_by_site.size()];
+			int c = 0;
+			for (Integer infectious : currently_infectious_by_site) {
+				seedInfected[site][c] = infectious;
+				c++;
+			}
+		}
+		simulation_store[offset + 1] = seedInfected;
+		return simulation_store;
+	}
 
 	@Override
-	protected void postSimulation(String seedInfectedStr) {
-		super.postSimulation(seedInfectedStr);
+	protected void postSimulation(Object[] simulations_store) {
+		super.postSimulation(simulations_store);
 
-		if (transmissionMap != null) {			
+		// Store index case(s)
+		StringBuilder seedInfectedStr = new StringBuilder();
+		int[][] seedInfected = (int[][]) simulations_store[0];
+		for (int site = 0; site < seedInfected.length; site++) {
+			for (int i = 0; i < seedInfected[site].length; i++) {
+				seedInfectedStr.append(site);
+				seedInfectedStr.append(',');
+				seedInfectedStr.append(seedInfected[site][i]);
+				seedInfectedStr.append('\n');
+			}
+		}
+
+		if (transmissionMap != null) {
 
 			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);
 			Set<ContactMap> clustersSet = transmissionMap.getContactCluster();

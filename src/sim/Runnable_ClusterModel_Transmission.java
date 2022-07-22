@@ -36,45 +36,53 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final String FILENAME_FORMAT_INDEX_CASE_LIST = "Seed_%d_IndexCases.txt";
 
 	// Transmission
-	private static double[] DEFAULT_TRANS_V2P = new double[] { 0.4, 0.10 };
-	private static double[] DEFAULT_TRANS_P2V = new double[] { 0.2, 0.05 };
+	private double[] DEFAULT_TRANS_V2P = new double[] { 0.4, 0.10 };
+	private double[] DEFAULT_TRANS_P2V = new double[] { 0.2, 0.05 };
 	// From Qibin's paper
 	// 10.1371/journal.pcbi.1009385
-	private static double[] DEFAULT_TRANS_P2R = new double[] { 0.63, 0 };
-	private static double[] DEFAULT_TRANS_R2P = new double[] { 0.02, 0 };
-	private static double[] DEFAULT_TRANS_P2O = new double[] { 0.44, 0 };
-	private static double[] DEFAULT_TRANS_O2P = new double[] { 0.01, 0 };
+	private double[] DEFAULT_TRANS_P2R = new double[] { 0.63, 0 };
+	private double[] DEFAULT_TRANS_R2P = new double[] { 0.02, 0 };
+	private double[] DEFAULT_TRANS_P2O = new double[] { 0.44, 0 };
+	private double[] DEFAULT_TRANS_O2P = new double[] { 0.01, 0 };
 
 	// Duration
-	private static double[] DEFAULT_INFECTIOUS_PERIOD_VAGINA = new double[] { 15 * 7, 5 * 7 };
-	private static double[] DEFAULT_INFECTIOUS_PERIOD_PENIS = new double[] { 15 * 7, 5 * 7 };
+	private double[] DEFAULT_INFECTIOUS_PERIOD_VAGINA = new double[] { 15 * 7, 5 * 7 };
+	private double[] DEFAULT_INFECTIOUS_PERIOD_PENIS = new double[] { 15 * 7, 5 * 7 };
 	// From Qibin's paper
 	// 10.1371/journal.pcbi.1009385
-	private static double[] DEFAULT_INFECTIOUS_PERIOD_RECTUM = new double[] { 307.2, 5.54 };
-	private static double[] DEFAULT_INFECTIOUS_PERIOD_OROPHARYNX = new double[] { 80.4, 5.67 };
+	private double[] DEFAULT_INFECTIOUS_PERIOD_RECTUM = new double[] { 307.2, 5.54 };
+	private double[] DEFAULT_INFECTIOUS_PERIOD_OROPHARYNX = new double[] { 80.4, 5.67 };
 
 	// Incubation
-	private static double[] DEFAULT_INCUBATION_RANGE = new double[] { 3, 6 }; // 3 - 5 days
+	private double[] DEFAULT_INCUBATION_RANGE = new double[] { 3, 6 }; // 3 - 5 days
+
+	// Sought test period
+	// From Qibin's paper of Gamma(3, 0.86)
+	private double[] DEFAULT_SYM_TEST = new double[] { 3 * 0.86, Math.sqrt(3 * 0.86 * 0.86) };
 
 	// Act frequency
 	// ASHR2: Those who were in heterosexual relationships had had
 	// sex on average 1.84 times a week in the past 4 weeks,
-	private static double DEFAULT_ACT_GENITAL_FREQ = 1.84 / 7;
+	private float DEFAULT_ACT_GENITAL_FREQ = 1.84f / 7;
 	// ASHR2 : only 1% of men and 0.4% of women had anal intercourse
 	// the last time they had sex with a partner of the other sex
-	private static double DEFAULT_ACT_ANAL_FREQ_HETRO = 0.1 / 100;
+	private float DEFAULT_ACT_ANAL_FREQ_HETRO = 0.1f / 100;
 	// ASHR2: oral sex was reported in only approximately one in four encounters
-	private static double DEFAULT_ACT_FELLATIO_FREQ_HETRO = 0.25;
+	private float DEFAULT_ACT_FELLATIO_FREQ_HETRO = 0.25f;
 	// From Qibin's paper
 	// 10.1371/journal.pcbi.1009385
-	private static double DEFAULT_ACT_ANAL_FREQ_MSM = (1.6 + 2.4) / 2 / 7;
-	private static double DEFAULT_ACT_FELLATIO_FREQ_MSM = (1.6 + 2.4) / 2 / 7;
-	private static double[] DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM = new double[] { 20 };
-	private static double[] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_LOW_RISK = new double[] { 0.375, 1, 720, 360, 90 };
-	private static double[] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_HIGH_RISK = new double[] { 0.05, 0.49, 0.71, 0.99,
-			720, 360, 180, 120, 90 };
-	private static double[][] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM = new double[][] {
+	private float DEFAULT_ACT_ANAL_FREQ_MSM = (1.6f + 2.4f) / 2 / 7;
+	private float DEFAULT_ACT_FELLATIO_FREQ_MSM = (1.6f + 2.4f) / 2 / 7;
+
+	private float[] DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM = new float[] { 20 };
+	private float[] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_LOW_RISK = new float[] { 0.375f, 1, 720, 360, 90 };
+	private float[] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_HIGH_RISK = new float[] { 0.05f, 0.49f, 0.71f, 0.99f, 720,
+			360, 180, 120, 90 };
+	private float[][] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM = new float[][] {
 			DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_LOW_RISK, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_HIGH_RISK };
+
+	private float[] DEFAULT_SYM_RATE_BY_SITE_MALE = new float[] { Float.NaN, 0.9f, 0.12f, 0 };
+	private float[] DEFAULT_SYM_RATE_BY_SITE_FEMALE = new float[] { 0.4f, Float.NaN, 0.12f, 0 };
 
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ = 0;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE = RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ + 1;
@@ -82,32 +90,37 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_INCUBATION_PERIOD = RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD
 			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS = RUNNABLE_FIELD_TRANSMISSION_INCUBATION_PERIOD
+	public static final int RUNNABLE_FIELD_TRANSMISSION_SYM_RATE = RUNNABLE_FIELD_TRANSMISSION_INCUBATION_PERIOD + 1;
+
+	public static final int RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS = RUNNABLE_FIELD_TRANSMISSION_SYM_RATE
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES = RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS
 			+ 1;
-	public static final int LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD = RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES + 1;
+	public static final int RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM = RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES
+			+ 1;
+	public static final int LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
+			+ 1;
 
 	public Object[] runnable_fields = {
 			// RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ
 			// double[ACT_TYPE][GENDER_FROM][GENDER_TO]
-			new double[][][] {
+			new float[][][] {
 					// ACT_INDEX_GENITAL
-					new double[][] { new double[] { 0, DEFAULT_ACT_GENITAL_FREQ, 0, DEFAULT_ACT_GENITAL_FREQ },
-							new double[] { DEFAULT_ACT_GENITAL_FREQ, 0, 0, 0 }, new double[] { 0, 0, 0, 0 },
-							new double[] { DEFAULT_ACT_GENITAL_FREQ, 0, 0, 0 }, },
+					new float[][] { new float[] { 0, DEFAULT_ACT_GENITAL_FREQ, 0, DEFAULT_ACT_GENITAL_FREQ },
+							new float[] { DEFAULT_ACT_GENITAL_FREQ, 0, 0, 0 }, new float[] { 0, 0, 0, 0 },
+							new float[] { DEFAULT_ACT_GENITAL_FREQ, 0, 0, 0 }, },
 					// ACT_INDEX_ANAL
-					new double[][] { new double[] { 0, DEFAULT_ACT_ANAL_FREQ_HETRO, 0, DEFAULT_ACT_ANAL_FREQ_HETRO },
-							new double[] { DEFAULT_ACT_ANAL_FREQ_HETRO, DEFAULT_ACT_ANAL_FREQ_HETRO, 0, 0 },
-							new double[] { 0, 0, DEFAULT_ACT_ANAL_FREQ_MSM, DEFAULT_ACT_ANAL_FREQ_MSM },
-							new double[] { DEFAULT_ACT_ANAL_FREQ_HETRO, 0, DEFAULT_ACT_ANAL_FREQ_MSM,
+					new float[][] { new float[] { 0, DEFAULT_ACT_ANAL_FREQ_HETRO, 0, DEFAULT_ACT_ANAL_FREQ_HETRO },
+							new float[] { DEFAULT_ACT_ANAL_FREQ_HETRO, DEFAULT_ACT_ANAL_FREQ_HETRO, 0, 0 },
+							new float[] { 0, 0, DEFAULT_ACT_ANAL_FREQ_MSM, DEFAULT_ACT_ANAL_FREQ_MSM },
+							new float[] { DEFAULT_ACT_ANAL_FREQ_HETRO, 0, DEFAULT_ACT_ANAL_FREQ_MSM,
 									DEFAULT_ACT_ANAL_FREQ_MSM }, },
 					// ACT_INDEX_FELLATIO
-					new double[][] {
-							new double[] { 0, DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, DEFAULT_ACT_FELLATIO_FREQ_HETRO },
-							new double[] { DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, 0, 0 },
-							new double[] { 0, 0, DEFAULT_ACT_FELLATIO_FREQ_MSM, DEFAULT_ACT_FELLATIO_FREQ_MSM },
-							new double[] { DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, DEFAULT_ACT_FELLATIO_FREQ_MSM,
+					new float[][] {
+							new float[] { 0, DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, DEFAULT_ACT_FELLATIO_FREQ_HETRO },
+							new float[] { DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, 0, 0 },
+							new float[] { 0, 0, DEFAULT_ACT_FELLATIO_FREQ_MSM, DEFAULT_ACT_FELLATIO_FREQ_MSM },
+							new float[] { DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, DEFAULT_ACT_FELLATIO_FREQ_MSM,
 									DEFAULT_ACT_FELLATIO_FREQ_MSM }, },
 
 			},
@@ -131,12 +144,17 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// double[SITE]
 			new double[][] { DEFAULT_INCUBATION_RANGE, DEFAULT_INCUBATION_RANGE, DEFAULT_INCUBATION_RANGE,
 					DEFAULT_INCUBATION_RANGE },
+			// RUNNABLE_FIELD_TRANSMISSION_SYM_RATE
+			new float[][] { DEFAULT_SYM_RATE_BY_SITE_FEMALE, DEFAULT_SYM_RATE_BY_SITE_MALE,
+					DEFAULT_SYM_RATE_BY_SITE_MALE, DEFAULT_SYM_RATE_BY_SITE_MALE },
 			// RUNNABLE_FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS
-			new double[][] { null, null, DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM,
+			new float[][] { null, null, DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM,
 					DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM },
 			// RUNNABLE_FIELD_TESTING_RATE_BY_RISK_CATEGORIES
-			new double[][][] { null, null, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM,
+			new float[][][] { null, null, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM,
 					DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM },
+			// RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
+			DEFAULT_SYM_TEST,
 
 	};
 
@@ -153,6 +171,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient RealDistribution[][] tranmissionMatrix = new RealDistribution[LENGTH_SITE][LENGTH_SITE];
 	protected transient RealDistribution[] infectious_period = new RealDistribution[LENGTH_SITE];
 	protected transient RealDistribution[] incubation_period = new RealDistribution[LENGTH_SITE];
+	protected transient RealDistribution sym_test_period;
 
 	protected transient ArrayList<Integer>[] currently_infectious;
 
@@ -220,6 +239,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			infectious_period[s] = generateGammaDistribution(durParam[s]);
 			incubation_period[s] = new UniformRealDistribution(RNG, incParam[s][0], incParam[s][1]);
 		}
+		sym_test_period = generateGammaDistribution(
+				(double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM]);
 
 		// Lists
 		currently_infectious = new ArrayList[LENGTH_SITE];
@@ -247,13 +268,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
 		int genderType = getGenderType(personId);
 
-		double[][] testRate = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES])[genderType];
+		float[][] testRate = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES])[genderType];
 		if (testRate != null) {
 			int riskCat = Math.max(0, getRiskCategories(personId, genderType));
-			double[] testRateByCat = testRate[riskCat];
+			float[] testRateByCat = testRate[riskCat];
 			int divder = (testRateByCat.length - 1) / 2;
 
-			double p = RNG.nextDouble();
+			float p = RNG.nextFloat();
 			int pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
 			if (pI < 0) {
 				pI = ~pI;
@@ -287,7 +308,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			return risk_cat_map.get(personId);
 		} else {
 			int riskCat = -1;
-			double[] riskCatList = ((double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS])[genderType];
+			float[] riskCatList = ((float[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS])[genderType];
 			if (riskCatList != null) {
 				int numCasual = 0;
 				Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
@@ -300,7 +321,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 				}
 
-				double numCasual1Year = ((double) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual
+				float numCasual1Year = ((float) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual
 						/ NUM_TIME_STEPS_PER_SNAP;
 				riskCat = Arrays.binarySearch(riskCatList, numCasual1Year);
 				if (riskCat < 0) {
@@ -334,7 +355,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				int numInfect = num_infectioned_by_gender_site[g][s];
 				for (int p = 0; p < candidate.length && numInfect > 0; p++) {
 					if (RNG.nextInt(candidate.length - p) < numInfect) {
-						addInfected(candidate[p], s, time, time + (int) Math.round(infectious_period[s].sample()));
+						addInfectious(candidate[p], s, time, time + (int) Math.round(infectious_period[s].sample()));
 						numInfect--;
 					}
 				}
@@ -342,11 +363,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 	}
 
-	public int addInfected(Integer infectedId, int site, int firstContactTime, int recoveredAt) {
+	public int addInfectious(Integer infectedId, int site, int infectious_time, int recoveredAt) {
 		int key = Collections.binarySearch(currently_infectious[site], infectedId);
 		if (key < 0) {
 			currently_infectious[site].add(~key, infectedId);
-			firstSeedTime = Math.min(firstSeedTime, firstContactTime);
+			firstSeedTime = Math.min(firstSeedTime, infectious_time);
 
 			// Recovery
 			ArrayList<Integer> sch = schedule_recovery[site].get(recoveredAt);
@@ -361,10 +382,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				updateScheduleMap(infectedId, LENGTH_SITE + site, recoveredAt);
 			}
 
+			int gender = getGenderType(infectedId);
+
 			// Transmission probability
 			if (!trans_prob.containsKey(infectedId)) {
 				double[][] trans = new double[LENGTH_SITE][LENGTH_SITE];
-				int gender = getGenderType(infectedId);
 				for (int sf = 0; sf < LENGTH_SITE; sf++) {
 					boolean sample = (gender == Person_Bridging_Pop.GENDER_TYPE_FEMALE) ? sf != SITE_PENIS
 							: sf != SITE_VAGINA;
@@ -378,6 +400,31 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 				trans_prob.put(infectedId, trans);
 			}
+
+			// Schedule sym test if needed.
+			float sym_rate = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_SYM_RATE])[gender][site];
+			if (sym_rate > 0) {
+				if (RNG.nextFloat() < sym_rate) {
+					int sym_test_day = (int) Math.round(infectious_time + sym_test_period.sample());
+					sch = schedule_testing.get(sym_test_day);
+
+					if (sch == null) {
+						sch = new ArrayList<>();
+						schedule_testing.put(sym_test_day, sch);
+					}
+
+					int keyS = Collections.binarySearch(sch, infectedId);
+					if (keyS < 0) {
+						keyS = Collections.binarySearch(sch, -infectedId);
+						if (keyS < 0) {
+							sch.add(~keyS, -infectedId);
+						}
+					}
+
+				}
+
+			}
+
 		}
 		return key;
 	}
@@ -414,32 +461,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public void run() {
 		int startTime = firstSeedTime;
 
-		int[][] seedInfected = new int[currently_infectious.length][];
-
-		// Store initially infected
-		for (int site = 0; site < currently_infectious.length; site++) {
-			ArrayList<Integer> currently_infectious_by_site = currently_infectious[site];
-			seedInfected[site] = new int[currently_infectious_by_site.size()];
-			int c = 0;
-			for (Integer infectious : currently_infectious_by_site) {
-				seedInfected[site][c] = infectious;
-				c++;
-			}
-		}
-
 		if (startTime < Integer.MAX_VALUE) {
 
-			// Store index case(s)
-			StringBuilder seedInfectedStr = new StringBuilder();
-			for (int site = 0; site < seedInfected.length; site++) {
-				for (int i = 0; i < seedInfected[site].length; i++) {
-					seedInfectedStr.append(site);
-					seedInfectedStr.append(',');
-					seedInfectedStr.append(seedInfected[site][i]);
-					seedInfectedStr.append('\n');
-				}
-			}
-
+			Object[] simulation_store = preSimulation();
+			
 			// Make a copy of contact map for interaction
 			ContactMap cMap;
 			try {
@@ -450,14 +475,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 
 			HashSet<Integer[]> removeEdges = new HashSet<>();
-
 			// Schedule testing
 			for (Integer personId : cMap.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
 
 			int snap_index = 0;
-
 			for (int currentTime = startTime; currentTime < startTime
 					+ NUM_TIME_STEPS_PER_SNAP * SNAP_FREQ; currentTime++) {
 
@@ -468,7 +491,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					if (becomeInfectiousToday != null) {
 						for (Integer toInfectiousId : becomeInfectiousToday) {
 							int recoveredAt = (int) Math.round(infectious_period[site_src].sample()) + currentTime;
-							addInfected(toInfectiousId, site_src, currentTime, recoveredAt);
+							addInfectious(toInfectiousId, site_src, currentTime, recoveredAt);
 							Integer[] schMap = mapping_infection_schedule.get(toInfectiousId);
 							if (schMap != null) {
 								schMap[site_src] = null;
@@ -543,7 +566,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 													boolean transmitted = actType != -1;
 
 													if (transmitted) {
-														double actProb = ((double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s][g_t];
+														float actProb = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s][g_t];
 														double transProb = trans[site_src][site_target];
 														transmitted &= actProb > 0;
 														if (transmitted) {
@@ -569,19 +592,20 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 				}
 
-				// TODO: Testing
+				// Testing
 				ArrayList<Integer> testToday = schedule_testing.remove(currentTime);
 				if (testToday != null) {
-					for (Integer testId : testToday) {
+					for (Integer tId : testToday) {
+						Integer test_pid = Math.abs(tId);
 						// Remove from infectious
 						for (int site = 0; site < LENGTH_SITE; site++) {
-							int key = Collections.binarySearch(currently_infectious[site], testId);
+							int key = Collections.binarySearch(currently_infectious[site], test_pid);
 							if (key >= 0) {
 								currently_infectious[site].remove(key);
 							}
 						}
 						// Remove from incubation and recovery
-						Integer[] infection_schMap = mapping_infection_schedule.get(testId);
+						Integer[] infection_schMap = mapping_infection_schedule.get(test_pid);
 						if (infection_schMap != null) {
 							for (int i = 0; i < infection_schMap.length; i++) {
 								if (infection_schMap[i] != null) {
@@ -593,7 +617,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 									} else {
 										schArr = schedule_recovery[site].get(dateEnt);
 									}
-									int key = Collections.binarySearch(schArr, testId);
+									int key = Collections.binarySearch(schArr, test_pid);
 									if (key >= 0) {
 										schArr.remove(key);
 									}
@@ -602,8 +626,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							}
 							Arrays.fill(infection_schMap, null);
 						}
-						// Schedule next test
-						scheduleNextTest(testId, currentTime);
+
+						if (tId < 0) {
+							// Schedule next test
+							scheduleNextTest(test_pid, currentTime);
+						}
 					}
 				}
 
@@ -639,10 +666,24 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if (runnableId != null) {
 				System.out.println(String.format("Thread <%s> completed.", runnableId));
 			}
-			postSimulation(seedInfectedStr.toString());
+			postSimulation(simulation_store);
 
 		}
 
+	}
+
+	protected Object[] preSimulation() {
+		// Do nothing by default		
+		return new Object[0];
+
+	}
+
+	/**
+	 * Procedure that are called after simulations. *
+	 * 
+	 */
+	protected void postSimulation(Object[] simulation_store) {
+		// Do nothing by default
 	}
 
 	/**
@@ -671,13 +712,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	/**
-	 * Procedure that are called after simulations. *
-	 * 
-	 */
-	protected void postSimulation(String seedInfectedStr) {
-		// Do nothing by default
-	}
+	
 
 	protected void updateScheduleMap(int personId, int schMap_index, Integer schMap_ent) {
 

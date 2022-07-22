@@ -308,7 +308,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 								}
 
 								seedTime[i] = firstContactTime;
-								runnable[s].addInfected(infected, site, firstContactTime, firstContactTime + 180);
+								runnable[s].addInfectious(infected, site, firstContactTime, firstContactTime + 180);
 
 							}
 							System.out.println(String.format("Seeding %s of gender #%d at site #%d at t = %s",

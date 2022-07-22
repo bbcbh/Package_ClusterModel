@@ -861,7 +861,6 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			}
 
-			
 		}
 		updateRelRelationshipMap();
 
@@ -1263,6 +1262,28 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			}
 		}
 
+	}
+
+	public static final Integer[][] orderedEdgesFromContactMap(ContactMap cm) {
+		Integer[][] edge_list = cm.edgeSet().toArray(new Integer[cm.edgeSet().size()][]);
+		Arrays.sort(edge_list, new Comparator<Integer[]>() {
+			@Override
+			public int compare(Integer[] o1, Integer[] o2) {
+				int cmp = Integer.compare(o1[CONTACT_MAP_EDGE_START_TIME], o2[CONTACT_MAP_EDGE_START_TIME]);
+				if (cmp == 0) {
+					cmp = Integer.compare(o1[CONTACT_MAP_EDGE_DURATION], o2[CONTACT_MAP_EDGE_DURATION]);
+					if (cmp == 0) {
+						cmp = Integer.compare(o1[CONTACT_MAP_EDGE_P1], o2[CONTACT_MAP_EDGE_P1]);
+						if (cmp == 0) {
+							cmp = Integer.compare(o1[CONTACT_MAP_EDGE_P2], o2[CONTACT_MAP_EDGE_P2]);
+						}
+					}
+				}
+				return cmp;
+			}
+		});
+
+		return edge_list;
 	}
 
 }
