@@ -576,7 +576,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 													if (transmitted) {
 														transmission_success(currentTime, infectious, partner,
-																site_target, actType);
+																site_target, actType, simulation_store);
 													}
 												}
 											}
@@ -686,18 +686,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		// Do nothing by default
 	}
 
-	/**
-	 * Procedure to call if transmission is successful
-	 * 
-	 * @param currentTime
-	 * @param infectious
-	 * @param partner
-	 * @param site_target
-	 * @param actType
-	 */
 
 	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target,
-			int actType) {
+			int actType, Object[] simulation_store) {
 		Integer incubation_end_at = currentTime + (int) incubation_period[site_target].sample();
 		ArrayList<Integer> ent = schedule_incubation[site_target].get(incubation_end_at);
 		if (ent == null) {

@@ -40,21 +40,11 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 		return transmissionMap;
 	}
 
-	/**
-	 * Procedure to call if transmission is successful
-	 * 
-	 * @param currentTime
-	 * @param infectious
-	 * @param partner
-	 * @param site_target
-	 * @param actType
-	 */
-
 	@Override
-	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target,
-			int actType) {
+	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target, int actType,
+			Object[] simulation_store) {
 
-		super.transmission_success(currentTime, infectious, partner, site_target, actType);
+		super.transmission_success(currentTime, infectious, partner, site_target, actType, simulation_store);
 
 		if (transmissionMap != null) {
 
