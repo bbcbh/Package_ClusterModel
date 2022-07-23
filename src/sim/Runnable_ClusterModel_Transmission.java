@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.IntFunction;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
@@ -464,25 +465,63 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		if (startTime < Integer.MAX_VALUE) {
 
 			Object[] simulation_store = preSimulation();
-			
-			// Make a copy of contact map for interaction
-			ContactMap cMap;
-			try {
-				cMap = ContactMap.ContactMapFromFullString(BASE_CONTACT_MAP.toFullString());
-			} catch (IOException e1) {
-				cMap = BASE_CONTACT_MAP;
-				e1.printStackTrace(System.err);
-			}
 
-			HashSet<Integer[]> removeEdges = new HashSet<>();
+			// Current contact map
+			ContactMap cMap = new ContactMap();
+
+			ArrayList<Integer[]> edges_list;
+			try {
+				edges_list = generateContactEdgeArray(BASE_CONTACT_MAP).call();
+			} catch (Exception e) {				
+				System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");				
+				edges_list = new ArrayList<>();
+				System.exit(-1);
+				
+			}
+			Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
+			int edges_array_pt = 0;
+			
+			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
+
 			// Schedule testing
-			for (Integer personId : cMap.vertexSet()) {
+			for (Integer personId : BASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
 
 			int snap_index = 0;
+			ArrayList<Integer[]> toRemove;
+
 			for (int currentTime = startTime; currentTime < startTime
 					+ NUM_TIME_STEPS_PER_SNAP * SNAP_FREQ; currentTime++) {
+
+				// Remove expired edges
+				toRemove = removeEdges.get(currentTime);
+				if (toRemove != null) {
+					for (Integer[] edge : toRemove) {
+						cMap.removeEdge(edge);
+					}
+				}
+
+				// Add new edges and update removal schedule
+				while (edges_array_pt < edges_array.length
+						&& edges_array[edges_array_pt][Population_Bridging.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
+
+					Integer[] edge = edges_array[edges_array_pt];
+					Integer expireAt = edge[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
+							+ edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION];
+
+					toRemove = removeEdges.get(expireAt);
+					if (toRemove == null) {
+						toRemove = new ArrayList<>();
+						removeEdges.put(expireAt, toRemove);
+					}
+					toRemove.add(edge);
+
+					cMap.addEdge(edge[Population_Bridging.CONTACT_MAP_EDGE_P1],
+							edge[Population_Bridging.CONTACT_MAP_EDGE_P2], edge);
+
+					edges_array_pt++;
+				}
 
 				for (int site_src = 0; site_src < LENGTH_SITE; site_src++) {
 					// Update infectious
@@ -581,10 +620,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 												}
 											}
 										}
-									} else if (currentTime >= (e[startIndex] + e[durationIndex])
-											&& startIndex + 2 > e.length) {
-										removeEdges.add(e);
-									}
+									} 
 									startIndex += 2;
 								}
 							}
@@ -634,10 +670,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 				}
 
-				for (Integer[] e : removeEdges) {
-					cMap.removeEdge(e);
-				}
-
+				
 				// Storing snapshot infected in sim_output
 
 				if (snap_index == 0) {
@@ -673,7 +706,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	protected Object[] preSimulation() {
-		// Do nothing by default		
+		// Do nothing by default
 		return new Object[0];
 
 	}
@@ -686,9 +719,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		// Do nothing by default
 	}
 
-
-	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target,
-			int actType, Object[] simulation_store) {
+	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target, int actType,
+			Object[] simulation_store) {
 		Integer incubation_end_at = currentTime + (int) incubation_period[site_target].sample();
 		ArrayList<Integer> ent = schedule_incubation[site_target].get(incubation_end_at);
 		if (ent == null) {
@@ -702,8 +734,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 
 	}
-
-	
 
 	protected void updateScheduleMap(int personId, int schMap_index, Integer schMap_ent) {
 
