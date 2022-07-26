@@ -1,13 +1,10 @@
 package sim;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.function.IntFunction;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
@@ -275,8 +272,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			float[] testRateByCat = testRate[riskCat];
 			int divder = (testRateByCat.length - 1) / 2;
 
+			int pI;
+
 			float p = RNG.nextFloat();
-			int pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
+			pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
 			if (pI < 0) {
 				pI = ~pI;
 			}
@@ -472,15 +471,16 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			ArrayList<Integer[]> edges_list;
 			try {
 				edges_list = generateContactEdgeArray(BASE_CONTACT_MAP).call();
-			} catch (Exception e) {				
-				System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");				
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
+				System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
 				edges_list = new ArrayList<>();
 				System.exit(-1);
-				
+
 			}
 			Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
 			int edges_array_pt = 0;
-			
+
 			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
 
 			// Schedule testing
@@ -516,6 +516,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						removeEdges.put(expireAt, toRemove);
 					}
 					toRemove.add(edge);
+
+					for (int index : new int[] { Population_Bridging.CONTACT_MAP_EDGE_P1,
+							Population_Bridging.CONTACT_MAP_EDGE_P2 }) {
+						if (!cMap.containsVertex(edge[index])) {
+							cMap.addVertex(edge[index]);
+						}
+					}
 
 					cMap.addEdge(edge[Population_Bridging.CONTACT_MAP_EDGE_P1],
 							edge[Population_Bridging.CONTACT_MAP_EDGE_P2], edge);
@@ -555,73 +562,62 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							double[][] trans = trans_prob.get(infectious);
 
 							for (Integer[] e : edges) {
-								int startIndex = Population_Bridging.CONTACT_MAP_EDGE_START_TIME;
 
-								while (startIndex < e.length) {
-									int durationIndex = startIndex + 1;
+								int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
+										? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
+										: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
 
-									if (currentTime >= e[startIndex]
-											&& currentTime < (e[startIndex] + e[durationIndex])) {
+								for (int site_target = 0; site_target < LENGTH_SITE; site_target++) {
+									if (trans[site_src][site_target] != 0) {
+										// Transmission is possible
+										if (Collections.binarySearch(currently_infectious[site_target], partner) < 0) {
 
-										int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
-												? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
-												: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
-
-										for (int site_target = 0; site_target < LENGTH_SITE; site_target++) {
-											if (trans[site_src][site_target] != 0) {
-												// Transmission is possible
-												if (Collections.binarySearch(currently_infectious[site_target],
-														partner) < 0) {
-
-													int g_s = getGenderType(infectious);
-													int g_t = getGenderType(partner);
-													int actType;
-													// Determine act type
-													switch (site_src) {
-													case SITE_VAGINA:
-														actType = ACT_INDEX_GENITAL;
-														break;
-													case SITE_OROPHARYNX:
-														actType = ACT_INDEX_FELLATIO;
-														break;
-													case SITE_RECTUM:
-														actType = ACT_INDEX_ANAL;
-														break;
-													default:
-														switch (site_target) {
-														case SITE_VAGINA:
-															actType = ACT_INDEX_GENITAL;
-															break;
-														case SITE_OROPHARYNX:
-															actType = ACT_INDEX_FELLATIO;
-															break;
-														case SITE_RECTUM:
-															actType = ACT_INDEX_ANAL;
-															break;
-														default:
-															actType = -1;
-														}
-													}
-													boolean transmitted = actType != -1;
-
-													if (transmitted) {
-														float actProb = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s][g_t];
-														double transProb = trans[site_src][site_target];
-														transmitted &= actProb > 0;
-														if (transmitted) {
-															transmitted &= RNG.nextDouble() < (actProb * transProb);
-														}
-													}
-
-													if (transmitted) {
-														transmission_success(currentTime, infectious, partner,
-																site_target, actType, simulation_store);
-													}
+											int g_s = getGenderType(infectious);
+											int g_t = getGenderType(partner);
+											int actType;
+											// Determine act type
+											switch (site_src) {
+											case SITE_VAGINA:
+												actType = ACT_INDEX_GENITAL;
+												break;
+											case SITE_OROPHARYNX:
+												actType = ACT_INDEX_FELLATIO;
+												break;
+											case SITE_RECTUM:
+												actType = ACT_INDEX_ANAL;
+												break;
+											default:
+												switch (site_target) {
+												case SITE_VAGINA:
+													actType = ACT_INDEX_GENITAL;
+													break;
+												case SITE_OROPHARYNX:
+													actType = ACT_INDEX_FELLATIO;
+													break;
+												case SITE_RECTUM:
+													actType = ACT_INDEX_ANAL;
+													break;
+												default:
+													actType = -1;
 												}
 											}
+											boolean transmitted = actType != -1;
+
+											if (transmitted) {
+												float actProb = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s][g_t];
+												float transProb = (float) trans[site_src][site_target];
+												transmitted &= actProb > 0;
+												if (transmitted) {
+													transmitted &= RNG.nextFloat() < (actProb * transProb);
+												}
+											}
+
+											if (transmitted) {
+												transmission_success(currentTime, infectious, partner, site_target,
+														actType, simulation_store);
+											}
 										}
-									} 
-									startIndex += 2;
+									}
 								}
 							}
 						}
@@ -670,7 +666,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 				}
 
-				
 				// Storing snapshot infected in sim_output
 
 				if (snap_index == 0) {

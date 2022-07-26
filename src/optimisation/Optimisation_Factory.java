@@ -1,19 +1,14 @@
 package optimisation;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
@@ -23,10 +18,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.apache.commons.math3.optim.InitialGuess;
 import org.apache.commons.math3.optim.MaxEval;
@@ -59,6 +52,8 @@ public class Optimisation_Factory {
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY (double[]) INIT_TRANSMISSION_VALUE (double[][]) BOUNDARIES";
+
+		int numEval = 100;
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
 			System.exit(0);
@@ -66,20 +61,22 @@ public class Optimisation_Factory {
 			File baseDir = new File(args[0]);
 			double[] init_transmissionProb = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
 			double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);
-			stable_prevalence_by_tranmission_fit_Simplex(baseDir, init_transmissionProb, boundaries);
+			if (args.length > 3) {
+				numEval = (int) Integer.parseInt(args[3]);
+			}
+
+			stable_prevalence_by_tranmission_fit_Simplex(baseDir, init_transmissionProb, boundaries, numEval);
 		}
 
 	}
 
 	public static void stable_prevalence_by_tranmission_fit_Simplex(File baseDir, final double[] init_transmissionProb,
-			final double[][] boundaries) throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
+			final double[][] boundaries, int numEval)
+			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 
 		final double RELATIVE_TOLERANCE = 1e-5;
 		final double ABSOLUTE_TOLERANCE = 1e-10;
 		final File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
-		final String SIMPLEX_FILENAME = "simplex.obj";
-		final File simplexFile = new File(baseDir, SIMPLEX_FILENAME);
-		final Pattern pattern_preSimplexFile = Pattern.compile(String.format("%s_(//d+)", SIMPLEX_FILENAME));
 
 		final String TARGET_PREVAL_STR = POP_PROP_INIT_PREFIX
 				+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
@@ -239,16 +236,12 @@ public class Optimisation_Factory {
 							case 4:
 								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P
 								double[][][] transmission_rate = (double[][][]) runnable[rId]
-										.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];								
-								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS]
-										[Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM]
-										[Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS]
-										[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX]
-										[Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];																
+										.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
+
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
 
 								break;
 							default:
@@ -272,7 +265,7 @@ public class Optimisation_Factory {
 						exec = Executors.newFixedThreadPool(NUM_THREADS);
 						for (int r = 0; r < rId; r++) {
 							exec.submit(runnable[r]);
-						}						
+						}
 						exec.shutdown();
 						try {
 							if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
@@ -288,6 +281,10 @@ public class Optimisation_Factory {
 
 					double sqSum = 0;
 
+					StringBuilder[][] trend_disp = new StringBuilder[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
+					int start_k = 2;
+
+					
 					for (int r = 0; r < rId; r++) {
 						@SuppressWarnings("unchecked")
 						HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable[r]
@@ -296,18 +293,53 @@ public class Optimisation_Factory {
 						Integer[] keys = infectious_count_map.keySet()
 								.toArray(new Integer[infectious_count_map.size()]);
 						Arrays.sort(keys);
-						for (int k = keys.length - 1; k >= 0; k--) {
+												
+						for (int k = start_k; k < keys.length; k++) {
 							int[][] inf_count = infectious_count_map.get(keys[k]);
 							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 									sqSum += Math.pow(inf_count[g][s] - TARGET_INFECTED[g][s], 2);
+									
+									if (TARGET_INFECTED[g][s] != 0) {
+										if(r==0 && trend_disp[g][s] == null) {
+											trend_disp[g][s] = new StringBuilder();
+										}else if(r > 0){
+											trend_disp[g][s].append('\n');
+										}										
+										if(k == start_k) {
+											trend_disp[g][s].append('\t');
+											trend_disp[g][s].append(r);
+											trend_disp[g][s].append(':');
+										}else {
+											trend_disp[g][s].append(',');
+										}										
+										trend_disp[g][s].append(inf_count[g][s]);
+									}
 								}
 							}
 						}
 					}
 
-					System.out.printf("Param = %s, Sq Sum = %d,  Time req = %.3fs\n", Arrays.toString(point), sqSum,
+					StringBuilder pt_str = new StringBuilder();
+					for (double pt : point) {
+						if (pt_str.length() != 0) {
+							pt_str.append(',');
+						}
+						pt_str.append(String.format("%.5f", pt));
+					}
+
+					System.out.printf("P = [%s], V = %.2e, Time req = %.3fs\n", 
+							pt_str.toString(), sqSum, 
 							(System.currentTimeMillis() - tic) / 1000f);
+					
+					
+					for (int g = 0; g < trend_disp.length; g++) {
+						for (int s = 0; s < trend_disp[g].length; s++) {							
+							if (trend_disp[g][s] != null) {								
+								System.out.printf("Preval(%d-%d)\n%s\n", g, s, trend_disp[g][s].toString());
+							}
+						}
+					}
 
 					return sqSum;
 
@@ -325,73 +357,53 @@ public class Optimisation_Factory {
 
 			initial_guess = new InitialGuess(wrapper.boundedToUnbounded(init_transmissionProb));
 
-			if (simplexFile.isFile()) {
-				NelderMeadSimplex input_simplex;
-				try {
-					ObjectInputStream objIn = new ObjectInputStream(new FileInputStream(simplexFile));
-					input_simplex = (NelderMeadSimplex) objIn.readObject();
-					objIn.close();
-				} catch (Exception e) {
-					System.err.printf("Error in reading simplex from %s - new Simplex was created instead.\n",
-							simplexFile.getAbsolutePath());
-					input_simplex = new NelderMeadSimplex(init_transmissionProb.length);
+			simplex = new NelderMeadSimplex(init_transmissionProb.length);
+
+			SimplexOptimizer optimizer = new SimplexOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE);
+
+			try {
+				PointValuePair pV;
+				pV = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess, new MaxEval(numEval));
+				double[] point = wrapper.unboundedToBounded(pV.getPoint());
+
+				StringBuilder pt_str = new StringBuilder();
+				for (double pt : point) {
+					if (pt_str.length() != 0) {
+						pt_str.append(',');
+					}
+					pt_str.append(String.format("%.5f", pt));
 				}
 
-				simplex = input_simplex;
+				System.out.printf("Optimisation Completed.\nP = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
 
-			} else {
-				simplex = new NelderMeadSimplex(init_transmissionProb.length);
-			}
+			} catch (org.apache.commons.math3.exception.TooManyEvaluationsException ex) {
+				System.out.printf("Eval limit of %d reached.\nSimplex (bounded):\n", numEval);
 
-			SimplexOptimizer optimizer = new SimplexOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE) {
-
-				@Override
-				public double computeObjectiveValue(double[] params) {
-					double res = super.computeObjectiveValue(params);
-
-					try {
-						if (simplexFile.isFile()) {
-							final long timestamp = System.currentTimeMillis();
-
-							FileUtils.copyFile(simplexFile, new File(simplexFile.getParent(),
-									String.format("%s_%d", simplexFile.getName(), timestamp)
-
-							));
-
-							File[] preSimplexFile = simplexFile.getParentFile().listFiles(new FileFilter() {
-								@Override
-								public boolean accept(File pathname) {
-									Matcher m = pattern_preSimplexFile.matcher(pathname.getName());
-									if (m.matches()) {
-										long t_stamp = Long.parseLong(m.group(1));
-										return t_stamp < timestamp;
-									}
-									return false;
-								}
-							});
-
-							for (File toBeRemove : preSimplexFile) {
-								FileUtils.delete(toBeRemove);
-							}
-
-						}
-						ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(simplexFile));
-						objOut.writeObject(simplex);
-						objOut.close();
-					} catch (Exception e) {
-						System.err.printf("Error in writing simplex to %s.\n", simplexFile.getAbsolutePath());
+				PointValuePair[] res = simplex.getPoints();
+				Arrays.sort(res, new Comparator<PointValuePair>() {
+					@Override
+					public int compare(PointValuePair o1, PointValuePair o2) {
+						return Double.compare(o1.getValue(), o2.getValue());
 					}
 
-					return res;
+				});
+
+				for (PointValuePair pV : res) {
+					double[] point = wrapper.unboundedToBounded(pV.getPoint());
+
+					StringBuilder pt_str = new StringBuilder();
+					for (double pt : point) {
+						if (pt_str.length() != 0) {
+							pt_str.append(',');
+						}
+						pt_str.append(String.format("%.5f", pt));
+					}
+
+					System.out.printf("P = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
+
 				}
 
-			};
-
-			PointValuePair var = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess,
-					new MaxEval(100));
-
-			String outputString = "Optimised value = " + Arrays.toString(wrapper.unboundedToBounded(var.getPoint()));
-			System.out.println(outputString);
+			}
 
 		}
 

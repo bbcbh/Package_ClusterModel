@@ -7,8 +7,6 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.Callable;
@@ -67,34 +65,25 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 	}
 
 	public static final Callable<ArrayList<Integer[]>> generateContactEdgeArray(ContactMap cMap) {
-		Callable<ArrayList<Integer[]>> callable = new Callable<ArrayList<Integer[]>>() {		
+		Callable<ArrayList<Integer[]>> callable = new Callable<ArrayList<Integer[]>>() {
 			@Override
 			public ArrayList<Integer[]> call() throws Exception {
-				Comparator<Integer[]> edge_cmp = new Comparator<Integer[]>() {
-					@Override
-					public int compare(Integer[] o1, Integer[] o2) {
-						return Integer.compare(o1[Population_Bridging.CONTACT_MAP_EDGE_START_TIME],
-								o2[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]);
-					}
-				};				
+				Comparator<Integer[]> edge_cmp = generateContactMapEdgeComparator();
 				ArrayList<Integer[]> edges = new ArrayList<>(cMap.edgeSet().size());
-				for(Integer[] ent : cMap.edgeSet()) {
+				for (Integer[] ent : cMap.edgeSet()) {
 					int startTime = Population_Bridging.CONTACT_MAP_EDGE_START_TIME;
-					int duration = Population_Bridging.CONTACT_MAP_EDGE_DURATION;									
+					int duration = Population_Bridging.CONTACT_MAP_EDGE_DURATION;
 					while (duration < ent.length) {
-						Integer[] e = new Integer[] { 
-								ent[Population_Bridging.CONTACT_MAP_EDGE_P1], 
-								ent[Population_Bridging.CONTACT_MAP_EDGE_P2], ent[startTime],
-								ent[duration]};
+						Integer[] e = new Integer[] { ent[Population_Bridging.CONTACT_MAP_EDGE_P1],
+								ent[Population_Bridging.CONTACT_MAP_EDGE_P2], ent[startTime], ent[duration] };
 						int key = Collections.binarySearch(edges, e, edge_cmp);
 						edges.add(~key, e);
-
 						startTime += 2;
 						duration += 2;
 					}
 				}
 				return edges;
-			}			
+			}
 		};
 		return callable;
 	}
@@ -128,16 +117,8 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 				ArrayList<Integer[]> edges = new ArrayList<>(minSize);
 				BufferedReader lines = new BufferedReader(new StringReader(cMap_str));
 				String line;
-
-				Comparator<Integer[]> edge_cmp = new Comparator<Integer[]>() {
-					@Override
-					public int compare(Integer[] o1, Integer[] o2) {
-						return Integer.compare(o1[Population_Bridging.CONTACT_MAP_EDGE_START_TIME],
-								o2[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]);
-					}
-
-				};
-
+				Comparator<Integer[]> edge_cmp = generateContactMapEdgeComparator();
+				
 				while ((line = lines.readLine()) != null) {
 					String[] ent = line.split(",");
 					Integer p1 = Integer.parseInt(ent[Population_Bridging.CONTACT_MAP_EDGE_P1]);
@@ -164,6 +145,27 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		};
 
 		return callable;
+	}
+
+	private static Comparator<Integer[]> generateContactMapEdgeComparator() {
+		Comparator<Integer[]> edge_cmp = new Comparator<Integer[]>() {
+			final int[] CMP_INDEX_ORDER = new int[] { Population_Bridging.CONTACT_MAP_EDGE_START_TIME,
+					Population_Bridging.CONTACT_MAP_EDGE_DURATION, Population_Bridging.CONTACT_MAP_EDGE_P1,
+					Population_Bridging.CONTACT_MAP_EDGE_P2, };
+
+			@Override
+			public int compare(Integer[] o1, Integer[] o2) {
+				int cmp = 0;
+				for (int cmpIndex : CMP_INDEX_ORDER) {
+					cmp = Integer.compare(o1[cmpIndex], o2[cmpIndex]);
+					if (cmp != 0) {
+						break;
+					}
+				}
+				return cmp;
+			}
+		};
+		return edge_cmp;
 	}
 
 }

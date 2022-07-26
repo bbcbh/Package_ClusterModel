@@ -1,5 +1,6 @@
 package population;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -136,6 +137,16 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
 	protected transient HashMap<String, Object> stepwise_output = null;
+	
+	protected transient File baseDir = null;
+
+	public File getBaseDir() {
+		return baseDir;
+	}
+
+	public void setBaseDir(File baseDir) {
+		this.baseDir = baseDir;
+	}
 
 	protected AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 
