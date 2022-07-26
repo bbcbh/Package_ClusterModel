@@ -13,12 +13,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
@@ -39,9 +39,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 	protected transient int lastPartnershipScheduling = -1;
 	protected transient boolean fitHighActFirst = false;
-	private final boolean scheduling_debug = true;
+
+	private final boolean schedule_debug = true;
+	private final long export_period_form_partnership_progress = 10 * 1000l;
+
 	public static final String FORMAT_FORM_PARTNERSHIP_PROGRESS = "FormPartnership_Progess_%d_%d.obj";
-	private static long EXPORT_PERIOD_FORM_PARTNERSHIP_PROGRESS = 10000l;
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
 	public static final int SCHEDULE_PARTNERSHIP_P2 = SCHEDULE_PARTNERSHIP_P1 + 1;
@@ -315,7 +317,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			if (progressFile.isFile()) {
 				try {
 					ObjectInputStream objIn = new ObjectInputStream(new FileInputStream(progressFile));
-
 					schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) objIn.readObject();
 					candidates_array_by_partnership_type = (int[][][]) objIn.readObject();
 					gender_end = (int[]) objIn.readObject();
@@ -420,7 +421,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 											next_index_src_candidate_cmp_ent_array);
 								}
 
-								if (src_candidate_cmp_ent_array.length > 0) {
+								progressing_src_candidate_list = new ArrayList<>(List.of(src_candidate_cmp_ent_array));
+
+								if (progressing_src_candidate_list.size() > 0) {
 									int[] tar_possible_gender;
 									switch (src_gender) {
 									case GENDER_FEMALE:
@@ -435,9 +438,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									default:
 										tar_possible_gender = new int[] { GENDER_FEMALE, GENDER_MSMO, GENDER_MSMW };
 									}
-
-									progressing_src_candidate_list = new ArrayList<>(
-											List.of(src_candidate_cmp_ent_array));
 
 									Collections.shuffle(progressing_src_candidate_list,
 											new Random(getRNG().nextLong()));
@@ -463,6 +463,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 							}
 
 							int src_candidate_counter = 0;
+
 							for (int[] src_candidate_cmp_ent : progressing_src_candidate_list) {
 
 								if (progressing_src_pdIndex != src_pdIndex
@@ -510,32 +511,21 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									int tar_candidate_index = -1;
 									int num_partner_found = 0;
 
-									int[] cumul_weight = new int[src_specific_candidate_list.size()];
-									int cumul_weight_pt = 0;
-									for (int[] target_candidate_cmp_ent : src_specific_candidate_list) {
-										if (cumul_weight_pt == 0) {
-											cumul_weight[cumul_weight_pt] = target_candidate_cmp_ent[tar_sought_comparator_partner_type_index];
-										} else {
-											cumul_weight[cumul_weight_pt] = cumul_weight[cumul_weight_pt - 1]
-													+ target_candidate_cmp_ent[tar_sought_comparator_partner_type_index];
-										}
-										cumul_weight_pt++;
-									}
-
 									// Choose partnership based on number sought
 
 									for (int partnerIndex = 0; partnerIndex < partnered_with.length
 											&& src_specific_candidate_list.size() > 0; partnerIndex++) {
 
-										if (tar_candidate_index != -1) {
-											int org_weight = cumul_weight[tar_candidate_index];
-											for (int adjI = tar_candidate_index; adjI < cumul_weight.length
-													- 1; adjI++) {
-												cumul_weight[adjI] = cumul_weight[adjI + 1] - org_weight;
-												if (adjI > 0) {
-													cumul_weight[adjI] += cumul_weight[adjI - 1];
-												}
+										int[] cumul_weight = new int[src_specific_candidate_list.size()];
+										int cumul_weight_pt = 0;
+										for (int[] target_candidate_cmp_ent : src_specific_candidate_list) {
+											if (cumul_weight_pt == 0) {
+												cumul_weight[cumul_weight_pt] = target_candidate_cmp_ent[tar_sought_comparator_partner_type_index];
+											} else {
+												cumul_weight[cumul_weight_pt] = cumul_weight[cumul_weight_pt - 1]
+														+ target_candidate_cmp_ent[tar_sought_comparator_partner_type_index];
 											}
+											cumul_weight_pt++;
 										}
 
 										int prob_weight = getRNG().nextInt(cumul_weight[cumul_weight.length - 1]);
@@ -547,38 +537,47 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 										partnered_with[partnerIndex] = src_specific_candidate_list
 												.remove(tar_candidate_index);
 
+										// Update source array
+										int[][] src_range = generateCandidateArraySearchRange(src_candidate_cmp_ent, 
+												candidates_array_by_partnership_type, candidates_array_comparators,
+												candidates_array_num_sought_indices, gender_end);
+										updateCandidateComparatorEntry(src_candidate_cmp_ent);
+										updateCandidateArrayAll(src_candidate_cmp_ent,
+												candidates_array_by_partnership_type, candidates_array_comparators,
+												candidates_array_num_sought_indices, src_range);
+
+										// Update target array
+										int[] tar_candidate_cmp_ent = partnered_with[partnerIndex];
+										int[][] target_range = generateCandidateArraySearchRange(tar_candidate_cmp_ent,
+												candidates_array_by_partnership_type, candidates_array_comparators,
+												candidates_array_num_sought_indices, gender_end);
+										updateCandidateComparatorEntry(tar_candidate_cmp_ent);
+										updateCandidateArrayAll(tar_candidate_cmp_ent,
+												candidates_array_by_partnership_type, candidates_array_comparators,
+												candidates_array_num_sought_indices, target_range);
+
+										updateScheduledPopDiff(addressed_demand_so_far, src_candidate_cmp_ent,
+												categories_values);
+										updateScheduledPopDiff(addressed_demand_so_far, tar_candidate_cmp_ent,
+												categories_values);
+
 										num_partner_found++;
+
+										if (partnerIndex + 1 < partnered_with.length) {
+											src_specific_candidate_list = new ArrayList<>(List.of(
+													candidates_array_by_partnership_type[tar_sought_candidate_partner_type_index]));
+											excl_index = Collections.binarySearch(src_specific_candidate_list,
+													binary_key, target_candidate_comparator);
+
+											if (excl_index >= 0) {
+												src_specific_candidate_list.remove(excl_index);
+											}
+										}
 
 									}
 
-									int org_src_index = searchCandidateIndices(src_candidate_cmp_ent,
-											candidates_array_by_partnership_type[0], candidates_array_comparators[0],
-											new int[] { src_gender_index_start, src_gender_index_end });
-
 									for (int partnerIndex = 0; partnerIndex < num_partner_found; partnerIndex++) {
 										int[] tar_candidate_cmp_ent = partnered_with[partnerIndex];
-										int[] org_tar_index = new int[candidates_array_by_partnership_type.length];
-
-										int tar_gender = tar_candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_GENDER];
-										int tar_gender_index_start = tar_gender > 0 ? gender_end[tar_gender - 1] : 0;
-										int tar_gender_index_end = gender_end[tar_gender];
-
-										for (int candidates_array_num_sought_index : candidates_array_num_sought_indices) {
-											org_tar_index[candidates_array_num_sought_index] = searchCandidateIndices(
-													tar_candidate_cmp_ent,
-													candidates_array_by_partnership_type[candidates_array_num_sought_index],
-													candidates_array_comparators[candidates_array_num_sought_index],
-													null);
-										}
-
-										// Will no longer seek partners this round
-										if (tar_candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_SCHEDULE_LIMIT] == 1) {
-											org_tar_index[0] = searchCandidateIndices(tar_candidate_cmp_ent,
-													candidates_array_by_partnership_type[0],
-													candidates_array_comparators[0],
-													new int[] { tar_gender_index_start, tar_gender_index_end });
-										}
-
 										Integer partner_form_time = getGlobalTime();
 
 										if (schedule_range > 1) {
@@ -602,38 +601,13 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 										}
 										partnerships.add(schedule_partnership_ent);
 
-										updateCandidateComparatorEntry(tar_candidate_cmp_ent);
-										updateCandidateComparatorEntry(src_candidate_cmp_ent);
-
-										for (int candidates_array_num_sought_index : candidates_array_num_sought_indices) {
-											updateCandidateArray(tar_candidate_cmp_ent,
-													candidates_array_by_partnership_type[candidates_array_num_sought_index],
-													candidates_array_comparators[candidates_array_num_sought_index],
-													new int[] { 0, org_tar_index[candidates_array_num_sought_index] });
-										}
-
-										if (tar_candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_SCHEDULE_LIMIT] == 0) {
-											updateCandidateArray(tar_candidate_cmp_ent,
-													candidates_array_by_partnership_type[0],
-													candidates_array_comparators[0], new int[] { 0, org_tar_index[0] });
-										}
-										updateScheduledPopDiff(addressed_demand_so_far, src_candidate_cmp_ent,
-												categories_values);
-										updateScheduledPopDiff(addressed_demand_so_far, tar_candidate_cmp_ent,
-												categories_values);
 									}
 
-									if (src_candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_SCHEDULE_LIMIT] == 0) {
-										updateCandidateArray(src_candidate_cmp_ent,
-												candidates_array_by_partnership_type[0],
-												candidates_array_comparators[0],
-												new int[] { src_gender_index_start, org_src_index });
-									}
 								}
 								src_candidate_counter++;
 
-								if (EXPORT_PERIOD_FORM_PARTNERSHIP_PROGRESS > 0 && System.currentTimeMillis()
-										- last_export_at > EXPORT_PERIOD_FORM_PARTNERSHIP_PROGRESS) {
+								if (export_period_form_partnership_progress > 0 && System.currentTimeMillis()
+										- last_export_at > export_period_form_partnership_progress) {
 									exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type,
 											gender_end, addressed_demand_so_far, completed_src_pdIndex,
 											next_completed_src_pdIndex_pt, src_pdIndex, progressing_src_candidate_list,
@@ -642,7 +616,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									last_export_at = System.currentTimeMillis();
 
 									// Debug statement
-									if (scheduling_debug) {
+									if (schedule_debug) {
+										System.out.printf("Time = %tF %<tT", new Date());
 										System.out.println("Completed src_pd_index = " + Arrays.toString(
 												Arrays.copyOf(completed_src_pdIndex, next_completed_src_pdIndex_pt)));
 										System.out.println("Current src_pd_index = " + src_pdIndex);
@@ -659,13 +634,15 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									}
 								}
 							}
+
 						}
 
 						completed_src_pdIndex[next_completed_src_pdIndex_pt] = src_pdIndex;
 						next_completed_src_pdIndex_pt++;
+						progressing_src_candidate_list = null;
 
-						if (EXPORT_PERIOD_FORM_PARTNERSHIP_PROGRESS > 0 && System.currentTimeMillis()
-								- last_export_at > EXPORT_PERIOD_FORM_PARTNERSHIP_PROGRESS) {
+						if (export_period_form_partnership_progress > 0 && System.currentTimeMillis()
+								- last_export_at > export_period_form_partnership_progress) {
 							exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type,
 									gender_end, addressed_demand_so_far, completed_src_pdIndex,
 									next_completed_src_pdIndex_pt, -1, null, 0);
@@ -678,9 +655,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			}
 
-			if (progressFile.isFile()) {
-				progressFile.delete();
-			}
 		}
 
 		ArrayList<Integer[]> partnerships = schedule_partnership.remove(getGlobalTime());
@@ -754,6 +728,60 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		}
 	}
 
+	private int[][] generateCandidateArraySearchRange(int[] candidate_cmp_ent,
+			int[][][] candidates_array_by_partnership_type, Comparator_Candidate_Entry[] candidates_array_comparators,
+			int[] candidates_array_num_sought_indices, int[] gender_end) {
+		int[][] target_range = new int[candidates_array_by_partnership_type.length][2];
+		int tar_gender = candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_GENDER];
+		int tar_gender_index_start = tar_gender > 0 ? gender_end[tar_gender - 1] : 0;
+		int tar_gender_index_end = gender_end[tar_gender];
+
+		target_range[0][0] = tar_gender_index_start;
+		target_range[0][1] = tar_gender_index_end;
+
+		for (int candidates_array_num_sought_index : candidates_array_num_sought_indices) {
+			target_range[candidates_array_num_sought_index][0] = 0;
+			target_range[candidates_array_num_sought_index][1] = searchCandidateIndices(
+					candidate_cmp_ent,
+					candidates_array_by_partnership_type[candidates_array_num_sought_index],
+					candidates_array_comparators[candidates_array_num_sought_index],
+					null);
+		}
+		return target_range;
+	}
+
+	private void updateCandidateArrayAll(int[] cmp_entry, int[][][] candidates_array_by_partnership_type,
+			Comparator_Candidate_Entry[] candidates_array_comparators, int[] candidates_array_num_sought_indices,
+			int[][] ranges) {
+
+		if (cmp_entry[Comparator_Candidate_Entry.INDEX_SCHEDULE_LIMIT] == 0) {
+			updateCandidateArray(cmp_entry, candidates_array_by_partnership_type[0], candidates_array_comparators[0],
+					ranges[0]);
+		}
+
+		for (int candidates_array_num_sought_index : candidates_array_num_sought_indices) {
+			if (ranges[candidates_array_num_sought_index][1] > 0) {
+				updateCandidateArray(cmp_entry, candidates_array_by_partnership_type[candidates_array_num_sought_index],
+						candidates_array_comparators[candidates_array_num_sought_index],
+						ranges[candidates_array_num_sought_index]);
+			}
+		}
+	}
+
+	private static void updateCandidateArray(int[] candidate_cmp_ent, int[][] candidates_array,
+			Comparator_Candidate_Entry candidates_cmp, int[] search_range) {
+		if (search_range != null && search_range[1] > 0) {
+			int new_tar_index = searchCandidateIndices(candidate_cmp_ent, candidates_array, candidates_cmp,
+					search_range);
+
+			int replace_util_index = search_range[1];
+			System.arraycopy(candidates_array, ~new_tar_index, candidates_array, ~new_tar_index + 1,
+					replace_util_index - ~new_tar_index);
+			candidates_array[~new_tar_index] = candidate_cmp_ent;
+
+		}
+	}
+
 	private void exportPartnerFormationProgress(final File progressFile,
 			final int[][][] f_candidates_array_by_partnership_type, final int[] f_gender_end,
 			final int[] f_addressed_demand_so_far, final int[] f_completed_src_pdIndex,
@@ -764,8 +792,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			@Override
 			public void run() {
 				try {
-					File tempFile = new File(baseDir, String.format("%s_temp", progressFile.getName()));
-					FileUtils.copyFile(progressFile, tempFile);
+					File tempFile = null;
+					if (progressFile.isFile()) {
+						tempFile = new File(baseDir, String.format("%s_temp", progressFile.getName()));
+						FileUtils.copyFile(progressFile, tempFile);
+					}
 
 					ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(progressFile));
 					objOut.writeObject(schedule_partnership);
@@ -779,7 +810,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					objOut.writeInt(f_completed_src_candidate_index);
 					objOut.close();
 
-					tempFile.delete();
+					if (tempFile != null) {
+						tempFile.delete();
+					}
 				} catch (IOException e) {
 					e.printStackTrace(System.err);
 				}
@@ -787,23 +820,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			}
 		};
 
-		ExecutorService exec_export = Executors.newSingleThreadExecutor();
-		exec_export.submit(exportThread);
-		exec_export.shutdown();
+		// ExecutorService exec_export = Executors.newSingleThreadExecutor();
+		// exec_export.submit(exportThread);
+		// exec_export.shutdown();
 
-	}
-
-	private static void updateCandidateArray(int[] candidate_cmp_ent, int[][] candidates_array,
-			Comparator_Candidate_Entry candidates_cmp, int[] search_range) {
-		if (search_range != null && search_range[1] > 0) {
-			int new_tar_index = searchCandidateIndices(candidate_cmp_ent, candidates_array, candidates_cmp,
-					search_range);
-			int replace_util_index = search_range[1];
-			System.arraycopy(candidates_array, ~new_tar_index, candidates_array, ~new_tar_index + 1,
-					replace_util_index - ~new_tar_index);
-			candidates_array[~new_tar_index] = candidate_cmp_ent;
-
-		}
 	}
 
 	private static int searchCandidateIndices(int[] candidate_ent, int[][] candidates_array,
@@ -967,6 +987,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					ent[Comparator_Candidate_Entry.INDEX_NUM_TO_SOUGHT_REG] = 0;
 					ent[Comparator_Candidate_Entry.INDEX_NUM_TO_SOUGHT_CAS] = 0;
 					ent[Comparator_Candidate_Entry.INDEX_NUM_TO_SOUGHT_ANY] = 0;
+					ent[Comparator_Candidate_Entry.INDEX_SCHEDULE_LIMIT] = 0;
 					numNotSoughting[g]--;
 				}
 
@@ -1009,7 +1030,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	}
 
 	private void updateCandidateComparatorEntry(int[] candidate_cmp_ent) {
+		if (candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_NUM_TO_SOUGHT_ANY] == 0) {
+			int k = 1;
+		}
 		candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_NUM_TO_SOUGHT_ANY]--;
+
 		if (candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_NUM_TO_SOUGHT_REG] > 0) {
 			candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_NUM_TO_SOUGHT_REG]--;
 		}
@@ -1056,7 +1081,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		@Override
 		public int compare(int[] o1, int[] o2) {
 			int cmp;
-			if (this.cmpMethod > 0) {
+			if (this.cmpMethod >= 0) {
 				cmp = Float.compare(o1[INDEX_GENDER], o2[INDEX_GENDER]);
 				if (cmp == 0) {
 					cmp = Float.compare(o1[cmpMethod], o2[cmpMethod]);
