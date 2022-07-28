@@ -31,7 +31,6 @@ import person.AbstractIndividualInterface;
 import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
 import relationship.RelationshipMap;
-import sim.Abstract_Runnable_ClusterModel;
 import sim.Runnable_ClusterModel_ContactMap_Generation;
 
 public class Population_Bridging_Scheduled extends Population_Bridging {

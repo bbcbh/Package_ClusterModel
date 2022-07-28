@@ -86,7 +86,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 				c++;
 			}
 		}
-		simulation_store[offset + 1] = seedInfected;
+		simulation_store[offset] = seedInfected;
 		return simulation_store;
 	}
 
