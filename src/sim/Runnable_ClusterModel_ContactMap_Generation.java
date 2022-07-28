@@ -275,22 +275,22 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 						new BufferedOutputStream(new FileOutputStream(exportFile)));
 				population.encodePopToStream(outStream);
 				outStream.close();
-			}
 
-			// Remove old snapshot file
+				// Remove old snapshot file
 
-			String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
-			final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
+				String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
+				final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
 
-			oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
-				@Override
-				public boolean accept(File pathname) {
-					return pathname.getName().startsWith(fileCheckPrefix) && !pathname.equals(exportFile);
+				oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return pathname.getName().startsWith(fileCheckPrefix) && !pathname.equals(exportFile);
+					}
+				});
+
+				for (File df : oldPopulationSnapFiles) {
+					Files.delete(df.toPath());
 				}
-			});
-
-			for (File df : oldPopulationSnapFiles) {
-				Files.delete(df.toPath());
 			}
 
 		} catch (IOException ex) {

@@ -73,7 +73,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		for (int i = 0; i < simFields.length; i++) {
 			// All simulation levels
-			if (i >= sim_offset) {
+			if (i >= sim_offset && (i - sim_offset) < DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS.length) {
 				simFields[i] = DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS[i - sim_offset];
 				simFieldClass[i] = DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS[i - sim_offset].getClass();
 			}
