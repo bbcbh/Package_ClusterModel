@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.Callable;
@@ -77,7 +78,14 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 						Integer[] e = new Integer[] { ent[Population_Bridging.CONTACT_MAP_EDGE_P1],
 								ent[Population_Bridging.CONTACT_MAP_EDGE_P2], ent[startTime], ent[duration] };
 						int key = Collections.binarySearch(edges, e, edge_cmp);
-						edges.add(~key, e);
+						
+						if(key >= 0) {
+							System.err.printf("Warning: Edge %s from %s already in list. Edge skipped.\n", 
+									Arrays.toString(e), Arrays.toString(ent));
+							
+						}else {
+							edges.add(~key, e);
+						}
 						startTime += 2;
 						duration += 2;
 					}
