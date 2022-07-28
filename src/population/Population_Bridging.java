@@ -124,6 +124,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int CONTACT_MAP_EDGE_START_TIME = CONTACT_MAP_EDGE_P2 + 1;
 	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1;
 	public static final int LENGTH_CONTACT_MAP_EDGE = CONTACT_MAP_EDGE_DURATION + 1;
+	
+	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 
 	@SuppressWarnings("unchecked")
 	private transient ArrayList<Person_Bridging_Pop>[] canSeekRelPartners = new ArrayList[LENGTH_GENDER];
@@ -136,22 +138,11 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private transient int[][] canSeekCasPartners_catorgories_offset = new int[LENGTH_GENDER][];
 
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
-	protected transient HashMap<String, Object> stepwise_output = null;
-	
+	protected transient HashMap<String, Object> stepwise_output = null;	
 	protected transient File baseDir = null;
 
-	public File getBaseDir() {
-		return baseDir;
-	}
-
-	public void setBaseDir(File baseDir) {
-		this.baseDir = baseDir;
-	}
-
-	protected AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
-
-	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
-
+	
+	
 	private static final Comparator<Person_Bridging_Pop> COMPARATOR_CASUAL_MIXING = new Comparator<Person_Bridging_Pop>() {
 		@Override
 		public int compare(Person_Bridging_Pop o1, Person_Bridging_Pop o2) {
@@ -163,20 +154,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private static final int CASUAL_MIXING_SD_RANGE = 2;
 
+	protected AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];	
 	protected PrintStream[] printStatus = null;
-
-	public void setPrintStatus(PrintStream[] printStatus) {
-		this.printStatus = printStatus;
-	}
-
-	public HashMap<String, Object> getStepwise_output() {
-		return stepwise_output;
-	}
-
-	public void setStepwise_output(HashMap<String, Object> stepwise_output) {
-		this.stepwise_output = stepwise_output;
-	}
-
 	public Population_Bridging(long seed) {
 		setSeed(seed);
 		setRNG(new random.MersenneTwisterRandomGenerator(seed));
@@ -1273,6 +1252,27 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			}
 		}
 
+	}
+
+	public File getBaseDir() {
+		return baseDir;
+	}
+
+	public void setBaseDir(File baseDir) {
+		this.baseDir = baseDir;
+	}
+
+
+	public void setPrintStatus(PrintStream[] printStatus) {
+		this.printStatus = printStatus;
+	}
+
+	public HashMap<String, Object> getStepwise_output() {
+		return stepwise_output;
+	}
+
+	public void setStepwise_output(HashMap<String, Object> stepwise_output) {
+		this.stepwise_output = stepwise_output;
 	}
 
 	public static final Integer[][] orderedEdgesFromContactMap(ContactMap cm) {

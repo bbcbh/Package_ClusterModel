@@ -1,5 +1,6 @@
 package population;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -9,6 +10,8 @@ import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,6 +31,8 @@ import person.AbstractIndividualInterface;
 import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
 import relationship.RelationshipMap;
+import sim.Abstract_Runnable_ClusterModel;
+import sim.Runnable_ClusterModel_ContactMap_Generation;
 
 public class Population_Bridging_Scheduled extends Population_Bridging {
 	/**
@@ -41,8 +46,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	protected transient boolean fitHighActFirst = false;
 
 	private final boolean schedule_debug = true;
-	private final long export_period_form_partnership_progress = 5*60 * 1000l;
 
+	protected long export_period_form_partnership_progress = 5*60 * 1000l;
 	public static final String FORMAT_FORM_PARTNERSHIP_PROGRESS = "FormPartnership_Progess_%d_%d.obj";
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
@@ -104,7 +109,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Population_Bridging_Scheduled decodeFromStream(java.io.ObjectInputStream inStr)
+	public static Population_Bridging decodeFromStream(java.io.ObjectInputStream inStr)
 			throws IOException, ClassNotFoundException {
 
 		int globalTime = inStr.readInt();
@@ -325,9 +330,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					next_completed_src_pdIndex_pt = objIn.readInt();
 					progressing_src_pdIndex = objIn.readInt();
 					progressing_src_candidate_list = (ArrayList<int[]>) objIn.readObject();
-
 					completed_src_candidate_index = objIn.readInt();
-
 					objIn.close();
 
 					candidates_all = candidates_array_by_partnership_type[0];
@@ -609,11 +612,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									// Debug statement
 									if (schedule_debug) {
 										System.out.printf("Time = %tF %<tT\n", new Date());
-										System.out.printf("Completed src_pd_index = %s\n",Arrays.toString(
+										System.out.printf("Completed src_pd_index = %s\n", Arrays.toString(
 												Arrays.copyOf(completed_src_pdIndex, next_completed_src_pdIndex_pt)));
-										System.out.printf("Current src_pd_index = %d\n",src_pdIndex);
-										System.out.printf("Completed src candidate = %d out of %d\n", src_candidate_counter
-												, progressing_src_candidate_list.size());
+										System.out.printf("Current src_pd_index = %d\n", src_pdIndex);
+										System.out.printf("Completed src candidate = %d out of %d\n",
+												src_candidate_counter, progressing_src_candidate_list.size());
 
 										System.out.printf("Schedule Partnership at Day %d:\n", getGlobalTime());
 										for (int g = 0; g < LENGTH_GENDER; g++) {
@@ -814,13 +817,27 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			@Override
 			public void run() {
 				try {
+					
+					File exportPopFile = new File(baseDir, String.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME, 
+							getSeed(), getGlobalTime()));
+					
+					if(!exportPopFile.exists()) {
+						ObjectOutputStream outStream = new ObjectOutputStream(
+								new BufferedOutputStream(new FileOutputStream(exportPopFile)));
+						encodePopToStream(outStream);
+						outStream.close();
+					}
+					
+					
 					File tempFile = null;
+					File newProgresFile = new File(baseDir, progressFile.getName());
+					
 					if (progressFile.isFile()) {
-						tempFile = new File(baseDir, String.format("%s_temp", progressFile.getName()));
-						FileUtils.copyFile(progressFile, tempFile);
+						tempFile = new File(baseDir, String.format("%s_temp", progressFile.getName()));						
+						Files.move(progressFile.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);																
 					}
 
-					ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(progressFile));
+					ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(newProgresFile));
 					objOut.writeObject(schedule_partnership);
 					objOut.writeObject(f_candidates_array_by_partnership_type);
 					objOut.writeObject(f_gender_end);
@@ -829,11 +846,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					objOut.writeInt(f_next_completed_src_pdIndex_pt);
 					objOut.writeInt(f_progressing_src_pdIndex);
 					objOut.writeObject(f_src_candidate_list);
-					objOut.writeInt(f_completed_src_candidate_index);
+					objOut.writeInt(f_completed_src_candidate_index);							
 					objOut.close();
 
 					if (tempFile != null) {
-						tempFile.delete();
+						FileUtils.delete(tempFile);
 					}
 				} catch (IOException e) {
 					e.printStackTrace(System.err);
@@ -843,7 +860,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		};
 
 		ExecutorService exec_export = Executors.newSingleThreadExecutor();
-	    exec_export.submit(exportThread);
+		exec_export.submit(exportThread);
 		exec_export.shutdown();
 
 	}
@@ -1049,6 +1066,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_SCHEDULE_LIMIT] = 0;
 		}
 
+	}
+
+	public void setExport_period_form_partnership_progress(long export_period_form_partnership_progress) {
+		this.export_period_form_partnership_progress = export_period_form_partnership_progress;
 	}
 
 	private static Comparator_Candidate_Entry generateTargetCandidatesComparator(

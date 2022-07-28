@@ -22,6 +22,7 @@ import org.apache.commons.io.FileUtils;
 
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
+import population.Population_Bridging_Scheduled;
 import relationship.ContactMap;
 
 public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnable_ClusterModel {
@@ -97,6 +98,7 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 
 		File[] oldPopulationSnapFiles;
 		int skipTimeUntil = -1;
+		final long exportFreq = (long) runnable_fields[RUNNABLE_FILED_EXPORT_FREQ];
 
 		oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
 			@Override
@@ -185,7 +187,10 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 		}
 
 		long lastExportTime = System.currentTimeMillis();
-		final long exportFreq = (long) runnable_fields[RUNNABLE_FILED_EXPORT_FREQ];
+
+		if (population instanceof Population_Bridging_Scheduled) {
+			((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
+		}
 		int stepCount = 0;
 
 		for (int s = 0; s < numSnaps; s++) {
@@ -264,10 +269,13 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 		File[] oldPopulationSnapFiles;
 		try {
 			File exportFile = new File(baseDir, String.format(EXPORT_POP_FILENAME, population.getSeed(), snapTime));
-			ObjectOutputStream outStream = new ObjectOutputStream(
-					new BufferedOutputStream(new FileOutputStream(exportFile)));
-			population.encodePopToStream(outStream);
-			outStream.close();
+
+			if (!exportFile.exists()) {
+				ObjectOutputStream outStream = new ObjectOutputStream(
+						new BufferedOutputStream(new FileOutputStream(exportFile)));
+				population.encodePopToStream(outStream);
+				outStream.close();
+			}
 
 			// Remove old snapshot file
 
