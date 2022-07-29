@@ -21,7 +21,8 @@ public class Launcher_ClusterModel {
 			System.out.println(USAGE_INFO);
 			System.exit(0);
 		} else {
-			String flag = args[0];
+			String flag = args[0];								
+			
 
 			if ("-gen".equals(flag)) {
 				Simulation_ClusterModelGeneration.launch(Arrays.copyOfRange(args, 1, args.length));
@@ -35,7 +36,12 @@ public class Launcher_ClusterModel {
 				BufferedReader reader = new BufferedReader(new FileReader(commands));
 				String line;
 				while ((line = reader.readLine()) != null) {
-					String[] lines = line.split("\\s+");										
+					String[] lines = line.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);					
+					for(int i = 0; i < lines.length; i++) {
+						lines[i] = lines[i].replaceAll("\"", "");						
+					}
+					
+					
 					Launcher_ClusterModel.main(lines);
 				}
 				reader.close();					
