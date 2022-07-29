@@ -490,10 +490,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			int snap_index = 0;
 			ArrayList<Integer[]> toRemove;
+			
+			boolean hasInfected = hasInfectedInPop();			
+			
 
 			for (int currentTime = startTime; currentTime < startTime
-					+ NUM_TIME_STEPS_PER_SNAP * SNAP_FREQ; currentTime++) {
-
+					+ NUM_TIME_STEPS_PER_SNAP * SNAP_FREQ && hasInfected; currentTime++) {				
+				
 				// Remove expired edges
 				toRemove = removeEdges.get(currentTime);
 				if (toRemove != null) {
@@ -688,6 +691,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 
 				snap_index = (snap_index + 1) % NUM_TIME_STEPS_PER_SNAP;
+				
+				hasInfected = hasInfectedInPop();
 
 			}
 			// End of simulations
@@ -698,6 +703,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
+	}
+
+	protected boolean hasInfectedInPop() {
+		boolean hasInfected = false;
+		for (int site_src = 0; site_src < LENGTH_SITE && !hasInfected; site_src++) {
+			hasInfected |= !(schedule_incubation[site_src].isEmpty() && currently_infectious[site_src].isEmpty());				 				
+		}
+		return hasInfected;
 	}
 
 	protected Object[] preSimulation() {
