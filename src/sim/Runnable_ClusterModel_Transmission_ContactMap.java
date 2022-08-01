@@ -109,7 +109,10 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 		if (transmissionMap != null) {
 
 			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);
-			Set<ContactMap> clustersSet = transmissionMap.getContactCluster();
+			
+//			Set<ContactMap> clustersSet = transmissionMap.getContactCluster();			
+			Set<ContactMap> clustersSet = new java.util.HashSet<>();
+			clustersSet.add(transmissionMap);
 			sim_output.put(SIM_OUTPUT_CLUSTERS, clustersSet);
 
 			// Display clusters as CSV

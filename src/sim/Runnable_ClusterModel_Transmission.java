@@ -186,6 +186,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<String, Object> sim_output = null;
 
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_PREVALENCE";
+	private ArrayList<Integer[]> edges_list;
 
 	public Runnable_ClusterModel_Transmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
 			int NUM_TIME_STEPS_PER_SNAP, int SNAP_FREQ) {
@@ -205,6 +206,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		this.seed = seed;
 
 	}
+	
+	
+
+	public void setEdges_list(ArrayList<Integer[]> edges_list) {
+		this.edges_list = edges_list;
+	}
+
 
 	@Override
 	public Object[] getRunnable_fields() {
@@ -468,15 +476,17 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// Current contact map
 			ContactMap cMap = new ContactMap();
 
-			ArrayList<Integer[]> edges_list;
-			try {
-				edges_list = generateContactEdgeArray(BASE_CONTACT_MAP).call();
-			} catch (Exception e) {
-				e.printStackTrace(System.err);
-				System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
-				edges_list = new ArrayList<>();
-				System.exit(-1);
+			if (edges_list == null) {
 
+				try {
+					edges_list = generateContactEdgeArray(BASE_CONTACT_MAP).call();
+				} catch (Exception e) {
+					e.printStackTrace(System.err);
+					System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
+					edges_list = new ArrayList<>();
+					System.exit(-1);
+
+				}
 			}
 			Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
 			int edges_array_pt = 0;
@@ -490,13 +500,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			int snap_index = 0;
 			ArrayList<Integer[]> toRemove;
-			
-			boolean hasInfected = hasInfectedInPop();			
-			
 
-			for (int currentTime = startTime; currentTime < startTime
-					+ NUM_TIME_STEPS_PER_SNAP * SNAP_FREQ && hasInfected; currentTime++) {				
-				
+			boolean hasInfected = hasInfectedInPop();
+
+			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * SNAP_FREQ
+					&& hasInfected; currentTime++) {
+
 				// Remove expired edges
 				toRemove = removeEdges.get(currentTime);
 				if (toRemove != null) {
@@ -691,7 +700,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 
 				snap_index = (snap_index + 1) % NUM_TIME_STEPS_PER_SNAP;
-				
+
 				hasInfected = hasInfectedInPop();
 
 			}
@@ -708,7 +717,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected boolean hasInfectedInPop() {
 		boolean hasInfected = false;
 		for (int site_src = 0; site_src < LENGTH_SITE && !hasInfected; site_src++) {
-			hasInfected |= !(schedule_incubation[site_src].isEmpty() && currently_infectious[site_src].isEmpty());				 				
+			hasInfected |= !(schedule_incubation[site_src].isEmpty() && currently_infectious[site_src].isEmpty());
 		}
 		return hasInfected;
 	}

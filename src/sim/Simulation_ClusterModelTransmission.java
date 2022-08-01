@@ -255,6 +255,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		Collections.sort(completedSeed);
+		
+		ArrayList<Integer[]> edge_list = null;
+		try {
+			edge_list  = Abstract_Runnable_ClusterModel.generateContactEdgeArray(baseContactMap).call();
+		} catch (Exception e1) {
+			e1.printStackTrace(System.err);
+		}
 
 		for (int s = 0; s < numSim; s++) {
 			long simSeed = rngBase.nextLong();
@@ -268,6 +275,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				runnable[s] = new Runnable_ClusterModel_Transmission_ContactMap(simSeed, pop_composition, baseContactMap,
 						numSnap, snapFreq);
 				runnable[s].setBaseDir(baseDir);
+				runnable[s].setEdges_list(edge_list);
 				
 				for(int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
 					int ent_offset = sim_offset+LENGTH_SIM_MAP_TRANSMISSION_FIELD;
