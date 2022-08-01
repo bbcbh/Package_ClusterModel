@@ -206,13 +206,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		this.seed = seed;
 
 	}
-	
-	
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
 		this.edges_list = edges_list;
 	}
-
 
 	@Override
 	public Object[] getRunnable_fields() {
@@ -490,16 +487,45 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 			Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
 			int edges_array_pt = 0;
-
+			
+			
 			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
-
+			ArrayList<Integer[]> toRemove;
+			
+			// Skip invalid edges
+			while(edges_array_pt < edges_array.length && 
+					edges_array[edges_array_pt][Population_Bridging.CONTACT_MAP_EDGE_START_TIME] < startTime) {
+				Integer[] edge = edges_array[edges_array_pt];
+				int edge_start_time = edge[Population_Bridging.CONTACT_MAP_EDGE_START_TIME];
+				int expireAt = edge_start_time + edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION];
+				
+				if(expireAt > startTime) {					
+					toRemove = removeEdges.get(expireAt);
+					if (toRemove == null) {
+						toRemove = new ArrayList<>();
+						removeEdges.put(expireAt, toRemove);
+					}
+					toRemove.add(edge);
+					
+					for (int index : new int[] { Population_Bridging.CONTACT_MAP_EDGE_P1,
+							Population_Bridging.CONTACT_MAP_EDGE_P2 }) {
+						if (!cMap.containsVertex(edge[index])) {
+							cMap.addVertex(edge[index]);
+						}
+					}
+					cMap.addEdge(edge[Population_Bridging.CONTACT_MAP_EDGE_P1],
+							edge[Population_Bridging.CONTACT_MAP_EDGE_P2], edge);					
+				}				
+				
+				edges_array_pt++;
+			}
+			
 			// Schedule testing
 			for (Integer personId : BASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
-
 			int snap_index = 0;
-			ArrayList<Integer[]> toRemove;
+			
 
 			boolean hasInfected = hasInfectedInPop();
 
@@ -520,7 +546,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					Integer[] edge = edges_array[edges_array_pt];
 					Integer expireAt = edge[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
-							+ edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION];
+							+ Math.max(edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION],1);
 
 					toRemove = removeEdges.get(expireAt);
 					if (toRemove == null) {

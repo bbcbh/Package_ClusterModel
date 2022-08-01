@@ -61,10 +61,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_FIELD_SEED_INFECTION = 0;
 	public static final int LENGTH_SIM_MAP_TRANSMISSION_FIELD = SIM_FIELD_SEED_INFECTION + 1;
 
-	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP			
+	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
-			+ LENGTH_SIM_MAP_TRANSMISSION_FIELD + Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD];
+			+ LENGTH_SIM_MAP_TRANSMISSION_FIELD
+			+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
 
 	public Simulation_ClusterModelTransmission() {
@@ -255,10 +256,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		Collections.sort(completedSeed);
-		
+
 		ArrayList<Integer[]> edge_list = null;
 		try {
-			edge_list  = Abstract_Runnable_ClusterModel.generateContactEdgeArray(baseContactMap).call();
+			edge_list = Abstract_Runnable_ClusterModel.generateContactEdgeArray(baseContactMap).call();
 		} catch (Exception e1) {
 			e1.printStackTrace(System.err);
 		}
@@ -272,22 +273,20 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (runSim) {
-				runnable[s] = new Runnable_ClusterModel_Transmission_ContactMap(simSeed, pop_composition, baseContactMap,
-						numSnap, snapFreq);
+				runnable[s] = new Runnable_ClusterModel_Transmission_ContactMap(simSeed, pop_composition,
+						baseContactMap, numSnap, snapFreq);
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setEdges_list(edge_list);
-				
-				for(int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
-					int ent_offset = sim_offset+LENGTH_SIM_MAP_TRANSMISSION_FIELD;
-					if(simFields[ent_offset + f] != null) {
+
+				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
+					int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+					if (simFields[ent_offset + f] != null) {
 						runnable[s].getRunnable_fields()[f] = simFields[ent_offset + f];
 					}
 				}
-				
-				
+
 				((Runnable_ClusterModel_Transmission_ContactMap) runnable[s]).setTransmissionMap(new ContactMap());
 				runnable[s].initialse();
-				
 
 				// Add infected
 				for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
@@ -306,12 +305,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 								Set<Integer[]> edgesOfInfected = baseContactMap.edgesOf(infected);
 
-								for (Integer[] e : edgesOfInfected) {
-									firstContactTime = Math.min(firstContactTime,
-											e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]);
+								for (Integer[] e : edgesOfInfected) {									
+									int edge_start_time = e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME];
+									int edge_end_time = edge_start_time + e[Population_Bridging.CONTACT_MAP_EDGE_DURATION];
+									if (edge_end_time > contactMapTimeRange[0] && edge_start_time < contactMapTimeRange[1]) {										
+										firstContactTime = Math.max(Math.min(firstContactTime, edge_start_time), contactMapTimeRange[0]);										
+ 									}
 								}
-								
-								if(firstContactTime == contactMapTimeRange[1]) {
+
+								if (firstContactTime == contactMapTimeRange[1]) {
 									firstContactTime = contactMapTimeRange[0];
 								}
 
@@ -345,7 +347,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					zipTransmissionMaps();
 				}
 			}
-			
+
 		}
 		if (exec != null && inExec != 0) {
 			exec.shutdown();
