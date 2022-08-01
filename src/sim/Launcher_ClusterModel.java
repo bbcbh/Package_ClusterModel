@@ -39,9 +39,7 @@ public class Launcher_ClusterModel {
 					String[] lines = line.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);					
 					for(int i = 0; i < lines.length; i++) {
 						lines[i] = lines[i].replaceAll("\"", "");						
-					}
-					
-					
+					}									
 					Launcher_ClusterModel.main(lines);
 				}
 				reader.close();					
