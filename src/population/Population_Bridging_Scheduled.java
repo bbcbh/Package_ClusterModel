@@ -44,9 +44,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	protected transient int lastPartnershipScheduling = -1;
 	protected transient boolean fitHighActFirst = false;
 
-	private final boolean schedule_debug = true;
+	private final boolean schedule_debug = !true;
 
-	protected long export_period_form_partnership_progress = 5*60 * 1000l;
+	protected long export_period_form_partnership_progress = 5 * 60 * 1000l;
 	public static final String FORMAT_FORM_PARTNERSHIP_PROGRESS = "FormPartnership_Progess_%d_%d.obj";
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
@@ -104,7 +104,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		}
 
 		super.initialiseTransientFields();
-		lastPartnershipScheduling = 0;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -191,11 +190,21 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	@Override
 
 	public void advanceTimeStep(int deltaT) {
-		incrementTime(deltaT);
 
 		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
 		int[] population_num_partner_in_last_12_months = new int[field_mean_number_partner.length];
 		int numCat = field_mean_number_partner.length / (LENGTH_GENDER + 1);
+
+		// Check if it was in the middle of form partnership progress
+		final File progressFile = new File(getBaseDir(),
+				String.format(FORMAT_FORM_PARTNERSHIP_PROGRESS, this.getSeed(), getGlobalTime()));
+
+		if (progressFile.exists()) {
+			lastPartnershipScheduling = -1;
+			formPartnerships(population_num_partner_in_last_12_months);
+		}
+
+		incrementTime(deltaT);
 
 		boolean reportPartnerStat = lastPartnershipScheduling < AbstractIndividualInterface.ONE_YEAR_INT
 				? (getGlobalTime() == AbstractIndividualInterface.ONE_YEAR_INT)
@@ -261,8 +270,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	@Override
 	public void formPartnerships(int[] population_num_partner_in_last_12_months) {
 
-		boolean reqPartnerScheduling = (lastPartnershipScheduling < 0)
-				|| (getGlobalTime() == lastPartnershipScheduling + AbstractIndividualInterface.ONE_YEAR_INT);
+		boolean reqPartnerScheduling = (lastPartnershipScheduling == -1) ? true
+				: (getGlobalTime() == lastPartnershipScheduling + AbstractIndividualInterface.ONE_YEAR_INT);
 
 		int schedule_range = AbstractIndividualInterface.ONE_YEAR_INT;
 
@@ -315,12 +324,13 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			// End of Imported from file
 
 			final File progressFile = new File(getBaseDir(),
-					String.format(FORMAT_FORM_PARTNERSHIP_PROGRESS, this.getSeed(), lastPartnershipScheduling));
+					String.format(FORMAT_FORM_PARTNERSHIP_PROGRESS, this.getSeed(), getGlobalTime()));
 			boolean importSuccess = false;
 
 			if (progressFile.isFile()) {
+				ObjectInputStream objIn;
 				try {
-					ObjectInputStream objIn = new ObjectInputStream(new FileInputStream(progressFile));
+					objIn = new ObjectInputStream(new FileInputStream(progressFile));														
 					schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) objIn.readObject();
 					candidates_array_by_partnership_type = (int[][][]) objIn.readObject();
 					gender_end = (int[]) objIn.readObject();
@@ -338,31 +348,59 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					importSuccess = true;
 
 				} catch (ClassNotFoundException | IOException e) {
-					e.printStackTrace(System.err);
-					importSuccess = false;
+					File tempFile = new File(baseDir, String.format("%s_temp", progressFile.getName()));
+
+					if (tempFile.exists()) {
+
+						try {
+							objIn = new ObjectInputStream(new FileInputStream(tempFile));
+							schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) objIn.readObject();
+							candidates_array_by_partnership_type = (int[][][]) objIn.readObject();
+							gender_end = (int[]) objIn.readObject();
+							addressed_demand_so_far = (int[]) objIn.readObject();
+							completed_src_pdIndex = (int[]) objIn.readObject();
+							next_completed_src_pdIndex_pt = objIn.readInt();
+							progressing_src_pdIndex = objIn.readInt();
+							progressing_src_candidate_list = (ArrayList<int[]>) objIn.readObject();
+							completed_src_candidate_index = objIn.readInt();
+							objIn.close();
+
+							candidates_all = candidates_array_by_partnership_type[0];
+							Arrays.sort(completed_src_pdIndex, 0, next_completed_src_pdIndex_pt);
+
+							importSuccess = true;
+						} catch (ClassNotFoundException | IOException e1) {
+							e1.printStackTrace(System.err);
+							importSuccess = false;
+
+						}
+					} else {
+						e.printStackTrace(System.err);
+						importSuccess = false;
+					}
 				}
 			}
 
 			if (!importSuccess) {
 				candidates_array_by_partnership_type[0] = candidates_all;
 				fillCandidateList(candidates_all, gender_end, schedule_range == 0);
-
-				Arrays.fill(src_cat_order, -1);
-				int src_cat_order_pt = 0;
-
-				if (fitHighActFirst) {
-					// Order by activity (highest to lowest)
-					for (int src_cat_index = numCat - 1; src_cat_index > 0; src_cat_index--) {
-						src_cat_order[src_cat_order_pt] = src_cat_index;
-						src_cat_order_pt++;
-					}
-				} else {
-					for (int src_cat_index = 1; src_cat_index < numCat; src_cat_index++) {
-						src_cat_order[src_cat_order_pt] = src_cat_index;
-						src_cat_order_pt++;
-					}
-				}
 				Arrays.sort(candidates_all, candidates_array_comparators[CANDIDATE_ARRAY_SCHEDULE_LIMIT]);
+			}
+
+			Arrays.fill(src_cat_order, -1);
+			int src_cat_order_pt = 0;
+
+			if (fitHighActFirst) {
+				// Order by activity (highest to lowest)
+				for (int src_cat_index = numCat - 1; src_cat_index > 0; src_cat_index--) {
+					src_cat_order[src_cat_order_pt] = src_cat_index;
+					src_cat_order_pt++;
+				}
+			} else {
+				for (int src_cat_index = 1; src_cat_index < numCat; src_cat_index++) {
+					src_cat_order[src_cat_order_pt] = src_cat_index;
+					src_cat_order_pt++;
+				}
 			}
 
 			for (int src_cat_index : src_cat_order) {
@@ -634,20 +672,29 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						next_completed_src_pdIndex_pt++;
 						progressing_src_candidate_list = null;
 
-						if (export_period_form_partnership_progress > 0 && System.currentTimeMillis()
-								- last_export_at > export_period_form_partnership_progress) {
-							exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type,
-									gender_end, addressed_demand_so_far, completed_src_pdIndex,
-									next_completed_src_pdIndex_pt, -1, null, 0);
-							last_export_at = System.currentTimeMillis();
-						}
-
 					}
-
 				}
-
 			}
-
+			
+			// Final export to complete the process
+			exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type, gender_end,
+					addressed_demand_so_far, completed_src_pdIndex, next_completed_src_pdIndex_pt, -1, null, 0);
+			last_export_at = System.currentTimeMillis();
+			
+			// Debug statement
+			if (schedule_debug) {
+				System.out.printf("Time = %tF %<tT\n", new Date());
+				System.out.printf("Completed src_pd_index = %s\n", Arrays.toString(
+						Arrays.copyOf(completed_src_pdIndex, next_completed_src_pdIndex_pt)));			
+				System.out.printf("Schedule Partnership at Day %d:\n", getGlobalTime());
+				for (int g = 0; g < LENGTH_GENDER; g++) {
+					int pdI = numCat + g * numCat;
+					System.out.printf(" %d : %s\n", g, Arrays.toString(
+							Arrays.copyOfRange(addressed_demand_so_far, pdI, pdI + numCat)));
+				}
+				System.out.println();
+			}
+			
 		}
 
 		ArrayList<Integer[]> partnerships = schedule_partnership.remove(getGlobalTime());
@@ -816,24 +863,31 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			@Override
 			public void run() {
 				try {
-					
-					File exportPopFile = new File(baseDir, String.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME, 
-							getSeed(), getGlobalTime()));
-					
-					if(!exportPopFile.exists()) {
-						ObjectOutputStream outStream = new ObjectOutputStream(
-								new BufferedOutputStream(new FileOutputStream(exportPopFile)));
-						encodePopToStream(outStream);
-						outStream.close();
-					}
-					
-					
 					File tempFile = null;
+					File exportPopFile = new File(baseDir,
+							String.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME, getSeed(),
+									getGlobalTime()));
+
+					if (exportPopFile.isFile()) {
+						tempFile = new File(baseDir, String.format("%s_temp", exportPopFile.getName()));
+						Files.move(exportPopFile.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+					}
+
+					ObjectOutputStream outStream = new ObjectOutputStream(
+							new BufferedOutputStream(new FileOutputStream(exportPopFile)));
+					encodePopToStream(outStream);
+					outStream.close();
+
+					if (tempFile != null) {
+						FileUtils.delete(tempFile);
+					}
+
 					File newProgresFile = new File(baseDir, progressFile.getName());
-					
+
 					if (progressFile.isFile()) {
-						tempFile = new File(baseDir, String.format("%s_temp", progressFile.getName()));						
-						Files.move(progressFile.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);																
+						tempFile = new File(baseDir, String.format("%s_temp", progressFile.getName()));
+						Files.move(progressFile.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 					}
 
 					ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(newProgresFile));
@@ -845,7 +899,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					objOut.writeInt(f_next_completed_src_pdIndex_pt);
 					objOut.writeInt(f_progressing_src_pdIndex);
 					objOut.writeObject(f_src_candidate_list);
-					objOut.writeInt(f_completed_src_candidate_index);							
+					objOut.writeInt(f_completed_src_candidate_index);
 					objOut.close();
 
 					if (tempFile != null) {

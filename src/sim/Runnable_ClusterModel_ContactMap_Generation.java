@@ -118,6 +118,11 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 					gen_cMap[i] = new ContactMap();
 				}
 			}
+			
+
+			if (population instanceof Population_Bridging_Scheduled) {
+				((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
+			}
 
 			population.initialise();
 		} else {
@@ -139,25 +144,56 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 			}
 
 			boolean popFileloaded = false;
-			for (int fI = oldPopulationSnapFiles.length - 1; fI >= 0 && !popFileloaded; fI++) {
+			for (int fI = oldPopulationSnapFiles.length - 1; fI >= 0 && !popFileloaded; fI--) {
 				File prevSnapFile = oldPopulationSnapFiles[fI];
 
 				StringBuilder output = new StringBuilder();
 				output.append(String.format("Reusing population snapshot file %s....", prevSnapFile.getName()));
 
 				try {
-					ObjectInputStream objIn = new ObjectInputStream(
-							new BufferedInputStream(new FileInputStream(prevSnapFile)));
-					Population_Bridging snapPop = Population_Bridging.decodeFromStream(objIn);
-					this.setPopulation(snapPop);
+					ObjectInputStream objIn;
+					Population_Bridging snapPop;
+
+					try {
+						objIn = new ObjectInputStream(new BufferedInputStream(new FileInputStream(prevSnapFile)));
+
+						if (population instanceof Population_Bridging_Scheduled) {
+							snapPop = Population_Bridging_Scheduled.decodeFromStream(objIn);
+						} else {
+							snapPop = Population_Bridging.decodeFromStream(objIn);
+						}
+					} catch (Exception e) {
+						// See if temp file existed and load that instead
+						File tempFile = new File(baseDir, String.format("%s_temp", prevSnapFile.getName()));
+						if (tempFile.exists()) {
+							output.append(String.format(" FAILED\nRetry using population snapshot file %s....",
+									tempFile.getName()));
+							objIn = new ObjectInputStream(new BufferedInputStream(new FileInputStream(tempFile)));
+							if (population instanceof Population_Bridging_Scheduled) {
+								snapPop = Population_Bridging_Scheduled.decodeFromStream(objIn);
+							} else {
+								snapPop = Population_Bridging.decodeFromStream(objIn);
+							}
+						} else {
+							throw e;
+						}
+					}
+
+					snapPop.setBaseDir(baseDir);
+					this.setPopulation(snapPop);					
 					objIn.close();
 					output.append(String.format(" SUCCESS, with global time set at %d.", population.getGlobalTime()));
 					skipTimeUntil = population.getGlobalTime();
 					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+					
+					if (population instanceof Population_Bridging_Scheduled) {
+						((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
+					}
 					popFileloaded = true;
 
 				} catch (Exception e) {
-					output.append(" FAILED. Trying next snapshot file (if any).");
+
+					output.append(" FAILED. Trying the next snapshot file (if any).");
 					FileUtils.deleteQuietly(prevSnapFile);
 				}
 
@@ -177,6 +213,10 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 						gen_cMap[i] = new ContactMap();
 					}
 				}
+				
+				if (population instanceof Population_Bridging_Scheduled) {
+					((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
+				}
 				population.initialise();
 
 			}
@@ -188,9 +228,7 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 
 		long lastExportTime = System.currentTimeMillis();
 
-		if (population instanceof Population_Bridging_Scheduled) {
-			((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
-		}
+
 		int stepCount = 0;
 
 		for (int s = 0; s < numSnaps; s++) {
@@ -268,7 +306,8 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 	private void exportPopSnap(long snapTime) {
 		File[] oldPopulationSnapFiles;
 		try {
-			File exportFile = new File(baseDir, String.format(EXPORT_POP_FILENAME, population.getSeed(), snapTime));
+			File exportFile = new File(baseDir,
+					String.format(EXPORT_POP_FILENAME, population.getSeed(), population.getGlobalTime()));
 
 			if (!exportFile.exists()) {
 				ObjectOutputStream outStream = new ObjectOutputStream(
