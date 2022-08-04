@@ -330,7 +330,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			if (progressFile.isFile()) {
 				ObjectInputStream objIn;
 				try {
-					objIn = new ObjectInputStream(new FileInputStream(progressFile));														
+					objIn = new ObjectInputStream(new FileInputStream(progressFile));
 					schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) objIn.readObject();
 					candidates_array_by_partnership_type = (int[][][]) objIn.readObject();
 					gender_end = (int[]) objIn.readObject();
@@ -675,26 +675,28 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					}
 				}
 			}
-			
+
 			// Final export to complete the process
-			exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type, gender_end,
-					addressed_demand_so_far, completed_src_pdIndex, next_completed_src_pdIndex_pt, -1, null, 0);
-			last_export_at = System.currentTimeMillis();
-			
+			if (export_period_form_partnership_progress > 0) {
+				exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type, gender_end,
+						addressed_demand_so_far, completed_src_pdIndex, next_completed_src_pdIndex_pt, -1, null, 0);
+				last_export_at = System.currentTimeMillis();
+			}
+
 			// Debug statement
 			if (schedule_debug) {
 				System.out.printf("Time = %tF %<tT\n", new Date());
-				System.out.printf("Completed src_pd_index = %s\n", Arrays.toString(
-						Arrays.copyOf(completed_src_pdIndex, next_completed_src_pdIndex_pt)));			
+				System.out.printf("Completed src_pd_index = %s\n",
+						Arrays.toString(Arrays.copyOf(completed_src_pdIndex, next_completed_src_pdIndex_pt)));
 				System.out.printf("Schedule Partnership at Day %d:\n", getGlobalTime());
 				for (int g = 0; g < LENGTH_GENDER; g++) {
 					int pdI = numCat + g * numCat;
-					System.out.printf(" %d : %s\n", g, Arrays.toString(
-							Arrays.copyOfRange(addressed_demand_so_far, pdI, pdI + numCat)));
+					System.out.printf(" %d : %s\n", g,
+							Arrays.toString(Arrays.copyOfRange(addressed_demand_so_far, pdI, pdI + numCat)));
 				}
 				System.out.println();
 			}
-			
+
 		}
 
 		ArrayList<Integer[]> partnerships = schedule_partnership.remove(getGlobalTime());
