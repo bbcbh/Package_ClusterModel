@@ -39,7 +39,8 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 	public static final int RUNNABLE_FILED_EXPORT_FREQ = RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE + 1;
 	public static final int LENGTH_RUNNABLE_MAP_GEN_FIELD = RUNNABLE_FILED_EXPORT_FREQ + 1;
 
-	public static final String EXPORT_POP_FILENAME = "EXPORT_POP_%d_%d.obj";
+	public static final String EXPORT_POP_FILENAME_PRRFIX = "EXPORT_POP_%d";
+	public static final String EXPORT_POP_FILENAME = EXPORT_POP_FILENAME_PRRFIX+ "_%d.obj";
 
 	private Population_Bridging population;
 	private int numSnaps;

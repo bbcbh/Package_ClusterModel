@@ -2,6 +2,7 @@ package population;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -47,7 +48,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	private final boolean schedule_debug = !true;
 
 	protected long export_period_form_partnership_progress = 5 * 60 * 1000l;
-	public static final String FORMAT_FORM_PARTNERSHIP_PROGRESS = "FormPartnership_Progess_%d_%d.obj";
+	public static final String FORMAT_FORM_PARTNERSHIP_PROGRESS_PREFIX = "FormPartnership_Progess_%d";
+	public static final String FORMAT_FORM_PARTNERSHIP_PROGRESS = FORMAT_FORM_PARTNERSHIP_PROGRESS_PREFIX + "_%d.obj";
 
 	public static final int SCHEDULE_PARTNERSHIP_P1 = 0;
 	public static final int SCHEDULE_PARTNERSHIP_P2 = SCHEDULE_PARTNERSHIP_P1 + 1;
@@ -677,10 +679,38 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			}
 
 			// Final export to complete the process
-			if (export_period_form_partnership_progress > 0) {
-				exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type, gender_end,
-						addressed_demand_so_far, completed_src_pdIndex, next_completed_src_pdIndex_pt, -1, null, 0);
-				last_export_at = System.currentTimeMillis();
+
+			exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type, gender_end,
+					addressed_demand_so_far, completed_src_pdIndex, next_completed_src_pdIndex_pt, -1, null, 0);
+			last_export_at = System.currentTimeMillis();
+
+			final String oldProgressFile_prefix = String.format(FORMAT_FORM_PARTNERSHIP_PROGRESS_PREFIX, getSeed());
+			final String oldExportPop_prefix = String
+					.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME_PRRFIX, getSeed());
+
+			// Delete old export file
+			File[] oldExportFile = baseDir.listFiles(new FileFilter() {
+
+				@Override
+				public boolean accept(File pathname) {
+
+					boolean isOldFile = pathname.getName().startsWith(oldProgressFile_prefix);
+
+					isOldFile |= !pathname.getName()
+							.equals(String.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME,
+									getSeed(), getGlobalTime()))
+							&& pathname.getName().startsWith(oldExportPop_prefix);
+
+					return isOldFile;
+				}
+			});
+
+			for (File toBeDeleted : oldExportFile) {
+				try {
+					FileUtils.delete(toBeDeleted);
+				} catch (IOException ex) {
+					ex.printStackTrace(System.err);
+				}
 			}
 
 			// Debug statement
@@ -892,17 +922,20 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						Files.move(progressFile.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 					}
 
-					ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(newProgresFile));
-					objOut.writeObject(schedule_partnership);
-					objOut.writeObject(f_candidates_array_by_partnership_type);
-					objOut.writeObject(f_gender_end);
-					objOut.writeObject(f_addressed_demand_so_far);
-					objOut.writeObject(f_completed_src_pdIndex);
-					objOut.writeInt(f_next_completed_src_pdIndex_pt);
-					objOut.writeInt(f_progressing_src_pdIndex);
-					objOut.writeObject(f_src_candidate_list);
-					objOut.writeInt(f_completed_src_candidate_index);
-					objOut.close();
+					// Only write progress if there are still src_pdIndex to go through 
+					if (f_next_completed_src_pdIndex_pt < f_completed_src_pdIndex.length) {
+						ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(newProgresFile));
+						objOut.writeObject(schedule_partnership);
+						objOut.writeObject(f_candidates_array_by_partnership_type);
+						objOut.writeObject(f_gender_end);
+						objOut.writeObject(f_addressed_demand_so_far);
+						objOut.writeObject(f_completed_src_pdIndex);
+						objOut.writeInt(f_next_completed_src_pdIndex_pt);
+						objOut.writeInt(f_progressing_src_pdIndex);
+						objOut.writeObject(f_src_candidate_list);
+						objOut.writeInt(f_completed_src_candidate_index);
+						objOut.close();
+					}
 
 					if (tempFile != null) {
 						FileUtils.delete(tempFile);
