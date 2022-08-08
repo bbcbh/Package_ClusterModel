@@ -51,7 +51,7 @@ public class Optimisation_Factory {
 	public static void stable_prevalence_by_tranmission_fit_Simplex(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 
-		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY (double[]) INIT_TRANSMISSION_VALUE (double[][]) BOUNDARIES";
+		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY (double[]) INIT_TRANSMISSION_VALUE (double[][]) BOUNDARIES <optional: NUM_EVAL (int)>";
 
 		int numEval = 100;
 		if (args.length < 3) {
@@ -157,8 +157,8 @@ public class Optimisation_Factory {
 			final int START_TIME;
 
 			RNG = new MersenneTwisterRandomGenerator(seed);
-			NUM_TIME_STEPS_PER_SNAP = numSnap;
-			SNAP_FREQ = snapFreq;
+			NUM_TIME_STEPS_PER_SNAP = snapFreq;
+			SNAP_FREQ = numSnap;
 			POP_COMPOSITION = pop_composition;
 			NUM_THREADS = numThreads;
 			TARGET_INFECTED = target_infected;
@@ -231,17 +231,35 @@ public class Optimisation_Factory {
 							runnable[rId] = new Runnable_ClusterModel_Transmission(sim_seed, POP_COMPOSITION, c,
 									NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
 							runnable[rId].setBaseDir(baseDir);
+
+							double[][][] transmission_rate = (double[][][]) runnable[rId]
+									.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
+
+							double[] sym_test_rate = (double[]) runnable[rId]
+									.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 							switch (point.length) {
 
 							case 4:
 								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P
-								double[][][] transmission_rate = (double[][][]) runnable[rId]
-										.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
 
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+
+								break;
+							case 5:
+								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, SYM_TEST_PERIOD
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+
+								sym_test_rate[0] = point[4];
+								sym_test_rate[1] = (point[4] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86); // Adjust SD
+																										// based on
+																										// ratio from
+																										// mean
 
 								break;
 							default:
@@ -279,47 +297,6 @@ public class Optimisation_Factory {
 						}
 					}
 
-					double sqSum = 0;
-
-					StringBuilder[][] trend_disp = new StringBuilder[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
-					int start_k = 2;
-
-					
-					for (int r = 0; r < rId; r++) {
-						@SuppressWarnings("unchecked")
-						HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable[r]
-								.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
-
-						Integer[] keys = infectious_count_map.keySet()
-								.toArray(new Integer[infectious_count_map.size()]);
-						Arrays.sort(keys);
-												
-						for (int k = start_k; k < keys.length; k++) {
-							int[][] inf_count = infectious_count_map.get(keys[k]);
-							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
-									sqSum += Math.pow(inf_count[g][s] - TARGET_INFECTED[g][s], 2);
-									
-									if (TARGET_INFECTED[g][s] != 0) {
-										if(r==0 && trend_disp[g][s] == null) {
-											trend_disp[g][s] = new StringBuilder();
-										}else if(r > 0){
-											trend_disp[g][s].append('\n');
-										}										
-										if(k == start_k) {
-											trend_disp[g][s].append('\t');
-											trend_disp[g][s].append(r);
-											trend_disp[g][s].append(':');
-										}else {
-											trend_disp[g][s].append(',');
-										}										
-										trend_disp[g][s].append(inf_count[g][s]);
-									}
-								}
-							}
-						}
-					}
-
 					StringBuilder pt_str = new StringBuilder();
 					for (double pt : point) {
 						if (pt_str.length() != 0) {
@@ -328,18 +305,72 @@ public class Optimisation_Factory {
 						pt_str.append(String.format("%.5f", pt));
 					}
 
-					System.out.printf("P = [%s], V = %.2e, Time req = %.3fs\n", 
-							pt_str.toString(), sqSum, 
-							(System.currentTimeMillis() - tic) / 1000f);
-					
-					
-					for (int g = 0; g < trend_disp.length; g++) {
-						for (int s = 0; s < trend_disp[g].length; s++) {							
-							if (trend_disp[g][s] != null) {								
-								System.out.printf("Preval(%d-%d)\n%s\n", g, s, trend_disp[g][s].toString());
-							}
-						}
+					double sqSum = 0;
+
+					int start_k = 2;
+
+					Integer[] keys = new Integer[SNAP_FREQ];
+					keys[0] = NUM_TIME_STEPS_PER_SNAP;
+					for (int k = 1; k < keys.length; k++) {
+						keys[k] = keys[k - 1] + NUM_TIME_STEPS_PER_SNAP;
 					}
+
+					for (int r = 0; r < rId; r++) {
+						@SuppressWarnings("unchecked")
+						HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable[r]
+								.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
+
+//						Integer[] keys = infectious_count_map.keySet()
+//								.toArray(new Integer[infectious_count_map.size()]);
+//						Arrays.sort(keys);
+
+						StringBuilder str_disp = new StringBuilder();
+
+						for (int k = start_k; k < keys.length; k++) {
+							str_disp.append(keys[k]);
+							int[][] inf_count = infectious_count_map.get(keys[k]);
+
+							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+									int val = 0;
+									if (inf_count != null) {
+										val = inf_count[g][s];
+									}
+									sqSum += Math.pow(val - TARGET_INFECTED[g][s], 2);
+									str_disp.append(',');
+									str_disp.append(val);
+								}
+							}
+							str_disp.append('\n');
+						}
+
+						// Display trends
+						try {
+							File opt_output_file = new File(baseDir, String.format("Opt_trend_%d.txt", rId));
+							boolean newFile = !opt_output_file.exists();
+
+							FileWriter fWri = new FileWriter(opt_output_file, true);
+							PrintWriter pWri = new PrintWriter(fWri);
+
+							if (newFile) {
+								pWri.println("Target = " + Arrays.deepToString(TARGET_INFECTED));
+							}
+
+							pWri.println(pt_str);
+							pWri.println(str_disp.toString());
+							pWri.close();
+							fWri.close();
+
+						} catch (IOException e) {
+							e.printStackTrace(System.err);
+							System.out.println(str_disp.toString());
+
+						}
+
+					}
+
+					System.out.printf("P = [%s], V = %.2e, Time req = %.3fs\n", pt_str.toString(), sqSum,
+							(System.currentTimeMillis() - tic) / 1000f);
 
 					return sqSum;
 

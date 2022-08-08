@@ -27,8 +27,8 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 	protected ContactMap transmissionMap = null;
 
 	public Runnable_ClusterModel_Transmission_ContactMap(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
-			int NUM_TIME_STEPS_PER_SNAP, int SNAP_FREQ) {
-		super(seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
+			int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
+		super(seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 
 	}
 

@@ -56,7 +56,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	// Sought test period
 	// From Qibin's paper of Gamma(3, 0.86)
-	private double[] DEFAULT_SYM_TEST = new double[] { 3 * 0.86, Math.sqrt(3 * 0.86 * 0.86) };
+	private double[] DEFAULT_SYM_TEST = new double[] { 3 * 0.86, Math.sqrt(3 * 0.86 * 0.86) };	
 
 	// Act frequency
 	// ASHR2: Those who were in heterosexual relationships had had
@@ -79,7 +79,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private float[][] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM = new float[][] {
 			DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_LOW_RISK, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_HIGH_RISK };
 
-	private float[] DEFAULT_SYM_RATE_BY_SITE_MALE = new float[] { Float.NaN, 0.9f, 0.12f, 0 };
+	private float[] DEFAULT_SYM_RATE_BY_SITE_MALE = new float[] { Float.NaN, 1.0f, 0.12f, 0 };
 	private float[] DEFAULT_SYM_RATE_BY_SITE_FEMALE = new float[] { 0.4f, Float.NaN, 0.12f, 0 };
 
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ = 0;
@@ -161,7 +161,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	final int[] cumulative_pop_composition;
 	final ContactMap BASE_CONTACT_MAP;
 	final int NUM_TIME_STEPS_PER_SNAP;
-	final int SNAP_FREQ;
+	final int NUM_SNAP;
 	final long seed;
 
 	protected RandomGenerator RNG;
@@ -189,7 +189,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private ArrayList<Integer[]> edges_list;
 
 	public Runnable_ClusterModel_Transmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
-			int NUM_TIME_STEPS_PER_SNAP, int SNAP_FREQ) {
+			int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
 		super();
 
 		this.cumulative_pop_composition = new int[POP_COMPOSITION.length];
@@ -202,7 +202,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		this.BASE_CONTACT_MAP = BASE_CONTACT_MAP;
 		this.NUM_TIME_STEPS_PER_SNAP = NUM_TIME_STEPS_PER_SNAP;
-		this.SNAP_FREQ = SNAP_FREQ;
+		this.NUM_SNAP = NUM_SNAP;
 		this.seed = seed;
 
 	}
@@ -529,7 +529,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			boolean hasInfected = hasInfectedInPop();
 
-			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * SNAP_FREQ
+			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * NUM_SNAP
 					&& hasInfected; currentTime++) {
 
 				// Remove expired edges
@@ -740,7 +740,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	protected boolean hasInfectedInPop() {
+	protected boolean hasInfectedInPop() {	
 		boolean hasInfected = false;
 		for (int site_src = 0; site_src < LENGTH_SITE && !hasInfected; site_src++) {
 			hasInfected |= !(schedule_incubation[site_src].isEmpty() && currently_infectious[site_src].isEmpty());
