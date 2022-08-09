@@ -24,6 +24,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int ACT_INDEX_GENITAL = 0;
 	public static final int ACT_INDEX_ANAL = ACT_INDEX_GENITAL + 1;
 	public static final int ACT_INDEX_FELLATIO = ACT_INDEX_ANAL + 1;
+	public static final int ACT_INDEX_RIMMING = ACT_INDEX_FELLATIO + 1;
+	public static final int ACT_INDEX_KISSING = ACT_INDEX_RIMMING + 1;
 
 	public static final int SITE_VAGINA = 0;
 	public static final int SITE_PENIS = SITE_VAGINA + 1;
@@ -56,7 +58,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	// Sought test period
 	// From Qibin's paper of Gamma(3, 0.86)
-	private double[] DEFAULT_SYM_TEST = new double[] { 3 * 0.86, Math.sqrt(3 * 0.86 * 0.86) };	
+	private double[] DEFAULT_SYM_TEST = new double[] { 3 * 0.86, Math.sqrt(3 * 0.86 * 0.86) };
 
 	// Act frequency
 	// ASHR2: Those who were in heterosexual relationships had had
@@ -120,6 +122,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							new float[] { 0, 0, DEFAULT_ACT_FELLATIO_FREQ_MSM, DEFAULT_ACT_FELLATIO_FREQ_MSM },
 							new float[] { DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, DEFAULT_ACT_FELLATIO_FREQ_MSM,
 									DEFAULT_ACT_FELLATIO_FREQ_MSM }, },
+					// ACT_INDEX_RIMMING (OROPHARYNX <-> RECTUM)
+					new float[Population_Bridging.LENGTH_GENDER][Population_Bridging.LENGTH_GENDER],
+					// ACT_INDEX_KISSING (OROPHARYNX <-> OROPHARYNX)
+					new float[Population_Bridging.LENGTH_GENDER][Population_Bridging.LENGTH_GENDER],
 
 			},
 			// RUNNABLE_FIELD_TRANSMISSION_MAP_TRANSMISSION_RATE
@@ -487,26 +493,25 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 			Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
 			int edges_array_pt = 0;
-			
-			
+
 			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
 			ArrayList<Integer[]> toRemove;
-			
+
 			// Skip invalid edges
-			while(edges_array_pt < edges_array.length && 
-					edges_array[edges_array_pt][Population_Bridging.CONTACT_MAP_EDGE_START_TIME] < startTime) {
+			while (edges_array_pt < edges_array.length
+					&& edges_array[edges_array_pt][Population_Bridging.CONTACT_MAP_EDGE_START_TIME] < startTime) {
 				Integer[] edge = edges_array[edges_array_pt];
 				int edge_start_time = edge[Population_Bridging.CONTACT_MAP_EDGE_START_TIME];
 				int expireAt = edge_start_time + edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION];
-				
-				if(expireAt > startTime) {					
+
+				if (expireAt > startTime) {
 					toRemove = removeEdges.get(expireAt);
 					if (toRemove == null) {
 						toRemove = new ArrayList<>();
 						removeEdges.put(expireAt, toRemove);
 					}
 					toRemove.add(edge);
-					
+
 					for (int index : new int[] { Population_Bridging.CONTACT_MAP_EDGE_P1,
 							Population_Bridging.CONTACT_MAP_EDGE_P2 }) {
 						if (!cMap.containsVertex(edge[index])) {
@@ -514,18 +519,17 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						}
 					}
 					cMap.addEdge(edge[Population_Bridging.CONTACT_MAP_EDGE_P1],
-							edge[Population_Bridging.CONTACT_MAP_EDGE_P2], edge);					
-				}				
-				
+							edge[Population_Bridging.CONTACT_MAP_EDGE_P2], edge);
+				}
+
 				edges_array_pt++;
 			}
-			
+
 			// Schedule testing
 			for (Integer personId : BASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
 			int snap_index = 0;
-			
 
 			boolean hasInfected = hasInfectedInPop();
 
@@ -546,7 +550,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					Integer[] edge = edges_array[edges_array_pt];
 					Integer expireAt = edge[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
-							+ Math.max(edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION],1);
+							+ Math.max(edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION], 1);
 
 					toRemove = removeEdges.get(expireAt);
 					if (toRemove == null) {
@@ -619,10 +623,25 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 												actType = ACT_INDEX_GENITAL;
 												break;
 											case SITE_OROPHARYNX:
-												actType = ACT_INDEX_FELLATIO;
+												switch (site_target) {
+												case SITE_RECTUM:
+													actType = ACT_INDEX_RIMMING;
+													break;
+												case SITE_OROPHARYNX:
+													actType = ACT_INDEX_KISSING;
+													break;
+												default:
+													actType = ACT_INDEX_FELLATIO;
+												}
 												break;
 											case SITE_RECTUM:
-												actType = ACT_INDEX_ANAL;
+												switch (site_target) {
+												case SITE_OROPHARYNX:
+													actType = ACT_INDEX_RIMMING;
+													break;
+												default:
+													actType = ACT_INDEX_ANAL;
+												}
 												break;
 											default:
 												switch (site_target) {
@@ -645,7 +664,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 												float actProb = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s][g_t];
 												float transProb = (float) trans[site_src][site_target];
 												transmitted &= actProb > 0;
-												if (transmitted) {
+												if (transmitted) {																						
 													transmitted &= RNG.nextFloat() < (actProb * transProb);
 												}
 											}
@@ -740,7 +759,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	protected boolean hasInfectedInPop() {	
+	protected boolean hasInfectedInPop() {
 		boolean hasInfected = false;
 		for (int site_src = 0; site_src < LENGTH_SITE && !hasInfected; site_src++) {
 			hasInfected |= !(schedule_incubation[site_src].isEmpty() && currently_infectious[site_src].isEmpty());
