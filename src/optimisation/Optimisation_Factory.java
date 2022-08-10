@@ -237,16 +237,7 @@ public class Optimisation_Factory {
 
 							double[] sym_test_rate = (double[]) runnable[rId]
 									.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
-							
-							float[][][] act_freq = (float[][][]) runnable[rId].getRunnable_fields()
-									[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ];
-							
-							
-							// From Qibin's paper
-							// 10.1371/journal.pcbi.1009385							
-							float freq_rim = ((1.2f + 1.8f)/2) / 7;
-							float freq_kiss = ((2.4f + 3.6f)/2) / 7;
-							
+
 							switch (point.length) {
 
 							case 4:
@@ -265,79 +256,49 @@ public class Optimisation_Factory {
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
 
 								sym_test_rate[0] = point[4];
-								// Adjust SD  based on ratio from mean
-								sym_test_rate[1] = (point[4] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86); 
+								// Adjust SD based on ratio from mean
+								sym_test_rate[1] = (point[4] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
 								break;
-							case 7:																								
-								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, TRANS_R2O, TRANS_O2R, SYM_TEST_PERIOD												
+							case 7:
+								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, TRANS_R2O, TRANS_O2R,
+								// SYM_TEST_PERIOD
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];															
+
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
-								
+
 								sym_test_rate[0] = point[6];
-								// Adjust SD  based on ratio from mean
-								sym_test_rate[1] = (point[6] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86); 
-								
-								
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMO][Population_Bridging.GENDER_MSMO]
-										= freq_rim;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMO][Population_Bridging.GENDER_MSMW]
-										= freq_rim;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMW][Population_Bridging.GENDER_MSMO]
-										= freq_rim;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMW][Population_Bridging.GENDER_MSMW]
-										= freq_rim;
+								// Adjust SD based on ratio from mean
+								sym_test_rate[1] = (point[6] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
 
 								break;
-							case 8:																								
-								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, TRANS_R2O, TRANS_O2R, TRANS_O2O, SYM_TEST_PERIOD												
+							case 8:
+								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, TRANS_R2O, TRANS_O2R, TRANS_O2O,
+								// SYM_TEST_PERIOD
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];								
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];															
+
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
-								
+
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
-								
-								
+
 								sym_test_rate[0] = point[7];
-								// Adjust SD  based on ratio from mean
-								sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86); 
-								
-								
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMO][Population_Bridging.GENDER_MSMO]
-										= freq_rim;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMO][Population_Bridging.GENDER_MSMW]
-										= freq_rim;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMW][Population_Bridging.GENDER_MSMO]
-										= freq_rim;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_RIMMING][Population_Bridging.GENDER_MSMW][Population_Bridging.GENDER_MSMW]
-										= freq_rim;
-								
-								
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_KISSING][Population_Bridging.GENDER_MSMO][Population_Bridging.GENDER_MSMO]
-										= freq_kiss;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_KISSING][Population_Bridging.GENDER_MSMO][Population_Bridging.GENDER_MSMW]
-										= freq_kiss;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_KISSING][Population_Bridging.GENDER_MSMW][Population_Bridging.GENDER_MSMO]
-										= freq_kiss;
-								act_freq[Runnable_ClusterModel_Transmission.ACT_INDEX_KISSING][Population_Bridging.GENDER_MSMW][Population_Bridging.GENDER_MSMW]
-										= freq_kiss;
+								// Adjust SD based on ratio from mean
+								sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
 
 								break;
-								
-								
+
 							default:
 								System.err.printf("Optimisation: Parameter intrepretation %s not defined. Exiting...\n",
 										Arrays.toString(point));

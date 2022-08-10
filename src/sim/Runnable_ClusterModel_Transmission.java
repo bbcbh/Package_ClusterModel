@@ -71,8 +71,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private float DEFAULT_ACT_FELLATIO_FREQ_HETRO = 0.25f;
 	// From Qibin's paper
 	// 10.1371/journal.pcbi.1009385
-	private float DEFAULT_ACT_ANAL_FREQ_MSM = (1.6f + 2.4f) / 2 / 7;
-	private float DEFAULT_ACT_FELLATIO_FREQ_MSM = (1.6f + 2.4f) / 2 / 7;
+	private float DEFAULT_ACT_ANAL_FREQ_MSM = ((1.6f + 2.4f)) / 2 / 7;
+	private float DEFAULT_ACT_FELLATIO_FREQ_MSM = ((1.6f + 2.4f) / 2) / 7;
+	private float DEFAULT_ACT_RIMMING_FREQ_MSM = ((1.2f + 1.8f) / 2) / 7;
+	private float DEFAULT_ACT_KISSING_FREQ_MSM = ((2.4f + 3.6f) / 2) / 7;
 
 	private float[] DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM = new float[] { 20 };
 	private float[] DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM_LOW_RISK = new float[] { 0.375f, 1, 720, 360, 90 };
@@ -123,9 +125,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							new float[] { DEFAULT_ACT_FELLATIO_FREQ_HETRO, 0, DEFAULT_ACT_FELLATIO_FREQ_MSM,
 									DEFAULT_ACT_FELLATIO_FREQ_MSM }, },
 					// ACT_INDEX_RIMMING (OROPHARYNX <-> RECTUM)
-					new float[Population_Bridging.LENGTH_GENDER][Population_Bridging.LENGTH_GENDER],
+					new float[][] { new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 },
+							new float[] { 0, 0, DEFAULT_ACT_RIMMING_FREQ_MSM, DEFAULT_ACT_RIMMING_FREQ_MSM },
+							new float[] { 0, 0, DEFAULT_ACT_RIMMING_FREQ_MSM, DEFAULT_ACT_RIMMING_FREQ_MSM }, },
+
 					// ACT_INDEX_KISSING (OROPHARYNX <-> OROPHARYNX)
-					new float[Population_Bridging.LENGTH_GENDER][Population_Bridging.LENGTH_GENDER],
+					new float[][] { new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 },
+							new float[] { 0, 0, DEFAULT_ACT_KISSING_FREQ_MSM, DEFAULT_ACT_KISSING_FREQ_MSM },
+							new float[] { 0, 0, DEFAULT_ACT_KISSING_FREQ_MSM, DEFAULT_ACT_KISSING_FREQ_MSM }, },
 
 			},
 			// RUNNABLE_FIELD_TRANSMISSION_MAP_TRANSMISSION_RATE
@@ -664,7 +671,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 												float actProb = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s][g_t];
 												float transProb = (float) trans[site_src][site_target];
 												transmitted &= actProb > 0;
-												if (transmitted) {																						
+												if (transmitted) {
 													transmitted &= RNG.nextFloat() < (actProb * transProb);
 												}
 											}
