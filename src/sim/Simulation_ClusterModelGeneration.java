@@ -281,6 +281,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		contactMapSet = new HashMap<Long, ContactMap[]>();
 
 		for (int r = 0; r < runnables.length; r++) {
+			
 			contactMapSet.put(runnables[r].getPopulation().getSeed(), runnables[r].getGen_cMap());
 		}
 

@@ -710,6 +710,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					FileUtils.delete(toBeDeleted);
 				} catch (IOException ex) {
 					ex.printStackTrace(System.err);
+					toBeDeleted.deleteOnExit();
 				}
 			}
 
