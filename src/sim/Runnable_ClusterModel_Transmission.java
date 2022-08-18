@@ -198,7 +198,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
 
+	
+	// HashMap<Integer, int[][]> with  K = time, V= int [gender][site] 
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_PREVALENCE";
+	public static final String SIM_OUTPUT_CUMUL_INCIDENCE = "SIM_OUTPUT_CUMUL_INCIDENCE";
+	
 	private ArrayList<Integer[]> edges_list;
 
 	public Runnable_ClusterModel_Transmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
@@ -539,6 +543,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			int snap_index = 0;
 
 			boolean hasInfected = hasInfectedInPop();
+			
+			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE]; 
 
 			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * NUM_SNAP
 					&& hasInfected; currentTime++) {
@@ -677,6 +683,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 											}
 
 											if (transmitted) {
+												cumul_incidence[g_t][site_target]++;
 												transmission_success(currentTime, infectious, partner, site_target,
 														actType, simulation_store);
 											}
@@ -749,6 +756,23 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						}
 					}
 					infectious_count_map.put(currentTime, infectious_count);
+					
+					
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[][]> cumul_incidence_map = (HashMap<Integer, int[][]>) sim_output
+							.get(SIM_OUTPUT_CUMUL_INCIDENCE);					
+					if (cumul_incidence_map == null) {
+						cumul_incidence_map = new HashMap<>();
+						sim_output.put(SIM_OUTPUT_INFECTIOUS_COUNT, cumul_incidence_map);
+					}
+					
+					int[][] incidence_snap = new int[infectious_count.length][];
+					for(int g = 0; g < incidence_snap.length; g++) {
+						incidence_snap[g] = Arrays.copyOf(infectious_count[g], infectious_count[g].length);
+					}
+					cumul_incidence_map.put(currentTime, incidence_snap);
+					
+					
 				}
 
 				snap_index = (snap_index + 1) % NUM_TIME_STEPS_PER_SNAP;
