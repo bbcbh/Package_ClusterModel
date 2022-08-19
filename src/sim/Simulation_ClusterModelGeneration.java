@@ -49,6 +49,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	protected boolean printOutput = false;
 
 	public static final String FILENAME_FORMAT_ALL_CMAP = "All_ContactMap_%d_%d.csv";
+	public static final String FILENAME_FORMAT_OUTPUT = "Output_%d.txt";
 
 	public void setPrintOutput(boolean printOutput) {
 		this.printOutput = printOutput;
@@ -239,7 +240,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					} else {
 						outputPS = new PrintStream[1];
 					}
-					File outputFile = new File(baseDir, String.format("Output_%d.txt", r.getPopulation().getSeed()));
+					File outputFile = new File(baseDir, String.format(FILENAME_FORMAT_OUTPUT, r.getPopulation().getSeed()));
 					FileOutputStream fOut = new FileOutputStream(outputFile, true);
 					outputPS[0] = new PrintStream(fOut);
 
@@ -281,8 +282,9 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		contactMapSet = new HashMap<Long, ContactMap[]>();
 
 		for (int r = 0; r < runnables.length; r++) {
-			
-			contactMapSet.put(runnables[r].getPopulation().getSeed(), runnables[r].getGen_cMap());
+			if(runnables[r] != null) {			
+				contactMapSet.put(runnables[r].getPopulation().getSeed(), runnables[r].getGen_cMap());
+			}
 		}
 
 		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
