@@ -26,9 +26,10 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 
 	protected ContactMap transmissionMap = null;
 
-	public Runnable_ClusterModel_Transmission_ContactMap(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
+	public Runnable_ClusterModel_Transmission_ContactMap(long cMap_seed, long sim_seed, 
+			int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
 			int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
-		super(seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
+		super(cMap_seed, sim_seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 
 	}
 
@@ -124,7 +125,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 				}
 			});
 
-			File clusterExport = new File(baseDir, String.format(DIRNAME_FORMAT_TRANSMISSION_CMAP, this.seed));
+			File clusterExport = new File(baseDir, String.format(DIRNAME_FORMAT_TRANSMISSION_CMAP, this.sim_seed));
 			clusterExport.mkdirs();
 
 			File printFile;
@@ -132,7 +133,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 
 			try {
 
-				printFile = new File(clusterExport, String.format(FILENAME_FORMAT_INDEX_CASE_LIST, this.seed));
+				printFile = new File(clusterExport, String.format(FILENAME_FORMAT_INDEX_CASE_LIST, this.sim_seed));
 
 				expWri = new PrintWriter(printFile);
 				expWri.println(seedInfectedStr.toString());
@@ -142,7 +143,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 					ContactMap c = clusters[cI];
 
 					printFile = new File(clusterExport,
-							String.format(FILENAME_FORMAT_TRANSMISSION_CMAP, Long.toString(this.seed), cI));
+							String.format(FILENAME_FORMAT_TRANSMISSION_CMAP, Long.toString(this.sim_seed), cI));
 
 					expWri = new PrintWriter(printFile);
 					expWri.println(c.toFullString());
@@ -156,7 +157,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 
 				for (int cI = 0; cI < clusters.length; cI++) {
 					ContactMap c = clusters[cI];
-					System.out.println(String.format("Transmission map <%d, %d>", this.seed, cI));
+					System.out.println(String.format("Transmission map <%d, %d>", this.sim_seed, cI));
 					System.out.println(c.toFullString());
 					System.out.println();
 				}

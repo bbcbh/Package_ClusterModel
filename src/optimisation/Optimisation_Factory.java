@@ -228,7 +228,7 @@ public class Optimisation_Factory {
 					long tic = System.currentTimeMillis();
 					for (ContactMap c : BASE_CONTACT_MAP) {
 						if (c != null) {
-							runnable[rId] = new Runnable_ClusterModel_Transmission(sim_seed, POP_COMPOSITION, c,
+							runnable[rId] = new Runnable_ClusterModel_Transmission(0, sim_seed, POP_COMPOSITION, c,
 									NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
 							runnable[rId].setBaseDir(baseDir);
 

@@ -1,5 +1,7 @@
 package sim;
 
+import java.io.File;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,6 +36,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int LENGTH_SITE = SITE_OROPHARYNX + 1;
 
 	public static final String FILENAME_FORMAT_INDEX_CASE_LIST = "Seed_%d_IndexCases.txt";
+
+	protected int simSetting = 1;
 
 	// Transmission
 	private double[] DEFAULT_TRANS_V2P = new double[] { 0.4, 0.10 };
@@ -175,7 +179,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	final ContactMap BASE_CONTACT_MAP;
 	final int NUM_TIME_STEPS_PER_SNAP;
 	final int NUM_SNAP;
-	final long seed;
+	final long sim_seed;
+	final long cMap_seed;
 
 	protected RandomGenerator RNG;
 
@@ -198,14 +203,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
 
-	
-	// HashMap<Integer, int[][]> with  K = time, V= int [gender][site] 
+	// HashMap<Integer, int[][]> with K = time, V= int [gender][site]
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_PREVALENCE";
 	public static final String SIM_OUTPUT_CUMUL_INCIDENCE = "SIM_OUTPUT_CUMUL_INCIDENCE";
-	
+
 	private ArrayList<Integer[]> edges_list;
 
-	public Runnable_ClusterModel_Transmission(long seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
+	public Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
 			int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
 		super();
 
@@ -220,8 +224,17 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		this.BASE_CONTACT_MAP = BASE_CONTACT_MAP;
 		this.NUM_TIME_STEPS_PER_SNAP = NUM_TIME_STEPS_PER_SNAP;
 		this.NUM_SNAP = NUM_SNAP;
-		this.seed = seed;
+		this.cMap_seed = cMap_seed;
+		this.sim_seed = sim_seed;
 
+	}
+
+	public int getSimSetting() {
+		return simSetting;
+	}
+
+	public void setSimSetting(int simSetting) {
+		this.simSetting = simSetting;
 	}
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
@@ -235,7 +248,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	@SuppressWarnings("unchecked")
 	public void initialse() {
-		RNG = new MersenneTwisterRandomGenerator(seed);
+		RNG = new MersenneTwisterRandomGenerator(sim_seed);
 
 		// Transmission
 		double[][][] tranParm = (double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
@@ -543,8 +556,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			int snap_index = 0;
 
 			boolean hasInfected = hasInfectedInPop();
-			
-			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE]; 
+
+			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 
 			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * NUM_SNAP
 					&& hasInfected; currentTime++) {
@@ -699,41 +712,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				ArrayList<Integer> testToday = schedule_testing.remove(currentTime);
 				if (testToday != null) {
 					for (Integer tId : testToday) {
-						Integer test_pid = Math.abs(tId);
-						// Remove from infectious
-						for (int site = 0; site < LENGTH_SITE; site++) {
-							int key = Collections.binarySearch(currently_infectious[site], test_pid);
-							if (key >= 0) {
-								currently_infectious[site].remove(key);
-							}
-						}
-						// Remove from incubation and recovery
-						Integer[] infection_schMap = mapping_infection_schedule.get(test_pid);
-						if (infection_schMap != null) {
-							for (int i = 0; i < infection_schMap.length; i++) {
-								if (infection_schMap[i] != null) {
-									Integer dateEnt = infection_schMap[i];
-									int site = i % LENGTH_SITE;
-									ArrayList<Integer> schArr;
-									if (i < LENGTH_SITE) {
-										schArr = schedule_incubation[site].get(dateEnt);
-									} else {
-										schArr = schedule_recovery[site].get(dateEnt);
-									}
-									int key = Collections.binarySearch(schArr, test_pid);
-									if (key >= 0) {
-										schArr.remove(key);
-									}
-
-								}
-							}
-							Arrays.fill(infection_schMap, null);
-						}
-
-						if (tId < 0) {
-							// Schedule next test
-							scheduleNextTest(test_pid, currentTime);
-						}
+						testPerson(currentTime, tId);
 					}
 				}
 
@@ -756,23 +735,21 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						}
 					}
 					infectious_count_map.put(currentTime, infectious_count);
-					
-					
+
 					@SuppressWarnings("unchecked")
 					HashMap<Integer, int[][]> cumul_incidence_map = (HashMap<Integer, int[][]>) sim_output
-							.get(SIM_OUTPUT_CUMUL_INCIDENCE);					
+							.get(SIM_OUTPUT_CUMUL_INCIDENCE);
 					if (cumul_incidence_map == null) {
 						cumul_incidence_map = new HashMap<>();
 						sim_output.put(SIM_OUTPUT_INFECTIOUS_COUNT, cumul_incidence_map);
 					}
-					
+
 					int[][] incidence_snap = new int[infectious_count.length][];
-					for(int g = 0; g < incidence_snap.length; g++) {
+					for (int g = 0; g < incidence_snap.length; g++) {
 						incidence_snap[g] = Arrays.copyOf(infectious_count[g], infectious_count[g].length);
 					}
 					cumul_incidence_map.put(currentTime, incidence_snap);
-					
-					
+
 				}
 
 				snap_index = (snap_index + 1) % NUM_TIME_STEPS_PER_SNAP;
@@ -788,6 +765,44 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
+	}
+
+	protected void testPerson(int currentTime, Integer testing_pid) {
+		Integer test_pid = Math.abs(testing_pid);
+		// Remove from infectious
+		for (int site = 0; site < LENGTH_SITE; site++) {
+			int key = Collections.binarySearch(currently_infectious[site], test_pid);
+			if (key >= 0) {
+				currently_infectious[site].remove(key);
+			}
+		}
+		// Remove from incubation and recovery
+		Integer[] infection_schMap = mapping_infection_schedule.get(test_pid);
+		if (infection_schMap != null) {
+			for (int i = 0; i < infection_schMap.length; i++) {
+				if (infection_schMap[i] != null) {
+					Integer dateEnt = infection_schMap[i];
+					int site = i % LENGTH_SITE;
+					ArrayList<Integer> schArr;
+					if (i < LENGTH_SITE) {
+						schArr = schedule_incubation[site].get(dateEnt);
+					} else {
+						schArr = schedule_recovery[site].get(dateEnt);
+					}
+					int key = Collections.binarySearch(schArr, test_pid);
+					if (key >= 0) {
+						schArr.remove(key);
+					}
+
+				}
+			}
+			Arrays.fill(infection_schMap, null);
+		}
+
+		if (testing_pid < 0) {
+			// Schedule next test
+			scheduleNextTest(test_pid, currentTime);
+		}
 	}
 
 	protected boolean hasInfectedInPop() {
@@ -808,8 +823,72 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	 * Procedure that are called after simulations. *
 	 * 
 	 */
-	protected void postSimulation(Object[] simulation_store) {
-		// Do nothing by default
+	@SuppressWarnings("unchecked")
+	protected void postSimulation(Object[] simulation_store) {		
+		PrintWriter pWri;
+		HashMap<Integer, int[][]> count_map;
+		StringBuilder str = null;
+
+		try {
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {				
+				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
+				str = printCountMap(count_map);
+				pWri = new PrintWriter(new File(baseDir,
+						String.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE, cMap_seed, sim_seed)));
+				pWri.println(str.toString());
+				pWri.close();
+
+			}
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
+				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
+				str = printCountMap(count_map);
+				pWri = new PrintWriter(new File(baseDir,
+						String.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE, cMap_seed, sim_seed)));
+				pWri.println(str.toString());
+				pWri.close();
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace(System.err);
+			if (str != null) {
+				System.err.println("Outcome so far");
+				System.err.println(str.toString());
+			}
+
+		}
+
+	}
+
+	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map) {		
+		// K = time, V= int [gender][site]
+		Integer[] time_array;
+		StringBuilder str;
+		time_array = count_map.keySet().toArray(new Integer[count_map.size()]);
+		Arrays.sort(time_array);
+
+		str = new StringBuilder();
+		str.append("Time");
+
+		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+			for (int s = 0; s < LENGTH_SITE; s++) {
+				str.append(',');
+				str.append(g);
+				str.append('_');
+				str.append(s);
+			}
+		}
+		str.append('\n');
+		for (Integer time : time_array) {
+			str.append(time);
+			int[][] ent = count_map.get(time);
+			for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+				for (int s = 0; s < LENGTH_SITE; s++) {
+					str.append(',');
+					str.append(ent[g][s]);
+				}
+			}
+		}
+		return str;
 	}
 
 	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target, int actType,
