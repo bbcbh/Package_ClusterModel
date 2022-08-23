@@ -41,7 +41,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected File baseDir = null;
 	protected ContactMap baseContactMap;
 	protected long baseContactMapSeed = -1;
-	protected int simSetting = 1 << SIM_SETTING_KEY_GEN_TRANSMISSION_CLUSTER;
+	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
@@ -58,10 +58,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	// Sim setting is active if simSetting & 1 << SIM_SETTING_KEY != 0
 	public static final String PROP_SIM_SETTING = "PROP_SIM_SETTING";
 
-	public static final int SIM_SETTING_KEY_COMMON_TIME_SEED = 0;
-	public static final int SIM_SETTING_KEY_GEN_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_COMMON_TIME_SEED + 1;
-	public static final int SIM_SETTING_KEY_GEN_PREVAL_FILE = SIM_SETTING_KEY_GEN_TRANSMISSION_CLUSTER + 1;
+	public static final int SIM_SETTING_KEY_GLOBAL_TIME_SEED = 0;	
+	public static final int SIM_SETTING_KEY_GEN_PREVAL_FILE = SIM_SETTING_KEY_GLOBAL_TIME_SEED + 1;
 	public static final int SIM_SETTING_KEY_GEN_INCIDENCE_FILE = SIM_SETTING_KEY_GEN_PREVAL_FILE + 1;
+	public static final int SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_GEN_INCIDENCE_FILE + 1;
+	public static final int SIM_SETTING_KEY_TRACK_ANTIBOTIC_USAGE = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS = {
 			// BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION
@@ -308,12 +309,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 				}
 
-				if ((simSetting & 1 << SIM_SETTING_KEY_GEN_TRANSMISSION_CLUSTER) != 0) {
+				if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
 					((Runnable_ClusterModel_Transmission_ContactMap) runnable[s]).setTransmissionMap(new ContactMap());
 				}
 				runnable[s].initialse();
 
-				if ((simSetting & 1 << SIM_SETTING_KEY_COMMON_TIME_SEED) != 0) {					
+				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0) {					
 					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
 				} else {
 					// Add infected
@@ -395,7 +396,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	private void zipTransmissionMaps() throws IOException, FileNotFoundException {
 
-		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_TRANSMISSION_CLUSTER) != 0) {
+		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
 
 			// Zip all transmit output to single file
 
