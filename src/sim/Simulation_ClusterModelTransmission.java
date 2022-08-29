@@ -14,6 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -54,11 +55,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String REGEX_INDEX_CASE_LIST = Runnable_ClusterModel_Transmission.FILENAME_FORMAT_INDEX_CASE_LIST
 			.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
 
+	// Switching parameter
+	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
+	public static final String POP_PROP_SWITCH_PREFIX = "SWITCH_%d_";
+	public static final String POP_PROP_SWITCH_AT = "PROP_SIM_SWITCH_AT";
+	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map = new HashMap<>();
+
 	// Sim setting to indicates what type of simulation need to be run.
 	// Sim setting is active if simSetting & 1 << SIM_SETTING_KEY != 0
 	public static final String PROP_SIM_SETTING = "PROP_SIM_SETTING";
 
-	public static final int SIM_SETTING_KEY_GLOBAL_TIME_SEED = 0;	
+	public static final int SIM_SETTING_KEY_GLOBAL_TIME_SEED = 0;
 	public static final int SIM_SETTING_KEY_GEN_PREVAL_FILE = SIM_SETTING_KEY_GLOBAL_TIME_SEED + 1;
 	public static final int SIM_SETTING_KEY_GEN_INCIDENCE_FILE = SIM_SETTING_KEY_GEN_PREVAL_FILE + 1;
 	public static final int SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_GEN_INCIDENCE_FILE + 1;
@@ -128,6 +135,44 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 		if (prop.containsKey(PROP_SIM_SETTING)) {
 			simSetting = Integer.parseInt(prop.getProperty(PROP_SIM_SETTING));
+		}
+
+		File propSwitchFile = new File(baseDir, FILENAME_PROP_SWITCH);
+
+		try {
+			if (propSwitchFile.exists()) {
+				Properties prop_switch = new Properties();
+				FileInputStream fIS_switch = new FileInputStream(propSwitchFile);
+				prop_switch.loadFromXML(fIS_switch);
+				fIS_switch.close();
+				int[] switchTime = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT),
+						int[].class);
+
+				for (int sI = 0; sI < switchTime.length; sI++) {					
+					int sTime = switchTime[sI];
+					String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
+
+					for (Object key : prop_switch.keySet()) {
+						String keyStr = key.toString();
+						if (keyStr.startsWith(switch_prefix)) {
+							Integer runnableKey = Integer
+									.parseInt(keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
+							HashMap<Integer, String> ent = propSwitch_map.get(sTime);
+							if (ent == null) {
+								ent = new HashMap<>();
+								propSwitch_map.put(sTime, ent);
+							}
+							ent.put(runnableKey, prop_switch.getProperty(keyStr));
+
+						}
+					}
+				}
+
+				System.out.printf("Properties switch file < %s > loaded.\n", propSwitchFile.getAbsolutePath());
+			}
+		} catch (IOException ex) {
+			ex.printStackTrace(System.err);
+
 		}
 
 	}
@@ -294,13 +339,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (runSim) {
-				runnable[s] = new Runnable_ClusterModel_Transmission_ContactMap(
-						baseContactMapSeed,
-						simSeed, pop_composition,
-						baseContactMap, numSnap, snapFreq);
+				runnable[s] = new Runnable_ClusterModel_Transmission_ContactMap(baseContactMapSeed, simSeed,
+						pop_composition, baseContactMap, numSnap, snapFreq);
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setEdges_list(edge_list);
 				runnable[s].setSimSetting(simSetting);
+				runnable[s].setPropSwitch_map(propSwitch_map);
 
 				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
 					int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
@@ -314,7 +358,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 				runnable[s].initialse();
 
-				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0) {					
+				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0) {
 					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
 				} else {
 					// Add infected
@@ -482,6 +526,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static void launch(String[] args) throws IOException, InterruptedException {
 		File baseDir = null;
 		File propFile = null;
+		File propSwitchFile = null;
 
 		File[] preGenClusterMap = new File[0];
 

@@ -20,6 +20,7 @@ import population.person.Person_Bridging_Pop;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import util.PropValUtils;
 
 public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_ClusterModel {
 
@@ -113,7 +114,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			new int[] { 7, 7 }, new int[] { 7, 7 }, };
 
 	protected static int TREATMENT_INDUCED_NON_VIABILITY_PROB = 0;
-	protected static int TREATMENT_INDUCED_NON_VIABILITY_REDUCTION = TREATMENT_INDUCED_NON_VIABILITY_PROB + 1;
+	protected static int TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET = TREATMENT_INDUCED_NON_VIABILITY_PROB
+			+ 1;
 
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ = 0;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE = RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ + 1;
@@ -239,6 +241,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<String, Object> sim_output = null;
 
 	protected transient HashMap<Integer, Integer> has_non_viable_bacteria_until;
+	// Key = time, V = Map(K = run_parameter_id, V = PropVal_Str
+	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map = new HashMap<>();
 
 	// For antibiotic tracking
 	// if pid < 0, it is over-treatment
@@ -250,11 +254,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_PREVALENCE";
 	// HashMap<Integer, int[][]> with K = time, V= int[gender][site]
 	public static final String SIM_OUTPUT_CUMUL_INCIDENCE = "SIM_OUTPUT_CUMUL_INCIDENCE";
-	// HashMap<Integer, int[][]> 
-	// with K = time, V= int[gender]{proper,over treatment} measured in person-day 
+	// HashMap<Integer, int[][]>
+	// with K = time, V= int[gender]{proper,over treatment} measured in person-day
 	public static final String SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE = "SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE";
 
 	private ArrayList<Integer[]> edges_list;
+	private final int runnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 	public Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] POP_COMPOSITION,
 			ContactMap BASE_CONTACT_MAP, int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
@@ -274,6 +282,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		this.cMap_seed = cMap_seed;
 		this.sim_seed = sim_seed;
 
+	}
+
+	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
+		this.propSwitch_map = propSwitch_map;
 	}
 
 	public int getSimSetting() {
@@ -553,6 +565,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			Object[] simulation_store = preSimulation();
 
+			Integer[] switchTime = propSwitch_map.keySet().toArray(new Integer[propSwitch_map.size()]);
+
+			Arrays.sort(switchTime);
+			int switchTimeIndex = 0;
+
 			// Current contact map
 			ContactMap cMap = new ContactMap();
 
@@ -615,6 +632,16 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * NUM_SNAP
 					&& hasInfected; currentTime++) {
+
+				if (switchTimeIndex < switchTime.length && switchTime[switchTimeIndex] == currentTime) {
+					HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
+					for (Integer switch_index : switch_ent.keySet()) {
+						String str_obj = switch_ent.get(switch_index);
+						getRunnable_fields()[switch_index - runnable_offset] = PropValUtils.propStrToObject(str_obj,
+								getRunnable_fields()[switch_index - runnable_offset].getClass());
+					}
+					switchTimeIndex++;
+				}
 
 				// Remove expired edges
 				toRemove = removeEdges.get(currentTime);
@@ -873,7 +900,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		// Treatment due to DX
 		int[] infectious_key_index = new int[LENGTH_SITE];
-		for (int site = 0; site < LENGTH_SITE; site++) {
+		Arrays.fill(infectious_key_index, -1);
+		
+		for (int site = 0; site < LENGTH_SITE && !applyTreatment; site++) {
 			infectious_key_index[site] = Collections.binarySearch(currently_infectious[site], test_pid);
 			if (infectious_key_index[site] >= 0) {
 				true_infectious |= true;
@@ -916,10 +945,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// float[gender][probability, reduction_duration]
 			float[] treatment_induced_non_viability = ((float[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TREATMENT_INDUCED_NON_VIABILITY])[gender];
 
-			// Assemble all non-viable bacteria were clear first
-			has_non_viable_bacteria_until.put(test_pid,currentTime);
-			
-			
+			// Assemble all non-viable bacteria were clear at treatment first
+			if (has_non_viable_bacteria_until.containsKey(test_pid)) {
+				has_non_viable_bacteria_until.put(test_pid, currentTime);
+			}
+
 			for (int site = 0; site < LENGTH_SITE; site++) {
 				if (infectious_key_index[site] >= 0) {
 					// Remove from infectious
@@ -928,10 +958,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					if (treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_PROB] > 0) {
 						if (RNG.nextFloat() < treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_PROB]) {
 							Integer recoverDate_org = infection_schMap[LENGTH_SITE + site];
-							Integer has_non_viable = has_non_viable_bacteria_until.get(test_pid);
+							Integer has_non_viable = has_non_viable_bacteria_until.getOrDefault(test_pid, currentTime);
 							has_non_viable_bacteria_until.put(test_pid,
-									Math.max(has_non_viable, Math.round(recoverDate_org
-											* treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_REDUCTION])));
+									Math.max(has_non_viable,																						
+											currentTime + 
+											Math.round((recoverDate_org - currentTime)
+											* treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET
+													+ site])));
 
 						}
 					}
