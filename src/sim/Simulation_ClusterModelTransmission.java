@@ -50,6 +50,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_TRANSMAP_ZIP_PREFIX = "All_transmap_%d";
 	public static final String FILENAME_PREVALENCE = "Prevalence %d_%d.csv";
 	public static final String FILENAME_CUMUL_INCIDENCE = "Incidence_%d_%d.csv";
+	public static final String FILENAME_INFECTION_HISTORY = "InfectHist_%d_%d.csv";
+	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
 	public static final String REGEX_TRANSMISSION_CMAP_DIR = Runnable_ClusterModel_Transmission_ContactMap.DIRNAME_FORMAT_TRANSMISSION_CMAP
 			.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
 	public static final String REGEX_INDEX_CASE_LIST = Runnable_ClusterModel_Transmission.FILENAME_FORMAT_INDEX_CASE_LIST
@@ -69,7 +71,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_GEN_PREVAL_FILE = SIM_SETTING_KEY_GLOBAL_TIME_SEED + 1;
 	public static final int SIM_SETTING_KEY_GEN_INCIDENCE_FILE = SIM_SETTING_KEY_GEN_PREVAL_FILE + 1;
 	public static final int SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_GEN_INCIDENCE_FILE + 1;
-	public static final int SIM_SETTING_KEY_TRACK_ANTIBOTIC_USAGE = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
+	public static final int SIM_SETTING_KEY_TRACK_INFECTION_HISTORY = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
+	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS = {
 			// BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION
@@ -217,8 +220,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		int numThreads = Runtime.getRuntime().availableProcessors();
 		int numSim = 1;
 		long seed = System.currentTimeMillis();
-		int numSnap = 1;
-		int snapFreq = 1;
+		int num_snap = 1;
+		int num_time_steps_per_snap = 1;
 		int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
 
 		if (loadedProperties != null) {
@@ -235,11 +238,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
 			}
 			if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
-				numSnap = Integer.parseInt(
+				num_snap = Integer.parseInt(
 						loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
 			}
 			if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
-				snapFreq = Integer.parseInt(loadedProperties
+				num_time_steps_per_snap = Integer.parseInt(loadedProperties
 						.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
 			}
 
@@ -340,7 +343,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 			if (runSim) {
 				runnable[s] = new Runnable_ClusterModel_Transmission_ContactMap(baseContactMapSeed, simSeed,
-						pop_composition, baseContactMap, numSnap, snapFreq);
+						pop_composition, baseContactMap, num_time_steps_per_snap, num_snap);
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setEdges_list(edge_list);
 				runnable[s].setSimSetting(simSetting);

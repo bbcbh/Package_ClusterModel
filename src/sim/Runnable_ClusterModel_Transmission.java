@@ -242,7 +242,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	protected transient HashMap<Integer, Integer> has_non_viable_bacteria_until;
 	// Key = time, V = Map(K = run_parameter_id, V = PropVal_Str
-	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map = new HashMap<>();
+	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
+
+	// For infection tracking
+	// Key = pid, V = [site][infection_start_time_1,
+	// infection_end_time_1...];
+	protected transient HashMap<Integer, ArrayList<Integer>[]> infection_history;
 
 	// For antibiotic tracking
 	// if pid < 0, it is over-treatment
@@ -257,9 +262,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// HashMap<Integer, int[][]>
 	// with K = time, V= int[gender]{proper,over treatment} measured in person-day
 	public static final String SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE = "SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE";
+	// Key = pid, V = [site][infection_start_time_1,
+	// infection_end_time_1...];
+	public static final String SIM_OUTPUT_INFECTION_HISTORY = "SIM_OUTPUT_INFECTION_HISTORY";
 
 	private ArrayList<Integer[]> edges_list;
-	private final int runnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+	private static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
@@ -353,10 +361,17 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		mapping_infection_schedule = new HashMap<>();
 		risk_cat_map = new HashMap<>();
 
+		// For infection tracking
+		// Key = pid, V = [infection_start_time_1, infection_end_time_1...];
+		infection_history = new HashMap<>();
+
 		// Antibiotic tracking
 		currently_has_antibiotic = new ArrayList<>();
 		schedule_antibiotic_clearance = new HashMap<>();
 		has_non_viable_bacteria_until = new HashMap<>();
+
+		// Runnable properties switch
+		propSwitch_map = new HashMap<>();
 	}
 
 	public HashMap<String, Object> getSim_output() {
@@ -463,8 +478,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	public int addInfectious(Integer infectedId, int site, int infectious_time, int recoveredAt) {
 		int key = Collections.binarySearch(currently_infectious[site], infectedId);
+
 		if (key < 0) {
 			currently_infectious[site].add(~key, infectedId);
 			firstSeedTime = Math.min(firstSeedTime, infectious_time);
@@ -475,10 +492,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				sch = new ArrayList<>();
 				schedule_recovery[site].put(recoveredAt, sch);
 			}
-
 			int keyR = Collections.binarySearch(sch, infectedId);
 			if (keyR < 0) {
 				sch.add(~keyR, infectedId);
+				updateScheduleMap(infectedId, site, null);
 				updateScheduleMap(infectedId, LENGTH_SITE + site, recoveredAt);
 			}
 
@@ -525,22 +542,37 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			}
 
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
+				ArrayList<Integer>[] hist = infection_history.get(infectedId);
+				if (hist == null) {
+					hist = new ArrayList[LENGTH_SITE];
+					for (int s = 0; s < LENGTH_SITE; s++) {
+						hist[s] = new ArrayList<>();
+					}
+					infection_history.put(infectedId, hist);
+				}
+				hist[site].add(infectious_time);
+			}
+
 		}
 		return key;
 	}
 
-	public int removeInfected(Integer infectedId, int site) {
+	public int removeInfected(Integer infectedId, int site, int recoverTime) {
 		int key = Collections.binarySearch(currently_infectious[site], infectedId);
 		if (key >= 0) {
 			currently_infectious[site].remove(key);
+			updateScheduleMap(infectedId, LENGTH_SITE + site, null);
+			if (key >= 0) {
+				if ((simSetting
+						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
+					ArrayList<Integer>[] hist = infection_history.get(infectedId);
+					hist[site].add(recoverTime);
+				}
+			}
+
 		}
 		return key;
-	}
-
-	public void removeInfected(Integer infectedId) {
-		for (int s = 0; s < LENGTH_SITE; s++) {
-			removeInfected(infectedId, s);
-		}
 	}
 
 	public int getGenderType(Integer personId) {
@@ -637,8 +669,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
 					for (Integer switch_index : switch_ent.keySet()) {
 						String str_obj = switch_ent.get(switch_index);
-						getRunnable_fields()[switch_index - runnable_offset] = PropValUtils.propStrToObject(str_obj,
-								getRunnable_fields()[switch_index - runnable_offset].getClass());
+						getRunnable_fields()[switch_index - RUNNABLE_OFFSET] = PropValUtils.propStrToObject(str_obj,
+								getRunnable_fields()[switch_index - RUNNABLE_OFFSET].getClass());
 					}
 					switchTimeIndex++;
 				}
@@ -687,11 +719,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						for (Integer toInfectiousId : becomeInfectiousToday) {
 							int recoveredAt = (int) Math.round(infectious_period[site_src].sample()) + currentTime;
 							addInfectious(toInfectiousId, site_src, currentTime, recoveredAt);
-							Integer[] schMap = mapping_infection_schedule.get(toInfectiousId);
-							if (schMap != null) {
-								schMap[site_src] = null;
-							}
-
 						}
 					}
 
@@ -699,8 +726,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					ArrayList<Integer> recoveredToday = schedule_recovery[site_src].remove(currentTime);
 					if (recoveredToday != null) {
 						for (Integer toRecoveredId : recoveredToday) {
-							removeInfected(toRecoveredId, site_src);
-							mapping_infection_schedule.remove(toRecoveredId);
+							removeInfected(toRecoveredId, site_src, currentTime);
+
 						}
 					}
 
@@ -799,12 +826,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				// Antibiotic clearance
 				if ((simSetting
-						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBOTIC_USAGE) != 0) {
+						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
 					ArrayList<Integer> antibiotic_clearance_ent = schedule_antibiotic_clearance.get(currentTime);
-					for (Integer antibiotic_clearance : antibiotic_clearance_ent) {
-						int key = Collections.binarySearch(currently_has_antibiotic, antibiotic_clearance);
-						if (key >= 0) {
-							currently_has_antibiotic.remove(key);
+					if (antibiotic_clearance_ent != null) {
+						for (Integer antibiotic_clearance : antibiotic_clearance_ent) {
+
+							int key = Collections.binarySearch(currently_has_antibiotic, antibiotic_clearance);
+							if (key >= 0) {
+								currently_has_antibiotic.remove(key);
+							}
 						}
 					}
 
@@ -850,7 +880,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					cumul_incidence_map.put(currentTime, incidence_snap);
 
 					if ((simSetting
-							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBOTIC_USAGE) != 0) {
+							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
 
 						@SuppressWarnings("unchecked")
 						HashMap<Integer, int[][]> cumul_antibiotic_map = (HashMap<Integer, int[][]>) sim_output
@@ -867,6 +897,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 									cumul_antibiotic_use[g].length);
 						}
 						cumul_antibiotic_map.put(currentTime, antibiotic_usage_snap);
+
+					}
+
+					if ((simSetting
+							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
+						sim_output.put(SIM_OUTPUT_INFECTION_HISTORY, infection_history);
 
 					}
 
@@ -901,8 +937,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		// Treatment due to DX
 		int[] infectious_key_index = new int[LENGTH_SITE];
 		Arrays.fill(infectious_key_index, -1);
-		
-		for (int site = 0; site < LENGTH_SITE && !applyTreatment; site++) {
+
+		for (int site = 0; site < LENGTH_SITE; site++) {
 			infectious_key_index[site] = Collections.binarySearch(currently_infectious[site], test_pid);
 			if (infectious_key_index[site] >= 0) {
 				true_infectious |= true;
@@ -920,7 +956,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		if (applyTreatment) {
 
-			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBOTIC_USAGE) != 0) {
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
 				int key;
 				key = Collections.binarySearch(currently_has_antibiotic, true_infectious ? test_pid : -test_pid);
 				if (key < 0) {
@@ -960,9 +996,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							Integer recoverDate_org = infection_schMap[LENGTH_SITE + site];
 							Integer has_non_viable = has_non_viable_bacteria_until.getOrDefault(test_pid, currentTime);
 							has_non_viable_bacteria_until.put(test_pid,
-									Math.max(has_non_viable,																						
-											currentTime + 
-											Math.round((recoverDate_org - currentTime)
+									Math.max(has_non_viable, currentTime + Math.round((recoverDate_org - currentTime)
 											* treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET
 													+ site])));
 
@@ -1043,8 +1077,41 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
+			}
+
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
+				Integer[] pids = infection_history.keySet().toArray(new Integer[infection_history.size()]);
+				Arrays.sort(pids);
+				pWri = new PrintWriter(new File(baseDir, String
+						.format(Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY, cMap_seed, sim_seed)));
+				for (Integer pid : pids) {
+					ArrayList<Integer>[] hist = infection_history.get(pid);
+					for (int site = 0; site < hist.length; site++) {
+						pWri.print(pid.toString());
+						pWri.print(',');
+						pWri.print(site);
+						for (Integer timeEnt : hist[site]) {
+							pWri.print(',');
+							pWri.print(timeEnt);
+						}
+						pWri.println();
+					}
+				}
+
+				pWri.close();
 
 			}
+
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
+				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE);
+				str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 }); // Proper, over
+																									// treatment
+				pWri = new PrintWriter(new File(baseDir, String.format(
+						Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE, cMap_seed, sim_seed)));
+				pWri.println(str.toString());
+				pWri.close();
+			}
+
 		} catch (Exception e) {
 			e.printStackTrace(System.err);
 			if (str != null) {
@@ -1057,7 +1124,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map) {
-		// K = time, V= int [gender][site]
+		return printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, LENGTH_SITE });
+	}
+
+	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map, int[] dimension) {
+		// K = time, V= int [gender][site] (for example)
 		Integer[] time_array;
 		StringBuilder str;
 		time_array = count_map.keySet().toArray(new Integer[count_map.size()]);
@@ -1066,8 +1137,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		str = new StringBuilder();
 		str.append("Time");
 
-		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-			for (int s = 0; s < LENGTH_SITE; s++) {
+		for (int g = 0; g < dimension[0]; g++) {
+			for (int s = 0; s < dimension[1]; s++) {
 				str.append(',');
 				str.append(g);
 				str.append('_');
@@ -1078,12 +1149,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		for (Integer time : time_array) {
 			str.append(time);
 			int[][] ent = count_map.get(time);
-			for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-				for (int s = 0; s < LENGTH_SITE; s++) {
+			for (int g = 0; g < dimension[0]; g++) {
+				for (int s = 0; s < dimension[1]; s++) {
 					str.append(',');
 					str.append(ent[g][s]);
 				}
 			}
+			str.append('\n');
 		}
 		return str;
 	}
