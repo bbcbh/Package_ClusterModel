@@ -827,10 +827,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				// Antibiotic clearance
 				if ((simSetting
 						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
-					ArrayList<Integer> antibiotic_clearance_ent = schedule_antibiotic_clearance.get(currentTime);
+					ArrayList<Integer> antibiotic_clearance_ent = schedule_antibiotic_clearance.remove(currentTime);
 					if (antibiotic_clearance_ent != null) {
 						for (Integer antibiotic_clearance : antibiotic_clearance_ent) {
-
 							int key = Collections.binarySearch(currently_has_antibiotic, antibiotic_clearance);
 							if (key >= 0) {
 								currently_has_antibiotic.remove(key);
@@ -949,7 +948,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			} else if (!applyTreatment
 					&& has_non_viable_bacteria_until.getOrDefault(test_pid, currentTime) > currentTime) {
 				// Overtreatment due to non-viable
-				applyTreatment |= RNG.nextFloat() >= test_accuracy[SPECIFICITY_INDEX][gender][site];
+				if (test_accuracy[SPECIFICITY_INDEX][gender][site] < 1) {
+					float pOverTreatment = RNG.nextFloat();
+					applyTreatment |= pOverTreatment >= test_accuracy[SPECIFICITY_INDEX][gender][site];
+				}
 
 			}
 		}
@@ -960,7 +962,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				int key;
 				key = Collections.binarySearch(currently_has_antibiotic, true_infectious ? test_pid : -test_pid);
 				if (key < 0) {
-					currently_has_antibiotic.add(~key, test_pid);
+					currently_has_antibiotic.add(~key, true_infectious ? test_pid : -test_pid);
 					int[] antibiotic_dur = ((int[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION])[gender];
 					int antibiotic_flush_at = currentTime + antibiotic_dur[0] + RNG.nextInt(antibiotic_dur[1]);
 
@@ -995,10 +997,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						if (RNG.nextFloat() < treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_PROB]) {
 							Integer recoverDate_org = infection_schMap[LENGTH_SITE + site];
 							Integer has_non_viable = has_non_viable_bacteria_until.getOrDefault(test_pid, currentTime);
-							has_non_viable_bacteria_until.put(test_pid,
-									Math.max(has_non_viable, currentTime + Math.round((recoverDate_org - currentTime)
-											* treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET
-													+ site])));
+
+							int non_viable_dur = Math.max(has_non_viable, currentTime + Math.round((recoverDate_org
+									- currentTime)
+									* treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET
+											+ site]));
+
+							has_non_viable_bacteria_until.put(test_pid, non_viable_dur);
 
 						}
 					}
