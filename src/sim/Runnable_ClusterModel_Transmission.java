@@ -742,15 +742,24 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 								int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
 										? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
 										: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
+								
+								
+								int g_s = getGenderType(infectious);
+								int g_t = getGenderType(partner);
+								
+								int[] valid_target = g_t == Population_Bridging.GENDER_FEMALE ? 
+										new int[] {SITE_VAGINA, SITE_RECTUM, SITE_OROPHARYNX} : 
+											new int[] {SITE_PENIS, SITE_RECTUM, SITE_OROPHARYNX};
+										
 
-								for (int site_target = 0; site_target < LENGTH_SITE; site_target++) {
+								for (int site_target : valid_target) {
 									if (trans[site_src][site_target] != 0) {
+
 										// Transmission is possible
 										if (Collections.binarySearch(currently_infectious[site_target], partner) < 0) {
 
-											int g_s = getGenderType(infectious);
-											int g_t = getGenderType(partner);
 											int actType;
+
 											// Determine act type
 											switch (site_src) {
 											case SITE_VAGINA:

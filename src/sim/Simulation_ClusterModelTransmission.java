@@ -47,8 +47,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
+
 	public static final String FILENAME_TRANSMAP_ZIP_PREFIX = "All_transmap_%d";
-	public static final String FILENAME_PREVALENCE = "Prevalence %d_%d.csv";
+	public static final String FILENAME_PREVALENCE_ZIP = "Prevalence_%d.7z";
+	public static final String FILENAME_CUMUL_INCIDENCE_ZIP = "Incidence_%d.7z";
+	public static final String FILENAME_INFECTION_HISTORY_ZIP = "InfectHist_%d.7z";
+	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP = "Antibiotic_usage_%d.7z";
+
+	public static final String FILENAME_PREVALENCE = "Prevalence_%d_%d.csv";
 	public static final String FILENAME_CUMUL_INCIDENCE = "Incidence_%d_%d.csv";
 	public static final String FILENAME_INFECTION_HISTORY = "InfectHist_%d_%d.csv";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
@@ -151,7 +157,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				int[] switchTime = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT),
 						int[].class);
 
-				for (int sI = 0; sI < switchTime.length; sI++) {					
+				for (int sI = 0; sI < switchTime.length; sI++) {
 					int sTime = switchTime[sI];
 					String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
 
@@ -420,11 +426,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						}
 						inExec = 0;
 						exec = null;
-						zipTransmissionMaps();
+						if (numSim > 1) {
+							zipOutputFiles();
+						}
 					}
 				} else {
 					runnable[s].run();
-					zipTransmissionMaps();
+					if (numSim > 1) {
+						zipOutputFiles();
+					}
 				}
 			}
 
@@ -436,12 +446,34 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 			inExec = 0;
 			exec = null;
-			zipTransmissionMaps();
+			if (numSim > 1) {
+				zipOutputFiles();
+			}
 		}
 
 	}
 
-	private void zipTransmissionMaps() throws IOException, FileNotFoundException {
+	private void zipOutputFiles() throws IOException, FileNotFoundException {
+		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {		
+			zipSelectedOutputs(FILENAME_PREVALENCE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_PREVALENCE_ZIP, baseContactMapSeed));
+
+		}
+		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
+			zipSelectedOutputs(FILENAME_CUMUL_INCIDENCE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_CUMUL_INCIDENCE_ZIP, baseContactMapSeed));
+
+		}
+		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
+			zipSelectedOutputs(FILENAME_INFECTION_HISTORY.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_INFECTION_HISTORY_ZIP, baseContactMapSeed));
+
+		}
+		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
+			zipSelectedOutputs(FILENAME_CUMUL_ANTIBIOTIC_USAGE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP, baseContactMapSeed));
+
+		}
 
 		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
 
@@ -526,10 +558,84 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 	}
 
+	protected void zipSelectedOutputs(String file_name, String zip_file_name)
+			throws IOException, FileNotFoundException {
+		final Pattern pattern_include_file = Pattern.compile(file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+
+		File[] files_list = baseDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				Matcher m = pattern_include_file.matcher(pathname.getName());
+				return m.matches();
+			}
+		});
+
+		if (files_list.length > 0) {
+			File zipFile = new File(baseDir, zip_file_name);
+
+			File preZip = null;
+
+			if (zipFile.exists()) {
+				// Delete old zip
+				File[] oldZips = baseDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return pathname.getName().startsWith(zip_file_name + "_")
+								&& pathname.getName().endsWith(".7z");
+					}
+				});
+				for (File f : oldZips) {
+					Files.delete(f.toPath());
+				}
+				preZip = new File(baseDir, zip_file_name + "_" + Long.toString(System.currentTimeMillis()) + ".7z");
+				Files.copy(zipFile.toPath(), preZip.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+			}
+
+			SevenZOutputFile outputZip = new SevenZOutputFile(zipFile);
+
+			// Copy previous entries from zip
+
+			if (preZip != null) {
+				SevenZFile inputZip = new SevenZFile(preZip);
+				SevenZArchiveEntry inputEnt;
+				final int BUFFER = 2048;
+				byte[] buf = new byte[BUFFER];
+				while ((inputEnt = inputZip.getNextEntry()) != null) {
+					outputZip.putArchiveEntry(inputEnt);
+					int count;
+					while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
+						outputZip.write(Arrays.copyOf(buf, count));
+					}
+					outputZip.closeArchiveEntry();
+				}
+				inputZip.close();
+			}
+
+			// Add new entry to zip
+			SevenZArchiveEntry entry;
+			FileInputStream fIn;
+
+			for (int fI = 0; fI < files_list.length; fI++) {
+				entry = outputZip.createArchiveEntry(files_list[fI], files_list[fI].getName());
+				outputZip.putArchiveEntry(entry);
+				fIn = new FileInputStream(files_list[fI]);
+				outputZip.write(fIn);
+				outputZip.closeArchiveEntry();
+				fIn.close();
+			}
+
+			outputZip.close();
+			
+			// Clean up 
+			for(File f : files_list) {
+				f.delete();
+			}			
+		}
+	}
+
 	public static void launch(String[] args) throws IOException, InterruptedException {
 		File baseDir = null;
 		File propFile = null;
-		File propSwitchFile = null;
 
 		File[] preGenClusterMap = new File[0];
 
