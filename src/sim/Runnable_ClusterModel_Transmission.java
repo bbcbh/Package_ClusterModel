@@ -256,9 +256,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<Integer, ArrayList<Integer>> schedule_antibiotic_clearance;
 
 	// HashMap<Integer, int[][]> with K = time, V= int[gender][site]
-	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_PREVALENCE";
+	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_INFECTIOUS_COUNT";
 	// HashMap<Integer, int[][]> with K = time, V= int[gender][site]
 	public static final String SIM_OUTPUT_CUMUL_INCIDENCE = "SIM_OUTPUT_CUMUL_INCIDENCE";
+
+	// HashMap<Integer, int[]> with K = time, V= int[gender]
+	public static final String SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON = "SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON";
+	// HashMap<Integer, int[]> with K = time, V= int[gender]
+	public static final String SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON = "SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON";
+
 	// HashMap<Integer, int[][]>
 	// with K = time, V= int[gender]{proper,over treatment} measured in person-day
 	public static final String SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE = "SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE";
@@ -659,11 +665,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			boolean hasInfected = hasInfectedInPop();
 
+			ArrayList<Integer> infected_today = new ArrayList<>();
 			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
+			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];
 			int[][] cumul_antibiotic_use = new int[Population_Bridging.LENGTH_GENDER][2];
 
 			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * NUM_SNAP
 					&& hasInfected; currentTime++) {
+
+				infected_today.clear();
 
 				if (switchTimeIndex < switchTime.length && switchTime[switchTimeIndex] == currentTime) {
 					HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
@@ -742,15 +752,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 								int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
 										? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
 										: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
-								
-								
+
 								int g_s = getGenderType(infectious);
 								int g_t = getGenderType(partner);
-								
-								int[] valid_target = g_t == Population_Bridging.GENDER_FEMALE ? 
-										new int[] {SITE_VAGINA, SITE_RECTUM, SITE_OROPHARYNX} : 
-											new int[] {SITE_PENIS, SITE_RECTUM, SITE_OROPHARYNX};
-										
+
+								int[] valid_target = g_t == Population_Bridging.GENDER_FEMALE
+										? new int[] { SITE_VAGINA, SITE_RECTUM, SITE_OROPHARYNX }
+										: new int[] { SITE_PENIS, SITE_RECTUM, SITE_OROPHARYNX };
 
 								for (int site_target : valid_target) {
 									if (trans[site_src][site_target] != 0) {
@@ -814,6 +822,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 											if (transmitted) {
 												cumul_incidence[g_t][site_target]++;
+												int k = Collections.binarySearch(infected_today, partner);
+												if (k < 0) {
+													cumul_incidence_by_person[g_t]++;
+													infected_today.add(~k, partner);
+												}
 												transmission_success(currentTime, infectious, partner, site_target,
 														actType, simulation_store);
 											}
@@ -860,18 +873,39 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					// K = time, V= int [gender][site]
 					HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) sim_output
 							.get(SIM_OUTPUT_INFECTIOUS_COUNT);
+
 					if (infectious_count_map == null) {
 						infectious_count_map = new HashMap<>();
 						sim_output.put(SIM_OUTPUT_INFECTIOUS_COUNT, infectious_count_map);
 					}
+
+					@SuppressWarnings("unchecked")
+					// K = time, V= int [gender]
+					HashMap<Integer, int[]> infectious_count_map_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
+
+					if (infectious_count_map_by_person == null) {
+						infectious_count_map_by_person = new HashMap<>();
+						sim_output.put(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON, infectious_count_map_by_person);
+					}
+
 					int[][] infectious_count = new int[cumulative_pop_composition.length][LENGTH_SITE];
+					int[] infectious_count_by_person = new int[cumulative_pop_composition.length];
+					
+					ArrayList<Integer> infected_person = new ArrayList<>();
 					for (int site = 0; site < LENGTH_SITE; site++) {
 						for (Integer infected_id : currently_infectious[site]) {
 							int gender_type = getGenderType(infected_id);
 							infectious_count[gender_type][site]++;
+							int k = Collections.binarySearch(infected_person, infected_id);
+							if (k < 0) {
+								infectious_count_by_person[gender_type]++;
+								infected_person.add(~k, infected_id);
+							}
 						}
 					}
 					infectious_count_map.put(currentTime, infectious_count);
+					infectious_count_map_by_person.put(currentTime, infectious_count_by_person);
 
 					@SuppressWarnings("unchecked")
 					HashMap<Integer, int[][]> cumul_incidence_map = (HashMap<Integer, int[][]>) sim_output
@@ -881,11 +915,23 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						sim_output.put(SIM_OUTPUT_CUMUL_INCIDENCE, cumul_incidence_map);
 					}
 
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[]> cumul_incidence_map_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
+					if (cumul_incidence_map_by_person == null) {
+						cumul_incidence_map_by_person = new HashMap<>();
+						sim_output.put(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON, cumul_incidence_map_by_person);
+					}
+
 					int[][] incidence_snap = new int[cumul_incidence.length][];
+
 					for (int g = 0; g < cumul_incidence.length; g++) {
 						incidence_snap[g] = Arrays.copyOf(cumul_incidence[g], cumul_incidence[g].length);
 					}
+
 					cumul_incidence_map.put(currentTime, incidence_snap);
+					cumul_incidence_map_by_person.put(currentTime,
+							Arrays.copyOf(cumul_incidence_by_person, cumul_incidence_by_person.length));
 
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
@@ -1072,6 +1118,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected void postSimulation(Object[] simulation_store) {
 		PrintWriter pWri;
 		HashMap<Integer, int[][]> count_map;
+		HashMap<Integer, int[]> count_map_by_person;
 		StringBuilder str = null;
 
 		try {
@@ -1079,7 +1126,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
 				str = printCountMap(count_map);
 				pWri = new PrintWriter(new File(baseDir,
-						String.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE, cMap_seed, sim_seed)));
+						String.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMap_seed, sim_seed)));
+				pWri.println(str.toString());
+				pWri.close();
+
+				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);				
+				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER);
+				pWri = new PrintWriter(new File(baseDir, String
+						.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
 
@@ -1088,7 +1142,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
 				str = printCountMap(count_map);
 				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE, cMap_seed, sim_seed)));
+						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMap_seed, sim_seed)));
+				pWri.println(str.toString());
+				pWri.close();
+				
+				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
+				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER);
+				pWri = new PrintWriter(new File(baseDir, String
+						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
 			}
@@ -1135,6 +1196,33 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
+	}
+
+	protected StringBuilder printCountMap(HashMap<Integer, int[]> count_map_by_person, int dimension) {
+		StringBuilder str;
+		Integer[] time_array;
+		str = new StringBuilder();
+
+		time_array = count_map_by_person.keySet().toArray(new Integer[count_map_by_person.size()]);
+		Arrays.sort(time_array);
+		str.append("Time");
+
+		for (int g = 0; g < dimension; g++) {
+			str.append(',');
+			str.append(g);
+		}
+		str.append('\n');
+		for (Integer time : time_array) {
+			str.append(time);
+			int[] ent = count_map_by_person.get(time);
+			for (int g = 0; g < dimension; g++) {
+				str.append(',');
+				str.append(ent[g]);
+
+			}
+			str.append('\n');
+		}
+		return str;
 	}
 
 	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map) {

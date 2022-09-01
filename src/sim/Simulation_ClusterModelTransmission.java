@@ -49,13 +49,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
 	public static final String FILENAME_TRANSMAP_ZIP_PREFIX = "All_transmap_%d";
-	public static final String FILENAME_PREVALENCE_ZIP = "Prevalence_%d.7z";
-	public static final String FILENAME_CUMUL_INCIDENCE_ZIP = "Incidence_%d.7z";
+	public static final String FILENAME_PREVALENCE_SITE_ZIP = "Prevalence_Site_%d.7z";
+	public static final String FILENAME_CUMUL_INCIDENCE_SITE_ZIP = "Incidence_Site_%d.7z";
+	public static final String FILENAME_PREVALENCE_PERSON_ZIP = "Prevalence_Person_%d.7z";
+	public static final String FILENAME_CUMUL_INCIDENCE_PERSON_ZIP = "Incidence_Person_%d.7z";
 	public static final String FILENAME_INFECTION_HISTORY_ZIP = "InfectHist_%d.7z";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP = "Antibiotic_usage_%d.7z";
 
-	public static final String FILENAME_PREVALENCE = "Prevalence_%d_%d.csv";
-	public static final String FILENAME_CUMUL_INCIDENCE = "Incidence_%d_%d.csv";
+	public static final String FILENAME_PREVALENCE_SITE = "Prevalence_Site_%d_%d.csv";
+	public static final String FILENAME_CUMUL_INCIDENCE_SITE = "Incidence_Site_%d_%d.csv";
+	public static final String FILENAME_PREVALENCE_PERSON = "Prevalence_Person_%d_%d.csv";
+	public static final String FILENAME_CUMUL_INCIDENCE_PERSON = "Incidence_Person_%d_%d.csv";
 	public static final String FILENAME_INFECTION_HISTORY = "InfectHist_%d_%d.csv";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
 	public static final String REGEX_TRANSMISSION_CMAP_DIR = Runnable_ClusterModel_Transmission_ContactMap.DIRNAME_FORMAT_TRANSMISSION_CMAP
@@ -455,13 +459,18 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	private void zipOutputFiles() throws IOException, FileNotFoundException {
 		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {		
-			zipSelectedOutputs(FILENAME_PREVALENCE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
-					String.format(FILENAME_PREVALENCE_ZIP, baseContactMapSeed));
+			zipSelectedOutputs(FILENAME_PREVALENCE_SITE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_PREVALENCE_SITE_ZIP, baseContactMapSeed));
+			
+			zipSelectedOutputs(FILENAME_PREVALENCE_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_PREVALENCE_PERSON_ZIP, baseContactMapSeed));
 
 		}
 		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
-			zipSelectedOutputs(FILENAME_CUMUL_INCIDENCE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
-					String.format(FILENAME_CUMUL_INCIDENCE_ZIP, baseContactMapSeed));
+			zipSelectedOutputs(FILENAME_CUMUL_INCIDENCE_SITE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_CUMUL_INCIDENCE_SITE_ZIP, baseContactMapSeed));
+			zipSelectedOutputs(FILENAME_CUMUL_INCIDENCE_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_CUMUL_INCIDENCE_PERSON_ZIP, baseContactMapSeed));
 
 		}
 		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
