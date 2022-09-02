@@ -12,9 +12,6 @@ import relationship.ContactMap;
 
 public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_ClusterModel_Transmission {
 
-	public static final String FILENAME_FORMAT_TRANSMISSION_CMAP = "Seed_%s_TransmissionMap_%d.csv";
-	public static final String DIRNAME_FORMAT_TRANSMISSION_CMAP = "TransMap_%d";
-
 	public static final int TRANSMAP_EDGE_INFECTIOUS = 0;
 	public static final int TRANSMAP_EDGE_SUSCEPTIBLE = TRANSMAP_EDGE_INFECTIOUS + 1;
 	public static final int TRANSMAP_EDGE_START_TIME = TRANSMAP_EDGE_SUSCEPTIBLE + 1;
@@ -125,7 +122,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 				}
 			});
 
-			File clusterExport = new File(baseDir, String.format(DIRNAME_FORMAT_TRANSMISSION_CMAP, this.sim_seed));
+			File clusterExport = baseDir; //new File(baseDir, String.format(DIRNAME_FORMAT_TRANSMISSION_CMAP, this.sim_seed));
 			clusterExport.mkdirs();
 
 			File printFile;
@@ -133,7 +130,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 
 			try {
 
-				printFile = new File(clusterExport, String.format(FILENAME_FORMAT_INDEX_CASE_LIST, this.sim_seed));
+				printFile = new File(clusterExport, String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST, this.cMap_seed,this.sim_seed));
 
 				expWri = new PrintWriter(printFile);
 				expWri.println(seedInfectedStr.toString());
@@ -143,7 +140,7 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 					ContactMap c = clusters[cI];
 
 					printFile = new File(clusterExport,
-							String.format(FILENAME_FORMAT_TRANSMISSION_CMAP, Long.toString(this.sim_seed), cI));
+							String.format(Simulation_ClusterModelTransmission.FILENAME_ALL_TRANSMISSION_CMAP, this.cMap_seed ,this.sim_seed));
 
 					expWri = new PrintWriter(printFile);
 					expWri.println(c.toFullString());

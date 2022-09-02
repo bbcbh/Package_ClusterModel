@@ -35,8 +35,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int SITE_RECTUM = SITE_PENIS + 1;
 	public static final int SITE_OROPHARYNX = SITE_RECTUM + 1;
 	public static final int LENGTH_SITE = SITE_OROPHARYNX + 1;
-
-	public static final String FILENAME_FORMAT_INDEX_CASE_LIST = "Seed_%d_IndexCases.txt";
+	
+	protected static final int TEST_OUTCOME_TREATMENT_APPLIED = 0;
+	protected static final int TEST_OUTCOME_TRUE_INFECTION = TEST_OUTCOME_TREATMENT_APPLIED + 1;
 
 	protected int simSetting = 1;
 
@@ -216,8 +217,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	final ContactMap BASE_CONTACT_MAP;
 	final int NUM_TIME_STEPS_PER_SNAP;
 	final int NUM_SNAP;
-	final long sim_seed;
-	final long cMap_seed;
+	protected final long sim_seed;
+	protected final long cMap_seed;
 
 	protected RandomGenerator RNG;
 
@@ -264,6 +265,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON = "SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON";
 	// HashMap<Integer, int[]> with K = time, V= int[gender]
 	public static final String SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON = "SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON";
+	// HashMap<Integer, int[]> with K = time, V= int[gender_apply_treatment, gender_true_infection]
+	public static final String SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON = "SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON";
+	
 
 	// HashMap<Integer, int[][]>
 	// with K = time, V= int[gender]{proper,over treatment} measured in person-day
@@ -666,9 +670,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			boolean hasInfected = hasInfectedInPop();
 
 			ArrayList<Integer> infected_today = new ArrayList<>();
+			
 			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];
 			int[][] cumul_antibiotic_use = new int[Population_Bridging.LENGTH_GENDER][2];
+			int[] cumul_treatment_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
 
 			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * NUM_SNAP
 					&& hasInfected; currentTime++) {
@@ -842,7 +848,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				ArrayList<Integer> testToday = schedule_testing.remove(currentTime);
 				if (testToday != null) {
 					for (Integer tId : testToday) {
-						testPerson(currentTime, tId);
+						int testOutcome = testPerson(currentTime, tId);
+						if ((simSetting
+								& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+							int gI = getGenderType(Math.abs(tId));							
+							if((testOutcome | 1 << TEST_OUTCOME_TREATMENT_APPLIED) != 0) {
+								cumul_treatment_by_person[gI]++;
+							}
+							if((testOutcome | 1 << TEST_OUTCOME_TRUE_INFECTION) != 0) {
+								cumul_treatment_by_person[Population_Bridging.LENGTH_GENDER+ gI]++;
+							}														
+						}
+					
+						
 					}
 				}
 
@@ -932,6 +950,21 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					cumul_incidence_map.put(currentTime, incidence_snap);
 					cumul_incidence_map_by_person.put(currentTime,
 							Arrays.copyOf(cumul_incidence_by_person, cumul_incidence_by_person.length));
+					
+					if ((simSetting
+							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+						
+						@SuppressWarnings("unchecked")
+						HashMap<Integer, int[]> cumul_treatment_map_by_person = (HashMap<Integer, int[]>) sim_output
+								.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+						if (cumul_treatment_map_by_person == null) {
+							cumul_treatment_map_by_person = new HashMap<>();
+							sim_output.put(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON, cumul_treatment_map_by_person);
+						}
+						cumul_treatment_map_by_person.put(currentTime, Arrays.copyOf(cumul_treatment_by_person, cumul_treatment_by_person.length));
+						
+					}
+					
 
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
@@ -977,7 +1010,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	protected void testPerson(int currentTime, Integer testing_pid) {
+	protected int testPerson(int currentTime, Integer testing_pid) {
 		Integer test_pid = Math.abs(testing_pid);
 
 		int gender = getGenderType(test_pid);
@@ -1094,6 +1127,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// Schedule next test
 			scheduleNextTest(test_pid, currentTime);
 		}
+		
+				
+		int res = 0;
+		
+		if(applyTreatment) {
+			res |= 1 << TEST_OUTCOME_TREATMENT_APPLIED;			
+		}
+		if(true_infectious) {
+			res |= 1 << TEST_OUTCOME_TRUE_INFECTION;
+		}
+		
+		
+		return res;
 	}
 
 	protected boolean hasInfectedInPop() {
@@ -1152,6 +1198,17 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
+			}
+			if ((simSetting
+					& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {				
+				
+				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER *2);
+				pWri = new PrintWriter(new File(baseDir, String
+						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMap_seed, sim_seed)));
+				pWri.println(str.toString());
+				pWri.close();
+				
 			}
 
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {

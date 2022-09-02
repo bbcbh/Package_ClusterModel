@@ -26,7 +26,6 @@ import java.util.regex.Pattern;
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
-import org.apache.commons.io.FileUtils;
 
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
@@ -48,24 +47,33 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
-	public static final String FILENAME_TRANSMAP_ZIP_PREFIX = "All_transmap_%d";
-	public static final String FILENAME_PREVALENCE_SITE_ZIP = "Prevalence_Site_%d.7z";
-	public static final String FILENAME_CUMUL_INCIDENCE_SITE_ZIP = "Incidence_Site_%d.7z";
-	public static final String FILENAME_PREVALENCE_PERSON_ZIP = "Prevalence_Person_%d.7z";
-	public static final String FILENAME_CUMUL_INCIDENCE_PERSON_ZIP = "Incidence_Person_%d.7z";
-	public static final String FILENAME_INFECTION_HISTORY_ZIP = "InfectHist_%d.7z";
-	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP = "Antibiotic_usage_%d.7z";
-
+	public static final String FILENAME_INDEX_CASE_LIST = "Seed_IndexCases_%d_%d.txt";
 	public static final String FILENAME_PREVALENCE_SITE = "Prevalence_Site_%d_%d.csv";
 	public static final String FILENAME_CUMUL_INCIDENCE_SITE = "Incidence_Site_%d_%d.csv";
 	public static final String FILENAME_PREVALENCE_PERSON = "Prevalence_Person_%d_%d.csv";
 	public static final String FILENAME_CUMUL_INCIDENCE_PERSON = "Incidence_Person_%d_%d.csv";
+	public static final String FILENAME_CUMUL_TREATMENT_PERSON = "Treatment_Person_%d_%d.csv";
 	public static final String FILENAME_INFECTION_HISTORY = "InfectHist_%d_%d.csv";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
-	public static final String REGEX_TRANSMISSION_CMAP_DIR = Runnable_ClusterModel_Transmission_ContactMap.DIRNAME_FORMAT_TRANSMISSION_CMAP
-			.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
-	public static final String REGEX_INDEX_CASE_LIST = Runnable_ClusterModel_Transmission.FILENAME_FORMAT_INDEX_CASE_LIST
-			.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+	public static final String FILENAME_ALL_TRANSMISSION_CMAP = "All_transmap_%d_%d.csv";
+
+	public static final String FILENAME_INDEX_CASE_LIST_ZIP = FILENAME_INDEX_CASE_LIST.replaceFirst("_%d", "") + ".7z";
+	public static final String FILENAME_PREVALENCE_SITE_ZIP = FILENAME_PREVALENCE_SITE.replaceFirst("_%d", "") + ".7z";	
+	public static final String FILENAME_PREVALENCE_PERSON_ZIP = FILENAME_PREVALENCE_PERSON.replaceFirst("_%d", "")
+			+ ".7z";
+	public static final String FILENAME_CUMUL_INCIDENCE_SITE_ZIP = FILENAME_CUMUL_INCIDENCE_SITE.replaceFirst("_%d", "")
+			+ ".7z";
+	public static final String FILENAME_CUMUL_INCIDENCE_PERSON_ZIP = FILENAME_CUMUL_INCIDENCE_PERSON.replaceFirst("_%d",
+			"") + ".7z";
+	
+	public static final String FILENAME_CUMUL_TREATMENT_PERSON_ZIP = FILENAME_CUMUL_TREATMENT_PERSON.replaceFirst("_%d",
+			"") + ".7z";	
+	public static final String FILENAME_INFECTION_HISTORY_ZIP = FILENAME_INFECTION_HISTORY.replaceFirst("_%d", "")
+			+ ".7z";
+	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP = FILENAME_CUMUL_ANTIBIOTIC_USAGE.replaceFirst("_%d",
+			"") + ".7z";
+	public static final String FILENAME_ALL_TRANSMISSION_CMAP_ZIP = FILENAME_ALL_TRANSMISSION_CMAP.replaceFirst("_%d",
+			"") + ".7z";
 
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
@@ -80,7 +88,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_GLOBAL_TIME_SEED = 0;
 	public static final int SIM_SETTING_KEY_GEN_PREVAL_FILE = SIM_SETTING_KEY_GLOBAL_TIME_SEED + 1;
 	public static final int SIM_SETTING_KEY_GEN_INCIDENCE_FILE = SIM_SETTING_KEY_GEN_PREVAL_FILE + 1;
-	public static final int SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_GEN_INCIDENCE_FILE + 1;
+	public static final int SIM_SETTING_KEY_GEN_TREATMENT_FILE = SIM_SETTING_KEY_GEN_INCIDENCE_FILE + 1;
+	public static final int SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_GEN_TREATMENT_FILE + 1;
 	public static final int SIM_SETTING_KEY_TRACK_INFECTION_HISTORY = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
 	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
 
@@ -317,12 +326,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 		Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[numSim];
 		File clusterExport7z = new File(baseDir,
-				String.format(FILENAME_TRANSMAP_ZIP_PREFIX, baseContactMapSeed) + ".7z");
+				String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST_ZIP, baseContactMapSeed));
 		ArrayList<Long> completedSeed = new ArrayList<>();
 
 		if (clusterExport7z.exists()) {
 			SevenZFile inputZip = new SevenZFile(clusterExport7z);
-			Pattern p_seedIndexList = Pattern.compile(REGEX_INDEX_CASE_LIST);
+			Pattern p_seedIndexList = Pattern.compile(FILENAME_INDEX_CASE_LIST
+					.replaceFirst("%d", Long.toString(baseContactMapSeed)).replaceFirst("%d", "(-{0,1}(?!0)\\\\d+)"));
 			SevenZArchiveEntry inputEnt;
 			while ((inputEnt = inputZip.getNextEntry()) != null) {
 				String entName = inputEnt.getName();
@@ -458,10 +468,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	}
 
 	private void zipOutputFiles() throws IOException, FileNotFoundException {
-		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {		
+
+		zipSelectedOutputs(FILENAME_INDEX_CASE_LIST.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+				String.format(FILENAME_INDEX_CASE_LIST_ZIP, baseContactMapSeed));
+
+		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 			zipSelectedOutputs(FILENAME_PREVALENCE_SITE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_PREVALENCE_SITE_ZIP, baseContactMapSeed));
-			
+
 			zipSelectedOutputs(FILENAME_PREVALENCE_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_PREVALENCE_PERSON_ZIP, baseContactMapSeed));
 
@@ -471,6 +485,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					String.format(FILENAME_CUMUL_INCIDENCE_SITE_ZIP, baseContactMapSeed));
 			zipSelectedOutputs(FILENAME_CUMUL_INCIDENCE_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_CUMUL_INCIDENCE_PERSON_ZIP, baseContactMapSeed));
+
+		}
+		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {			
+			zipSelectedOutputs(FILENAME_CUMUL_TREATMENT_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_CUMUL_TREATMENT_PERSON_ZIP, baseContactMapSeed));
 
 		}
 		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
@@ -485,85 +504,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
-
-			// Zip all transmit output to single file
-
-			File clusterExport7z = new File(baseDir,
-					String.format(FILENAME_TRANSMAP_ZIP_PREFIX, baseContactMapSeed) + ".7z");
-
-			File preZip = null;
-
-			if (clusterExport7z.exists()) {
-				// Delete old zip
-				File[] oldZips = baseDir.listFiles(new FileFilter() {
-					@Override
-					public boolean accept(File pathname) {
-						return pathname.getName()
-								.startsWith(String.format(FILENAME_TRANSMAP_ZIP_PREFIX, baseContactMapSeed) + "_")
-								&& pathname.getName().endsWith(".7z");
-					}
-				});
-				for (File f : oldZips) {
-					Files.delete(f.toPath());
-				}
-				preZip = new File(baseDir, String.format(FILENAME_TRANSMAP_ZIP_PREFIX, baseContactMapSeed) + "_"
-						+ Long.toString(System.currentTimeMillis()) + ".7z");
-				Files.copy(clusterExport7z.toPath(), preZip.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-
-			}
-
-			File[] transMapDirs = baseDir.listFiles(new FileFilter() {
-
-				@Override
-				public boolean accept(File pathname) {
-					return pathname.isDirectory() && Pattern.matches(REGEX_TRANSMISSION_CMAP_DIR, pathname.getName());
-
-				}
-			});
-
-			if (transMapDirs.length > 0) {
-
-				SevenZOutputFile outputZip = new SevenZOutputFile(clusterExport7z);
-
-				if (preZip != null) {
-					SevenZFile inputZip = new SevenZFile(preZip);
-					SevenZArchiveEntry inputEnt;
-					final int BUFFER = 2048;
-					byte[] buf = new byte[BUFFER];
-					while ((inputEnt = inputZip.getNextEntry()) != null) {
-						outputZip.putArchiveEntry(inputEnt);
-						int count;
-						while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
-							outputZip.write(Arrays.copyOf(buf, count));
-						}
-						outputZip.closeArchiveEntry();
-					}
-					inputZip.close();
-				}
-
-				File[] entFiles;
-				SevenZArchiveEntry entry;
-				FileInputStream fIn;
-
-				for (int dI = 0; dI < transMapDirs.length; dI++) {
-					entFiles = transMapDirs[dI].listFiles();
-					for (int fI = 0; fI < entFiles.length; fI++) {
-						entry = outputZip.createArchiveEntry(entFiles[fI], entFiles[fI].getName());
-						outputZip.putArchiveEntry(entry);
-						fIn = new FileInputStream(entFiles[fI]);
-						outputZip.write(fIn);
-						outputZip.closeArchiveEntry();
-						fIn.close();
-					}
-
-				}
-				outputZip.close();
-				// Clean up
-				for (int dI = 0; dI < transMapDirs.length; dI++) {
-					FileUtils.deleteDirectory(transMapDirs[dI]);
-				}
-
-			}
+			zipSelectedOutputs(FILENAME_ALL_TRANSMISSION_CMAP.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_ALL_TRANSMISSION_CMAP_ZIP, baseContactMapSeed));
 		}
 	}
 
@@ -589,8 +531,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				File[] oldZips = baseDir.listFiles(new FileFilter() {
 					@Override
 					public boolean accept(File pathname) {
-						return pathname.getName().startsWith(zip_file_name + "_")
-								&& pathname.getName().endsWith(".7z");
+						return pathname.getName().startsWith(zip_file_name + "_") && pathname.getName().endsWith(".7z");
 					}
 				});
 				for (File f : oldZips) {
@@ -634,11 +575,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			outputZip.close();
-			
-			// Clean up 
-			for(File f : files_list) {
+
+			// Clean up
+			for (File f : files_list) {
 				f.delete();
-			}			
+			}
 		}
 	}
 
