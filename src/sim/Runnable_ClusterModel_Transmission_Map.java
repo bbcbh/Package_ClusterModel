@@ -9,8 +9,9 @@ import java.util.Comparator;
 import java.util.Set;
 
 import relationship.ContactMap;
+import relationship.TransmissionMap;
 
-public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_ClusterModel_Transmission {
+public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterModel_Transmission {
 
 	public static final int TRANSMAP_EDGE_INFECTIOUS = 0;
 	public static final int TRANSMAP_EDGE_SUSCEPTIBLE = TRANSMAP_EDGE_INFECTIOUS + 1;
@@ -21,20 +22,20 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 	public static final String SIM_OUTPUT_TRANMISSION_MAP = "SIM_OUTPUT_TRANMISSION_MAP";
 	public static final String SIM_OUTPUT_CLUSTERS = "SIM_OUTPUT_CLUSTERS";
 
-	protected ContactMap transmissionMap = null;
+	protected TransmissionMap transmissionMap = null;
 
-	public Runnable_ClusterModel_Transmission_ContactMap(long cMap_seed, long sim_seed, 
+	public Runnable_ClusterModel_Transmission_Map(long cMap_seed, long sim_seed, 
 			int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
 			int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
 		super(cMap_seed, sim_seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 
 	}
 
-	public void setTransmissionMap(ContactMap transmissionMap) {
+	public void setTransmissionMap(TransmissionMap transmissionMap) {
 		this.transmissionMap = transmissionMap;
 	}
 
-	public ContactMap getTransmissionMap() {
+	public TransmissionMap getTransmissionMap() {
 		return transmissionMap;
 	}
 
@@ -51,20 +52,16 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 			}
 			if (!transmissionMap.containsVertex(partner)) {
 				transmissionMap.addVertex(partner);
-			}
+			}			
+			
+			Integer[] transEdge = new Integer[LENGTH_TRANSMAP_EDGE];			
+			transEdge[TRANSMAP_EDGE_INFECTIOUS] = infectious;
+			transEdge[TRANSMAP_EDGE_SUSCEPTIBLE] = partner;
+			transEdge[TRANSMAP_EDGE_START_TIME] = currentTime;
+			transEdge[TRANSMAP_EDGE_ACT_INVOLVED] = actType;					
+			transmissionMap.addEdge(infectious, partner, transEdge);
 
-			Integer[] existEdge = transmissionMap.getEdge(infectious, partner);
-
-			if (existEdge == null) {
-				existEdge = new Integer[LENGTH_TRANSMAP_EDGE];
-				existEdge[TRANSMAP_EDGE_INFECTIOUS] = infectious;
-				existEdge[TRANSMAP_EDGE_SUSCEPTIBLE] = partner;
-				existEdge[TRANSMAP_EDGE_START_TIME] = currentTime;
-				existEdge[TRANSMAP_EDGE_ACT_INVOLVED] = 1 << actType;
-				transmissionMap.addEdge(infectious, partner, existEdge);
-			} else {
-				existEdge[TRANSMAP_EDGE_ACT_INVOLVED] |= 1 << actType;
-			}
+			
 		}
 	}
 
@@ -106,10 +103,9 @@ public class Runnable_ClusterModel_Transmission_ContactMap extends Runnable_Clus
 
 		if (transmissionMap != null) {
 
-			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);
-			
-//			Set<ContactMap> clustersSet = transmissionMap.getContactCluster();			
-			Set<ContactMap> clustersSet = new java.util.HashSet<>();
+			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);			
+	
+			Set<TransmissionMap> clustersSet = new java.util.HashSet<>();
 			clustersSet.add(transmissionMap);
 			sim_output.put(SIM_OUTPUT_CLUSTERS, clustersSet);
 

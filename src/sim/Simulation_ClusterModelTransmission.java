@@ -31,6 +31,7 @@ import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import relationship.TransmissionMap;
 import util.PersonClassifier;
 import util.PropValUtils;
 
@@ -362,7 +363,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (runSim) {
-				runnable[s] = new Runnable_ClusterModel_Transmission_ContactMap(baseContactMapSeed, simSeed,
+				runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
 						pop_composition, baseContactMap, num_time_steps_per_snap, num_snap);
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setEdges_list(edge_list);
@@ -377,7 +378,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
-					((Runnable_ClusterModel_Transmission_ContactMap) runnable[s]).setTransmissionMap(new ContactMap());
+					((Runnable_ClusterModel_Transmission_Map) runnable[s]).setTransmissionMap(new TransmissionMap());
 				}
 				runnable[s].initialse();
 
