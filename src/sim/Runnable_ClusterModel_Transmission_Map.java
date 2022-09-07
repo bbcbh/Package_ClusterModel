@@ -13,12 +13,6 @@ import relationship.TransmissionMap;
 
 public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterModel_Transmission {
 
-	public static final int TRANSMAP_EDGE_INFECTIOUS = 0;
-	public static final int TRANSMAP_EDGE_SUSCEPTIBLE = TRANSMAP_EDGE_INFECTIOUS + 1;
-	public static final int TRANSMAP_EDGE_START_TIME = TRANSMAP_EDGE_SUSCEPTIBLE + 1;
-	public static final int TRANSMAP_EDGE_ACT_INVOLVED = TRANSMAP_EDGE_START_TIME + 1;
-	public static final int LENGTH_TRANSMAP_EDGE = TRANSMAP_EDGE_ACT_INVOLVED + 1;
-
 	public static final String SIM_OUTPUT_TRANMISSION_MAP = "SIM_OUTPUT_TRANMISSION_MAP";
 	public static final String SIM_OUTPUT_CLUSTERS = "SIM_OUTPUT_CLUSTERS";
 
@@ -54,11 +48,11 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 				transmissionMap.addVertex(partner);
 			}			
 			
-			Integer[] transEdge = new Integer[LENGTH_TRANSMAP_EDGE];			
-			transEdge[TRANSMAP_EDGE_INFECTIOUS] = infectious;
-			transEdge[TRANSMAP_EDGE_SUSCEPTIBLE] = partner;
-			transEdge[TRANSMAP_EDGE_START_TIME] = currentTime;
-			transEdge[TRANSMAP_EDGE_ACT_INVOLVED] = actType;					
+			Integer[] transEdge = new Integer[Abstract_Runnable_ClusterModel.LENGTH_TRANS_MAP_EDGE];			
+			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_INFECTIOUS] = infectious;
+			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_SUSCEPTIBLE] = partner;
+			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_START_TIME] = currentTime;
+			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_ACT_INVOLVED] = actType;					
 			transmissionMap.addEdge(infectious, partner, transEdge);
 
 			
@@ -110,10 +104,10 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 			sim_output.put(SIM_OUTPUT_CLUSTERS, clustersSet);
 
 			// Display clusters as CSV
-			ContactMap[] clusters = clustersSet.toArray(new ContactMap[clustersSet.size()]);
-			Arrays.sort(clusters, new Comparator<ContactMap>() {
+			TransmissionMap[] clusters = clustersSet.toArray(new TransmissionMap[clustersSet.size()]);
+			Arrays.sort(clusters, new Comparator<TransmissionMap>() {
 				@Override
-				public int compare(ContactMap o1, ContactMap o2) {
+				public int compare(TransmissionMap o1, TransmissionMap o2) {
 					return Integer.compare(o1.vertexSet().size(), o2.vertexSet().size());
 				}
 			});
@@ -133,7 +127,7 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 				expWri.close();
 
 				for (int cI = 0; cI < clusters.length; cI++) {
-					ContactMap c = clusters[cI];
+					TransmissionMap c = clusters[cI];
 
 					printFile = new File(clusterExport,
 							String.format(Simulation_ClusterModelTransmission.FILENAME_ALL_TRANSMISSION_CMAP, this.cMap_seed ,this.sim_seed));
@@ -149,7 +143,7 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 				System.out.println(seedInfectedStr.toString());
 
 				for (int cI = 0; cI < clusters.length; cI++) {
-					ContactMap c = clusters[cI];
+					TransmissionMap c = clusters[cI];
 					System.out.println(String.format("Transmission map <%d, %d>", this.sim_seed, cI));
 					System.out.println(c.toFullString());
 					System.out.println();

@@ -25,6 +25,7 @@ import relationship.ContactMap;
 import relationship.RelationshipMap;
 import relationship.SingleRelationship;
 import relationship.SingleRelationshipTimeStamp;
+import sim.Abstract_Runnable_ClusterModel;
 import util.ArrayUtilsRandomGenerator;
 
 public class Population_Bridging extends AbstractFieldsArrayPopulation {
@@ -115,16 +116,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int RELMAP_MSM = 1;
 	public static final int LENGTH_RELMAP = 2;
 
-	// Format in contact map: {p1, p2, start time_1, duration_1, ...}
-	// CONTACT_MAP_EDGE_DURATION = -1 -> Removal
-	// CONTACT_MAP_EDGE_DURATION = 0 -> Update
 
-	public static final int CONTACT_MAP_EDGE_P1 = 0;
-	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;
-	public static final int CONTACT_MAP_EDGE_START_TIME = CONTACT_MAP_EDGE_P2 + 1;
-	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1;
-	public static final int LENGTH_CONTACT_MAP_EDGE = CONTACT_MAP_EDGE_DURATION + 1;
-	
+
 	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 
 	@SuppressWarnings("unchecked")
@@ -229,7 +222,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	protected SingleRelationship formRelationship(AbstractIndividualInterface[] pair, RelationshipMap relMap,
 			int duration, int mapType) {
 
-		Integer[] link = new Integer[LENGTH_CONTACT_MAP_EDGE];
+		Integer[] link = new Integer[Abstract_Runnable_ClusterModel.LENGTH_CONTACT_MAP_EDGE];
 		SingleRelationshipTimeStamp rel;
 		ContactMap cMapAll = ((ContactMap[]) getFields()[FIELD_CONTACT_MAP])[CONTACT_MAP_ALL];
 
@@ -241,8 +234,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			link[i] = pair[i].getId();
 		}
 
-		link[CONTACT_MAP_EDGE_START_TIME] = getGlobalTime();
-		link[CONTACT_MAP_EDGE_DURATION] = duration;
+		link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] = getGlobalTime();
+		link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] = duration;
 
 		checkContactMaps(link, new ContactMap[] { cMapAll });
 
@@ -1132,13 +1125,13 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 			for (SingleRelationship rel : relArr) {
 				Integer[] link = rel.getLinks();
-				link = Arrays.copyOf(link, LENGTH_CONTACT_MAP_EDGE);
-				link[CONTACT_MAP_EDGE_START_TIME] = ((SingleRelationshipTimeStamp) rel).getRelStartTime();
+				link = Arrays.copyOf(link, Abstract_Runnable_ClusterModel.LENGTH_CONTACT_MAP_EDGE);
+				link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] = ((SingleRelationshipTimeStamp) rel).getRelStartTime();
 				if (rel.incrementTime(1) <= 0) {
 					relMap.removeEdge(rel);
-					link[CONTACT_MAP_EDGE_DURATION] = -1;
+					link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] = -1;
 				} else {
-					link[CONTACT_MAP_EDGE_DURATION] = 0;
+					link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] = 0;
 				}
 				checkContactMaps(link, new ContactMap[] { cMapAll });
 			}
@@ -1149,34 +1142,34 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		for (ContactMap c : cMaps) {
 			if (c != null) {
 
-				if (!c.containsVertex(link[CONTACT_MAP_EDGE_P1])) {
-					c.addVertex(link[CONTACT_MAP_EDGE_P1]);
+				if (!c.containsVertex(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1])) {
+					c.addVertex(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
 				}
-				if (!c.containsVertex(link[CONTACT_MAP_EDGE_P2])) {
-					c.addVertex(link[CONTACT_MAP_EDGE_P2]);
+				if (!c.containsVertex(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2])) {
+					c.addVertex(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
 				}
 
-				if (!c.containsEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2])) {
-					if (link[CONTACT_MAP_EDGE_DURATION] >= 0) {
-						c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], link);
+				if (!c.containsEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2])) {
+					if (link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] >= 0) {
+						c.addEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], link);
 					} else {
 						System.err.println(String.format("checkContactMaps: Edge of %d duration not added.",
-								link[CONTACT_MAP_EDGE_DURATION]));
+								link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]));
 					}
 				} else {
 					// Edge already existed
-					Integer[] e = c.getEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2]);
+					Integer[] e = c.getEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
 					int lastRelStart = e[e.length - 2].intValue();
-					if (link[CONTACT_MAP_EDGE_DURATION] < 0) {
+					if (link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] < 0) {
 						e[e.length - 1] = getGlobalTime() - lastRelStart;
 					} else {
-						if (link[CONTACT_MAP_EDGE_DURATION] > 0) {
+						if (link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] > 0) {
 							// Extend edge
 							c.removeEdge(e);
 							e = Arrays.copyOf(e, e.length + 2);
-							e[e.length - 1] = link[CONTACT_MAP_EDGE_DURATION];
-							e[e.length - 2] = link[CONTACT_MAP_EDGE_START_TIME];
-							c.addEdge(link[CONTACT_MAP_EDGE_P1], link[CONTACT_MAP_EDGE_P2], e);
+							e[e.length - 1] = link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
+							e[e.length - 2] = link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
+							c.addEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], e);
 						} else {
 							// Update edge
 							e[e.length - 1] = Math.max(e[e.length - 1], getGlobalTime() - lastRelStart);
@@ -1243,8 +1236,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 				// Update contact map
 				Integer[] link = relRemove.getLinks();
-				link = Arrays.copyOf(link, LENGTH_CONTACT_MAP_EDGE);
-				link[CONTACT_MAP_EDGE_DURATION] = -1;
+				link = Arrays.copyOf(link, Abstract_Runnable_ClusterModel.LENGTH_CONTACT_MAP_EDGE);
+				link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] = -1;
 				checkContactMaps(link, new ContactMap[] { cMapAll });
 
 				tarMap.removeEdge(relRemove);
@@ -1280,13 +1273,13 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		Arrays.sort(edge_list, new Comparator<Integer[]>() {
 			@Override
 			public int compare(Integer[] o1, Integer[] o2) {
-				int cmp = Integer.compare(o1[CONTACT_MAP_EDGE_START_TIME], o2[CONTACT_MAP_EDGE_START_TIME]);
+				int cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
 				if (cmp == 0) {
-					cmp = Integer.compare(o1[CONTACT_MAP_EDGE_DURATION], o2[CONTACT_MAP_EDGE_DURATION]);
+					cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]);
 					if (cmp == 0) {
-						cmp = Integer.compare(o1[CONTACT_MAP_EDGE_P1], o2[CONTACT_MAP_EDGE_P1]);
+						cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
 						if (cmp == 0) {
-							cmp = Integer.compare(o1[CONTACT_MAP_EDGE_P2], o2[CONTACT_MAP_EDGE_P2]);
+							cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
 						}
 					}
 				}

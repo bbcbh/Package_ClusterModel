@@ -43,11 +43,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected ContactMap baseContactMap;
 	protected long baseContactMapSeed = -1;
 	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
+	protected boolean exportSkipBackup = false;
+	
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
+	public static final String LAUNCH_ARGS_SKIP_BACKUP = "-export_skip_backup";
+	
 	public static final String FILENAME_INDEX_CASE_LIST = "Seed_IndexCases_%d_%d.txt";
 	public static final String FILENAME_PREVALENCE_SITE = "Prevalence_Site_%d_%d.csv";
 	public static final String FILENAME_CUMUL_INCIDENCE_SITE = "Incidence_Site_%d_%d.csv";
@@ -130,6 +134,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void setBaseContactMapSeed(long baseContactMapSeed) {
 		this.baseContactMapSeed = baseContactMapSeed;
+	}
+
+	public void setExportSkipBackup(boolean exportSkipBackup) {
+		this.exportSkipBackup = exportSkipBackup;
 	}
 
 	@Override
@@ -349,7 +357,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 		ArrayList<Integer[]> edge_list = null;
 		try {
-			edge_list = Abstract_Runnable_ClusterModel.generateContactEdgeArray(baseContactMap).call();
+			edge_list = Abstract_Runnable_ClusterModel.generateMapEdgeArray(baseContactMap).call();
 		} catch (Exception e1) {
 			e1.printStackTrace(System.err);
 		}
@@ -403,9 +411,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 									Set<Integer[]> edgesOfInfected = baseContactMap.edgesOf(infected);
 
 									for (Integer[] e : edgesOfInfected) {
-										int edge_start_time = e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME];
+										int edge_start_time = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
 										int edge_end_time = edge_start_time
-												+ e[Population_Bridging.CONTACT_MAP_EDGE_DURATION];
+												+ e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
 										if (edge_end_time > contactMapTimeRange[0]
 												&& edge_start_time < contactMapTimeRange[1]) {
 											firstContactTime = Math.max(Math.min(firstContactTime, edge_start_time),
@@ -560,6 +568,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					outputZip.closeArchiveEntry();
 				}
 				inputZip.close();
+				
+				if(exportSkipBackup) {
+					preZip.delete();
+				}				
 			}
 
 			// Add new entry to zip
@@ -593,8 +605,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if (args.length > 0) {
 			baseDir = new File(args[0]);
 		} else {
-			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY <(int) simSetting>",
-					Simulation_ClusterModelTransmission.class.getName()));
+			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY <%s>",
+					Simulation_ClusterModelTransmission.class.getName(), LAUNCH_ARGS_SKIP_BACKUP));
 			System.exit(0);
 		}
 
@@ -648,6 +660,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						sim.setBaseContactMapSeed(Long.parseLong(m.group(1)));
 					}
 					sim.setBaseContactMap(ContactMap.ContactMapFromFullString(cMap_str.toString()));
+										
+					if(args.length>1) {						
+						for(int ai =  1; ai < args.length; ai++) {
+							if(LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
+								sim.setExportSkipBackup(true);
+							}
+							
+						}
+						
+					}
 
 					sim.generateOneResultSet();
 

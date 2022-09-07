@@ -12,13 +12,29 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.Callable;
 
-import population.Population_Bridging;
 import relationship.ContactMap;
+import relationship.TransmissionMap;
 
 public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 
 	protected String runnableId = null;
 	protected File baseDir = null;
+
+	// Edge format in contact map: {p1, p2, start time_1, duration_1, ...}
+	// CONTACT_MAP_EDGE_DURATION = -1 -> Removal
+	// CONTACT_MAP_EDGE_DURATION = 0 -> Update
+	public static final int CONTACT_MAP_EDGE_P1 = 0;
+	public static final int CONTACT_MAP_EDGE_P2 = CONTACT_MAP_EDGE_P1 + 1;
+	public static final int CONTACT_MAP_EDGE_START_TIME = CONTACT_MAP_EDGE_P2 + 1;
+	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1;
+	public static final int LENGTH_CONTACT_MAP_EDGE = CONTACT_MAP_EDGE_DURATION + 1;
+	
+	// Edge format in transmission map
+	public static final int TRANS_MAP_EDGE_INFECTIOUS = 0;
+	public static final int TRANS_MAP_EDGE_SUSCEPTIBLE = TRANS_MAP_EDGE_INFECTIOUS + 1;
+	public static final int TRANS_MAP_EDGE_START_TIME = TRANS_MAP_EDGE_SUSCEPTIBLE + 1;
+	public static final int TRANS_MAP_EDGE_ACT_INVOLVED = TRANS_MAP_EDGE_START_TIME + 1;
+	public static final int LENGTH_TRANS_MAP_EDGE = TRANS_MAP_EDGE_ACT_INVOLVED + 1;
 
 	public String getRunnableId() {
 		return runnableId;
@@ -65,25 +81,50 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		return callable;
 	}
 
-	public static final Callable<ArrayList<Integer[]>> generateContactEdgeArray(ContactMap cMap) {
+	public static final Callable<ArrayList<Integer[]>> generateMapEdgeArray(TransmissionMap tMap) {
 		Callable<ArrayList<Integer[]>> callable = new Callable<ArrayList<Integer[]>>() {
 			@Override
 			public ArrayList<Integer[]> call() throws Exception {
-				Comparator<Integer[]> edge_cmp = generateContactMapEdgeComparator();
+				Comparator<Integer[]> edge_cmp = generateMapEdgeComparator(INDEX_ORDER_TRANSMISSION_MAP);
+				ArrayList<Integer[]> edges = new ArrayList<>(tMap.edgeSet().size());
+				for (Integer[] ent : tMap.edgeSet()) {
+					int key = Collections.binarySearch(edges, ent, edge_cmp);
+					if (key >= 0) {
+						System.err.printf("Warning: Edge %s already in list. Edge skipped.\n", Arrays.toString(ent));
+					} else {
+						edges.add(~key, ent);
+					}
+
+				}
+
+				return null;
+			}
+
+		};
+		return callable;
+	}
+
+	public static final Callable<ArrayList<Integer[]>> generateMapEdgeArray(ContactMap cMap) {
+
+		Callable<ArrayList<Integer[]>> callable = new Callable<ArrayList<Integer[]>>() {
+			@Override
+			public ArrayList<Integer[]> call() throws Exception {
+				Comparator<Integer[]> edge_cmp = generateMapEdgeComparator(INDEX_ORDER_CONTACT_MAP);
 				ArrayList<Integer[]> edges = new ArrayList<>(cMap.edgeSet().size());
 				for (Integer[] ent : cMap.edgeSet()) {
-					int startTime = Population_Bridging.CONTACT_MAP_EDGE_START_TIME;
-					int duration = Population_Bridging.CONTACT_MAP_EDGE_DURATION;
+					int startTime = Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME;
+					int duration = Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION;
 					while (duration < ent.length) {
-						Integer[] e = new Integer[] { ent[Population_Bridging.CONTACT_MAP_EDGE_P1],
-								ent[Population_Bridging.CONTACT_MAP_EDGE_P2], ent[startTime], ent[duration] };
+						Integer[] e = new Integer[] { ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+								ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], ent[startTime],
+								ent[duration] };
 						int key = Collections.binarySearch(edges, e, edge_cmp);
-						
-						if(key >= 0) {
-							System.err.printf("Warning: Edge %s from %s already in list. Edge skipped.\n", 
+
+						if (key >= 0) {
+							System.err.printf("Warning: Edge %s from %s already in list. Edge skipped.\n",
 									Arrays.toString(e), Arrays.toString(ent));
-							
-						}else {
+
+						} else {
 							edges.add(~key, e);
 						}
 						startTime += 2;
@@ -96,6 +137,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		return callable;
 	}
 
+	@Deprecated
 	public static final Callable<ArrayList<Integer[]>> generateContactEdgeArray(File cMap_file) {
 		Callable<ArrayList<Integer[]>> callable = new Callable<ArrayList<Integer[]>>() {
 			@Override
@@ -117,6 +159,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		return callable;
 	}
 
+	@Deprecated
 	public static final Callable<ArrayList<Integer[]>> generateContactEdgeArray(String cMap_str, int minSize) {
 		Callable<ArrayList<Integer[]>> callable = new Callable<ArrayList<Integer[]>>() {
 
@@ -125,14 +168,14 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 				ArrayList<Integer[]> edges = new ArrayList<>(minSize);
 				BufferedReader lines = new BufferedReader(new StringReader(cMap_str));
 				String line;
-				Comparator<Integer[]> edge_cmp = generateContactMapEdgeComparator();
-				
+				Comparator<Integer[]> edge_cmp = generateMapEdgeComparator(INDEX_ORDER_CONTACT_MAP);
+
 				while ((line = lines.readLine()) != null) {
 					String[] ent = line.split(",");
-					Integer p1 = Integer.parseInt(ent[Population_Bridging.CONTACT_MAP_EDGE_P1]);
-					Integer p2 = Integer.parseInt(ent[Population_Bridging.CONTACT_MAP_EDGE_P2]);
-					int startTime = Population_Bridging.CONTACT_MAP_EDGE_START_TIME;
-					int duration = Population_Bridging.CONTACT_MAP_EDGE_DURATION;
+					Integer p1 = Integer.parseInt(ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
+					Integer p2 = Integer.parseInt(ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
+					int startTime = Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME;
+					int duration = Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION;
 
 					while (duration < ent.length) {
 						Integer[] e = new Integer[] { p1, p2, Integer.parseInt(ent[startTime]),
@@ -155,12 +198,19 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		return callable;
 	}
 
-	private static Comparator<Integer[]> generateContactMapEdgeComparator() {
-		Comparator<Integer[]> edge_cmp = new Comparator<Integer[]>() {
-			final int[] CMP_INDEX_ORDER = new int[] { Population_Bridging.CONTACT_MAP_EDGE_START_TIME,
-					Population_Bridging.CONTACT_MAP_EDGE_DURATION, Population_Bridging.CONTACT_MAP_EDGE_P1,
-					Population_Bridging.CONTACT_MAP_EDGE_P2, };
+	private final static int[] INDEX_ORDER_CONTACT_MAP = new int[] {
+			Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME,
+			Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION,
+			Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1, Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2, };
 
+	private final static int[] INDEX_ORDER_TRANSMISSION_MAP = new int[] {
+			Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_START_TIME,
+			Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_ACT_INVOLVED,
+			Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_INFECTIOUS,
+			Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_SUSCEPTIBLE };
+
+	private static Comparator<Integer[]> generateMapEdgeComparator(final int[] CMP_INDEX_ORDER) {
+		Comparator<Integer[]> edge_cmp = new Comparator<Integer[]>() {
 			@Override
 			public int compare(Integer[] o1, Integer[] o2) {
 				int cmp = 0;

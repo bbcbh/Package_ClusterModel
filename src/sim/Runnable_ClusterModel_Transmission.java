@@ -438,10 +438,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				int numCasual = 0;
 				Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
 				for (Integer[] e : edges) {
-					if (e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
-							&& e[Population_Bridging.CONTACT_MAP_EDGE_START_TIME] < firstSeedTime
+					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
+							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < firstSeedTime
 									+ NUM_TIME_STEPS_PER_SNAP
-							&& e[Population_Bridging.CONTACT_MAP_EDGE_DURATION] <= 1) {
+							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
 						numCasual++;
 					}
 				}
@@ -618,7 +618,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if (edges_list == null) {
 
 				try {
-					edges_list = generateContactEdgeArray(BASE_CONTACT_MAP).call();
+					edges_list = generateMapEdgeArray(BASE_CONTACT_MAP).call();
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
 					System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
@@ -635,10 +635,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			// Skip invalid edges
 			while (edges_array_pt < edges_array.length
-					&& edges_array[edges_array_pt][Population_Bridging.CONTACT_MAP_EDGE_START_TIME] < startTime) {
+					&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < startTime) {
 				Integer[] edge = edges_array[edges_array_pt];
-				int edge_start_time = edge[Population_Bridging.CONTACT_MAP_EDGE_START_TIME];
-				int expireAt = edge_start_time + edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION];
+				int edge_start_time = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
+				int expireAt = edge_start_time + edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
 
 				if (expireAt > startTime) {
 					toRemove = removeEdges.get(expireAt);
@@ -648,14 +648,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 					toRemove.add(edge);
 
-					for (int index : new int[] { Population_Bridging.CONTACT_MAP_EDGE_P1,
-							Population_Bridging.CONTACT_MAP_EDGE_P2 }) {
+					for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+							Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
 						if (!cMap.containsVertex(edge[index])) {
 							cMap.addVertex(edge[index]);
 						}
 					}
-					cMap.addEdge(edge[Population_Bridging.CONTACT_MAP_EDGE_P1],
-							edge[Population_Bridging.CONTACT_MAP_EDGE_P2], edge);
+					cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+							edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 				}
 
 				edges_array_pt++;
@@ -701,11 +701,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				// Add new edges and update removal schedule
 				while (edges_array_pt < edges_array.length
-						&& edges_array[edges_array_pt][Population_Bridging.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
+						&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
 
 					Integer[] edge = edges_array[edges_array_pt];
-					Integer expireAt = edge[Population_Bridging.CONTACT_MAP_EDGE_START_TIME]
-							+ Math.max(edge[Population_Bridging.CONTACT_MAP_EDGE_DURATION], 1);
+					Integer expireAt = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
+							+ Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1);
 
 					toRemove = removeEdges.get(expireAt);
 					if (toRemove == null) {
@@ -714,15 +714,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 					toRemove.add(edge);
 
-					for (int index : new int[] { Population_Bridging.CONTACT_MAP_EDGE_P1,
-							Population_Bridging.CONTACT_MAP_EDGE_P2 }) {
+					for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+							Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
 						if (!cMap.containsVertex(edge[index])) {
 							cMap.addVertex(edge[index]);
 						}
 					}
 
-					cMap.addEdge(edge[Population_Bridging.CONTACT_MAP_EDGE_P1],
-							edge[Population_Bridging.CONTACT_MAP_EDGE_P2], edge);
+					cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+							edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 
 					edges_array_pt++;
 				}
@@ -755,9 +755,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 							for (Integer[] e : edges) {
 
-								int partner = e[Population_Bridging.CONTACT_MAP_EDGE_P1].equals(infectious)
-										? e[Population_Bridging.CONTACT_MAP_EDGE_P2]
-										: e[Population_Bridging.CONTACT_MAP_EDGE_P1];
+								int partner = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1].equals(infectious)
+										? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
+										: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
 
 								int g_s = getGenderType(infectious);
 								int g_t = getGenderType(partner);
