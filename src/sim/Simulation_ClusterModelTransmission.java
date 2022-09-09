@@ -44,14 +44,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected long baseContactMapSeed = -1;
 	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
 	protected boolean exportSkipBackup = false;
-	
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
 	public static final String LAUNCH_ARGS_SKIP_BACKUP = "-export_skip_backup";
-	
+
 	public static final String FILENAME_INDEX_CASE_LIST = "Seed_IndexCases_%d_%d.txt";
 	public static final String FILENAME_PREVALENCE_SITE = "Prevalence_Site_%d_%d.csv";
 	public static final String FILENAME_CUMUL_INCIDENCE_SITE = "Incidence_Site_%d_%d.csv";
@@ -63,16 +62,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP = "All_transmap_%d_%d.csv";
 
 	public static final String FILENAME_INDEX_CASE_LIST_ZIP = FILENAME_INDEX_CASE_LIST.replaceFirst("_%d", "") + ".7z";
-	public static final String FILENAME_PREVALENCE_SITE_ZIP = FILENAME_PREVALENCE_SITE.replaceFirst("_%d", "") + ".7z";	
+	public static final String FILENAME_PREVALENCE_SITE_ZIP = FILENAME_PREVALENCE_SITE.replaceFirst("_%d", "") + ".7z";
 	public static final String FILENAME_PREVALENCE_PERSON_ZIP = FILENAME_PREVALENCE_PERSON.replaceFirst("_%d", "")
 			+ ".7z";
 	public static final String FILENAME_CUMUL_INCIDENCE_SITE_ZIP = FILENAME_CUMUL_INCIDENCE_SITE.replaceFirst("_%d", "")
 			+ ".7z";
 	public static final String FILENAME_CUMUL_INCIDENCE_PERSON_ZIP = FILENAME_CUMUL_INCIDENCE_PERSON.replaceFirst("_%d",
 			"") + ".7z";
-	
+
 	public static final String FILENAME_CUMUL_TREATMENT_PERSON_ZIP = FILENAME_CUMUL_TREATMENT_PERSON.replaceFirst("_%d",
-			"") + ".7z";	
+			"") + ".7z";
 	public static final String FILENAME_INFECTION_HISTORY_ZIP = FILENAME_INFECTION_HISTORY.replaceFirst("_%d", "")
 			+ ".7z";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP = FILENAME_CUMUL_ANTIBIOTIC_USAGE.replaceFirst("_%d",
@@ -334,12 +333,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		int inExec = 0;
 
 		Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[numSim];
-		File clusterExport7z = new File(baseDir,
+		File seedIndexExport7z = new File(baseDir,
 				String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST_ZIP, baseContactMapSeed));
 		ArrayList<Long> completedSeed = new ArrayList<>();
 
-		if (clusterExport7z.exists()) {
-			SevenZFile inputZip = new SevenZFile(clusterExport7z);
+		if (seedIndexExport7z.exists()) {
+			SevenZFile inputZip = new SevenZFile(seedIndexExport7z);
 			Pattern p_seedIndexList = Pattern.compile(FILENAME_INDEX_CASE_LIST
 					.replaceFirst("%d", Long.toString(baseContactMapSeed)).replaceFirst("%d", "(-{0,1}(?!0)\\\\d+)"));
 			SevenZArchiveEntry inputEnt;
@@ -366,13 +365,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			long simSeed = rngBase.nextLong();
 			boolean runSim = true;
 			if (Collections.binarySearch(completedSeed, simSeed) >= 0) {
-				System.out.println(String.format("Transmission map under seed #%d already generated.", simSeed));
+				System.out.println(String.format("Simulation under seed # %d already generated.", simSeed));
 				runSim = false;
 			}
 
 			if (runSim) {
-				runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
-						pop_composition, baseContactMap, num_time_steps_per_snap, num_snap);
+				runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed, pop_composition,
+						baseContactMap, num_time_steps_per_snap, num_snap);
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setEdges_list(edge_list);
 				runnable[s].setSimSetting(simSetting);
@@ -496,7 +495,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					String.format(FILENAME_CUMUL_INCIDENCE_PERSON_ZIP, baseContactMapSeed));
 
 		}
-		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {			
+		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 			zipSelectedOutputs(FILENAME_CUMUL_TREATMENT_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_CUMUL_TREATMENT_PERSON_ZIP, baseContactMapSeed));
 
@@ -568,10 +567,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					outputZip.closeArchiveEntry();
 				}
 				inputZip.close();
-				
-				if(exportSkipBackup) {
+
+				if (exportSkipBackup) {
 					preZip.delete();
-				}				
+				}
 			}
 
 			// Add new entry to zip
@@ -632,6 +631,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 				});
 
+				Arrays.sort(preGenClusterMap);
+
 				long tic = System.currentTimeMillis();
 
 				for (int i = 0; i < preGenClusterMap.length; i++) {
@@ -660,15 +661,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						sim.setBaseContactMapSeed(Long.parseLong(m.group(1)));
 					}
 					sim.setBaseContactMap(ContactMap.ContactMapFromFullString(cMap_str.toString()));
-										
-					if(args.length>1) {						
-						for(int ai =  1; ai < args.length; ai++) {
-							if(LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
+
+					if (args.length > 1) {
+						for (int ai = 1; ai < args.length; ai++) {
+							if (LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
 								sim.setExportSkipBackup(true);
 							}
-							
+
 						}
-						
+
 					}
 
 					sim.generateOneResultSet();
