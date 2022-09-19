@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.math3.analysis.MultivariateFunction;
@@ -103,6 +104,14 @@ public class Optimisation_Factory {
 			if (prop.containsKey(TARGET_PREVAL_STR)) {
 				target_infected = (int[][]) PropValUtils.propStrToObject(prop.getProperty(TARGET_PREVAL_STR),
 						int[][].class);
+				
+				// Fitting MSMO and MSMW only
+				for(int g : new int[] {Population_Bridging.GENDER_FEMALE, Population_Bridging.GENDER_HETRO_MALE}) {
+					for(int s = 0; s < target_infected[g].length; s++) {
+						target_infected[g][s] = -1;					}
+				}
+				
+				
 			}
 			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
 				seed = Long
@@ -147,12 +156,15 @@ public class Optimisation_Factory {
 				}
 			});
 
+			numThreads = Math.min(numThreads, preGenClusterFiles.length);
+			
 			final RandomGenerator RNG;
 			final int NUM_TIME_STEPS_PER_SNAP;
 			final int SNAP_FREQ;
 			final int[] POP_COMPOSITION;
 			final int NUM_THREADS;
 			final ContactMap[] BASE_CONTACT_MAP;
+			final long[] BASE_CONTACT_MAP_SEED;
 			final int[][] TARGET_INFECTED;
 			final int START_TIME;
 
@@ -165,17 +177,26 @@ public class Optimisation_Factory {
 			START_TIME = contact_map_start_time;
 
 			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
+			BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
+			Pattern pattern_baseCMap_filename =  Pattern.compile(REGEX_STR);
 
+			
 			long tic = System.currentTimeMillis();
 
 			if (NUM_THREADS > 1 || preGenClusterFiles.length > 1) {
+				
+				
 				ExecutorService exec = null;
 				@SuppressWarnings("unchecked")
 				Future<ContactMap>[] cm_futures = new Future[preGenClusterFiles.length];
 
 				exec = Executors.newFixedThreadPool(NUM_THREADS);
 				int mapPt = 0;
-				for (File cMap_file : preGenClusterFiles) {
+				for (File cMap_file : preGenClusterFiles) {					
+					Matcher m = pattern_baseCMap_filename.matcher(cMap_file.getName());
+					m.matches();
+					BASE_CONTACT_MAP_SEED[mapPt] = Long.parseLong(m.group(1));					
+					
 					Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
 							.generateContactMapCallable(cMap_file);
 					cm_futures[mapPt] = exec.submit(cm_read_callable);
@@ -209,6 +230,9 @@ public class Optimisation_Factory {
 					}
 				}
 				if (BASE_CONTACT_MAP[c] != null) {
+					Matcher m = pattern_baseCMap_filename.matcher(preGenClusterFiles[c].getName());
+					m.matches();
+					BASE_CONTACT_MAP_SEED[c] =  Long.parseLong(m.group(1));
 					cMap_count++;
 				}
 			}
@@ -228,9 +252,10 @@ public class Optimisation_Factory {
 					long tic = System.currentTimeMillis();
 					for (ContactMap c : BASE_CONTACT_MAP) {
 						if (c != null) {
-							runnable[rId] = new Runnable_ClusterModel_Transmission(0, sim_seed, POP_COMPOSITION, c,
+							runnable[rId] = new Runnable_ClusterModel_Transmission(BASE_CONTACT_MAP_SEED[rId], sim_seed, POP_COMPOSITION, c,
 									NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
 							runnable[rId].setBaseDir(baseDir);
+							runnable[rId].setSimSetting(1); // No output
 
 							double[][][] transmission_rate = (double[][][]) runnable[rId]
 									.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
@@ -369,7 +394,9 @@ public class Optimisation_Factory {
 									if (inf_count != null) {
 										val = inf_count[g][s];
 									}
-									sqSum += Math.pow(val - TARGET_INFECTED[g][s], 2);
+									if(TARGET_INFECTED[g][s] >= 0){
+										sqSum += Math.pow(val - TARGET_INFECTED[g][s], 2);
+									}
 									str_disp.append(',');
 									str_disp.append(val);
 								}
