@@ -417,7 +417,7 @@ public class Optimisation_Factory {
 						File opt_output_file = new File(baseDir, "Opt_res.txt");						
 						FileWriter fWri = new FileWriter(opt_output_file, true);
 						PrintWriter pWri = new PrintWriter(fWri);	
-						pWri.println(outMsg);
+						pWri.print(outMsg);
 						pWri.close();
 						fWri.close();
 						
