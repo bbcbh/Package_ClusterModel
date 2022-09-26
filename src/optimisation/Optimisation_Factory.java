@@ -387,7 +387,7 @@ public class Optimisation_Factory {
 
 						// Display trends
 						try {
-							File opt_output_file = new File(baseDir, String.format("Opt_trend_%d.txt", rId));
+							File opt_output_file = new File(baseDir, String.format("Opt_trend_%d.txt", r));
 							boolean newFile = !opt_output_file.exists();
 
 							FileWriter fWri = new FileWriter(opt_output_file, true);
@@ -409,9 +409,24 @@ public class Optimisation_Factory {
 						}
 
 					}
-
-					System.out.printf("P = [%s], V = %.2e, Time req = %.3fs\n", pt_str.toString(), sqSum,
+					
+					String outMsg = String.format("P = [%s], V = %.2e, Time req = %.3fs\n", pt_str.toString(), sqSum,
 							(System.currentTimeMillis() - tic) / 1000f);
+					
+					try {
+						File opt_output_file = new File(baseDir, "Opt_res.txt");						
+						FileWriter fWri = new FileWriter(opt_output_file, true);
+						PrintWriter pWri = new PrintWriter(fWri);					
+						pWri.println(pt_str);
+						pWri.println(outMsg);
+						pWri.close();
+						fWri.close();
+						
+					}catch(IOException ex) {
+						e.printStackTrace(System.err);
+					}
+					
+					System.out.println(outMsg);
 
 					return sqSum;
 
