@@ -423,7 +423,7 @@ public class Optimisation_Factory {
 						fWri.close();
 						
 					}catch(IOException ex) {
-						e.printStackTrace(System.err);
+						ex.printStackTrace(System.err);
 					}
 					
 					System.out.println(outMsg);
