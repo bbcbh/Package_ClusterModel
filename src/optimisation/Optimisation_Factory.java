@@ -104,14 +104,14 @@ public class Optimisation_Factory {
 			if (prop.containsKey(TARGET_PREVAL_STR)) {
 				target_infected = (int[][]) PropValUtils.propStrToObject(prop.getProperty(TARGET_PREVAL_STR),
 						int[][].class);
-				
+
 				// Fitting MSMO and MSMW only
-				for(int g : new int[] {Population_Bridging.GENDER_FEMALE, Population_Bridging.GENDER_HETRO_MALE}) {
-					for(int s = 0; s < target_infected[g].length; s++) {
-						target_infected[g][s] = -1;					}
+				for (int g : new int[] { Population_Bridging.GENDER_FEMALE, Population_Bridging.GENDER_HETRO_MALE }) {
+					for (int s = 0; s < target_infected[g].length; s++) {
+						target_infected[g][s] = -1;
+					}
 				}
-				
-				
+
 			}
 			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
 				seed = Long
@@ -157,7 +157,7 @@ public class Optimisation_Factory {
 			});
 
 			numThreads = Math.min(numThreads, preGenClusterFiles.length);
-			
+
 			final RandomGenerator RNG;
 			final int NUM_TIME_STEPS_PER_SNAP;
 			final int SNAP_FREQ;
@@ -178,25 +178,23 @@ public class Optimisation_Factory {
 
 			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
 			BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
-			Pattern pattern_baseCMap_filename =  Pattern.compile(REGEX_STR);
+			Pattern pattern_baseCMap_filename = Pattern.compile(REGEX_STR);
 
-			
 			long tic = System.currentTimeMillis();
 
 			if (NUM_THREADS > 1 || preGenClusterFiles.length > 1) {
-				
-				
+
 				ExecutorService exec = null;
 				@SuppressWarnings("unchecked")
 				Future<ContactMap>[] cm_futures = new Future[preGenClusterFiles.length];
 
 				exec = Executors.newFixedThreadPool(NUM_THREADS);
 				int mapPt = 0;
-				for (File cMap_file : preGenClusterFiles) {					
+				for (File cMap_file : preGenClusterFiles) {
 					Matcher m = pattern_baseCMap_filename.matcher(cMap_file.getName());
 					m.matches();
-					BASE_CONTACT_MAP_SEED[mapPt] = Long.parseLong(m.group(1));					
-					
+					BASE_CONTACT_MAP_SEED[mapPt] = Long.parseLong(m.group(1));
+
 					Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
 							.generateContactMapCallable(cMap_file);
 					cm_futures[mapPt] = exec.submit(cm_read_callable);
@@ -232,7 +230,7 @@ public class Optimisation_Factory {
 				if (BASE_CONTACT_MAP[c] != null) {
 					Matcher m = pattern_baseCMap_filename.matcher(preGenClusterFiles[c].getName());
 					m.matches();
-					BASE_CONTACT_MAP_SEED[c] =  Long.parseLong(m.group(1));
+					BASE_CONTACT_MAP_SEED[c] = Long.parseLong(m.group(1));
 					cMap_count++;
 				}
 			}
@@ -252,8 +250,8 @@ public class Optimisation_Factory {
 					long tic = System.currentTimeMillis();
 					for (ContactMap c : BASE_CONTACT_MAP) {
 						if (c != null) {
-							runnable[rId] = new Runnable_ClusterModel_Transmission(BASE_CONTACT_MAP_SEED[rId], sim_seed, POP_COMPOSITION, c,
-									NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
+							runnable[rId] = new Runnable_ClusterModel_Transmission(BASE_CONTACT_MAP_SEED[rId], sim_seed,
+									POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
 							runnable[rId].setBaseDir(baseDir);
 							runnable[rId].setSimSetting(1); // No output
 
@@ -263,78 +261,24 @@ public class Optimisation_Factory {
 							double[] sym_test_rate = (double[]) runnable[rId]
 									.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 
+							double[][] inf_dur = (double[][]) runnable[rId]
+									.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
+
 							switch (point.length) {
-
-							case 4:
-								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-
-								break;
-							case 5:
-								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, SYM_TEST_PERIOD
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-
-								sym_test_rate[0] = point[4];
-								// Adjust SD based on ratio from mean
-								sym_test_rate[1] = (point[4] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
-								break;
-							case 7:
-								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, TRANS_R2O, TRANS_O2R,
-								// SYM_TEST_PERIOD
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
-
-								sym_test_rate[0] = point[6];
-								// Adjust SD based on ratio from mean
-								sym_test_rate[1] = (point[6] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
-
-								break;
-							case 8:
-								// TRANS_P2R, TRANS_R2P, TRANS_P2O, TRANS_O2P, TRANS_R2O, TRANS_O2R, TRANS_O2O,
-								// SYM_TEST_PERIOD
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
-
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
-
-								sym_test_rate[0] = point[7];
-								// Adjust SD based on ratio from mean
-								sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
-
-								break;
 							case 10:
+							case 14:
+								double org_mean;
 								// TRANS_P2V, TRANS_V2P
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][1] = 0;
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][1] = 0;	
-								// TRANS_P2R, TRANS_R2P 
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][1] = 0;
+								// TRANS_P2R, TRANS_R2P
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
 								// TRANS_P2O, TRANS_O2P
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[5];								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[5];
 								// TRANS_R2O, TRANS_O2R
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
@@ -342,12 +286,25 @@ public class Optimisation_Factory {
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[7];
 								// TRANS_O2O
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[8];								
-								// SYM_TEST_PERIOD																											
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[8];
+								// SYM_TEST_PERIOD
+								org_mean = sym_test_rate[0];
 								sym_test_rate[0] = point[9];
 								// Adjust SD based on ratio from mean
-								sym_test_rate[1] = (point[9] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);																
-								break;								
+								sym_test_rate[1] = (point[9] / org_mean) * sym_test_rate[1];
+
+								if (point.length >= 14) {
+									// Duration by site
+									for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+										org_mean = inf_dur[s][0];
+										inf_dur[s][0] = point[s + 10];
+										// Adjust SD based on ratio from mean
+										inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
+									}
+								}
+
+								break;
+
 							default:
 								System.err.printf("Optimisation: Parameter intrepretation %s not defined. Exiting...\n",
 										Arrays.toString(point));
@@ -418,7 +375,7 @@ public class Optimisation_Factory {
 									if (inf_count != null) {
 										val = inf_count[g][s];
 									}
-									if(TARGET_INFECTED[g][s] >= 0){
+									if (TARGET_INFECTED[g][s] >= 0) {
 										sqSum += Math.pow(val - TARGET_INFECTED[g][s], 2);
 									}
 									str_disp.append(',');
