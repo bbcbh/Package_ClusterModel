@@ -5,11 +5,13 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Set;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
+import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
@@ -35,7 +37,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int SITE_RECTUM = SITE_PENIS + 1;
 	public static final int SITE_OROPHARYNX = SITE_RECTUM + 1;
 	public static final int LENGTH_SITE = SITE_OROPHARYNX + 1;
-	
+
 	protected static final int TEST_OUTCOME_TREATMENT_APPLIED = 0;
 	protected static final int TEST_OUTCOME_TRUE_INFECTION = TEST_OUTCOME_TREATMENT_APPLIED + 1;
 
@@ -92,6 +94,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private float[] DEFAULT_SYM_RATE_BY_SITE_MALE = new float[] { Float.NaN, 1.0f, 0.12f, 0 };
 	private float[] DEFAULT_SYM_RATE_BY_SITE_FEMALE = new float[] { 0.4f, Float.NaN, 0.12f, 0 };
 
+	// DX and viability test
 	// float[dx_sensitivity, dx_specificity][gender][site]
 	private float[][][] DEFAULT_TEST_ACCURACY = new float[][][] {
 			// Dx sensitivity - i.e. +ive identified correctly
@@ -103,8 +106,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	};
 
-	protected static int SENSITIVITY_INDEX = 0;
-	protected static int SPECIFICITY_INDEX = SENSITIVITY_INDEX + 1;
+	public final static int DX_SENSITIVITY_INDEX = 0;
+	public final static int DX_SPECIFICITY_INDEX = DX_SENSITIVITY_INDEX + 1;
 
 	// float[gender][probability, reduction_duration]
 	private float[][] DEFAULT_TREATMENT_INDUCED_NON_VIABILITY = new float[][] { new float[] { 0, 0 },
@@ -114,9 +117,35 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private int[][] DEFAULT_ANTIBIOTIC_DURATION = new int[][] { new int[] { 7, 7 }, new int[] { 7, 7 },
 			new int[] { 7, 7 }, new int[] { 7, 7 }, };
 
-	protected static int TREATMENT_INDUCED_NON_VIABILITY_PROB = 0;
-	protected static int TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET = TREATMENT_INDUCED_NON_VIABILITY_PROB
+	public static final int TREATMENT_INDUCED_NON_VIABILITY_PROB = 0;
+	public static final int TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET = TREATMENT_INDUCED_NON_VIABILITY_PROB
 			+ 1;
+
+	// float[gender][site][effect]
+	private float[][][] DEFAULT_VACCINE_EFFECTS = new float[][][] {
+			new float[][] { new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 },
+					new float[] { 0, 0, 0, 0 }, },
+			new float[][] { new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 },
+					new float[] { 0, 0, 0, 0 }, },
+			new float[][] { new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 },
+					new float[] { 0, 0, 0, 0 }, },
+			new float[][] { new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 }, new float[] { 0, 0, 0, 0 },
+					new float[] { 0, 0, 0, 0 }, },
+
+	};
+
+	public static final int VACCINE_EFFECT_MEAN_VAC_DURATION = 0;
+	public static final int VACCINE_EFFECT_INF_DURATION_ADJUST = VACCINE_EFFECT_MEAN_VAC_DURATION + 1;
+	public static final int VACCINE_EFFECT_PROTECT_AGAINST_INFECTION = VACCINE_EFFECT_INF_DURATION_ADJUST + 1;
+	public static final int VACCINE_EFFECT_REDUCTION_TO_TRANSMISSION = VACCINE_EFFECT_PROTECT_AGAINST_INFECTION + 1;
+	public static final int VACCINE_EFFECT_REDUCTION_TO_SYMPTOM = VACCINE_EFFECT_REDUCTION_TO_TRANSMISSION + 1;
+
+	private float[][] DEFAULT_VACCINE_SETTING = new float[][] { new float[] { 0, 0, 0 }, new float[] { 0, 0, 0 },
+			new float[] { 0, 0, 0 }, new float[] { 0, 0, 0 }, };
+
+	public static final int VACCINE_SETTING_BOOSTER_PERIOD = 0;
+	public static final int VACCINE_SETTING_BOOSTER_LIMIT = VACCINE_SETTING_BOOSTER_PERIOD + 1;
+	public static final int VACCINE_SETTING_RATE_PER_TEST = VACCINE_SETTING_BOOSTER_LIMIT + 1;
 
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ = 0;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE = RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ + 1;
@@ -138,8 +167,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION = RUNNABLE_FIELD_TRANSMISSION_TREATMENT_INDUCED_NON_VIABILITY
 			+ 1;
-	public static final int LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD = RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION
+	public static final int RUNNABLE_FIELD_TRANSMISSION_VACCINE_EFFECT = RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION
 			+ 1;
+	public static final int RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING = RUNNABLE_FIELD_TRANSMISSION_VACCINE_EFFECT
+			+ 1;
+	public static final int LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD = RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING + 1;
 
 	public Object[] runnable_fields = {
 			// RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ
@@ -209,7 +241,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// RUNNABLE_FIELD_TREATMENT_INDUCED_NON_VIABILITY
 			DEFAULT_TREATMENT_INDUCED_NON_VIABILITY,
 			// RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION
-			DEFAULT_ANTIBIOTIC_DURATION, };
+			DEFAULT_ANTIBIOTIC_DURATION,
+			// RUNNABLE_FIELD_TRANSMISSION_VACCINE_EFFECT
+			DEFAULT_VACCINE_EFFECTS,
+			// RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING
+			DEFAULT_VACCINE_SETTING, };
 
 	// FIELD_POP_COMPOSITION
 	// int[] {NUM_FEMALE, NUM_MALE, NUM_MSMO, NUM_MSMW}
@@ -256,6 +292,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// Key = date, V = pid (or -pid if overtreatment)
 	protected transient HashMap<Integer, ArrayList<Integer>> schedule_antibiotic_clearance;
 
+	// For vaccine tracking
+	protected transient ArrayList<Integer> currently_vaccinated;
+	// Key = pid, V = int{expiry_at_site_0, ... }>
+	protected transient HashMap<Integer, int[]> vaccine_expiry_by_indivdual;
+	// Key = day, V = pid of those who receive booster shot
+	protected transient HashMap<Integer, ArrayList<Integer>> schedule_vaccination;
+
+	protected transient RealDistribution[][] vacc_dur = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
+
 	// HashMap<Integer, int[][]> with K = time, V= int[gender][site]
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_INFECTIOUS_COUNT";
 	// HashMap<Integer, int[][]> with K = time, V= int[gender][site]
@@ -265,9 +310,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON = "SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON";
 	// HashMap<Integer, int[]> with K = time, V= int[gender]
 	public static final String SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON = "SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON";
-	// HashMap<Integer, int[]> with K = time, V= int[gender_apply_treatment, gender_true_infection]
+	// HashMap<Integer, int[]> with K = time, V= int[gender_apply_treatment,
+	// gender_true_infection]
 	public static final String SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON = "SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON";
-	
 
 	// HashMap<Integer, int[][]>
 	// with K = time, V= int[gender]{proper,over treatment} measured in person-day
@@ -382,6 +427,23 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		// Runnable properties switch
 		propSwitch_map = new HashMap<>();
+
+		// Vaccines
+		currently_vaccinated = new ArrayList<>();
+		vaccine_expiry_by_indivdual = new HashMap<>();
+
+		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+			for (int s = 0; s < LENGTH_SITE; s++) {
+				float[] vacc_setting = ((float[][][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_EFFECT])[g][s];
+				if (vacc_setting[VACCINE_EFFECT_MEAN_VAC_DURATION] > 0) {
+					vacc_dur[g][s] = new ExponentialDistribution(vacc_setting[VACCINE_EFFECT_MEAN_VAC_DURATION]);
+				} else {
+					vacc_dur[g][s] = null;
+				}
+			}
+		}
+		schedule_vaccination = new HashMap<>();
+
 	}
 
 	public HashMap<String, Object> getSim_output() {
@@ -670,7 +732,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			boolean hasInfected = hasInfectedInPop();
 
 			ArrayList<Integer> infected_today = new ArrayList<>();
-			
+
 			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];
 			int[][] cumul_antibiotic_use = new int[Population_Bridging.LENGTH_GENDER][2];
@@ -851,16 +913,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						int testOutcome = testPerson(currentTime, tId);
 						if ((simSetting
 								& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
-							int gI = getGenderType(Math.abs(tId));							
-							if((testOutcome | 1 << TEST_OUTCOME_TREATMENT_APPLIED) != 0) {
+							int gI = getGenderType(Math.abs(tId));
+							if ((testOutcome | 1 << TEST_OUTCOME_TREATMENT_APPLIED) != 0) {
 								cumul_treatment_by_person[gI]++;
 							}
-							if((testOutcome | 1 << TEST_OUTCOME_TRUE_INFECTION) != 0) {
-								cumul_treatment_by_person[Population_Bridging.LENGTH_GENDER+ gI]++;
-							}														
+							if ((testOutcome | 1 << TEST_OUTCOME_TRUE_INFECTION) != 0) {
+								cumul_treatment_by_person[Population_Bridging.LENGTH_GENDER + gI]++;
+							}
 						}
-					
-						
+
 					}
 				}
 
@@ -882,6 +943,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						cumul_antibiotic_use[getGenderType(Math.abs(antibiotic_user))][usage_key]++;
 					}
 
+				}
+
+				// Vaccine or vaccine booster
+				ArrayList<Integer> vaccineToday = schedule_vaccination.remove(currentTime);
+				if (vaccineToday != null) {
+					for (Integer vId : vaccineToday) {
+						vaccine_person(vId, currentTime);
+					}
 				}
 
 				// Storing snapshot infected in sim_output
@@ -909,7 +978,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					int[][] infectious_count = new int[cumulative_pop_composition.length][LENGTH_SITE];
 					int[] infectious_count_by_person = new int[cumulative_pop_composition.length];
-					
+
 					ArrayList<Integer> infected_person = new ArrayList<>();
 					for (int site = 0; site < LENGTH_SITE; site++) {
 						for (Integer infected_id : currently_infectious[site]) {
@@ -950,10 +1019,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					cumul_incidence_map.put(currentTime, incidence_snap);
 					cumul_incidence_map_by_person.put(currentTime,
 							Arrays.copyOf(cumul_incidence_by_person, cumul_incidence_by_person.length));
-					
+
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
-						
+
 						@SuppressWarnings("unchecked")
 						HashMap<Integer, int[]> cumul_treatment_map_by_person = (HashMap<Integer, int[]>) sim_output
 								.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
@@ -961,10 +1030,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							cumul_treatment_map_by_person = new HashMap<>();
 							sim_output.put(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON, cumul_treatment_map_by_person);
 						}
-						cumul_treatment_map_by_person.put(currentTime, Arrays.copyOf(cumul_treatment_by_person, cumul_treatment_by_person.length));
-						
+						cumul_treatment_map_by_person.put(currentTime,
+								Arrays.copyOf(cumul_treatment_by_person, cumul_treatment_by_person.length));
+
 					}
-					
 
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
@@ -1010,8 +1079,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	protected int testPerson(int currentTime, Integer testing_pid) {
-		Integer test_pid = Math.abs(testing_pid);
+	protected int testPerson(int currentTime, Integer testing_pid_signed) {
+		Integer test_pid = Math.abs(testing_pid_signed);
 
 		int gender = getGenderType(test_pid);
 
@@ -1029,16 +1098,16 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			infectious_key_index[site] = Collections.binarySearch(currently_infectious[site], test_pid);
 			if (infectious_key_index[site] >= 0) {
 				true_infectious |= true;
-				applyTreatment |= test_accuracy[SENSITIVITY_INDEX][gender][site] >= 1;
+				applyTreatment |= test_accuracy[DX_SENSITIVITY_INDEX][gender][site] >= 1;
 				if (!applyTreatment) {
-					applyTreatment |= RNG.nextFloat() < test_accuracy[SENSITIVITY_INDEX][gender][site];
+					applyTreatment |= RNG.nextFloat() < test_accuracy[DX_SENSITIVITY_INDEX][gender][site];
 				}
 			} else if (!applyTreatment
 					&& has_non_viable_bacteria_until.getOrDefault(test_pid, currentTime) > currentTime) {
 				// Overtreatment due to non-viable
-				if (test_accuracy[SPECIFICITY_INDEX][gender][site] < 1) {
+				if (test_accuracy[DX_SPECIFICITY_INDEX][gender][site] < 1) {
 					float pOverTreatment = RNG.nextFloat();
-					applyTreatment |= pOverTreatment >= test_accuracy[SPECIFICITY_INDEX][gender][site];
+					applyTreatment |= pOverTreatment >= test_accuracy[DX_SPECIFICITY_INDEX][gender][site];
 				}
 
 			}
@@ -1123,23 +1192,83 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
-		if (testing_pid < 0) {
+		if (testing_pid_signed < 0) {
 			// Schedule next test
 			scheduleNextTest(test_pid, currentTime);
 		}
-		
-				
+
 		int res = 0;
-		
-		if(applyTreatment) {
-			res |= 1 << TEST_OUTCOME_TREATMENT_APPLIED;			
+
+		if (applyTreatment) {
+			res |= 1 << TEST_OUTCOME_TREATMENT_APPLIED;
 		}
-		if(true_infectious) {
+		if (true_infectious) {
 			res |= 1 << TEST_OUTCOME_TRUE_INFECTION;
 		}
-		
-		
+
+		// Vaccination by test
+		float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
+		float vacc_coverage_by_test = vacc_setting[VACCINE_SETTING_RATE_PER_TEST];
+
+		if (vacc_coverage_by_test > 0 && RNG.nextFloat() < vacc_coverage_by_test) {
+			vaccine_person(test_pid, currentTime);
+		}
+
 		return res;
+	}
+
+	protected void vaccine_person(Integer vaccinate_pid, int currentTime) {
+		int key = Collections.binarySearch(currently_vaccinated, vaccinate_pid);
+		int gender = getGenderType(vaccinate_pid);
+		float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
+
+		if (key < 0) {
+			// Schedule booster on first run			
+			currently_vaccinated.add(~key, vaccinate_pid);
+			if (vacc_setting[VACCINE_SETTING_BOOSTER_PERIOD] > 0) {
+				if (vacc_setting[VACCINE_SETTING_BOOSTER_LIMIT] > 0) {
+					for (int b = 0; b < vacc_setting[VACCINE_SETTING_BOOSTER_LIMIT]; b++) {
+						int booster_date = Math.round(currentTime + (b+1) * vacc_setting[VACCINE_SETTING_BOOSTER_PERIOD]);
+						ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
+						if (booster_candidate == null) {
+							booster_candidate = new ArrayList<>();
+							schedule_vaccination.put(booster_date, booster_candidate);
+						}
+						int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
+						if (b_key < 0) {
+							booster_candidate.add(~b_key, vaccinate_pid);
+						}
+					}
+				}
+			}
+		}
+		
+		if (vacc_setting[VACCINE_SETTING_BOOSTER_LIMIT] < 0) { // Inf. booster
+			int booster_date = Math.round(currentTime +  vacc_setting[VACCINE_SETTING_BOOSTER_PERIOD]);
+			ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
+			if (booster_candidate == null) {
+				booster_candidate = new ArrayList<>();
+				schedule_vaccination.put(booster_date, booster_candidate);
+			}
+			int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
+			if (b_key < 0) {
+				booster_candidate.add(~b_key, vaccinate_pid);
+			}
+		}
+
+		int[] vacc_expiry = vaccine_expiry_by_indivdual.get(vaccinate_pid);
+		if (vacc_expiry == null) {
+			vacc_expiry = new int[LENGTH_SITE];
+			vaccine_expiry_by_indivdual.put(vaccinate_pid, vacc_expiry);
+		}
+		for (int site = 0; site < LENGTH_SITE; site++) {
+			if (vacc_dur[gender][site] != null) {
+				vacc_expiry[site] = (int) Math.round(currentTime + vacc_dur[gender][site].sample());
+			} else {
+				vacc_expiry[site] = Integer.MAX_VALUE; // Inf duration
+			}
+
+		}
 	}
 
 	protected boolean hasInfectedInPop() {
@@ -1171,12 +1300,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
 				str = printCountMap(count_map);
-				pWri = new PrintWriter(new File(baseDir,
-						String.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMap_seed, sim_seed)));
+				pWri = new PrintWriter(new File(baseDir, String
+						.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
 
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);				
+				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
 				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER);
 				pWri = new PrintWriter(new File(baseDir, String
 						.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON, cMap_seed, sim_seed)));
@@ -1187,28 +1316,27 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
 				str = printCountMap(count_map);
-				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMap_seed, sim_seed)));
+				pWri = new PrintWriter(new File(baseDir, String.format(
+						Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
-				
+
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
 				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER);
-				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
+				pWri = new PrintWriter(new File(baseDir, String.format(
+						Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
 			}
-			if ((simSetting
-					& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {				
-				
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER *2);
-				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMap_seed, sim_seed)));
+				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2);
+				pWri = new PrintWriter(new File(baseDir, String.format(
+						Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
-				
+
 			}
 
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
