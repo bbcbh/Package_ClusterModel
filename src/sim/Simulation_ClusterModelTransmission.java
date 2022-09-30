@@ -60,6 +60,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_INFECTION_HISTORY = "InfectHist_%d_%d.csv";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP = "All_transmap_%d_%d.csv";
+	public static final String FILENAME_VACCINE_COVERAGE = "Vaccine_coverage_%d_%d.csv";
 
 	public static final String FILENAME_INDEX_CASE_LIST_ZIP = FILENAME_INDEX_CASE_LIST.replaceFirst("_%d", "") + ".7z";
 	public static final String FILENAME_PREVALENCE_SITE_ZIP = FILENAME_PREVALENCE_SITE.replaceFirst("_%d", "") + ".7z";
@@ -78,7 +79,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			"") + ".7z";
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP_ZIP = FILENAME_ALL_TRANSMISSION_CMAP.replaceFirst("_%d",
 			"") + ".7z";
-
+	public static final String FILENAME_VACCINE_COVERAGE_ZIP = FILENAME_VACCINE_COVERAGE.replaceFirst("_%d",
+			"") + ".7z";
+	
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
 	public static final String POP_PROP_SWITCH_PREFIX = "SWITCH_%d_";
@@ -96,6 +99,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_GEN_TREATMENT_FILE + 1;
 	public static final int SIM_SETTING_KEY_TRACK_INFECTION_HISTORY = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
 	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
+	public static final int SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE  = SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE + 1;
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS = {
 			// BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION
@@ -514,6 +518,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
 			zipSelectedOutputs(FILENAME_ALL_TRANSMISSION_CMAP.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_ALL_TRANSMISSION_CMAP_ZIP, baseContactMapSeed));
+		}
+		
+		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE) != 0) {
+			zipSelectedOutputs(FILENAME_VACCINE_COVERAGE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_VACCINE_COVERAGE_ZIP, baseContactMapSeed));
 		}
 	}
 
