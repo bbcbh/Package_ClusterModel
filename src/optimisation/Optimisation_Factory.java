@@ -265,6 +265,28 @@ public class Optimisation_Factory {
 									.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
 
 							switch (point.length) {
+							case 8:
+								// TRANS_P2R, TRANS_R2P								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+								// TRANS_P2O, TRANS_O2P								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+								// TRANS_R2O, TRANS_O2R								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
+								// TRANS_O2O								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
+								
+								// SYM_TEST_PERIOD
+								sym_test_rate[0] = point[7];
+								// Adjust SD based on ratio from mean
+								sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
+
+								break;
 							case 10:
 							case 14:
 								double org_mean;
@@ -409,22 +431,22 @@ public class Optimisation_Factory {
 						}
 
 					}
-					
+
 					String outMsg = String.format("P = [%s], V = %.2e, Time req = %.3fs\n", pt_str.toString(), sqSum,
 							(System.currentTimeMillis() - tic) / 1000f);
-					
+
 					try {
-						File opt_output_file = new File(baseDir, "Opt_res.txt");						
+						File opt_output_file = new File(baseDir, "Opt_res.txt");
 						FileWriter fWri = new FileWriter(opt_output_file, true);
-						PrintWriter pWri = new PrintWriter(fWri);	
+						PrintWriter pWri = new PrintWriter(fWri);
 						pWri.print(outMsg);
 						pWri.close();
 						fWri.close();
-						
-					}catch(IOException ex) {
+
+					} catch (IOException ex) {
 						ex.printStackTrace(System.err);
 					}
-					
+
 					System.out.println(outMsg);
 
 					return sqSum;

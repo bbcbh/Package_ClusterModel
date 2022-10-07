@@ -57,7 +57,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private double[] DEFAULT_INFECTIOUS_PERIOD_PENIS = new double[] { 15 * 7, 5 * 7 };
 	// From Qibin's paper
 	// 10.1371/journal.pcbi.1009385
-	private double[] DEFAULT_INFECTIOUS_PERIOD_RECTUM = new double[] { 307.2, 5.54 };
+	private double[] DEFAULT_INFECTIOUS_PERIOD_RECTUM = new double[] { 307.2, 6.08 };
 	private double[] DEFAULT_INFECTIOUS_PERIOD_OROPHARYNX = new double[] { 80.4, 5.67 };
 
 	// Incubation
@@ -108,17 +108,20 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public final static int DX_SENSITIVITY_INDEX = 0;
 	public final static int DX_SPECIFICITY_INDEX = DX_SENSITIVITY_INDEX + 1;
 
-	// float[gender][probability, reduction_duration]
-	private float[][] DEFAULT_TREATMENT_INDUCED_NON_VIABILITY = new float[][] { new float[] { 0, 0 },
-			new float[] { 0, 0 }, new float[] { 0, 0 }, new float[] { 0, 0 }, };
+	// float[gender][site][setting]
+	private float[][][] DEFAULT_NON_VIABLE_INFECTION_SETTING = new float[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][LENGTH_NON_VIABILITY_SETTING];
 
-	// float[gender][min_day, range]
-	private int[][] DEFAULT_ANTIBIOTIC_DURATION = new int[][] { new int[] { 7, 7 }, new int[] { 7, 7 },
-			new int[] { 7, 7 }, new int[] { 7, 7 }, };
-
-	public static final int TREATMENT_INDUCED_NON_VIABILITY_PROB = 0;
-	public static final int TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET = TREATMENT_INDUCED_NON_VIABILITY_PROB
+	public static final int NON_VIABILITY_CONTACT_INDUCED_PROB = 0;
+	public static final int NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN = NON_VIABILITY_CONTACT_INDUCED_PROB + 1;
+	public static final int NON_VIABILITY_CONTACT_INDUCED_DURATION_SD = NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN + 1;
+	public static final int NON_VIABILITY_TREATMENT_INDUCED_PROB = NON_VIABILITY_CONTACT_INDUCED_DURATION_SD + 1;
+	public static final int NON_VIABILITY_TREATMENT_INDUCED_INFECTION_REDUCTION_ADJ = NON_VIABILITY_TREATMENT_INDUCED_PROB
 			+ 1;
+	public static final int LENGTH_NON_VIABILITY_SETTING = NON_VIABILITY_TREATMENT_INDUCED_INFECTION_REDUCTION_ADJ + 1;
+
+	// double[gender][mean, sd]
+	private double[][] DEFAULT_ANTIBIOTIC_DURATION = new double[][] { new double[] { 7, 7 }, new double[] { 7, 7 },
+			new double[] { 7, 7 }, new double[] { 7, 7 }, };
 
 	// float[gender][site][effect]
 	private float[][][] DEFAULT_VACCINE_PROPERTIES = new float[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][LENGTH_VACCINE_PROPERTIES];
@@ -153,9 +156,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
 			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_TREATMENT_INDUCED_NON_VIABILITY = RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY
+	public static final int RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING = RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY
 			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION = RUNNABLE_FIELD_TRANSMISSION_TREATMENT_INDUCED_NON_VIABILITY
+	public static final int RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION = RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_VACCINE_PROPERTIES = RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION
 			+ 1;
@@ -229,7 +232,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// RUNNABLE_FIELD_TRANSMISSION_TEST_ACCURACY
 			DEFAULT_TEST_ACCURACY,
 			// RUNNABLE_FIELD_TREATMENT_INDUCED_NON_VIABILITY
-			DEFAULT_TREATMENT_INDUCED_NON_VIABILITY,
+			DEFAULT_NON_VIABLE_INFECTION_SETTING,
 			// RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION
 			DEFAULT_ANTIBIOTIC_DURATION,
 			// RUNNABLE_FIELD_TRANSMISSION_VACCINE_EFFECT
@@ -277,6 +280,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<Integer, ArrayList<Integer>[]> infection_history;
 
 	// For antibiotic tracking
+	protected transient RealDistribution[][] non_viable_inf_by_contact_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
+	protected transient RealDistribution[] antibotic_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER];
 	// if pid < 0, it is over-treatment
 	protected transient ArrayList<Integer> currently_has_antibiotic;
 	// Key = date, V = pid (or -pid if overtreatment)
@@ -371,12 +376,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		for (int sf = 0; sf < tranmissionMatrix.length; sf++) {
 			for (int st = 0; st < tranmissionMatrix[sf].length; st++) {
 				double[] param = tranParm[sf][st];
-				if (param != null) {
-					if (param[1] == 0) {
-						tranmissionMatrix[sf][st] = generateNonDistribution(param);
-					} else {
-						tranmissionMatrix[sf][st] = generateBetaDistribution(param);
-					}
+				if (param != null) {					
+						tranmissionMatrix[sf][st] = generateBetaDistribution(param);					
 				}
 			}
 		}
@@ -418,6 +419,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		currently_has_antibiotic = new ArrayList<>();
 		schedule_antibiotic_clearance = new HashMap<>();
 		has_non_viable_bacteria_until = new HashMap<>();
+
+		float[][][] non_viable_infection_setting = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING]);
+		double[][] antibotic_dur = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION];
+
+		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+			for (int s = 0; s < LENGTH_SITE; s++) {
+				non_viable_inf_by_contact_duration[g][s] = generateGammaDistribution(
+						new double[] { non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN],
+								non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_SD] });
+			}
+			
+			antibotic_duration[g] = generateGammaDistribution(antibotic_dur[g]);
+		}
 
 		// Runnable properties switch
 		propSwitch_map = new HashMap<>();
@@ -805,9 +819,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							// Reduction of infection duration due to vaccine
 							int[] vac_expiry = vaccine_expiry_by_indivdual.get(toInfectiousId);
 							if (vac_expiry != null) {
-								if (currentTime < vac_expiry[site_src]) {																											
-									recoveredAt = currentTime + Math.round((recoveredAt -currentTime) * vaccine_effect[getGenderType(
-											toInfectiousId)][site_src][VACCINE_PROPERTIES_INF_DURATION_ADJUST]);
+								if (currentTime < vac_expiry[site_src]) {
+									recoveredAt = currentTime
+											+ Math.round((recoveredAt - currentTime) * vaccine_effect[getGenderType(
+													toInfectiousId)][site_src][VACCINE_PROPERTIES_INF_DURATION_ADJUST]);
 								}
 							}
 
@@ -917,7 +932,28 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 												}
 
 												if (transmitted) {
-													transmitted &= RNG.nextFloat() < (actProb * transProb);
+													transmitted &= RNG.nextFloat() < actProb;
+													if (transmitted) {
+														transmitted &= RNG.nextFloat() < transProb;
+													} else {
+														if (has_non_viable_bacteria_until.getOrDefault(partner,
+																currentTime) > currentTime) {
+															// Acted but no transmission
+															float[] non_viable_infection_setting_by_gender_site = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING])[g_t][site_target];
+
+															if (non_viable_infection_setting_by_gender_site[NON_VIABILITY_CONTACT_INDUCED_PROB] > 0) {
+																if (RNG.nextFloat() < non_viable_infection_setting_by_gender_site[NON_VIABILITY_CONTACT_INDUCED_PROB]) {
+																	has_non_viable_bacteria_until.put(partner,
+																			(int) Math.round(currentTime
+																					+ non_viable_inf_by_contact_duration[g_t][site_target]
+																							.sample()));
+
+																}
+															}
+
+														}
+
+													}
 												}
 											}
 
@@ -1180,10 +1216,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				int key;
 				key = Collections.binarySearch(currently_has_antibiotic, true_infectious ? test_pid : -test_pid);
 				if (key < 0) {
-					currently_has_antibiotic.add(~key, true_infectious ? test_pid : -test_pid);
-					int[] antibiotic_dur = ((int[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION])[gender];
-					int antibiotic_flush_at = currentTime + antibiotic_dur[0] + RNG.nextInt(antibiotic_dur[1]);
-
+					currently_has_antibiotic.add(~key, true_infectious ? test_pid : -test_pid);			
+					int antibiotic_flush_at = (int) Math.round(currentTime + antibotic_duration[gender].sample());
 					ArrayList<Integer> sch_antibiotic_flush = schedule_antibiotic_clearance.get(antibiotic_flush_at);
 					if (sch_antibiotic_flush == null) {
 						sch_antibiotic_flush = new ArrayList<>();
@@ -1198,8 +1232,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// infection_schMap = {incubation by site_0, ... recovery_by_site_0 ...}
 			Integer[] infection_schMap = mapping_infection_schedule.get(test_pid);
 
-			// float[gender][probability, reduction_duration]
-			float[] treatment_induced_non_viability = ((float[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TREATMENT_INDUCED_NON_VIABILITY])[gender];
+			// float[gender][site][setting]
+			float[][] non_viable_infection_setting_by_gender = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING])[gender];
 
 			// Assemble all non-viable bacteria were clear at treatment first
 			if (has_non_viable_bacteria_until.containsKey(test_pid)) {
@@ -1211,15 +1245,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					// Remove from infectious
 					currently_infectious[site].remove(infectious_key_index[site]);
 					// Treatment_induce non-viability
-					if (treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_PROB] > 0) {
-						if (RNG.nextFloat() < treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_PROB]) {
+					if (non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB] > 0) {
+						if (RNG.nextFloat() < non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB]) {
 							Integer recoverDate_org = infection_schMap[LENGTH_SITE + site];
 							Integer has_non_viable = has_non_viable_bacteria_until.getOrDefault(test_pid, currentTime);
 
 							int non_viable_dur = Math.max(has_non_viable, currentTime + Math.round((recoverDate_org
 									- currentTime)
-									* treatment_induced_non_viability[TREATMENT_INDUCED_NON_VIABILITY_REDUCTION_SITE_OFFSET
-											+ site]));
+									* non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_INFECTION_REDUCTION_ADJ]));
 
 							has_non_viable_bacteria_until.put(test_pid, non_viable_dur);
 
@@ -1274,7 +1307,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		int key = Collections.binarySearch(currently_vaccinated, test_pid);
 
 		// Only vaccinate possible if they have not done so before
-		if (key < 0) { 
+		if (key < 0) {
 			if (vacc_coverage_by_test > 0 && RNG.nextFloat() < vacc_coverage_by_test) {
 				vaccine_person(test_pid, currentTime);
 			}
@@ -1310,7 +1343,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 		}
 
-		if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0 && vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 0) { // Inf. booster
+		if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0
+				&& vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 0) { // Inf. booster
 			int booster_date = Math.round(currentTime + vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
 			ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
 			if (booster_candidate == null) {
@@ -1584,7 +1618,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		schMap[schMap_index] = schMap_ent;
 	}
 
-	protected AbstractRealDistribution generateNonDistribution(double[] input) {
+	protected final AbstractRealDistribution generateNonDistribution(double[] input) {
 		return new AbstractRealDistribution(RNG) {
 			private static final long serialVersionUID = -4946118496555960005L;
 
@@ -1642,31 +1676,44 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	protected GammaDistribution generateGammaDistribution(double[] input) {
-		// For Gamma distribution
-		// shape = alpha = mean*mean / variance = mean / scale
-		// scale = 1/ (beta or lambda or rate) = variance / mean;
-		double[] res = new double[2];
-		double var = input[1] * input[1];
-		// rate or 1/ beta or lambda
-		res[1] = var / input[0];
-		// shape or alpha
-		res[0] = input[0] / res[1];
-		return new GammaDistribution(RNG, res[0], res[1]);
+	
+	protected AbstractRealDistribution generateGammaDistribution(double[] input) {
+
+		if (input[1] != 0) {
+			// For Gamma distribution
+			// GammaDistribution(RandomGenerator rng, double shape, double scale)
+			// shape = mean / scale i.e. mean / (var / mean) 
+			// scale = var / mean						
+			double[] res = new double[2];
+			double var = input[1] * input[1];
+			// scale
+			res[1] = var/ input[0]; 
+			// shape
+			res[0] = input[0]/res[1];			
+			return new GammaDistribution(RNG, res[0], res[1]);
+		} else {
+			return generateNonDistribution(input);
+
+		}
 	}
 
-	protected BetaDistribution generateBetaDistribution(double[] input) {
-		// For Beta distribution,
-		// alpha = mean*(mean*(1-mean)/variance - 1)
-		// beta = (1-mean)*(mean*(1-mean)/variance - 1)
-		double[] res = new double[2];
-		double var = input[1] * input[1];
-		double rP = input[0] * (1 - input[0]) / var - 1;
-		// alpha
-		res[0] = rP * input[0];
-		// beta
-		res[1] = rP * (1 - input[0]);
-		return new BetaDistribution(RNG, res[0], res[1]);
+	protected AbstractRealDistribution generateBetaDistribution(double[] input) {
+		if (input[1] != 0) {
+
+			// For Beta distribution,
+			// alpha = mean*(mean*(1-mean)/variance - 1)
+			// beta = (1-mean)*(mean*(1-mean)/variance - 1)
+			double[] res = new double[2];
+			double var = input[1] * input[1];
+			double rP = input[0] * (1 - input[0]) / var - 1;
+			// alpha
+			res[0] = rP * input[0];
+			// beta
+			res[1] = rP * (1 - input[0]);
+			return new BetaDistribution(RNG, res[0], res[1]);
+		} else {
+			return generateNonDistribution(input);
+		}
 	}
 
 }
