@@ -8,28 +8,30 @@ import java.util.Arrays;
 import java.util.InvalidPropertiesFormatException;
 
 import optimisation.Optimisation_Factory;
+import util.Util_Compare_ClusterModel_Transmission_Output;
 
 public class Launcher_ClusterModel {
 
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans or -opt> PROP_FILE_DIRECTORY <...>\n" + "or    java %s <-batch> COMMAND_AS_TEXT",
+				"Usage: java %s <-gen, -trans, -opt ,or -compare> PROP_FILE_DIRECTORY <...>\n" + "or    java %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName());
 
 		if (args.length < 1) {
 			System.out.println(USAGE_INFO);
 			System.exit(0);
 		} else {
-			String flag = args[0];								
+			String flag = args[0];					
 			
-
 			if ("-gen".equals(flag)) {
 				Simulation_ClusterModelGeneration.launch(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-trans".equals(flag)) {
 				Simulation_ClusterModelTransmission.launch(Arrays.copyOfRange(args, 1, args.length));
 			}else if("-opt".equals(flag)) {				
 				Optimisation_Factory.stable_prevalence_by_tranmission_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
+			} else if("-compare".equals(flag)) {
+				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
 				
 			} else if ("-batch".equals(flag)) {
 				File commands = new File(args[1]);
