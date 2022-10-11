@@ -11,12 +11,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
-import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 
 import sim.Simulation_ClusterModelTransmission;
@@ -86,11 +84,10 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 
 				break;
 			case Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE:
-				// Antibotic use
+				// Antibiotic use
 				printComparedOutput(analysis_type,
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP,
-						"Compare_Output_AntiboticUsage.csv", "%.3f (%.3f - %.3f)", "%.3f (%.3f - %.3f)",
-						new int[] { 0, -1 }, true);
+						"Compare_Output_AntiboticUsage.csv", "%.1f (%.1f - %.1f)", "%.3f (%.3f - %.3f)", null, true);
 
 				break;
 			default:
@@ -197,8 +194,10 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 								double ref_denominator = raw_value_denominator;
 								if (cumul_diff && t > 0) {
 									ref = ref - pre_row_raw_value[b];
-									for (int offset : col_denominator_offsets) {
-										ref_denominator = ref_denominator - pre_row_raw_value[b + offset];
+									if (col_denominator_offsets != null) {
+										for (int offset : col_denominator_offsets) {
+											ref_denominator = ref_denominator - pre_row_raw_value[b + offset];
+										}
 									}
 								}
 								if (col_denominator_offsets != null) {
@@ -264,8 +263,10 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 									double cmp_val_denominator = raw_cmp_value_denominator;
 									if (cumul_diff && t > 0) {
 										cmp_val = cmp_val - pre_row_raw_val[b];
-										for (int offset : col_denominator_offsets) {
-											cmp_val_denominator = cmp_val_denominator - pre_row_raw_val[b + offset];
+										if (col_denominator_offsets != null) {
+											for (int offset : col_denominator_offsets) {
+												cmp_val_denominator = cmp_val_denominator - pre_row_raw_val[b + offset];
+											}
 										}
 									}
 									if (col_denominator_offsets != null) {
