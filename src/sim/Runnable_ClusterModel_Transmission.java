@@ -117,7 +117,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int NON_VIABILITY_TREATMENT_INDUCED_PROB = NON_VIABILITY_CONTACT_INDUCED_DURATION_SD + 1;
 	public static final int NON_VIABILITY_TREATMENT_INDUCED_INFECTION_REDUCTION_ADJ = NON_VIABILITY_TREATMENT_INDUCED_PROB
 			+ 1;
-	public static final int LENGTH_NON_VIABILITY_SETTING = NON_VIABILITY_TREATMENT_INDUCED_INFECTION_REDUCTION_ADJ + 1;
+	public static final int NON_VIABILITY_RECOVERY_INDUDCED_PROB = NON_VIABILITY_TREATMENT_INDUCED_INFECTION_REDUCTION_ADJ
+			+ 1;
+	public static final int NON_VIABILITY_RECOVERY_INDUDCED_MEAN = NON_VIABILITY_RECOVERY_INDUDCED_PROB + 1;
+	public static final int NON_VIABILITY_RECOVERY_INDUDCED_SD = NON_VIABILITY_RECOVERY_INDUDCED_MEAN + 1;
+	public static final int LENGTH_NON_VIABILITY_SETTING = NON_VIABILITY_RECOVERY_INDUDCED_SD + 1;
 
 	// double[gender][mean, sd]
 	private double[][] DEFAULT_ANTIBIOTIC_DURATION = new double[][] { new double[] { 7, 7 }, new double[] { 7, 7 },
@@ -281,6 +285,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	// For antibiotic tracking
 	protected transient RealDistribution[][] non_viable_inf_by_contact_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
+	protected transient RealDistribution[][] non_viable_inf_by_recovery_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 	protected transient RealDistribution[] antibotic_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER];
 	// if pid < 0, it is over-treatment
 	protected transient ArrayList<Integer> currently_has_antibiotic;
@@ -429,6 +434,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					non_viable_inf_by_contact_duration[g][s] = generateGammaDistribution(new double[] {
 							non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN],
 							non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_SD] });
+				}
+				if (non_viable_infection_setting[g][s][NON_VIABILITY_RECOVERY_INDUDCED_PROB] > 0) {
+					non_viable_inf_by_recovery_duration[g][s] = generateGammaDistribution(
+							new double[] { non_viable_infection_setting[g][s][NON_VIABILITY_RECOVERY_INDUDCED_MEAN],
+									non_viable_infection_setting[g][s][NON_VIABILITY_RECOVERY_INDUDCED_SD] });
+
 				}
 			}
 
@@ -660,6 +671,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
 					ArrayList<Integer>[] hist = infection_history.get(infectedId);
 					hist[site].add(recoverTime);
+				}
+			}
+
+			int gender = getGenderType(infectedId);
+
+			float[] non_viable_infection_setting_by_gender_site = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING])[gender][site];
+
+			if (non_viable_infection_setting_by_gender_site[NON_VIABILITY_RECOVERY_INDUDCED_PROB] > 0) {
+				if (has_non_viable_bacteria_until.getOrDefault(infectedId, recoverTime) <= recoverTime) {
+					if (RNG.nextFloat() < non_viable_infection_setting_by_gender_site[NON_VIABILITY_RECOVERY_INDUDCED_PROB]) {
+						double hasNABacteria = non_viable_inf_by_recovery_duration[gender][site].sample();
+						has_non_viable_bacteria_until.put(infectedId, (int) Math.round(recoverTime + hasNABacteria));
+					}
 				}
 			}
 
@@ -1252,7 +1276,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				if (infectious_key_index[site] >= 0) {
 					// Remove from infectious
 					currently_infectious[site].remove(infectious_key_index[site]);
-					// Treatment_induce non-viability
+					// Treatment induced non-viability
 					if (non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB] > 0) {
 						if (RNG.nextFloat() < non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB]) {
 							Integer recoverDate_org = infection_schMap[LENGTH_SITE + site];
@@ -1424,14 +1448,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
-				str = printCountMap(count_map,"Gender_%d_Site_%d");
+				str = printCountMap(count_map, "Gender_%d_Site_%d");
 				pWri = new PrintWriter(new File(baseDir, String.format(
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER,"Gender_%d");
+				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
 				pWri = new PrintWriter(new File(baseDir, String.format(
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
@@ -1440,7 +1464,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2, new String[] {"Total_Treatment_Gender_%d", "True_Treatment_Gender_%d"});
+				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
+						new String[] { "Total_Treatment_Gender_%d", "True_Treatment_Gender_%d" });
 				pWri = new PrintWriter(new File(baseDir, String.format(
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
@@ -1473,7 +1498,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE);
-				str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 }, "Gender_%d_Usage_%d"); // Proper, Over treatment
+				str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 },
+						"Gender_%d_Usage_%d"); // Proper, Over treatment
 				pWri = new PrintWriter(new File(baseDir, String.format(
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
@@ -1530,12 +1556,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 
 	}
-	
-	protected StringBuilder printCountMap(HashMap<Integer, int[]> count_map_by_person, int dimension, String headingFormat) {
-		return printCountMap(count_map_by_person, dimension, new String[] {headingFormat});
+
+	protected StringBuilder printCountMap(HashMap<Integer, int[]> count_map_by_person, int dimension,
+			String headingFormat) {
+		return printCountMap(count_map_by_person, dimension, new String[] { headingFormat });
 	}
 
-	protected StringBuilder printCountMap(HashMap<Integer, int[]> count_map_by_person, int dimension, String[] headingFormat) {
+	protected StringBuilder printCountMap(HashMap<Integer, int[]> count_map_by_person, int dimension,
+			String[] headingFormat) {
 		StringBuilder str;
 		Integer[] time_array;
 		str = new StringBuilder();
@@ -1543,13 +1571,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		time_array = count_map_by_person.keySet().toArray(new Integer[count_map_by_person.size()]);
 		Arrays.sort(time_array);
 		str.append("Time");
-		
-		int numPerSet = dimension/headingFormat.length;
-		
+
+		int numPerSet = dimension / headingFormat.length;
+
 		for (int g = 0; g < dimension; g++) {
 			str.append(',');
-			str.append(String.format(headingFormat[g/numPerSet], g % numPerSet));
-			
+			str.append(String.format(headingFormat[g / numPerSet], g % numPerSet));
+
 		}
 		str.append('\n');
 		for (Integer time : time_array) {
@@ -1569,7 +1597,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		return printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, LENGTH_SITE }, headingFormat);
 	}
 
-	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map, int[] dimension,String headingFormat) {
+	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map, int[] dimension, String headingFormat) {
 		// K = time, V= int [gender][site] (for example)
 		Integer[] time_array;
 		StringBuilder str;
@@ -1582,7 +1610,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		for (int g = 0; g < dimension[0]; g++) {
 			for (int s = 0; s < dimension[1]; s++) {
 				str.append(',');
-				str.append(String.format(headingFormat, g,s));				
+				str.append(String.format(headingFormat, g, s));
 			}
 		}
 		str.append('\n');
