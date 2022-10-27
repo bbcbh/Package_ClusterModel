@@ -49,6 +49,10 @@ public class Optimisation_Factory {
 	private static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	private static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
+	public static final String POP_PROP_OPT_TARGET = "POP_PROP_OPT_TARGET";
+	private static final int OPT_TARGET_NUM_INFECTED = 0;
+	private static final int OPT_TARGET_NOTIFICATION = OPT_TARGET_NUM_INFECTED + 1;
+
 	public static void stable_prevalence_by_tranmission_fit_Simplex(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 
@@ -98,20 +102,27 @@ public class Optimisation_Factory {
 			int snapFreq = 1;
 			int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
 			int numThreads = Runtime.getRuntime().availableProcessors();
-			int[][] target_infected = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
+			float[][] target_infected = new float[Population_Bridging.LENGTH_GENDER][];
+			float[][] target_notification_rate = new float[Population_Bridging.LENGTH_GENDER][];
+
+			int[][] seed_infection = null;
 			int contact_map_start_time = 365;
 
-			if (prop.containsKey(TARGET_PREVAL_STR)) {
-				target_infected = (int[][]) PropValUtils.propStrToObject(prop.getProperty(TARGET_PREVAL_STR),
-						int[][].class);
+			if (prop.containsKey(POP_PROP_OPT_TARGET)) {
 
-				// Fitting MSMO and MSMW only
-				for (int g : new int[] { Population_Bridging.GENDER_FEMALE, Population_Bridging.GENDER_HETRO_MALE }) {
-					for (int s = 0; s < target_infected[g].length; s++) {
-						target_infected[g][s] = -1;
-					}
+				float[][][] opt_target = (float[][][]) PropValUtils
+						.propStrToObject(prop.getProperty(POP_PROP_OPT_TARGET), float[][][].class);
+
+				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+					target_infected[g] = opt_target[OPT_TARGET_NUM_INFECTED][g];
+					target_notification_rate[g] = opt_target[OPT_TARGET_NOTIFICATION][g];
 				}
 
+			}
+
+			if (prop.containsKey(TARGET_PREVAL_STR)) {
+				seed_infection = (int[][]) PropValUtils.propStrToObject(prop.getProperty(TARGET_PREVAL_STR),
+						int[][].class);
 			}
 			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
 				seed = Long
@@ -165,8 +176,10 @@ public class Optimisation_Factory {
 			final int NUM_THREADS;
 			final ContactMap[] BASE_CONTACT_MAP;
 			final long[] BASE_CONTACT_MAP_SEED;
-			final int[][] TARGET_INFECTED;
+			final float[][] TARGET_INFECTED;
+			final float[][] TARGET_NOTIFICATION_RATE;
 			final int START_TIME;
+			final int[][] SEED_INFECTION;
 
 			RNG = new MersenneTwisterRandomGenerator(seed);
 			NUM_TIME_STEPS_PER_SNAP = snapFreq;
@@ -174,7 +187,9 @@ public class Optimisation_Factory {
 			POP_COMPOSITION = pop_composition;
 			NUM_THREADS = numThreads;
 			TARGET_INFECTED = target_infected;
+			TARGET_NOTIFICATION_RATE = target_notification_rate;
 			START_TIME = contact_map_start_time;
+			SEED_INFECTION = seed_infection;
 
 			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
 			BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
@@ -266,21 +281,21 @@ public class Optimisation_Factory {
 
 							switch (point.length) {
 							case 8:
-								// TRANS_P2R, TRANS_R2P								
+								// TRANS_P2R, TRANS_R2P
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-								// TRANS_P2O, TRANS_O2P								
+								// TRANS_P2O, TRANS_O2P
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-								// TRANS_R2O, TRANS_O2R								
+								// TRANS_R2O, TRANS_O2R
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];								
+								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
-								// TRANS_O2O								
+								// TRANS_O2O
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
-								
+
 								// SYM_TEST_PERIOD
 								sym_test_rate[0] = point[7];
 								// Adjust SD based on ratio from mean
@@ -335,7 +350,7 @@ public class Optimisation_Factory {
 							}
 
 							runnable[rId].initialse();
-							runnable[rId].allocateSeedInfection(TARGET_INFECTED, START_TIME);
+							runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
 
 						}
 						rId++;
@@ -392,17 +407,28 @@ public class Optimisation_Factory {
 							int[][] inf_count = infectious_count_map.get(keys[k]);
 
 							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
-									int val = 0;
-									if (inf_count != null) {
-										val = inf_count[g][s];
+
+								if (TARGET_INFECTED[g] != null) {
+
+									for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+										int val = 0;
+										if (inf_count != null) {
+											val = inf_count[g][s];
+										}
+										if (TARGET_INFECTED[g][s] >= 0) {
+											sqSum += Math.pow(val - TARGET_INFECTED[g][s], 2);
+										}
+										str_disp.append(',');
+										str_disp.append(val);
 									}
-									if (TARGET_INFECTED[g][s] >= 0) {
-										sqSum += Math.pow(val - TARGET_INFECTED[g][s], 2);
-									}
-									str_disp.append(',');
-									str_disp.append(val);
 								}
+								
+								// TODO: Notification rate fitting
+								if(TARGET_NOTIFICATION_RATE[g]!=null) {
+									
+								}
+								
+								
 							}
 							str_disp.append('\n');
 						}
@@ -416,7 +442,7 @@ public class Optimisation_Factory {
 							PrintWriter pWri = new PrintWriter(fWri);
 
 							if (newFile) {
-								pWri.println("Target = " + Arrays.deepToString(TARGET_INFECTED));
+								pWri.println("Target infection = " + Arrays.deepToString(TARGET_INFECTED));
 							}
 
 							pWri.println(pt_str);
