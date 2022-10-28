@@ -50,8 +50,8 @@ public class Optimisation_Factory {
 	private static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
 	public static final String POP_PROP_OPT_TARGET = "POP_PROP_OPT_TARGET";
-	private static final int OPT_TARGER_WEIGHTING = 0;
-	private static final int OPT_TARGET_NUM_INFECTED = OPT_TARGER_WEIGHTING + 1;
+	private static final int OPT_TARGET_WEIGHTING_BY_GENDER = 0;
+	private static final int OPT_TARGET_NUM_INFECTED = OPT_TARGET_WEIGHTING_BY_GENDER + 1;
 	private static final int OPT_TARGET_NOTIFICATION = OPT_TARGET_NUM_INFECTED + 1;
 
 	public static void stable_prevalence_by_tranmission_fit_Simplex(String[] args)
@@ -115,7 +115,7 @@ public class Optimisation_Factory {
 				float[][][] opt_target = (float[][][]) PropValUtils
 						.propStrToObject(prop.getProperty(POP_PROP_OPT_TARGET), float[][][].class);
 
-				target_weight = opt_target[OPT_TARGER_WEIGHTING];
+				target_weight = opt_target[OPT_TARGET_WEIGHTING_BY_GENDER];
 				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 					target_infected[g] = opt_target[OPT_TARGET_NUM_INFECTED][g];
 					target_notification_rate[g] = opt_target[OPT_TARGET_NOTIFICATION][g];
@@ -418,28 +418,34 @@ public class Optimisation_Factory {
 
 							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 
-								if (TARGET_INFECTED[g] != null) {
+								if (TARGET_INFECTED != null 
+										&& TARGET_INFECTED[g] != null) {
 									for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 										int val = 0;
 										if (inf_count != null) {
 											val = inf_count[g][s];
 										}
 										if (TARGET_INFECTED[g][s] >= 0) {
-											sqSum += TARGET_WEIGHT[OPT_TARGET_NUM_INFECTED - OPT_TARGER_WEIGHTING][g]
+											sqSum += TARGET_WEIGHT[OPT_TARGET_NUM_INFECTED][g]
 													* Math.pow(val - TARGET_INFECTED[g][s], 2);
 										}
 										str_disp.append(',');
 										str_disp.append(val);
 									}
 								}								
-								if (TARGET_NOTIFICATION_RATE[g] != null && cumul_treatment_map != null) {
-									int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
-									int[] current_treatment_count = cumul_treatment_map.get(keys[k]);
+								if (TARGET_NOTIFICATION_RATE != null 
+										&& TARGET_NOTIFICATION_RATE[g] != null 
+										&& cumul_treatment_map != null) {
+									int[] current_treatment_count = cumul_treatment_map.get(keys[k]);																										
+									int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);									
+									if(pre_treatment_count == null) {
+										pre_treatment_count = new int[current_treatment_count.length];
+									}
 
 									float treatment_rate = ((float) (current_treatment_count[g]
 											- pre_treatment_count[g])) / POP_COMPOSITION[g];
 
-									sqSum += TARGET_WEIGHT[OPT_TARGET_NOTIFICATION - OPT_TARGER_WEIGHTING][g]
+									sqSum += TARGET_WEIGHT[OPT_TARGET_NOTIFICATION][g]
 											* Math.pow(treatment_rate - TARGET_NOTIFICATION_RATE[g][0], 2);
 
 									str_disp.append(',');
@@ -460,7 +466,14 @@ public class Optimisation_Factory {
 							PrintWriter pWri = new PrintWriter(fWri);
 
 							if (newFile) {
-								pWri.println("Target infection = " + Arrays.deepToString(TARGET_INFECTED));
+								if(TARGET_INFECTED != null) {								
+									pWri.println("Target infection = " + Arrays.deepToString(TARGET_INFECTED));
+								}
+								if(TARGET_NOTIFICATION_RATE != null) {
+									pWri.println("Target notification = " + Arrays.deepToString(TARGET_NOTIFICATION_RATE));
+								}
+								
+								pWri.println();
 							}
 
 							pWri.println(pt_str);
