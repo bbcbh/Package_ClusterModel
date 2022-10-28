@@ -1012,15 +1012,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				if (testToday != null) {
 					for (Integer tId : testToday) {
 						int testOutcome = testPerson(currentTime, tId);
-						if ((simSetting
-								& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
-							int gI = getGenderType(Math.abs(tId));
-							if ((testOutcome & 1 << TEST_OUTCOME_TREATMENT_APPLIED) != 0) {
-								cumul_treatment_by_person[gI]++;
-							}
-							if ((testOutcome & 1 << TEST_OUTCOME_TRUE_INFECTION) != 0) {
-								cumul_treatment_by_person[Population_Bridging.LENGTH_GENDER + gI]++;
-							}
+
+						int gI = getGenderType(Math.abs(tId));
+						if ((testOutcome & 1 << TEST_OUTCOME_TREATMENT_APPLIED) != 0) {
+							cumul_treatment_by_person[gI]++;
+						}
+						if ((testOutcome & 1 << TEST_OUTCOME_TRUE_INFECTION) != 0) {
+							cumul_treatment_by_person[Population_Bridging.LENGTH_GENDER + gI]++;
 						}
 
 					}
@@ -1121,20 +1119,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					cumul_incidence_map_by_person.put(currentTime,
 							Arrays.copyOf(cumul_incidence_by_person, cumul_incidence_by_person.length));
 
-					if ((simSetting
-							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
-
-						@SuppressWarnings("unchecked")
-						HashMap<Integer, int[]> cumul_treatment_map_by_person = (HashMap<Integer, int[]>) sim_output
-								.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-						if (cumul_treatment_map_by_person == null) {
-							cumul_treatment_map_by_person = new HashMap<>();
-							sim_output.put(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON, cumul_treatment_map_by_person);
-						}
-						cumul_treatment_map_by_person.put(currentTime,
-								Arrays.copyOf(cumul_treatment_by_person, cumul_treatment_by_person.length));
-
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[]> cumul_treatment_map_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+					if (cumul_treatment_map_by_person == null) {
+						cumul_treatment_map_by_person = new HashMap<>();
+						sim_output.put(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON, cumul_treatment_map_by_person);
 					}
+					cumul_treatment_map_by_person.put(currentTime,
+							Arrays.copyOf(cumul_treatment_by_person, cumul_treatment_by_person.length));
 
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
