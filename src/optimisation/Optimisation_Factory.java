@@ -151,7 +151,7 @@ public class Optimisation_Factory {
 			}
 			String contactMapRangeKey = POP_PROP_INIT_PREFIX
 					+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-							+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+							+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD							
 							+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
 			if (prop.containsKey(contactMapRangeKey)) {
 				contact_map_start_time = ((int[]) PropValUtils.propStrToObject(prop.getProperty(contactMapRangeKey),
@@ -184,6 +184,7 @@ public class Optimisation_Factory {
 			final float[][] TARGET_NOTIFICATION_RATE;
 			final int START_TIME;
 			final int[][] SEED_INFECTION;
+			final Properties PROP;
 
 			RNG = new MersenneTwisterRandomGenerator(seed);
 			NUM_TIME_STEPS_PER_SNAP = snapFreq;
@@ -195,6 +196,7 @@ public class Optimisation_Factory {
 			TARGET_NOTIFICATION_RATE = target_notification_rate;
 			START_TIME = contact_map_start_time;
 			SEED_INFECTION = seed_infection;
+			PROP  = prop;
 
 			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
 			BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
@@ -273,6 +275,28 @@ public class Optimisation_Factory {
 							runnable[rId] = new Runnable_ClusterModel_Transmission(BASE_CONTACT_MAP_SEED[rId], sim_seed,
 									POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
 							runnable[rId].setBaseDir(baseDir);
+
+							int runnnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+											+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD 
+											+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD 
+											+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+							
+							for(int i = runnnable_offset;
+									i < runnnable_offset + Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD;  i++) {
+								
+								String key = POP_PROP_INIT_PREFIX + Integer.toString(i);								
+								if(PROP.containsKey(key)) {									
+									runnable[rId].getRunnable_fields()[i-runnnable_offset] = PropValUtils.propStrToObject(PROP.getProperty(key)
+											, runnable[rId].getRunnable_fields()[i-runnnable_offset].getClass());									
+								}
+								
+								
+							}
+							
+							
+							
+							
+							
 							runnable[rId].setSimSetting(1); // No output
 
 							double[][][] transmission_rate = (double[][][]) runnable[rId]
