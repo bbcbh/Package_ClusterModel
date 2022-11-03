@@ -151,7 +151,7 @@ public class Optimisation_Factory {
 			}
 			String contactMapRangeKey = POP_PROP_INIT_PREFIX
 					+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-							+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD							
+							+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 							+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
 			if (prop.containsKey(contactMapRangeKey)) {
 				contact_map_start_time = ((int[]) PropValUtils.propStrToObject(prop.getProperty(contactMapRangeKey),
@@ -196,7 +196,7 @@ public class Optimisation_Factory {
 			TARGET_NOTIFICATION_RATE = target_notification_rate;
 			START_TIME = contact_map_start_time;
 			SEED_INFECTION = seed_infection;
-			PROP  = prop;
+			PROP = prop;
 
 			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
 			BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
@@ -277,26 +277,23 @@ public class Optimisation_Factory {
 							runnable[rId].setBaseDir(baseDir);
 
 							int runnnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-											+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD 
-											+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD 
-											+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
-							
-							for(int i = runnnable_offset;
-									i < runnnable_offset + Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD;  i++) {
-								
-								String key = POP_PROP_INIT_PREFIX + Integer.toString(i);								
-								if(PROP.containsKey(key)) {									
-									runnable[rId].getRunnable_fields()[i-runnnable_offset] = PropValUtils.propStrToObject(PROP.getProperty(key)
-											, runnable[rId].getRunnable_fields()[i-runnnable_offset].getClass());									
+									+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+									+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+									+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+
+							for (int i = runnnable_offset; i < runnnable_offset
+									+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+
+								String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
+								if (PROP.containsKey(key)) {
+									runnable[rId].getRunnable_fields()[i - runnnable_offset] = PropValUtils
+											.propStrToObject(PROP.getProperty(key),
+													runnable[rId].getRunnable_fields()[i - runnnable_offset]
+															.getClass());
 								}
-								
-								
+
 							}
-							
-							
-							
-							
-							
+
 							runnable[rId].setSimSetting(1); // No output
 
 							double[][][] transmission_rate = (double[][][]) runnable[rId]
@@ -442,8 +439,7 @@ public class Optimisation_Factory {
 
 							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 
-								if (TARGET_INFECTED != null 
-										&& TARGET_INFECTED[g] != null) {
+								if (TARGET_INFECTED != null && TARGET_INFECTED[g] != null) {
 									for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 										int val = 0;
 										if (inf_count != null) {
@@ -456,13 +452,12 @@ public class Optimisation_Factory {
 										str_disp.append(',');
 										str_disp.append(val);
 									}
-								}								
-								if (TARGET_NOTIFICATION_RATE != null 
-										&& TARGET_NOTIFICATION_RATE[g] != null 
+								}
+								if (TARGET_NOTIFICATION_RATE != null && TARGET_NOTIFICATION_RATE[g] != null
 										&& cumul_treatment_map != null) {
-									int[] current_treatment_count = cumul_treatment_map.get(keys[k]);																										
-									int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);									
-									if(pre_treatment_count == null) {
+									int[] current_treatment_count = cumul_treatment_map.get(keys[k]);
+									int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
+									if (pre_treatment_count == null) {
 										pre_treatment_count = new int[current_treatment_count.length];
 									}
 
@@ -490,13 +485,14 @@ public class Optimisation_Factory {
 							PrintWriter pWri = new PrintWriter(fWri);
 
 							if (newFile) {
-								if(TARGET_INFECTED != null) {								
+								if (TARGET_INFECTED != null) {
 									pWri.println("Target infection = " + Arrays.deepToString(TARGET_INFECTED));
 								}
-								if(TARGET_NOTIFICATION_RATE != null) {
-									pWri.println("Target notification = " + Arrays.deepToString(TARGET_NOTIFICATION_RATE));
+								if (TARGET_NOTIFICATION_RATE != null) {
+									pWri.println(
+											"Target notification = " + Arrays.deepToString(TARGET_NOTIFICATION_RATE));
 								}
-								
+
 								pWri.println();
 							}
 
