@@ -438,7 +438,7 @@ public class Optimisation_Factory {
 							// Number of treatment / DX
 							int[] current_treatment_count = cumul_treatment_map.get(keys[k]);
 							int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
-							if (pre_treatment_count == null) {
+							if (pre_treatment_count == null && current_treatment_count != null) {
 								pre_treatment_count = new int[current_treatment_count.length];
 							}
 
@@ -461,6 +461,15 @@ public class Optimisation_Factory {
 											str_disp.append(',');
 											str_disp.append(numInfected);
 										}
+									} else {
+										// Extinction where it shouldn't be
+										boolean target_extinct = true;
+										for(int s = OPT_TARGET_TARGET_VALUES_0; s< opt_target_ent.length && target_extinct; s++) {
+											target_extinct &=  opt_target_ent[OPT_TARGET_TARGET_VALUES_0 + s] == 0;
+										}
+										if(!target_extinct) {
+											sqSum += Float.POSITIVE_INFINITY;
+										}										
 									}
 									break;
 								case OPT_TARGET_FITTING_TYPE_NOTIFICATIONS_BY_PERSON:
@@ -478,6 +487,10 @@ public class Optimisation_Factory {
 												.pow(treatment_rate - opt_target_ent[OPT_TARGET_TARGET_VALUES_0], 2);
 										str_disp.append(',');
 										str_disp.append(treatment_rate);
+									} else if (opt_target_ent[OPT_TARGET_TARGET_VALUES_0] != 0) {
+										// Extinction where it shouldn't be
+										sqSum += Float.POSITIVE_INFINITY;
+
 									}
 									break;
 								default:
