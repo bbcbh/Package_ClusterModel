@@ -50,9 +50,19 @@ public class Optimisation_Factory {
 	private static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
 	public static final String POP_PROP_OPT_TARGET = "POP_PROP_OPT_TARGET";
-	private static final int OPT_TARGET_WEIGHTING_BY_GENDER = 0;
-	private static final int OPT_TARGET_NUM_INFECTED = OPT_TARGET_WEIGHTING_BY_GENDER + 1;
-	private static final int OPT_TARGET_NOTIFICATION = OPT_TARGET_NUM_INFECTED + 1;
+
+	// Format:
+	// float[][] opt_target = new float[NUM_DATA_TO_FIT]
+	// { DATA_FITTING_TYPE, GROUPS_TO_INCLUDE, OPT_WEIGHTING, OPT_TARGET_VALUES_0,
+	// ...}
+
+	private static final int OPT_TARGET_FITTING_TYPE_NUM_INFECTED_BY_SITE = 0;
+	private static final int OPT_TARGET_FITTING_TYPE_NOTIFICATIONS_BY_PERSON = 1;
+
+	private static final int OPT_TARGET_FITTING_TYPE = 0;
+	private static final int OPT_TARGET_GROUPS_TO_INCLUDE = OPT_TARGET_FITTING_TYPE + 1;
+	private static final int OPT_TARGET_OPT_WEIGHTING = OPT_TARGET_GROUPS_TO_INCLUDE + 1;
+	private static final int OPT_TARGET_TARGET_VALUES_0 = OPT_TARGET_OPT_WEIGHTING + 1;
 
 	public static void stable_prevalence_by_tranmission_fit_Simplex(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
@@ -103,24 +113,15 @@ public class Optimisation_Factory {
 			int snapFreq = 1;
 			int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
 			int numThreads = Runtime.getRuntime().availableProcessors();
-			float[][] target_weight = new float[2][Population_Bridging.LENGTH_GENDER];
-			float[][] target_infected = new float[Population_Bridging.LENGTH_GENDER][];
-			float[][] target_notification_rate = new float[Population_Bridging.LENGTH_GENDER][];
 
 			int[][] seed_infection = null;
 			int contact_map_start_time = 365;
 
+			float[][] opt_target = new float[0][];
+
 			if (prop.containsKey(POP_PROP_OPT_TARGET)) {
-
-				float[][][] opt_target = (float[][][]) PropValUtils
-						.propStrToObject(prop.getProperty(POP_PROP_OPT_TARGET), float[][][].class);
-
-				target_weight = opt_target[OPT_TARGET_WEIGHTING_BY_GENDER];
-				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-					target_infected[g] = opt_target[OPT_TARGET_NUM_INFECTED][g];
-					target_notification_rate[g] = opt_target[OPT_TARGET_NOTIFICATION][g];
-				}
-
+				opt_target = (float[][]) PropValUtils.propStrToObject(prop.getProperty(POP_PROP_OPT_TARGET),
+						float[][].class);
 			}
 
 			if (prop.containsKey(PROP_SEED_INFECTION)) {
@@ -179,9 +180,7 @@ public class Optimisation_Factory {
 			final int NUM_THREADS;
 			final ContactMap[] BASE_CONTACT_MAP;
 			final long[] BASE_CONTACT_MAP_SEED;
-			final float[][] TARGET_WEIGHT;
-			final float[][] TARGET_INFECTED;
-			final float[][] TARGET_NOTIFICATION_RATE;
+			final float[][] OPT_TARGET;
 			final int START_TIME;
 			final int[][] SEED_INFECTION;
 			final Properties PROP;
@@ -191,9 +190,7 @@ public class Optimisation_Factory {
 			SNAP_FREQ = numSnap;
 			POP_COMPOSITION = pop_composition;
 			NUM_THREADS = numThreads;
-			TARGET_WEIGHT = target_weight;
-			TARGET_INFECTED = target_infected;
-			TARGET_NOTIFICATION_RATE = target_notification_rate;
+			OPT_TARGET = opt_target;
 			START_TIME = contact_map_start_time;
 			SEED_INFECTION = seed_infection;
 			PROP = prop;
@@ -435,44 +432,63 @@ public class Optimisation_Factory {
 
 						for (int k = start_k; k < keys.length; k++) {
 							str_disp.append(keys[k]);
+							// Number of infections
 							int[][] inf_count = infectious_count_map.get(keys[k]);
 
-							for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							// Number of treatment / DX
+							int[] current_treatment_count = cumul_treatment_map.get(keys[k]);
+							int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
+							if (pre_treatment_count == null) {
+								pre_treatment_count = new int[current_treatment_count.length];
+							}
 
-								if (TARGET_INFECTED != null && TARGET_INFECTED[g] != null) {
-									for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
-										int val = 0;
-										if (inf_count != null) {
-											val = inf_count[g][s];
+							for (float[] opt_target_ent : OPT_TARGET) {
+								switch ((int) opt_target_ent[OPT_TARGET_FITTING_TYPE]) {
+								case OPT_TARGET_FITTING_TYPE_NUM_INFECTED_BY_SITE:
+									if (inf_count != null) {
+										float[] inf_count_total_by_site = new float[Runnable_ClusterModel_Transmission.LENGTH_SITE];
+										for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+											if ((1 << g & (int) opt_target_ent[OPT_TARGET_GROUPS_TO_INCLUDE]) > 0) {
+												for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+													inf_count_total_by_site[s] += inf_count[g][s];
+												}
+											}
 										}
-										if (TARGET_INFECTED[g][s] >= 0) {
-											sqSum += TARGET_WEIGHT[OPT_TARGET_NUM_INFECTED][g]
-													* Math.pow(val - TARGET_INFECTED[g][s], 2);
+										for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+											float numInfected = inf_count_total_by_site[s];
+											sqSum += opt_target_ent[OPT_TARGET_OPT_WEIGHTING] * Math.pow(
+													numInfected - opt_target_ent[OPT_TARGET_TARGET_VALUES_0 + s], 2);
+											str_disp.append(',');
+											str_disp.append(numInfected);
 										}
+									}
+									break;
+								case OPT_TARGET_FITTING_TYPE_NOTIFICATIONS_BY_PERSON:
+									if (current_treatment_count != null) {
+										float treatment_count = 0;
+										float treatment_count_denom = 0;
+										for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+											if ((1 << g & (int) opt_target_ent[OPT_TARGET_GROUPS_TO_INCLUDE]) > 0) {
+												treatment_count += current_treatment_count[g] - pre_treatment_count[g];
+												treatment_count_denom += POP_COMPOSITION[g];
+											}
+										}
+										float treatment_rate = treatment_count / treatment_count_denom;
+										sqSum += opt_target_ent[OPT_TARGET_OPT_WEIGHTING] * Math
+												.pow(treatment_rate - opt_target_ent[OPT_TARGET_TARGET_VALUES_0], 2);
 										str_disp.append(',');
-										str_disp.append(val);
+										str_disp.append(treatment_rate);
 									}
-								}
-								if (TARGET_NOTIFICATION_RATE != null && TARGET_NOTIFICATION_RATE[g] != null
-										&& cumul_treatment_map != null) {
-									int[] current_treatment_count = cumul_treatment_map.get(keys[k]);
-									int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
-									if (pre_treatment_count == null) {
-										pre_treatment_count = new int[current_treatment_count.length];
-									}
-
-									float treatment_rate = ((float) (current_treatment_count[g]
-											- pre_treatment_count[g])) / POP_COMPOSITION[g];
-
-									sqSum += TARGET_WEIGHT[OPT_TARGET_NOTIFICATION][g]
-											* Math.pow(treatment_rate - TARGET_NOTIFICATION_RATE[g][0], 2);
-
-									str_disp.append(',');
-									str_disp.append(treatment_rate);
+									break;
+								default:
+									System.err.printf(
+											"Warning: Opt fitting of type = %f not defined. Fitting of %s ignored/n",
+											opt_target_ent[OPT_TARGET_FITTING_TYPE], Arrays.toString(opt_target_ent));
 
 								}
 
 							}
+
 							str_disp.append('\n');
 						}
 
@@ -485,14 +501,10 @@ public class Optimisation_Factory {
 							PrintWriter pWri = new PrintWriter(fWri);
 
 							if (newFile) {
-								if (TARGET_INFECTED != null) {
-									pWri.println("Target infection = " + Arrays.deepToString(TARGET_INFECTED));
+								pWri.printf("Opt target (%s in total):\n", OPT_TARGET.length);
+								for (float[] opt_target_ent : OPT_TARGET) {
+									pWri.println(Arrays.toString(opt_target_ent));
 								}
-								if (TARGET_NOTIFICATION_RATE != null) {
-									pWri.println(
-											"Target notification = " + Arrays.deepToString(TARGET_NOTIFICATION_RATE));
-								}
-
 								pWri.println();
 							}
 
