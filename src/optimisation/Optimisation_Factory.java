@@ -327,6 +327,7 @@ public class Optimisation_Factory {
 								break;
 							case 10:
 							case 14:
+							case 15:
 								double org_mean;
 								// TRANS_P2V, TRANS_V2P
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
@@ -361,6 +362,24 @@ public class Optimisation_Factory {
 										// Adjust SD based on ratio from mean
 										inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
 									}
+									
+									// Sym test adjustment For Male
+									if(point.length >= 15) {
+										sym_test_rate = Arrays.copyOf(sym_test_rate, sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
+										runnable[rId].runnable_fields[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM]
+												= sym_test_rate;										
+										for(int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+											sym_test_rate[2* g] = sym_test_rate[0];
+											sym_test_rate[2* g+1] = sym_test_rate[1];
+										}
+										
+										// Hetro_male
+										sym_test_rate[2] = point[14];
+										sym_test_rate[3] = (point[14] /sym_test_rate[0]) * sym_test_rate[1];
+										
+										
+									}			
+									
 								}
 
 								break;

@@ -232,6 +232,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			new float[][][] { null, null, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM,
 					DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM },
 			// RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
+			// Format: double[] {mean, sd}
+			// Alt Format: double[] { mean_gender_0, sd_gender_0, ....}
 			DEFAULT_SYM_TEST,
 			// RUNNABLE_FIELD_TRANSMISSION_TEST_ACCURACY
 			DEFAULT_TEST_ACCURACY,
@@ -258,7 +260,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient RealDistribution[][] tranmissionMatrix = new RealDistribution[LENGTH_SITE][LENGTH_SITE];
 	protected transient RealDistribution[] infectious_period = new RealDistribution[LENGTH_SITE];
 	protected transient RealDistribution[] incubation_period = new RealDistribution[LENGTH_SITE];
-	protected transient RealDistribution sym_test_period;
+	protected transient RealDistribution[] sym_test_period_by_gender = new RealDistribution[Population_Bridging.LENGTH_GENDER];
 
 	protected transient ArrayList<Integer>[] currently_infectious;
 
@@ -393,10 +395,24 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		for (int s = 0; s < infectious_period.length; s++) {
 			infectious_period[s] = generateGammaDistribution(durParam[s]);
 			incubation_period[s] = new UniformRealDistribution(RNG, incParam[s][0], incParam[s][1]);
-
 		}
-		sym_test_period = generateGammaDistribution(
-				(double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM]);
+		
+		sym_test_period_by_gender = new RealDistribution[Population_Bridging.LENGTH_GENDER];
+		double[] sought_test_param = (double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
+		
+		if(sought_test_param.length == 2) {
+			RealDistribution dist = generateGammaDistribution(sought_test_param);
+			for(int g = 0; g < sym_test_period_by_gender.length; g++) {
+				sym_test_period_by_gender[g] = dist;
+			}
+		}else {
+			int offset = 0;
+			for(int g = 0; g < sym_test_period_by_gender.length; g++) {							
+				sym_test_period_by_gender[g] = generateGammaDistribution(Arrays.copyOfRange(sought_test_param, offset, offset+2));
+				offset += 2;
+			}			
+		}					
+		
 
 		// Lists
 		currently_infectious = new ArrayList[LENGTH_SITE];
@@ -625,7 +641,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			if (sym_rate > 0) {
 				if (RNG.nextFloat() < sym_rate) {
-					int sym_test_day = (int) Math.round(infectious_time + sym_test_period.sample());
+					int sym_test_day = (int) Math.round(infectious_time + sym_test_period_by_gender[gender].sample());
 					sch = schedule_testing.get(sym_test_day);
 
 					if (sch == null) {
