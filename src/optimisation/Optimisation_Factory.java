@@ -446,16 +446,34 @@ public class Optimisation_Factory {
 						HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable[r]
 								.getSim_output()
 								.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-
+						
+						
+						String simIdentifier = String.format("CM_Seed = %d, sim_seed = %d", 
+								BASE_CONTACT_MAP_SEED[r], sim_seed);					
+						
 						StringBuilder str_disp = new StringBuilder();
 
 						for (int k = start_k; k < keys.length; k++) {
 							str_disp.append(keys[k]);
 							// Number of infections
-							int[][] inf_count = infectious_count_map.get(keys[k]);
+							int[][] inf_count = null;
+							if(infectious_count_map != null) {
+								inf_count = infectious_count_map.get(keys[k]);
+							}else {
+								System.err.printf("Warning: infection count map not defined for Sim #[%s] under parameter of %s\n",
+										simIdentifier, Arrays.toString(point));
+							}
 
 							// Number of treatment / DX
-							int[] current_treatment_count = cumul_treatment_map.get(keys[k]);
+							int[] current_treatment_count = null;
+							if(cumul_treatment_map != null) {
+								current_treatment_count = cumul_treatment_map.get(keys[k]);
+							}else {
+								System.err.printf("Warning: treatment count map not defined for Sim #[%s] under parameter of %s\n",
+										simIdentifier, Arrays.toString(point));								
+							}
+							
+							
 							int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
 							if (pre_treatment_count == null && current_treatment_count != null) {
 								pre_treatment_count = new int[current_treatment_count.length];
