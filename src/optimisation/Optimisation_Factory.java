@@ -250,6 +250,7 @@ public class Optimisation_Factory {
 					Matcher m = pattern_baseCMap_filename.matcher(preGenClusterFiles[c].getName());
 					m.matches();
 					BASE_CONTACT_MAP_SEED[c] = Long.parseLong(m.group(1));
+					BASE_CONTACT_MAP[c].setId(BASE_CONTACT_MAP_SEED[c]);
 					cMap_count++;
 				}
 			}
@@ -466,15 +467,17 @@ public class Optimisation_Factory {
 
 							// Number of treatment / DX
 							int[] current_treatment_count = null;
+							int[] pre_treatment_count = null;
 							if(cumul_treatment_map != null) {
 								current_treatment_count = cumul_treatment_map.get(keys[k]);
+								pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
 							}else {
 								System.err.printf("Warning: treatment count map not defined for Sim #[%s] under parameter of %s\n",
 										simIdentifier, Arrays.toString(point));								
 							}
 							
 							
-							int[] pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
+							
 							if (pre_treatment_count == null && current_treatment_count != null) {
 								pre_treatment_count = new int[current_treatment_count.length];
 							}

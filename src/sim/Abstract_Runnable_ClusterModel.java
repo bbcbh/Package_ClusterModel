@@ -90,14 +90,15 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 				for (Integer[] ent : tMap.edgeSet()) {
 					int key = Collections.binarySearch(edges, ent, edge_cmp);
 					if (key >= 0) {
-						System.err.printf("Warning: Edge %s already in list. Edge skipped.\n", Arrays.toString(ent));
+						System.err.printf("Warning from Transmission Map #%d: Edge %s already in list. Edge skipped.\n", 
+								tMap.getId(), Arrays.toString(ent));
 					} else {
 						edges.add(~key, ent);
 					}
 
 				}
 
-				return null;
+				return edges;
 			}
 
 		};
@@ -121,8 +122,8 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 						int key = Collections.binarySearch(edges, e, edge_cmp);
 
 						if (key >= 0) {
-							System.err.printf("Warning: Edge %s from %s already in list. Edge skipped.\n",
-									Arrays.toString(e), Arrays.toString(ent));
+							System.err.printf("Warning from ContactMap #%d: Edge %s from %s already in list. Edge skipped.\n",
+									cMap.getId(), Arrays.toString(e), Arrays.toString(ent));
 
 						} else {
 							edges.add(~key, e);
