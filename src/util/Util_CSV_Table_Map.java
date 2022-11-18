@@ -60,11 +60,9 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 			ArrayList<Double> map_values = this.get(map_key);
 			if (map_values != null) {
 				double[] val = new double[map_values.size()];
-				int p = 0;
-				double sum = 0;
+				int p = 0;				
 				for (Double d : map_values) {
-					val[p] = d.doubleValue();
-					sum += val[p];
+					val[p] = d.doubleValue();					
 					p++;
 				}
 				if (!isCumulative) {
@@ -82,8 +80,11 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 						per.setData(val);
 					}
 				}
-
 				if (val != null) {
+					double sum = 0;
+					for(double singleVal : val) {
+						sum += singleVal;
+					}													
 					str.append(time);
 					str.append(',');
 					str.append(map_values.size());
