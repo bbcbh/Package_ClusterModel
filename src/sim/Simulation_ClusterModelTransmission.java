@@ -57,6 +57,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_PREVALENCE_PERSON = "Prevalence_Person_%d_%d.csv";
 	public static final String FILENAME_CUMUL_INCIDENCE_PERSON = "Incidence_Person_%d_%d.csv";
 	public static final String FILENAME_CUMUL_TREATMENT_PERSON = "Treatment_Person_%d_%d.csv";
+	public static final String FILENAME_CUMUL_POSITIVE_DX_PERSON = "Positive_DX_Person_%d_%d.csv";
+	public static final String FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON = "Positive_DX_SOUGHT_Person_%d_%d.csv";
 	public static final String FILENAME_INFECTION_HISTORY = "InfectHist_%d_%d.csv";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP = "All_transmap_%d_%d.csv";
@@ -70,6 +72,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			+ ".7z";
 	public static final String FILENAME_CUMUL_INCIDENCE_PERSON_ZIP = FILENAME_CUMUL_INCIDENCE_PERSON.replaceFirst("_%d",
 			"") + ".7z";
+	public static final String FILENAME_CUMUL_POSITIVE_DX_PERSON_ZIP = FILENAME_CUMUL_POSITIVE_DX_PERSON
+			.replaceFirst("_%d", "") + ".7z";
+	public static final String FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON_ZIP = FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON
+			.replaceFirst("_%d", "") + ".7z";
 
 	public static final String FILENAME_CUMUL_TREATMENT_PERSON_ZIP = FILENAME_CUMUL_TREATMENT_PERSON.replaceFirst("_%d",
 			"") + ".7z";
@@ -79,9 +85,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			"") + ".7z";
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP_ZIP = FILENAME_ALL_TRANSMISSION_CMAP.replaceFirst("_%d",
 			"") + ".7z";
-	public static final String FILENAME_VACCINE_COVERAGE_ZIP = FILENAME_VACCINE_COVERAGE.replaceFirst("_%d",
-			"") + ".7z";
-	
+	public static final String FILENAME_VACCINE_COVERAGE_ZIP = FILENAME_VACCINE_COVERAGE.replaceFirst("_%d", "")
+			+ ".7z";
+
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
 	public static final String POP_PROP_SWITCH_PREFIX = "SWITCH_%d_";
@@ -99,7 +105,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER = SIM_SETTING_KEY_GEN_TREATMENT_FILE + 1;
 	public static final int SIM_SETTING_KEY_TRACK_INFECTION_HISTORY = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
 	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
-	public static final int SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE  = SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE + 1;
+	public static final int SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE = SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE + 1;
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS = {
 			// BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION
@@ -500,6 +506,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 		}
 		if ((simSetting & 1 << SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+			zipSelectedOutputs(FILENAME_CUMUL_POSITIVE_DX_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_CUMUL_POSITIVE_DX_PERSON_ZIP, baseContactMapSeed));			
+			zipSelectedOutputs(FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON_ZIP, baseContactMapSeed));	
 			zipSelectedOutputs(FILENAME_CUMUL_TREATMENT_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_CUMUL_TREATMENT_PERSON_ZIP, baseContactMapSeed));
 
@@ -519,7 +529,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			zipSelectedOutputs(FILENAME_ALL_TRANSMISSION_CMAP.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_ALL_TRANSMISSION_CMAP_ZIP, baseContactMapSeed));
 		}
-		
+
 		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE) != 0) {
 			zipSelectedOutputs(FILENAME_VACCINE_COVERAGE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_VACCINE_COVERAGE_ZIP, baseContactMapSeed));
