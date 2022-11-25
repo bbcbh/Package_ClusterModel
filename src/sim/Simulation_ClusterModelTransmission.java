@@ -58,7 +58,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_CUMUL_INCIDENCE_PERSON = "Incidence_Person_%d_%d.csv";
 	public static final String FILENAME_CUMUL_TREATMENT_PERSON = "Treatment_Person_%d_%d.csv";
 	public static final String FILENAME_CUMUL_POSITIVE_DX_PERSON = "Positive_DX_Person_%d_%d.csv";
-	public static final String FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON = "Positive_DX_SOUGHT_Person_%d_%d.csv";
+	public static final String FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON = "Positive_DX_Sought_Person_%d_%d.csv";
 	public static final String FILENAME_INFECTION_HISTORY = "InfectHist_%d_%d.csv";
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP = "All_transmap_%d_%d.csv";

@@ -1192,7 +1192,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						cumul_positive_dx_sought_map_by_person = new HashMap<>();
 						sim_output.put(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON, cumul_positive_dx_sought_map_by_person);
 					}
-					cumul_positive_dx_map_by_person.put(currentTime,
+					cumul_positive_dx_sought_map_by_person.put(currentTime,
 							Arrays.copyOf(cumul_positive_dx_sought_by_person, cumul_positive_dx_sought_by_person.length));
 					
 					
