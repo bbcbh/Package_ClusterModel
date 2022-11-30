@@ -1,10 +1,15 @@
 package util;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+
+import sim.Runnable_ClusterModel_Transmission;
 
 public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 	private static final long serialVersionUID = 3940051551837596423L;
@@ -103,6 +108,47 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 		}
 
 		return str.toString();
+	}
+
+	public static void updateInfectionHistoryMap(HashMap<String, ArrayList<Integer>> infection_history_map,
+			int[] cumulative_gender_distribution, int[] incl_time_range, int[][] total_no_incident_reported_so_far,
+			String src_file_name, String src_file_lines) throws IOException {
+		BufferedReader lines = new BufferedReader(new StringReader(src_file_lines));
+		String line;
+		while ((line = lines.readLine()) != null) {
+			if (line.length() > 0) {
+				try {
+					String[] entries = line.split(",");
+					int id = Integer.parseInt(entries[0]);
+					int gender = Runnable_ClusterModel_Transmission.getGenderType(id,
+							cumulative_gender_distribution);
+					int site = Integer.parseInt(entries[1]);
+	
+					int numInfections = 0;
+					for (int i = 2; i < entries.length; i += 2) {
+						int inf_start = Integer.parseInt(entries[i]);
+						if (inf_start >= incl_time_range[0] && inf_start < incl_time_range[1]) {
+							numInfections++;
+						}
+					}
+	
+					ArrayList<Integer> history_map_ent = infection_history_map
+							.get(String.format("%d,%d", gender, site));
+					if (history_map_ent == null) {
+						history_map_ent = new ArrayList<>();
+						infection_history_map.put(String.format("%d,%d", gender, site),
+								history_map_ent);
+					}
+					history_map_ent.add(numInfections);
+	
+					total_no_incident_reported_so_far[gender][site]--;
+	
+				} catch (Exception ex) {
+					System.err.printf("Error in adding line from %s (%s)\n", src_file_name,
+							line);
+				}
+			}
+		}
 	}
 
 }
