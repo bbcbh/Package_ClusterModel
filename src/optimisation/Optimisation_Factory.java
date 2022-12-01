@@ -329,6 +329,7 @@ public class Optimisation_Factory {
 							case 10:
 							case 14:
 							case 15:
+							case 16:
 								double org_mean;
 								// TRANS_P2V, TRANS_V2P
 								transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
@@ -364,7 +365,7 @@ public class Optimisation_Factory {
 										inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
 									}
 									
-									// Sym test adjustment For Male
+									// Sym test adjustment for hetrosexual male
 									if(point.length >= 15) {
 										sym_test_rate = Arrays.copyOf(sym_test_rate, sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
 										runnable[rId].runnable_fields[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM]
@@ -381,6 +382,13 @@ public class Optimisation_Factory {
 										
 									}			
 									
+									// Sym rate for urethral infection for male
+									if(point.length >= 16) {
+										float[][] sym_rate = (float[][]) runnable[rId].getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
+										for(int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+											sym_rate[g][Runnable_ClusterModel_Transmission.SITE_PENIS] = (float) point[15];
+										}
+									}																		
 								}
 
 								break;
