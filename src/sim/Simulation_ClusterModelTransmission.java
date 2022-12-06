@@ -106,6 +106,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_TRACK_INFECTION_HISTORY = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
 	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
 	public static final int SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE = SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE + 1;
+	
+	public static final String PROP_CONTACT_MAP_LOC = "PROP_CONTACT_MAP_LOC";
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS = {
 			// BRIDGING_MAP_TRANS_SIM_FIELD_SEED_INFECTION
@@ -641,8 +643,18 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				// Check for contact cluster generated
 
 				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+				
+				File contactMapDir = baseDir;
+				
+				if(prop.getProperty(PROP_CONTACT_MAP_LOC) != null) {
+					contactMapDir = new File(prop.getProperty(PROP_CONTACT_MAP_LOC));
+					if(!contactMapDir.exists() || !contactMapDir.isDirectory()) {
+						contactMapDir = baseDir;						
+					}
+				}
+				
 
-				preGenClusterMap = baseDir.listFiles(new FileFilter() {
+				preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
 					@Override
 					public boolean accept(File pathname) {
 						return pathname.isFile() && Pattern.matches(REGEX_STR, pathname.getName());
