@@ -21,7 +21,6 @@ import population.Population_Bridging;
 import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelTransmission;
-import util.PropValUtils;
 
 public class Util_Analyse_ClusterModel_Transmission_Output {
 
@@ -33,12 +32,18 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP.replaceAll("%d",
-					"(-{0,1}(?!0)\\\\d+)"), };
+					"(-{0,1}(?!0)\\\\d+)"),
+			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON_ZIP.replaceAll("%d",
+					"(-{0,1}(?!0)\\\\d+)"),
+			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON_ZIP.replaceAll("%d",
+					"(-{0,1}(?!0)\\\\d+)"),
+			};
 
 	public static final String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
-			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History.csv" };
+			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History.csv",  
+			"Summary_DX_Person_%s.csv", "Summary_DX_Sought_Person_%s.csv" };
 
-	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false };
+	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true };
 
 	public Util_Analyse_ClusterModel_Transmission_Output() {
 
