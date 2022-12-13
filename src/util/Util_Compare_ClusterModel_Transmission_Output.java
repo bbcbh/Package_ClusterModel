@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -26,17 +27,19 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 	int[][] analysis_col_select;
 	File[] compare_dir_arr;
 
+	final static String ARG_PRINT_FULL_DATA = "-fulldata";
+
 	final static int BUFFER = 2048;
 	final static String USAGE_INFO = String.format(
-			"Usage: java %s -compare RESULTS_DIRECTORY REF_RESULT_DIRNAME ANALSIS_COL_SELECT",
-			Util_Compare_ClusterModel_Transmission_Output.class.getName());
+			"Usage: java %s -compare RESULTS_DIRECTORY REF_RESULT_DIRNAME ANALSIS_COL_SELECT <%s>",
+			Util_Compare_ClusterModel_Transmission_Output.class.getName(), ARG_PRINT_FULL_DATA);
 
 	final static int[] ANALYSIS_TYPE_OPTIONS = new int[] {
 			Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE,
 			Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE,
-			Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE,
+			Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE, };
 
-	};
+	boolean printFullData = false;
 
 	public Util_Compare_ClusterModel_Transmission_Output(File results_dir, File ref_result_dir,
 			int[][] analysis_col_select) {
@@ -61,6 +64,10 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 		});
 	}
 
+	public void setPrintFullData(boolean printFullData) {
+		this.printFullData = printFullData;
+	}
+
 	public void startCompare() throws IOException {
 
 		System.out.printf("Comparing %d result(s) from %s, using %s as reference.\n", compare_dir_arr.length,
@@ -73,21 +80,20 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 			case Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE:
 				// Prevalence by person
 				printComparedOutput(analysis_type, Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP,
-						"Compare_Output_Prevalence.csv", "%.1f (%.1f - %.1f)", "%.3f (%.3f - %.3f)", null, false);
+						"Compare_Output_Prevalence", "%.1f (%.1f - %.1f)", "%.3f (%.3f - %.3f)", null, false);
 				break;
 			case Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE:
 				// Treatment by person
 				printComparedOutput(analysis_type,
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP,
-						"Compare_Output_Treatment.csv", "%.3f (%.3f - %.3f)", "%.3f (%.3f - %.3f)", new int[] { -4 },
-						true);
+						"Compare_Output_Treatment", "%.3f (%.3f - %.3f)", "%.3f (%.3f - %.3f)", new int[] { -4 }, true);
 
 				break;
 			case Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE:
 				// Antibiotic use
 				printComparedOutput(analysis_type,
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP,
-						"Compare_Output_AntiboticUsage.csv", "%.1f (%.1f - %.1f)", "%.3f (%.3f - %.3f)", null, true);
+						"Compare_Output_AntiboticUsage", "%.1f (%.1f - %.1f)", "%.3f (%.3f - %.3f)", null, true);
 
 				break;
 			default:
@@ -226,6 +232,15 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 
 				}
 			}
+			
+			StringWriter fulldata_str_writer  = null;
+			PrintWriter fulldata_print = null;
+			if(printFullData) {		
+				fulldata_str_writer = new StringWriter();
+				fulldata_print = new PrintWriter(fulldata_str_writer);
+				fulldata_print.println("Time,Catergory,Value");
+			}
+			
 
 			// Match with other mapping in compare_result_dir
 			for (int f = 0; f < compare_dir_arr.length; f++) {
@@ -293,55 +308,73 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 						percentile.setData(rel_diff_from_ref_values[c][t]);
 						comp_summary[f][t][c] = String.format(output_format_cmp, percentile.evaluate(50),
 								percentile.evaluate(25), percentile.evaluate(75));
+						
+						if(fulldata_print != null) {
+							for(double val : rel_diff_from_ref_values[c][t]) {
+								fulldata_print.println(String.format("%d,%s,%f",
+										time_ent[t], compare_dir.getName(),  val));
+							}
+							
+							
+						}
 
 					}
+				}			
+			}
+			
+			// Print results
+
+			File file_compareOutput = new File(results_dir, output_filename + ".csv");
+			PrintWriter pWri = new PrintWriter(new FileWriter(file_compareOutput));
+			// First line
+			StringBuilder pLine = new StringBuilder();
+			pLine.append("Time");
+			for (int c = 0; c < ref_values.length; c++) {
+				pLine.append(',');
+				pLine.append(ref_result_dir.getName());
+				if (ref_values.length > 1) {
+					pLine.append("_Col_");
+					pLine.append(c);
 				}
-
-				// Print results
-
-				File file_compareOutput = new File(results_dir, output_filename);
-				PrintWriter pWri = new PrintWriter(new FileWriter(file_compareOutput));
-				// First line
-				StringBuilder pLine = new StringBuilder();
-				pLine.append("Time");
+			}
+			for (int cdI = 0; cdI < compare_dir_arr.length; cdI++) {
 				for (int c = 0; c < ref_values.length; c++) {
 					pLine.append(',');
-					pLine.append(ref_result_dir.getName());
+					pLine.append("Rel_to_");
+					pLine.append(compare_dir_arr[cdI].getName());
 					if (ref_values.length > 1) {
 						pLine.append("_Col_");
 						pLine.append(c);
 					}
 				}
+			}
+			pWri.println(pLine.toString());
+
+			for (int t = 0; t < time_ent.length; t++) {
+				pLine = new StringBuilder();
+				pLine.append(time_ent[t]);
+				for (int c = 0; c < ref_values.length; c++) {
+					pLine.append(',');
+					pLine.append(ref_summary[t][c]);
+				}
 				for (int cdI = 0; cdI < compare_dir_arr.length; cdI++) {
 					for (int c = 0; c < ref_values.length; c++) {
 						pLine.append(',');
-						pLine.append("Rel_to_");
-						pLine.append(compare_dir_arr[cdI].getName());
-						if (ref_values.length > 1) {
-							pLine.append("_Col_");
-							pLine.append(c);
-						}
+						pLine.append(comp_summary[cdI][t][c]);
 					}
+
 				}
 				pWri.println(pLine.toString());
+			}
 
-				for (int t = 0; t < time_ent.length; t++) {
-					pLine = new StringBuilder();
-					pLine.append(time_ent[t]);
-					for (int c = 0; c < ref_values.length; c++) {
-						pLine.append(',');
-						pLine.append(ref_summary[t][c]);
-					}
-					for (int cdI = 0; cdI < compare_dir_arr.length; cdI++) {
-						for (int c = 0; c < ref_values.length; c++) {
-							pLine.append(',');
-							pLine.append(comp_summary[cdI][t][c]);
-						}
+			pWri.close();
 
-					}
-					pWri.println(pLine.toString());
-				}
-
+			if (fulldata_str_writer !=  null) {
+				
+				File file_compareOutput_FullData = new File(results_dir,
+						output_filename + "_fulldata.csv");
+				pWri = new PrintWriter(new FileWriter(file_compareOutput_FullData));				
+				pWri.print(fulldata_str_writer.toString());												
 				pWri.close();
 
 			}
@@ -397,6 +430,10 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 
 			Util_Compare_ClusterModel_Transmission_Output cmp = new Util_Compare_ClusterModel_Transmission_Output(
 					results_dir, ref_result_dir, analysis_col_select);
+
+			if (arg.length > 3) {
+				cmp.setPrintFullData(ARG_PRINT_FULL_DATA.equals(arg[3]));
+			}
 
 			cmp.startCompare();
 		}
