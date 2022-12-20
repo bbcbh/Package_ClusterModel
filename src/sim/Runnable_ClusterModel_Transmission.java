@@ -365,6 +365,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		this.sim_seed = sim_seed;
 
 	}
+	
+	
+	public long getSim_seed() {
+		return sim_seed;
+	}
+
+
+	public long getcMap_seed() {
+		return cMap_seed;
+	}
+
+
+
 
 	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
 		this.propSwitch_map = propSwitch_map;

@@ -33,6 +33,8 @@ public class Launcher_ClusterModel {
 			} else if ("-opt".equals(flag)) {
 				Optimisation_Factory
 						.stable_prevalence_by_tranmission_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
+			}else if("-optGA".equals(flag)) {
+				Optimisation_Factory.stable_prevalence_by_tranmission_fit_GA(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-analyse".equals(flag)) {
 				Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
 				analysis.setBaseDir(new File(args[1]));

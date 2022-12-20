@@ -1,14 +1,20 @@
 package optimisation;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
@@ -42,6 +48,7 @@ import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
 import sim.Simulation_ClusterModelTransmission;
+import util.ArrayUtilsRandomGenerator;
 import util.PropValUtils;
 
 public class Optimisation_Factory {
@@ -64,10 +71,444 @@ public class Optimisation_Factory {
 	private static final int OPT_TARGET_OPT_WEIGHTING = OPT_TARGET_GROUPS_TO_INCLUDE + 1;
 	private static final int OPT_TARGET_TARGET_VALUES_0 = OPT_TARGET_OPT_WEIGHTING + 1;
 
+	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
+			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
+		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) GA_POP_SIZE (int) "
+				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> ";
+
+		if (args.length < 3) {
+			System.out.println(USAGE_INFO);
+			System.exit(0);
+		} else {
+			File baseDir = new File(args[0]);
+
+			final double[] init_transmissionProb = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
+			final double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);
+			final int GA_MAX_POP_SIZE = (int) Integer.parseInt(args[3]);
+
+			float max_num_generation = Float.POSITIVE_INFINITY;
+			int tournament_arity = GA_MAX_POP_SIZE / 2;
+			float mutation_rate = 0.1f;
+			boolean exportAll = true;
+
+			for (int a = 4; a < args.length; a += 2) {
+				if ("-ta".equals(args[a])) {
+					tournament_arity = Integer.parseInt(args[a + 1]);
+				}
+				if ("-mr".equals(args[a])) {
+					mutation_rate = Float.parseFloat(args[a + 1]);
+				}
+				if ("-mg".equals(args[a])) {
+					max_num_generation = Float.parseFloat(args[a + 1]);
+				}
+				if ("-exportAll".equals(args[a])) {
+					exportAll = Boolean.parseBoolean(args[a + 1]);
+				}
+			}
+			final File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
+
+			final String PROP_SEED_INFECTION = POP_PROP_INIT_PREFIX
+					+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+							+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+							+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+							+ Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION); // "POP_PROP_INIT_PREFIX_14";
+
+			final int GA_ENT_FITNESS = 0;
+			final int GA_ENT_CMAP_SEED = GA_ENT_FITNESS + 1;
+			final int GA_ENT_SIM_SEED = GA_ENT_CMAP_SEED + 1;
+			final int GA_ENT_PARM_START = GA_ENT_SIM_SEED + 1;
+
+			final double ABSOLUTE_TOLERANCE = 1e-10;
+
+			final File GA_ALL_FILE = new File(baseDir, "OptRes_GA_All.csv");
+			final File GA_POP_FILE = new File(baseDir, "OptRes_GA_Pop.csv");
+			ArrayList<Number[]> ga_population = new ArrayList<>(GA_MAX_POP_SIZE + 1);
+
+			Comparator<Number[]> ga_population_cmp = new Comparator<Number[]>() {
+				@Override
+				public int compare(Number[] o1, Number[] o2) {
+					int res = Double.compare((Double) o1[GA_ENT_FITNESS], (Double) o2[GA_ENT_FITNESS]);
+					for (int i = 0; i < o1.length && res == 0; i++) {
+						if (o1[i] instanceof Long) {
+							res = Long.compare((Long) o1[i], (Long) o2[i]);
+						} else {
+							res = Double.compare((Double) o1[i], (Double) o2[i]);
+						}
+					}
+					return res;
+				}
+
+			};
+
+			if (propFile.exists()) {
+				FileInputStream fIS = new FileInputStream(propFile);
+				Properties prop = new Properties();
+				prop.loadFromXML(fIS);
+				fIS.close();
+
+				System.out.println(String.format("Properties file < %s > loaded.", propFile.getAbsolutePath()));
+
+				long seed = System.currentTimeMillis();
+				int numSnap = 1;
+				int num_time_steps_per_snap = 1;
+				int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
+				int numThreads = Runtime.getRuntime().availableProcessors();
+				int[][] seed_infection = null;
+				int contact_map_start_time = 365;
+				float[][] opt_target = new float[0][];
+				
+				File contactMapDir = baseDir;
+				
+				if(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+					contactMapDir = new File(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+					if(!contactMapDir.exists() || !contactMapDir.isDirectory()) {
+						contactMapDir = baseDir;						
+					}
+				}
+
+				if (prop.containsKey(POP_PROP_OPT_TARGET)) {
+					opt_target = (float[][]) PropValUtils.propStrToObject(prop.getProperty(POP_PROP_OPT_TARGET),
+							float[][].class);
+				}
+
+				if (prop.containsKey(PROP_SEED_INFECTION)) {
+					seed_infection = (int[][]) PropValUtils.propStrToObject(prop.getProperty(PROP_SEED_INFECTION),
+							int[][].class);
+				}
+				if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
+					seed = Long.parseLong(
+							prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
+				}
+				if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
+					numSnap = Integer.parseInt(
+							prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
+				}
+				if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
+					num_time_steps_per_snap = Integer.parseInt(
+							prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
+				}
+				if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL])) {
+					numThreads = Integer.parseInt(
+							prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL]));
+				}
+				String popCompositionKey = POP_PROP_INIT_PREFIX
+						+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+				if (prop.containsKey(popCompositionKey)) {
+					pop_composition = (int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),
+							int[].class);
+				}
+				String contactMapRangeKey = POP_PROP_INIT_PREFIX
+						+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+								+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+								+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
+				if (prop.containsKey(contactMapRangeKey)) {
+					contact_map_start_time = ((int[]) PropValUtils.propStrToObject(prop.getProperty(contactMapRangeKey),
+							int[].class))[0];
+				}
+
+				RandomGenerator RNG = new MersenneTwisterRandomGenerator(seed);
+
+				// Check for contact cluster generated
+
+				final String filename_cmap_regex = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+				final Pattern pattern_baseCMap_filename = Pattern.compile(filename_cmap_regex);
+
+				File[] preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return pathname.isFile() && Pattern.matches(filename_cmap_regex, pathname.getName());
+
+					}
+				});
+
+				long[] BASE_CONTACT_MAP_SEED = new long[preGenClusterFiles.length];
+
+				for (int mapPt = 0; mapPt < preGenClusterFiles.length; mapPt++) {
+					File cMap_file = preGenClusterFiles[mapPt];
+					Matcher m = pattern_baseCMap_filename.matcher(cMap_file.getName());
+					m.matches();
+					BASE_CONTACT_MAP_SEED[mapPt] = Long.parseLong(m.group(1));
+				}
+
+				if (GA_ALL_FILE.exists()) {
+					BufferedReader reader = new BufferedReader(new FileReader(GA_ALL_FILE));
+					String line;
+					while ((line = reader.readLine()) != null) {
+						String[] ent = line.split(",");
+						Number[] entArr = new Number[ent.length];
+						for (int i = 0; i < entArr.length; i++) {
+							if (i == GA_ENT_CMAP_SEED || i == GA_ENT_SIM_SEED) {
+								entArr[i] = Long.parseLong(ent[i]);
+							} else {
+								entArr[i] = Double.parseDouble(ent[i]);
+							}
+						}
+						int key = Collections.binarySearch(ga_population, entArr, ga_population_cmp);
+						if (key < 0) {
+							ga_population.add(~key, entArr);
+						}
+						if (ga_population.size() > GA_MAX_POP_SIZE) {
+							ga_population.remove(GA_MAX_POP_SIZE);
+						}
+					}
+					reader.close();
+				}
+
+				// Populate GA_Population
+				int prefill_size = ga_population.size();
+
+				// Pre-fill with initial values
+				Number[] init_ent = new Number[init_transmissionProb.length + 3];
+				init_ent[GA_ENT_FITNESS] = Double.NaN;
+				init_ent[GA_ENT_CMAP_SEED] = BASE_CONTACT_MAP_SEED[RNG.nextInt(BASE_CONTACT_MAP_SEED.length)];
+				init_ent[GA_ENT_SIM_SEED] = RNG.nextLong();
+				for (int p = 0; p < init_transmissionProb.length; p++) {
+					init_ent[GA_ENT_PARM_START + p] = init_transmissionProb[p];
+				}
+				if (prefill_size < GA_MAX_POP_SIZE) {
+					ga_population.add(prefill_size, init_ent);
+				} else {
+					ga_population.set(GA_MAX_POP_SIZE - 1, init_ent);
+				}
+
+				// Populate the rest of GA_Population if needed
+				prefill_size = ga_population.size();
+				for (int g = prefill_size; g < GA_MAX_POP_SIZE; g++) {
+					Number[] added_ent = new Number[init_transmissionProb.length + 3];
+					added_ent[GA_ENT_FITNESS] = Double.NaN;
+					added_ent[GA_ENT_CMAP_SEED] = BASE_CONTACT_MAP_SEED[RNG.nextInt(BASE_CONTACT_MAP_SEED.length)];
+					added_ent[GA_ENT_SIM_SEED] = RNG.nextLong();
+					for (int p = 0; p < init_transmissionProb.length; p++) {
+						added_ent[GA_ENT_PARM_START + p] = boundaries[0][p]
+								+ RNG.nextFloat() * (boundaries[1][p] - boundaries[0][p]);
+					}
+					ga_population.add(g, added_ent);
+				}
+
+				boolean exiting = false;
+				int num_gen = 0;
+
+				while (!exiting) {
+					// GA evolve
+					if (ga_population.get(GA_MAX_POP_SIZE - 1)[GA_ENT_FITNESS].doubleValue()
+							- ga_population.get(0)[GA_ENT_FITNESS].doubleValue() < ABSOLUTE_TOLERANCE) {
+						System.out.printf(
+								"The difference between best and worst fit in GA_POPULATION is less than ABSOLUTE_TOLERANCE of %.f.\n",
+								ABSOLUTE_TOLERANCE);
+						exiting = true;
+					} else if (num_gen > max_num_generation) {
+						System.out.printf("Maximum numbef of generations (%d) reached.\n", (int) max_num_generation);
+						exiting = true;
+					} else {
+						// Populate GA_POPULATION fitness
+
+						ExecutorService exec = Executors.newFixedThreadPool(numThreads);
+						int threadCount = 0;
+
+						for (Number[] ga_ent : ga_population) {
+							if (Double.isNaN(ga_ent[GA_ENT_FITNESS].doubleValue())) {
+
+								final int[] POP_COMPOSITION = pop_composition;
+								final int NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
+								final int NUM_SNAP = numSnap;
+								final int runnnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+										+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+										+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+										+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+								final Properties PROP = prop;
+								final int[][] SEED_INFECTION = seed_infection;
+								final int START_TIME = contact_map_start_time;
+								final float[][] OPT_TARGET = opt_target;
+								final boolean EXPORT_ALL = exportAll;
+								final File CMAP_DIR = contactMapDir;
+
+								Runnable fitness_thread = new Runnable() {
+									@Override
+									public void run() {
+										long cMap_seed = (long) ga_ent[GA_ENT_CMAP_SEED];
+										String cmap_match_str = FILENAME_FORMAT_ALL_CMAP
+												.replaceFirst("%d", Long.toString(cMap_seed))
+												.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+										File[] cmap_match_file = CMAP_DIR.listFiles(new FileFilter() {
+											@Override
+											public boolean accept(File pathname) {
+												return pathname.isFile()
+														&& Pattern.matches(cmap_match_str, pathname.getName());
+											}
+										});
+
+										ContactMap cmap = null;
+										if (cmap_match_file.length > 0) {
+											Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
+													.generateContactMapCallable(cmap_match_file[0]);
+											try {
+												cmap = cm_read_callable.call();
+											} catch (Exception e) {
+												e.printStackTrace(System.err);
+											}
+										}
+
+										if (cmap != null) {
+											// Setting up runnable
+
+											Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
+													(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
+													POP_COMPOSITION, cmap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
+											runnable.setBaseDir(baseDir);
+
+											for (int i = runnnable_offset; i < runnnable_offset
+													+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+
+												String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
+												if (PROP.containsKey(key)) {
+													runnable.getRunnable_fields()[i - runnnable_offset] = PropValUtils
+															.propStrToObject(PROP.getProperty(key),
+																	runnable.getRunnable_fields()[i - runnnable_offset]
+																			.getClass());
+												}
+											}
+
+											runnable.setSimSetting(1); // No output
+											Number[] param_number = Arrays.copyOfRange(ga_ent, GA_ENT_PARM_START,
+													ga_ent.length);
+											double[] param_double = new double[param_number.length];
+											for (int i = 0; i < param_number.length; i++) {
+												param_double[i] = param_number[i].doubleValue();
+											}
+
+											setOptParamInRunnable(runnable, param_double, false);
+											runnable.initialse();
+											runnable.allocateSeedInfection(SEED_INFECTION, START_TIME);
+
+											// Run simulation
+											runnable.run();
+
+											// Extract results
+											int start_k = 2;
+
+											Integer[] keys = new Integer[NUM_SNAP];
+											keys[0] = NUM_TIME_STEPS_PER_SNAP;
+											for (int k = 1; k < keys.length; k++) {
+												keys[k] = keys[k - 1] + NUM_TIME_STEPS_PER_SNAP;
+											}
+
+											@SuppressWarnings("unchecked")
+											HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable
+													.getSim_output()
+													.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
+
+											@SuppressWarnings("unchecked")
+											HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable
+													.getSim_output()
+													.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+
+											int sqSum = calculateOptFitness(param_double, OPT_TARGET, POP_COMPOSITION,
+													infectious_count_map, cumul_treatment_map,
+													Arrays.copyOfRange(keys, start_k, keys.length),
+													String.format("CM_Seed = %d, sim_seed = %d",
+															(long) ga_ent[GA_ENT_CMAP_SEED],
+															(long) ga_ent[GA_ENT_SIM_SEED]),
+													null);
+
+											ga_ent[GA_ENT_FITNESS] = sqSum;
+
+											if (EXPORT_ALL) {
+												StringBuilder ga_ent_disp = new StringBuilder();
+												for (Number val : ga_ent) {
+													if (ga_ent_disp.length() != 0) {
+														ga_ent_disp.append(',');
+													}
+													ga_ent_disp.append(val);
+												}
+												synchronized (exec) {
+													try {
+														FileWriter export_all_fWri = new FileWriter(GA_ALL_FILE, true);
+														PrintWriter export_all_pWri = new PrintWriter(export_all_fWri);
+														export_all_pWri.println(ga_ent_disp.toString());
+														export_all_pWri.close();
+														export_all_fWri.close();
+													} catch (IOException e) {
+														e.printStackTrace(System.err);
+													}
+
+												}
+											}
+										}
+
+									}
+								};
+
+								exec.submit(fitness_thread);
+								threadCount++;
+							}
+						}
+
+						if (threadCount != 0) {
+							exec.shutdown();
+							if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+								System.err.println("Thread time-out!");
+							}
+						}
+
+						// Sort GA_POPULATION
+						Collections.sort(ga_population, ga_population_cmp);
+
+						// Export GA_POPULATION
+						PrintWriter pWri = new PrintWriter(GA_POP_FILE);
+						for (Number[] ga_ent : ga_population) {
+							StringBuilder line = new StringBuilder();
+							for (Number val : ga_ent) {
+								if (line.length() != 0) {
+									line.append(',');
+								}
+								line.append(val.toString());
+							}
+							pWri.println(line.toString());
+						}
+						pWri.close();
+
+						// Fill the rest with next generation
+						int next_gen_start = tournament_arity;
+
+						for (int g = next_gen_start; g < GA_MAX_POP_SIZE; g++) {
+							Number[] ga_ent = ga_population.get(g);
+							ga_ent[GA_ENT_FITNESS] = Double.NaN;
+							ga_ent[GA_ENT_CMAP_SEED] = BASE_CONTACT_MAP_SEED[RNG.nextInt(BASE_CONTACT_MAP_SEED.length)];
+							ga_ent[GA_ENT_SIM_SEED] = RNG.nextLong();
+
+							int[] sel_indices = ArrayUtilsRandomGenerator.randomSelectIndex(2, 0, tournament_arity,
+									RNG);
+
+							for (int p = GA_ENT_PARM_START; p < ga_ent.length; p++) {
+								if (RNG.nextFloat() < mutation_rate) {
+									ga_ent[p] = boundaries[0][p - GA_ENT_PARM_START]
+											+ RNG.nextFloat() * (boundaries[1][p - GA_ENT_PARM_START]
+													- boundaries[0][p - GA_ENT_PARM_START]);
+								} else {
+									// Best 2 as crossover candidate
+									ga_ent[p] = ga_population.get(sel_indices[RNG.nextInt(2)])[p];
+								}
+							}
+						}
+
+						SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+						System.out.printf("Generation #%d formed at %s.\n", num_gen,
+								dateFormat.format(new Date(System.currentTimeMillis())));
+						num_gen++;
+					}
+				}
+
+			}
+
+		}
+
+	}
+
 	public static void stable_prevalence_by_tranmission_fit_Simplex(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 
-		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY (double[]) INIT_TRANSMISSION_VALUE (double[][]) BOUNDARIES <optional: NUM_EVAL (int)>";
+		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  <optional: NUM_EVAL (int)>";
 
 		int numEval = 100;
 		if (args.length < 3) {
@@ -110,7 +551,7 @@ public class Optimisation_Factory {
 
 			long seed = System.currentTimeMillis();
 			int numSnap = 1;
-			int snapFreq = 1;
+			int num_time_steps_per_snap = 1;
 			int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
 			int numThreads = Runtime.getRuntime().availableProcessors();
 
@@ -118,6 +559,15 @@ public class Optimisation_Factory {
 			int contact_map_start_time = 365;
 
 			float[][] opt_target = new float[0][];
+			
+			File contactMapDir = baseDir;
+			
+			if(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+				contactMapDir = new File(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+				if(!contactMapDir.exists() || !contactMapDir.isDirectory()) {
+					contactMapDir = baseDir;						
+				}
+			}
 
 			if (prop.containsKey(POP_PROP_OPT_TARGET)) {
 				opt_target = (float[][]) PropValUtils.propStrToObject(prop.getProperty(POP_PROP_OPT_TARGET),
@@ -137,7 +587,7 @@ public class Optimisation_Factory {
 						.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
 			}
 			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
-				snapFreq = Integer
+				num_time_steps_per_snap = Integer
 						.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
 			}
 			if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL])) {
@@ -163,7 +613,7 @@ public class Optimisation_Factory {
 
 			final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
 
-			File[] preGenClusterFiles = baseDir.listFiles(new FileFilter() {
+			File[] preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File pathname) {
 					return pathname.isFile() && Pattern.matches(REGEX_STR, pathname.getName());
@@ -175,7 +625,7 @@ public class Optimisation_Factory {
 
 			final RandomGenerator RNG;
 			final int NUM_TIME_STEPS_PER_SNAP;
-			final int SNAP_FREQ;
+			final int NUM_SNAP;
 			final int[] POP_COMPOSITION;
 			final int NUM_THREADS;
 			final ContactMap[] BASE_CONTACT_MAP;
@@ -186,8 +636,8 @@ public class Optimisation_Factory {
 			final Properties PROP;
 
 			RNG = new MersenneTwisterRandomGenerator(seed);
-			NUM_TIME_STEPS_PER_SNAP = snapFreq;
-			SNAP_FREQ = numSnap;
+			NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
+			NUM_SNAP = numSnap;
 			POP_COMPOSITION = pop_composition;
 			NUM_THREADS = numThreads;
 			OPT_TARGET = opt_target;
@@ -256,7 +706,7 @@ public class Optimisation_Factory {
 			}
 
 			System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
-					baseDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+					contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
 
 			MultivariateFunction func = new MultivariateFunction() {
 				@Override
@@ -280,7 +730,7 @@ public class Optimisation_Factory {
 
 					for (ContactMap c : cMap) {
 						runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[rId], sim_seed,
-								POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, SNAP_FREQ);
+								POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 						runnable[rId].setBaseDir(baseDir);
 
 						int runnnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
@@ -301,139 +751,7 @@ public class Optimisation_Factory {
 						}
 
 						runnable[rId].setSimSetting(1); // No output
-
-						double[][][] transmission_rate = (double[][][]) runnable[rId]
-								.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
-
-						double[] sym_test_rate = (double[]) runnable[rId]
-								.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
-
-						double[][] inf_dur = (double[][]) runnable[rId]
-								.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
-
-						float[][] sym_rate = (float[][]) runnable[rId]
-								.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
-
-						switch (point.length) {
-						case 8:
-							// TRANS_P2R, TRANS_R2P
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-							// TRANS_P2O, TRANS_O2P
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-							// TRANS_R2O, TRANS_O2R
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
-							// TRANS_O2O
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
-
-							// SYM_TEST_PERIOD
-							sym_test_rate[0] = point[7];
-							// Adjust SD based on ratio from mean
-							sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
-
-							break;
-						case 10:
-						case 14:
-						case 15:
-						case 16:
-							double org_mean;
-							// TRANS_P2V, TRANS_V2P
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][1] = 0;
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][1] = 0;
-							// TRANS_P2R, TRANS_R2P
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
-							// TRANS_P2O, TRANS_O2P
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[5];
-							// TRANS_R2O, TRANS_O2R
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[7];
-							// TRANS_O2O
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-							transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[8];
-							// SYM_TEST_PERIOD
-							org_mean = sym_test_rate[0];
-							sym_test_rate[0] = point[9];
-							// Adjust SD based on ratio from mean
-							sym_test_rate[1] = (point[9] / org_mean) * sym_test_rate[1];
-
-							if (point.length >= 14) {
-								// Duration by site
-								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
-									org_mean = inf_dur[s][0];
-									inf_dur[s][0] = point[s + 10];
-									// Adjust SD based on ratio from mean
-									inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
-								}
-
-								// Sym test adjustment for hetrosexual male
-								if (point.length >= 15) {
-									// Backward compatibility to single mean-sd option
-									if (sym_test_rate.length < 2 * Population_Bridging.LENGTH_GENDER) {
-										sym_test_rate = Arrays.copyOf(sym_test_rate,
-												sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
-										runnable[rId].runnable_fields[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
-										for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
-											sym_test_rate[2 * g] = sym_test_rate[0];
-											sym_test_rate[2 * g + 1] = sym_test_rate[1];
-										}
-									}
-
-									// Hetro_male
-									sym_test_rate[2] = point[14];
-									sym_test_rate[3] = (point[14] / sym_test_rate[0]) * sym_test_rate[1];
-
-								}
-
-								// Sym rate for urethral infection for male
-								if (point.length >= 16) {
-									for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
-										sym_rate[g][Runnable_ClusterModel_Transmission.SITE_PENIS] = (float) point[15];
-									}
-								}
-							}
-
-							break;
-
-						default:
-							System.err.printf("Optimisation: Parameter intrepretation %s not defined. Exiting...\n",
-									Arrays.toString(point));
-							System.exit(-1);
-
-						}
-
-						if (c == null) {
-							System.out.println("Opt. parameter display:");
-
-							System.out.println("RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE");
-							System.out.println(Arrays.deepToString(transmission_rate));
-							System.out.println();
-
-							System.out.println("RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD");
-							System.out.println(Arrays.deepToString(inf_dur));
-							System.out.println();
-
-							System.out.println("RUNNABLE_FIELD_TRANSMISSION_SYM_RATE");
-							System.out.println(Arrays.deepToString(sym_rate));
-							System.out.println();
-
-							System.out.println("RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM");
-							System.out.println(Arrays.toString(sym_test_rate));
-							System.out.println();
-
-							System.out.println("Opt. parameter display completed.");
-							System.exit(0);
-						}
+						setOptParamInRunnable(runnable[rId], point, c == null);
 						runnable[rId].initialse();
 						runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
 
@@ -469,11 +787,11 @@ public class Optimisation_Factory {
 						pt_str.append(String.format("%.5f", pt));
 					}
 
-					double sqSum = 0;
+					double sqSumTotal = 0;
 
 					int start_k = 2;
 
-					Integer[] keys = new Integer[SNAP_FREQ];
+					Integer[] keys = new Integer[NUM_SNAP];
 					keys[0] = NUM_TIME_STEPS_PER_SNAP;
 					for (int k = 1; k < keys.length; k++) {
 						keys[k] = keys[k - 1] + NUM_TIME_STEPS_PER_SNAP;
@@ -489,102 +807,13 @@ public class Optimisation_Factory {
 								.getSim_output()
 								.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
 
-						String simIdentifier = String.format("CM_Seed = %d, sim_seed = %d", BASE_CONTACT_MAP_SEED[r],
-								sim_seed);
+						long cm_seed = BASE_CONTACT_MAP_SEED[r];
 
 						StringBuilder str_disp = new StringBuilder();
 
-						for (int k = start_k; k < keys.length; k++) {
-							str_disp.append(keys[k]);
-							// Number of infections
-							int[][] inf_count = null;
-							if (infectious_count_map != null) {
-								inf_count = infectious_count_map.get(keys[k]);
-							} else {
-								System.err.printf(
-										"Warning: infection count map not defined for Sim #[%s] under parameter of %s\n",
-										simIdentifier, Arrays.toString(point));
-							}
-
-							// Number of treatment / DX
-							int[] current_treatment_count = null;
-							int[] pre_treatment_count = null;
-							if (cumul_treatment_map != null) {
-								current_treatment_count = cumul_treatment_map.get(keys[k]);
-								pre_treatment_count = cumul_treatment_map.get(keys[k - 1]);
-							} else {
-								System.err.printf(
-										"Warning: treatment count map not defined for Sim #[%s] under parameter of %s\n",
-										simIdentifier, Arrays.toString(point));
-							}
-
-							if (pre_treatment_count == null && current_treatment_count != null) {
-								pre_treatment_count = new int[current_treatment_count.length];
-							}
-
-							for (float[] opt_target_ent : OPT_TARGET) {
-								switch ((int) opt_target_ent[OPT_TARGET_FITTING_TYPE]) {
-								case OPT_TARGET_FITTING_TYPE_NUM_INFECTED_BY_SITE:
-									if (inf_count != null) {
-										float[] inf_count_total_by_site = new float[Runnable_ClusterModel_Transmission.LENGTH_SITE];
-										for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-											if ((1 << g & (int) opt_target_ent[OPT_TARGET_GROUPS_TO_INCLUDE]) > 0) {
-												for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
-													inf_count_total_by_site[s] += inf_count[g][s];
-												}
-											}
-										}
-										for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
-											float numInfected = inf_count_total_by_site[s];
-											sqSum += opt_target_ent[OPT_TARGET_OPT_WEIGHTING] * Math.pow(
-													numInfected - opt_target_ent[OPT_TARGET_TARGET_VALUES_0 + s], 2);
-											str_disp.append(',');
-											str_disp.append(numInfected);
-										}
-									} else {
-										// Extinction where it shouldn't be
-										boolean target_extinct = true;
-										for (int s = OPT_TARGET_TARGET_VALUES_0; s < opt_target_ent.length
-												&& target_extinct; s++) {
-											target_extinct &= opt_target_ent[OPT_TARGET_TARGET_VALUES_0 + s] == 0;
-										}
-										if (!target_extinct) {
-											sqSum += Float.POSITIVE_INFINITY;
-										}
-									}
-									break;
-								case OPT_TARGET_FITTING_TYPE_NOTIFICATIONS_BY_PERSON:
-									if (current_treatment_count != null) {
-										float treatment_count = 0;
-										float treatment_count_denom = 0;
-										for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-											if ((1 << g & (int) opt_target_ent[OPT_TARGET_GROUPS_TO_INCLUDE]) > 0) {
-												treatment_count += current_treatment_count[g] - pre_treatment_count[g];
-												treatment_count_denom += POP_COMPOSITION[g];
-											}
-										}
-										float treatment_rate = treatment_count / treatment_count_denom;
-										sqSum += opt_target_ent[OPT_TARGET_OPT_WEIGHTING] * Math
-												.pow(treatment_rate - opt_target_ent[OPT_TARGET_TARGET_VALUES_0], 2);
-										str_disp.append(',');
-										str_disp.append(treatment_rate);
-									} else if (opt_target_ent[OPT_TARGET_TARGET_VALUES_0] != 0) {
-										// Extinction where it shouldn't be
-										sqSum += Float.POSITIVE_INFINITY;
-
-									}
-									break;
-								default:
-									System.err.printf(
-											"Warning: Opt fitting of type = %f not defined. Fitting of %s ignored/n",
-											opt_target_ent[OPT_TARGET_FITTING_TYPE], Arrays.toString(opt_target_ent));
-
-								}
-
-							}
-
-							str_disp.append('\n');
-						}
+						int sqSum = calculateOptFitness(point, OPT_TARGET, POP_COMPOSITION, infectious_count_map,
+								cumul_treatment_map, Arrays.copyOfRange(keys, start_k, keys.length),
+								String.format("CM_Seed = %d, sim_seed = %d", cm_seed, sim_seed), str_disp);
 
 						// Display trends
 						try {
@@ -613,10 +842,21 @@ public class Optimisation_Factory {
 
 						}
 
+						sqSumTotal += sqSum;
+
 					}
 
-					String outMsg = String.format("P = [%s], V = %.2e, Time req = %.3fs\n", pt_str.toString(), sqSum,
-							(System.currentTimeMillis() - tic) / 1000f);
+					String outMsg;
+
+					if (runnable.length == 1) {
+						outMsg = String.format("P = [%s], V = %.2e, map_seed= %d, sim_seed = %d, Time req = %.3fs\n",
+								pt_str.toString(), sqSumTotal, runnable[0].getcMap_seed(), runnable[0].getSim_seed(),
+								(System.currentTimeMillis() - tic) / 1000f);
+
+					} else {
+						outMsg = String.format("P = [%s], V = %.2e, Time req = %.3fs\n", pt_str.toString(), sqSumTotal,
+								(System.currentTimeMillis() - tic) / 1000f);
+					}
 
 					try {
 						File opt_output_file = new File(baseDir, "Opt_res.txt");
@@ -632,7 +872,7 @@ public class Optimisation_Factory {
 
 					System.out.println(outMsg);
 
-					return sqSum;
+					return sqSumTotal;
 
 				}
 
@@ -909,6 +1149,248 @@ public class Optimisation_Factory {
 			}
 
 		}
+	}
+
+	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission targer_runnable, double[] point,
+			boolean display_only) {
+		double[][][] transmission_rate = (double[][][]) targer_runnable
+				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
+
+		double[] sym_test_rate = (double[]) targer_runnable
+				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
+
+		double[][] inf_dur = (double[][]) targer_runnable
+				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
+
+		float[][] sym_rate = (float[][]) targer_runnable
+				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
+
+		switch (point.length) {
+		case 8:
+			// TRANS_P2R, TRANS_R2P
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+			// TRANS_P2O, TRANS_O2P
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+			// TRANS_R2O, TRANS_O2R
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
+			// TRANS_O2O
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
+
+			// SYM_TEST_PERIOD
+			sym_test_rate[0] = point[7];
+			// Adjust SD based on ratio from mean
+			sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
+
+			break;
+		case 10:
+		case 14:
+		case 15:
+		case 16:
+			double org_mean;
+			// TRANS_P2V, TRANS_V2P
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][1] = 0;
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][1] = 0;
+			// TRANS_P2R, TRANS_R2P
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+			// TRANS_P2O, TRANS_O2P
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[5];
+			// TRANS_R2O, TRANS_O2R
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[7];
+			// TRANS_O2O
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[8];
+			// SYM_TEST_PERIOD
+			org_mean = sym_test_rate[0];
+			sym_test_rate[0] = point[9];
+			// Adjust SD based on ratio from mean
+			sym_test_rate[1] = (point[9] / org_mean) * sym_test_rate[1];
+
+			if (point.length >= 14) {
+				// Duration by site
+				for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+					org_mean = inf_dur[s][0];
+					inf_dur[s][0] = point[s + 10];
+					// Adjust SD based on ratio from mean
+					inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
+				}
+
+				// Sym test adjustment for hetrosexual male
+				if (point.length >= 15) {
+					// Backward compatibility to single mean-sd option
+					if (sym_test_rate.length < 2 * Population_Bridging.LENGTH_GENDER) {
+						sym_test_rate = Arrays.copyOf(sym_test_rate,
+								sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
+						targer_runnable.runnable_fields[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
+						for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+							sym_test_rate[2 * g] = sym_test_rate[0];
+							sym_test_rate[2 * g + 1] = sym_test_rate[1];
+						}
+					}
+
+					// Hetro_male
+					sym_test_rate[2] = point[14];
+					sym_test_rate[3] = (point[14] / sym_test_rate[0]) * sym_test_rate[1];
+
+				}
+
+				// Sym rate for urethral infection for male
+				if (point.length >= 16) {
+					for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+						sym_rate[g][Runnable_ClusterModel_Transmission.SITE_PENIS] = (float) point[15];
+					}
+				}
+			}
+
+			break;
+
+		default:
+			System.err.printf("Optimisation: Parameter intrepretation %s not defined. Exiting...\n",
+					Arrays.toString(point));
+			System.exit(-1);
+
+		}
+
+		if (display_only) {
+			System.out.println("Opt. parameter display:");
+
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE");
+			System.out.println(Arrays.deepToString(transmission_rate));
+			System.out.println();
+
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD");
+			System.out.println(Arrays.deepToString(inf_dur));
+			System.out.println();
+
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_SYM_RATE");
+			System.out.println(Arrays.deepToString(sym_rate));
+			System.out.println();
+
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM");
+			System.out.println(Arrays.toString(sym_test_rate));
+			System.out.println();
+
+			System.out.println("Opt. parameter display completed.");
+			System.exit(0);
+		}
+	}
+
+	public static int calculateOptFitness(double[] parameters, final float[][] opt_target, final int[] pop_composition,
+			HashMap<Integer, int[][]> infectious_count_map, HashMap<Integer, int[]> cumul_treatment_map,
+			Integer[] map_keys, String simIdentifier, StringBuilder str_disp) {
+
+		int sqSum = 0;
+
+		for (int k = 0; k < map_keys.length; k++) {
+
+			if (str_disp != null) {
+				str_disp.append(map_keys[k]);
+			}
+			// Number of infections
+			int[][] inf_count = null;
+			if (infectious_count_map != null) {
+				inf_count = infectious_count_map.get(map_keys[k]);
+			} else {
+				System.err.printf("Warning: infection count map not defined for Sim #[%s] under parameter of %s\n",
+						simIdentifier, Arrays.toString(parameters));
+			}
+
+			// Number of treatment / DX
+			int[] current_treatment_count = null;
+			int[] pre_treatment_count = null;
+			if (cumul_treatment_map != null) {
+				current_treatment_count = cumul_treatment_map.get(map_keys[k]);
+				pre_treatment_count = cumul_treatment_map.get(map_keys[k - 1]);
+			} else {
+				System.err.printf("Warning: treatment count map not defined for Sim #[%s] under parameter of %s\n",
+						simIdentifier, Arrays.toString(parameters));
+			}
+
+			if (pre_treatment_count == null && current_treatment_count != null) {
+				pre_treatment_count = new int[current_treatment_count.length];
+			}
+
+			for (float[] opt_target_ent : opt_target) {
+				switch ((int) opt_target_ent[OPT_TARGET_FITTING_TYPE]) {
+				case OPT_TARGET_FITTING_TYPE_NUM_INFECTED_BY_SITE:
+					if (inf_count != null) {
+						float[] inf_count_total_by_site = new float[Runnable_ClusterModel_Transmission.LENGTH_SITE];
+						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							if ((1 << g & (int) opt_target_ent[OPT_TARGET_GROUPS_TO_INCLUDE]) > 0) {
+								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+									inf_count_total_by_site[s] += inf_count[g][s];
+								}
+							}
+						}
+						for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+							float numInfected = inf_count_total_by_site[s];
+							sqSum += opt_target_ent[OPT_TARGET_OPT_WEIGHTING]
+									* Math.pow(numInfected - opt_target_ent[OPT_TARGET_TARGET_VALUES_0 + s], 2);
+							if (str_disp != null) {
+								str_disp.append(',');
+								str_disp.append(numInfected);
+							}
+						}
+					} else {
+						// Extinction where it shouldn't be
+						boolean target_extinct = true;
+						for (int s = OPT_TARGET_TARGET_VALUES_0; s < opt_target_ent.length && target_extinct; s++) {
+							target_extinct &= opt_target_ent[OPT_TARGET_TARGET_VALUES_0 + s] == 0;
+						}
+						if (!target_extinct) {
+							sqSum += Float.POSITIVE_INFINITY;
+						}
+					}
+					break;
+				case OPT_TARGET_FITTING_TYPE_NOTIFICATIONS_BY_PERSON:
+					if (current_treatment_count != null) {
+						float treatment_count = 0;
+						float treatment_count_denom = 0;
+						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							if ((1 << g & (int) opt_target_ent[OPT_TARGET_GROUPS_TO_INCLUDE]) > 0) {
+								treatment_count += current_treatment_count[g] - pre_treatment_count[g];
+								treatment_count_denom += pop_composition[g];
+							}
+						}
+						float treatment_rate = treatment_count / treatment_count_denom;
+						sqSum += opt_target_ent[OPT_TARGET_OPT_WEIGHTING]
+								* Math.pow(treatment_rate - opt_target_ent[OPT_TARGET_TARGET_VALUES_0], 2);
+
+						if (str_disp != null) {
+							str_disp.append(',');
+							str_disp.append(treatment_rate);
+						}
+					} else if (opt_target_ent[OPT_TARGET_TARGET_VALUES_0] != 0) {
+						// Extinction where it shouldn't be
+						sqSum += Float.POSITIVE_INFINITY;
+
+					}
+					break;
+				default:
+					System.err.printf("Warning: Opt fitting of type = %f not defined. Fitting of %s ignored/n",
+							opt_target_ent[OPT_TARGET_FITTING_TYPE], Arrays.toString(opt_target_ent));
+
+				}
+
+			}
+
+			if (str_disp != null) {
+				str_disp.append('\n');
+			}
+		}
+		return sqSum;
 	}
 
 }
