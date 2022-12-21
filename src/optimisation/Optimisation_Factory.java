@@ -128,7 +128,7 @@ public class Optimisation_Factory {
 				@Override
 				public int compare(Number[] o1, Number[] o2) {
 					int res = Double.compare((Double) o1[GA_ENT_FITNESS], (Double) o2[GA_ENT_FITNESS]);
-					for (int i = 0; i < o1.length && res == 0; i++) {
+					for (int i = 0; i < o1.length && res == 0; i++) {																		
 						if (o1[i] instanceof Long) {
 							res = Long.compare((Long) o1[i], (Long) o2[i]);
 						} else {
@@ -402,7 +402,7 @@ public class Optimisation_Factory {
 													.getSim_output()
 													.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
 
-											int sqSum = calculateOptFitness(param_double, OPT_TARGET, POP_COMPOSITION,
+											double sqSum = (double) calculateOptFitness(param_double, OPT_TARGET, POP_COMPOSITION,
 													infectious_count_map, cumul_treatment_map,
 													keys, start_k,
 													String.format("CM_Seed = %d, sim_seed = %d",
