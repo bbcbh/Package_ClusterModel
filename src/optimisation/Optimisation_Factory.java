@@ -404,7 +404,7 @@ public class Optimisation_Factory {
 
 											int sqSum = calculateOptFitness(param_double, OPT_TARGET, POP_COMPOSITION,
 													infectious_count_map, cumul_treatment_map,
-													Arrays.copyOfRange(keys, start_k, keys.length),
+													keys, start_k,
 													String.format("CM_Seed = %d, sim_seed = %d",
 															(long) ga_ent[GA_ENT_CMAP_SEED],
 															(long) ga_ent[GA_ENT_SIM_SEED]),
@@ -811,8 +811,8 @@ public class Optimisation_Factory {
 
 						StringBuilder str_disp = new StringBuilder();
 
-						int sqSum = calculateOptFitness(point, OPT_TARGET, POP_COMPOSITION, infectious_count_map,
-								cumul_treatment_map, Arrays.copyOfRange(keys, start_k, keys.length),
+						int sqSum = calculateOptFitness(point, OPT_TARGET, POP_COMPOSITION, infectious_count_map,								
+								cumul_treatment_map,keys, start_k,
 								String.format("CM_Seed = %d, sim_seed = %d", cm_seed, sim_seed), str_disp);
 
 						// Display trends
@@ -1289,11 +1289,11 @@ public class Optimisation_Factory {
 
 	public static int calculateOptFitness(double[] parameters, final float[][] opt_target, final int[] pop_composition,
 			HashMap<Integer, int[][]> infectious_count_map, HashMap<Integer, int[]> cumul_treatment_map,
-			Integer[] map_keys, String simIdentifier, StringBuilder str_disp) {
+			Integer[] map_keys, int start_key, String simIdentifier, StringBuilder str_disp) {
 
 		int sqSum = 0;
 
-		for (int k = 0; k < map_keys.length; k++) {
+		for (int k = start_key; k < map_keys.length; k++) {
 
 			if (str_disp != null) {
 				str_disp.append(map_keys[k]);
