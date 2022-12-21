@@ -402,7 +402,7 @@ public class Optimisation_Factory {
 													.getSim_output()
 													.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
 
-											double sqSum = (double) calculateOptFitness(param_double, OPT_TARGET, POP_COMPOSITION,
+											double sqSum = calculateOptFitness(param_double, OPT_TARGET, POP_COMPOSITION,
 													infectious_count_map, cumul_treatment_map,
 													keys, start_k,
 													String.format("CM_Seed = %d, sim_seed = %d",
@@ -811,7 +811,7 @@ public class Optimisation_Factory {
 
 						StringBuilder str_disp = new StringBuilder();
 
-						int sqSum = calculateOptFitness(point, OPT_TARGET, POP_COMPOSITION, infectious_count_map,								
+						double sqSum = calculateOptFitness(point, OPT_TARGET, POP_COMPOSITION, infectious_count_map,								
 								cumul_treatment_map,keys, start_k,
 								String.format("CM_Seed = %d, sim_seed = %d", cm_seed, sim_seed), str_disp);
 
@@ -1287,11 +1287,11 @@ public class Optimisation_Factory {
 		}
 	}
 
-	public static int calculateOptFitness(double[] parameters, final float[][] opt_target, final int[] pop_composition,
+	public static double calculateOptFitness(double[] parameters, final float[][] opt_target, final int[] pop_composition,
 			HashMap<Integer, int[][]> infectious_count_map, HashMap<Integer, int[]> cumul_treatment_map,
 			Integer[] map_keys, int start_key, String simIdentifier, StringBuilder str_disp) {
 
-		int sqSum = 0;
+		double sqSum = 0;
 
 		for (int k = start_key; k < map_keys.length; k++) {
 
@@ -1350,7 +1350,7 @@ public class Optimisation_Factory {
 							target_extinct &= opt_target_ent[OPT_TARGET_TARGET_VALUES_0 + s] == 0;
 						}
 						if (!target_extinct) {
-							sqSum += Float.POSITIVE_INFINITY;
+							sqSum += Double.POSITIVE_INFINITY;
 						}
 					}
 					break;
@@ -1374,7 +1374,7 @@ public class Optimisation_Factory {
 						}
 					} else if (opt_target_ent[OPT_TARGET_TARGET_VALUES_0] != 0) {
 						// Extinction where it shouldn't be
-						sqSum += Float.POSITIVE_INFINITY;
+						sqSum += Double.POSITIVE_INFINITY;
 
 					}
 					break;
