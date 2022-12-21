@@ -123,12 +123,13 @@ public class Optimisation_Factory {
 			final File GA_ALL_FILE = new File(baseDir, "OptRes_GA_All.csv");
 			final File GA_POP_FILE = new File(baseDir, "OptRes_GA_Pop.csv");
 			ArrayList<Number[]> ga_population = new ArrayList<>(GA_MAX_POP_SIZE + 1);
+			HashMap<Long, ContactMap> cMap_maping = new HashMap<>();
 
 			Comparator<Number[]> ga_population_cmp = new Comparator<Number[]>() {
 				@Override
 				public int compare(Number[] o1, Number[] o2) {
 					int res = Double.compare((Double) o1[GA_ENT_FITNESS], (Double) o2[GA_ENT_FITNESS]);
-					for (int i = 0; i < o1.length && res == 0; i++) {																		
+					for (int i = 0; i < o1.length && res == 0; i++) {
 						if (o1[i] instanceof Long) {
 							res = Long.compare((Long) o1[i], (Long) o2[i]);
 						} else {
@@ -156,13 +157,14 @@ public class Optimisation_Factory {
 				int[][] seed_infection = null;
 				int contact_map_start_time = 365;
 				float[][] opt_target = new float[0][];
-				
+
 				File contactMapDir = baseDir;
-				
-				if(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
-					contactMapDir = new File(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
-					if(!contactMapDir.exists() || !contactMapDir.isDirectory()) {
-						contactMapDir = baseDir;						
+
+				if (prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+					contactMapDir = new File(
+							prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+					if (!contactMapDir.exists() || !contactMapDir.isDirectory()) {
+						contactMapDir = baseDir;
 					}
 				}
 
@@ -228,6 +230,7 @@ public class Optimisation_Factory {
 					Matcher m = pattern_baseCMap_filename.matcher(cMap_file.getName());
 					m.matches();
 					BASE_CONTACT_MAP_SEED[mapPt] = Long.parseLong(m.group(1));
+
 				}
 
 				if (GA_ALL_FILE.exists()) {
@@ -326,26 +329,34 @@ public class Optimisation_Factory {
 									@Override
 									public void run() {
 										long cMap_seed = (long) ga_ent[GA_ENT_CMAP_SEED];
-										String cmap_match_str = FILENAME_FORMAT_ALL_CMAP
-												.replaceFirst("%d", Long.toString(cMap_seed))
-												.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
-										File[] cmap_match_file = CMAP_DIR.listFiles(new FileFilter() {
-											@Override
-											public boolean accept(File pathname) {
-												return pathname.isFile()
-														&& Pattern.matches(cmap_match_str, pathname.getName());
-											}
-										});
+										ContactMap cmap = cMap_maping.get(cMap_seed);
 
-										ContactMap cmap = null;
-										if (cmap_match_file.length > 0) {
-											Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
-													.generateContactMapCallable(cmap_match_file[0]);
-											try {
-												cmap = cm_read_callable.call();
-											} catch (Exception e) {
-												e.printStackTrace(System.err);
+										if (cmap == null) {
+											String cmap_match_str = FILENAME_FORMAT_ALL_CMAP
+													.replaceFirst("%d", Long.toString(cMap_seed))
+													.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+											File[] cmap_match_file = CMAP_DIR.listFiles(new FileFilter() {
+												@Override
+												public boolean accept(File pathname) {
+													return pathname.isFile()
+															&& Pattern.matches(cmap_match_str, pathname.getName());
+												}
+											});
+
+											if (cmap_match_file.length > 0) {
+												Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
+														.generateContactMapCallable(cmap_match_file[0]);
+												try {
+													cmap = cm_read_callable.call();
+												} catch (Exception e) {
+													e.printStackTrace(System.err);
+												}
 											}
+											
+											synchronized(exec){
+												cMap_maping.put(cMap_seed, cmap);
+											}											
+											
 										}
 
 										if (cmap != null) {
@@ -402,9 +413,9 @@ public class Optimisation_Factory {
 													.getSim_output()
 													.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
 
-											double sqSum = calculateOptFitness(param_double, OPT_TARGET, POP_COMPOSITION,
-													infectious_count_map, cumul_treatment_map,
-													keys, start_k,
+											double sqSum = calculateOptFitness(param_double, OPT_TARGET,
+													POP_COMPOSITION, infectious_count_map, cumul_treatment_map, keys,
+													start_k,
 													String.format("CM_Seed = %d, sim_seed = %d",
 															(long) ga_ent[GA_ENT_CMAP_SEED],
 															(long) ga_ent[GA_ENT_SIM_SEED]),
@@ -559,13 +570,13 @@ public class Optimisation_Factory {
 			int contact_map_start_time = 365;
 
 			float[][] opt_target = new float[0][];
-			
+
 			File contactMapDir = baseDir;
-			
-			if(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+
+			if (prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
 				contactMapDir = new File(prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
-				if(!contactMapDir.exists() || !contactMapDir.isDirectory()) {
-					contactMapDir = baseDir;						
+				if (!contactMapDir.exists() || !contactMapDir.isDirectory()) {
+					contactMapDir = baseDir;
 				}
 			}
 
@@ -811,8 +822,8 @@ public class Optimisation_Factory {
 
 						StringBuilder str_disp = new StringBuilder();
 
-						double sqSum = calculateOptFitness(point, OPT_TARGET, POP_COMPOSITION, infectious_count_map,								
-								cumul_treatment_map,keys, start_k,
+						double sqSum = calculateOptFitness(point, OPT_TARGET, POP_COMPOSITION, infectious_count_map,
+								cumul_treatment_map, keys, start_k,
 								String.format("CM_Seed = %d, sim_seed = %d", cm_seed, sim_seed), str_disp);
 
 						// Display trends
@@ -1287,9 +1298,10 @@ public class Optimisation_Factory {
 		}
 	}
 
-	public static double calculateOptFitness(double[] parameters, final float[][] opt_target, final int[] pop_composition,
-			HashMap<Integer, int[][]> infectious_count_map, HashMap<Integer, int[]> cumul_treatment_map,
-			Integer[] map_keys, int start_key, String simIdentifier, StringBuilder str_disp) {
+	public static double calculateOptFitness(double[] parameters, final float[][] opt_target,
+			final int[] pop_composition, HashMap<Integer, int[][]> infectious_count_map,
+			HashMap<Integer, int[]> cumul_treatment_map, Integer[] map_keys, int start_key, String simIdentifier,
+			StringBuilder str_disp) {
 
 		double sqSum = 0;
 
