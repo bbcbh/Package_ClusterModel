@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,7 +75,7 @@ public class Optimisation_Factory {
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) GA_POP_SIZE (int) "
-				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> ";
+				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> <-useInitalValues true|false>";
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -85,11 +86,13 @@ public class Optimisation_Factory {
 			final double[] init_transmissionProb = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
 			final double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);
 			final int GA_MAX_POP_SIZE = (int) Integer.parseInt(args[3]);
+			final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 			float max_num_generation = Float.POSITIVE_INFINITY;
 			int tournament_arity = GA_MAX_POP_SIZE / 2;
 			float mutation_rate = 0.1f;
 			boolean exportAll = true;
+			boolean useInitValue = false;
 
 			for (int a = 4; a < args.length; a += 2) {
 				if ("-ta".equals(args[a])) {
@@ -104,6 +107,10 @@ public class Optimisation_Factory {
 				if ("-exportAll".equals(args[a])) {
 					exportAll = Boolean.parseBoolean(args[a + 1]);
 				}
+				if ("-useInitalValues".equals(args[a])) {
+					useInitValue = Boolean.parseBoolean(args[a + 1]);
+				}
+
 			}
 			final File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
 
@@ -123,7 +130,7 @@ public class Optimisation_Factory {
 			final File GA_ALL_FILE = new File(baseDir, "OptRes_GA_All.csv");
 			final File GA_POP_FILE = new File(baseDir, "OptRes_GA_Pop.csv");
 			ArrayList<Number[]> ga_population = new ArrayList<>(GA_MAX_POP_SIZE + 1);
-			HashMap<Long, ContactMap> cMap_maping = new HashMap<>();
+			final ConcurrentHashMap<Long, ContactMap> cMap_maping;
 
 			Comparator<Number[]> ga_population_cmp = new Comparator<Number[]>() {
 				@Override
@@ -223,6 +230,8 @@ public class Optimisation_Factory {
 					}
 				});
 
+				cMap_maping = new ConcurrentHashMap<>(preGenClusterFiles.length);
+
 				long[] BASE_CONTACT_MAP_SEED = new long[preGenClusterFiles.length];
 
 				for (int mapPt = 0; mapPt < preGenClusterFiles.length; mapPt++) {
@@ -261,17 +270,20 @@ public class Optimisation_Factory {
 				int prefill_size = ga_population.size();
 
 				// Pre-fill with initial values
-				Number[] init_ent = new Number[init_transmissionProb.length + 3];
-				init_ent[GA_ENT_FITNESS] = Double.NaN;
-				init_ent[GA_ENT_CMAP_SEED] = BASE_CONTACT_MAP_SEED[RNG.nextInt(BASE_CONTACT_MAP_SEED.length)];
-				init_ent[GA_ENT_SIM_SEED] = RNG.nextLong();
-				for (int p = 0; p < init_transmissionProb.length; p++) {
-					init_ent[GA_ENT_PARM_START + p] = init_transmissionProb[p];
-				}
-				if (prefill_size < GA_MAX_POP_SIZE) {
-					ga_population.add(prefill_size, init_ent);
-				} else {
-					ga_population.set(GA_MAX_POP_SIZE - 1, init_ent);
+
+				if (useInitValue || prefill_size == 0) {
+					Number[] init_ent = new Number[init_transmissionProb.length + 3];
+					init_ent[GA_ENT_FITNESS] = Double.NaN;
+					init_ent[GA_ENT_CMAP_SEED] = BASE_CONTACT_MAP_SEED[RNG.nextInt(BASE_CONTACT_MAP_SEED.length)];
+					init_ent[GA_ENT_SIM_SEED] = RNG.nextLong();
+					for (int p = 0; p < init_transmissionProb.length; p++) {
+						init_ent[GA_ENT_PARM_START + p] = init_transmissionProb[p];
+					}
+					if (prefill_size < GA_MAX_POP_SIZE) {
+						ga_population.add(prefill_size, init_ent);
+					} else {
+						ga_population.set(GA_MAX_POP_SIZE - 1, init_ent);
+					}
 				}
 
 				// Populate the rest of GA_Population if needed
@@ -300,7 +312,7 @@ public class Optimisation_Factory {
 								ABSOLUTE_TOLERANCE);
 						exiting = true;
 					} else if (num_gen > max_num_generation) {
-						System.out.printf("Maximum numbef of generations (%d) reached.\n", (int) max_num_generation);
+						System.out.printf("Maximum number of generations (%d) reached.\n", (int) max_num_generation);
 						exiting = true;
 					} else {
 						// Populate GA_POPULATION fitness
@@ -352,11 +364,9 @@ public class Optimisation_Factory {
 													e.printStackTrace(System.err);
 												}
 											}
-											
-											synchronized(exec){
-												cMap_maping.put(cMap_seed, cmap);
-											}											
-											
+
+											cMap_maping.put(cMap_seed, cmap);
+
 										}
 
 										if (cmap != null) {
@@ -431,7 +441,7 @@ public class Optimisation_Factory {
 													}
 													ga_ent_disp.append(val);
 												}
-												synchronized (exec) {
+												synchronized (GA_ALL_FILE) {
 													try {
 														FileWriter export_all_fWri = new FileWriter(GA_ALL_FILE, true);
 														PrintWriter export_all_pWri = new PrintWriter(export_all_fWri);
@@ -502,10 +512,8 @@ public class Optimisation_Factory {
 							}
 						}
 
-						SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
-						System.out.printf("Generation #%d formed at %s.\n", num_gen,
-								dateFormat.format(new Date(System.currentTimeMillis())));
+						System.out.printf("Generation #%d formed at %s. Contact map included = %d.\n", num_gen,
+								dateFormat.format(new Date(System.currentTimeMillis())), cMap_maping.size());
 						num_gen++;
 					}
 				}
