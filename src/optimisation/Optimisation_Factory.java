@@ -75,7 +75,7 @@ public class Optimisation_Factory {
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) GA_POP_SIZE (int) "
-				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> <-useInitalValues true|false>";
+				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> <-useInitalValues true|false> <-useCMapMapping true|false>";
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -93,6 +93,7 @@ public class Optimisation_Factory {
 			float mutation_rate = 0.1f;
 			boolean exportAll = true;
 			boolean useInitValue = false;
+			boolean useCMapMapping = true;
 
 			for (int a = 4; a < args.length; a += 2) {
 				if ("-ta".equals(args[a])) {
@@ -108,6 +109,9 @@ public class Optimisation_Factory {
 					exportAll = Boolean.parseBoolean(args[a + 1]);
 				}
 				if ("-useInitalValues".equals(args[a])) {
+					useInitValue = Boolean.parseBoolean(args[a + 1]);
+				}
+				if("-useCMapMapping".equals(args[a])) {
 					useInitValue = Boolean.parseBoolean(args[a + 1]);
 				}
 
@@ -130,7 +134,7 @@ public class Optimisation_Factory {
 			final File GA_ALL_FILE = new File(baseDir, "OptRes_GA_All.csv");
 			final File GA_POP_FILE = new File(baseDir, "OptRes_GA_Pop.csv");
 			ArrayList<Number[]> ga_population = new ArrayList<>(GA_MAX_POP_SIZE + 1);
-			final ConcurrentHashMap<Long, ContactMap> cMap_maping;
+			ConcurrentHashMap<Long, ContactMap> cMap_maping = null;
 
 			Comparator<Number[]> ga_population_cmp = new Comparator<Number[]>() {
 				@Override
@@ -230,7 +234,9 @@ public class Optimisation_Factory {
 					}
 				});
 
-				cMap_maping = new ConcurrentHashMap<>(preGenClusterFiles.length);
+				if(useCMapMapping) {
+					cMap_maping = new ConcurrentHashMap<>(preGenClusterFiles.length);
+				}
 
 				long[] BASE_CONTACT_MAP_SEED = new long[preGenClusterFiles.length];
 
@@ -336,12 +342,17 @@ public class Optimisation_Factory {
 								final float[][] OPT_TARGET = opt_target;
 								final boolean EXPORT_ALL = exportAll;
 								final File CMAP_DIR = contactMapDir;
+								final ConcurrentHashMap<Long, ContactMap> C_MAP_MAPPING = cMap_maping;
 
 								Runnable fitness_thread = new Runnable() {
 									@Override
 									public void run() {
 										long cMap_seed = (long) ga_ent[GA_ENT_CMAP_SEED];
-										ContactMap cmap = cMap_maping.get(cMap_seed);
+										ContactMap cmap = null;
+										
+										if(C_MAP_MAPPING != null) {
+											cmap = C_MAP_MAPPING.get(cMap_seed);
+										}
 
 										if (cmap == null) {
 											String cmap_match_str = FILENAME_FORMAT_ALL_CMAP
@@ -364,8 +375,10 @@ public class Optimisation_Factory {
 													e.printStackTrace(System.err);
 												}
 											}
-
-											cMap_maping.put(cMap_seed, cmap);
+											
+											if(C_MAP_MAPPING != null) {
+												C_MAP_MAPPING.put(cMap_seed, cmap);
+											}	
 
 										}
 
