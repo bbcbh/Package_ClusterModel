@@ -75,7 +75,8 @@ public class Optimisation_Factory {
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) GA_POP_SIZE (int) "
-				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> <-useInitalValues true|false> <-useCMapMapping true|false>";
+				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> "
+				+ "<-useInitalValues false|true> <-useCMapMapping true|false> <-useCMapEdgeList true|false";
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -94,6 +95,7 @@ public class Optimisation_Factory {
 			boolean exportAll = true;
 			boolean useInitValue = false;
 			boolean useCMapMapping = true;
+			boolean useCMapEdgeList = true;
 
 			for (int a = 4; a < args.length; a += 2) {
 				if ("-ta".equals(args[a])) {
@@ -111,8 +113,11 @@ public class Optimisation_Factory {
 				if ("-useInitalValues".equals(args[a])) {
 					useInitValue = Boolean.parseBoolean(args[a + 1]);
 				}
-				if("-useCMapMapping".equals(args[a])) {
-					useInitValue = Boolean.parseBoolean(args[a + 1]);
+				if ("-useCMapMapping".equals(args[a])) {
+					useCMapMapping = Boolean.parseBoolean(args[a + 1]);
+				}
+				if ("-useCMapEdgeList".equals(args[a])) {
+					useCMapEdgeList = Boolean.parseBoolean(args[a + 1]);
 				}
 
 			}
@@ -134,7 +139,6 @@ public class Optimisation_Factory {
 			final File GA_ALL_FILE = new File(baseDir, "OptRes_GA_All.csv");
 			final File GA_POP_FILE = new File(baseDir, "OptRes_GA_Pop.csv");
 			ArrayList<Number[]> ga_population = new ArrayList<>(GA_MAX_POP_SIZE + 1);
-			ConcurrentHashMap<Long, ContactMap> cMap_maping = null;
 
 			Comparator<Number[]> ga_population_cmp = new Comparator<Number[]>() {
 				@Override
@@ -234,8 +238,13 @@ public class Optimisation_Factory {
 					}
 				});
 
-				if(useCMapMapping) {
-					cMap_maping = new ConcurrentHashMap<>(preGenClusterFiles.length);
+				ConcurrentHashMap<Long, ContactMap> cMap_mapping = null;
+				ConcurrentHashMap<Long, ArrayList<Integer[]>> cMap_edgelist_mapping = null;
+				if (useCMapMapping) {
+					cMap_mapping = new ConcurrentHashMap<>(preGenClusterFiles.length);
+				}
+				if (useCMapEdgeList) {
+					cMap_edgelist_mapping = new ConcurrentHashMap<>(preGenClusterFiles.length);
 				}
 
 				long[] BASE_CONTACT_MAP_SEED = new long[preGenClusterFiles.length];
@@ -342,15 +351,16 @@ public class Optimisation_Factory {
 								final float[][] OPT_TARGET = opt_target;
 								final boolean EXPORT_ALL = exportAll;
 								final File CMAP_DIR = contactMapDir;
-								final ConcurrentHashMap<Long, ContactMap> C_MAP_MAPPING = cMap_maping;
+								final ConcurrentHashMap<Long, ContactMap> C_MAP_MAPPING = cMap_mapping;
+								final ConcurrentHashMap<Long, ArrayList<Integer[]>> C_MAP_EDGES_LIST_MAPPING = cMap_edgelist_mapping;
 
 								Runnable fitness_thread = new Runnable() {
 									@Override
 									public void run() {
 										long cMap_seed = (long) ga_ent[GA_ENT_CMAP_SEED];
 										ContactMap cmap = null;
-										
-										if(C_MAP_MAPPING != null) {
+
+										if (C_MAP_MAPPING != null) {
 											cmap = C_MAP_MAPPING.get(cMap_seed);
 										}
 
@@ -375,12 +385,13 @@ public class Optimisation_Factory {
 													e.printStackTrace(System.err);
 												}
 											}
-											
-											if(C_MAP_MAPPING != null) {
-												C_MAP_MAPPING.put(cMap_seed, cmap);
-											}	
 
+											if (C_MAP_MAPPING != null) {
+												C_MAP_MAPPING.put(cMap_seed, cmap);
+											}
 										}
+
+										
 
 										if (cmap != null) {
 											// Setting up runnable
@@ -389,6 +400,24 @@ public class Optimisation_Factory {
 													(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
 													POP_COMPOSITION, cmap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 											runnable.setBaseDir(baseDir);
+											
+											
+											if (C_MAP_EDGES_LIST_MAPPING != null) {
+												ArrayList<Integer[]> cMap_edges = C_MAP_EDGES_LIST_MAPPING.get(cMap_seed);
+												if (cMap_edges == null) {
+													try {
+														Callable<ArrayList<Integer[]>> callable = Runnable_ClusterModel_Transmission
+																.generateMapEdgeArray(cmap);
+														cMap_edges = callable.call();
+													} catch (Exception e) {
+														e.printStackTrace(System.err);
+													}
+													C_MAP_EDGES_LIST_MAPPING.put(cMap_seed, cMap_edges);
+												}
+												runnable.setEdges_list(cMap_edges);												
+											}
+											
+											
 
 											for (int i = runnnable_offset; i < runnnable_offset
 													+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
@@ -526,7 +555,7 @@ public class Optimisation_Factory {
 						}
 
 						System.out.printf("Generation #%d formed at %s. Contact map included = %d.\n", num_gen,
-								dateFormat.format(new Date(System.currentTimeMillis())), cMap_maping.size());
+								dateFormat.format(new Date(System.currentTimeMillis())), cMap_mapping.size());
 						num_gen++;
 					}
 				}
