@@ -266,8 +266,18 @@ public class Optimisation_Factory {
 						for (int i = 0; i < entArr.length; i++) {
 							if (i == GA_ENT_CMAP_SEED || i == GA_ENT_SIM_SEED) {
 								entArr[i] = Long.parseLong(ent[i]);
+								// Dummy parameters to skip RNG value
+								if (i == GA_ENT_CMAP_SEED) {
+									RNG.nextInt(BASE_CONTACT_MAP_SEED.length);
+								} else {
+									RNG.nextLong();
+								}
 							} else {
 								entArr[i] = Double.parseDouble(ent[i]);
+								if (i != GA_ENT_FITNESS) {
+									// Dummy parameters to skip RNG value
+									RNG.nextDouble();
+								}
 							}
 						}
 						int key = Collections.binarySearch(ga_population, entArr, ga_population_cmp);
@@ -391,8 +401,6 @@ public class Optimisation_Factory {
 											}
 										}
 
-										
-
 										if (cmap != null) {
 											// Setting up runnable
 
@@ -400,10 +408,10 @@ public class Optimisation_Factory {
 													(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
 													POP_COMPOSITION, cmap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 											runnable.setBaseDir(baseDir);
-											
-											
+
 											if (C_MAP_EDGES_LIST_MAPPING != null) {
-												ArrayList<Integer[]> cMap_edges = C_MAP_EDGES_LIST_MAPPING.get(cMap_seed);
+												ArrayList<Integer[]> cMap_edges = C_MAP_EDGES_LIST_MAPPING
+														.get(cMap_seed);
 												if (cMap_edges == null) {
 													try {
 														Callable<ArrayList<Integer[]>> callable = Runnable_ClusterModel_Transmission
@@ -414,10 +422,8 @@ public class Optimisation_Factory {
 													}
 													C_MAP_EDGES_LIST_MAPPING.put(cMap_seed, cMap_edges);
 												}
-												runnable.setEdges_list(cMap_edges);												
+												runnable.setEdges_list(cMap_edges);
 											}
-											
-											
 
 											for (int i = runnnable_offset; i < runnnable_offset
 													+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
