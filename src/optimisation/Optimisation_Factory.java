@@ -224,6 +224,8 @@ public class Optimisation_Factory {
 				}
 
 				RandomGenerator RNG = new MersenneTwisterRandomGenerator(seed);
+				
+				System.out.printf("# processor available = %d. # thread used = %d.\n", Runtime.getRuntime().availableProcessors(), numThreads);
 
 				// Check for contact cluster generated
 
