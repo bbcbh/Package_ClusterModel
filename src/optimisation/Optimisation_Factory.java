@@ -257,7 +257,102 @@ public class Optimisation_Factory {
 
 				}
 
-				if (GA_ALL_FILE.exists()) {
+				if (GA_POP_FILE.exists()) {
+					// Fill previous pop file
+					BufferedReader reader = new BufferedReader(new FileReader(GA_POP_FILE));
+					String line;
+					while ((line = reader.readLine()) != null) {
+						String[] ent = line.split(",");
+						Number[] entArr = new Number[ent.length];
+						for (int i = 0; i < entArr.length; i++) {
+							if (i == GA_ENT_CMAP_SEED || i == GA_ENT_SIM_SEED) {
+								entArr[i] = Long.parseLong(ent[i]);
+							} else {
+								entArr[i] = Double.parseDouble(ent[i]);
+							}
+						}
+						ga_population.add(entArr);
+					}
+					reader.close();
+					
+					
+					// Check if there is replacement entries from GA_ALL_FILE 
+					if (GA_ALL_FILE.exists()) {
+						Comparator<Number[]> ga_population_equ_cmp = new Comparator<Number[]>() {
+							@Override
+							public int compare(Number[] o1, Number[] o2) {
+								int res = 0;
+								for (int i = GA_ENT_CMAP_SEED; i < o1.length && res == 0; i++) {
+									if (o1[i] instanceof Long) {
+										res = Long.compare((Long) o1[i], (Long) o2[i]);
+									} else {
+										res = Double.compare((Double) o1[i], (Double) o2[i]);
+									}
+								}
+								return res;
+							}
+
+						};
+
+						ArrayList<Number[]> ga_all_array = new ArrayList<>();
+						reader = new BufferedReader(new FileReader(GA_ALL_FILE));
+						while ((line = reader.readLine()) != null) {
+							String[] ent = line.split(",");
+							Number[] entArr = new Number[ent.length];
+							for (int i = 0; i < entArr.length; i++) {
+								if (i == GA_ENT_CMAP_SEED || i == GA_ENT_SIM_SEED) {
+									entArr[i] = Long.parseLong(ent[i]);
+									// Dummy parameters to skip RNG value
+									if (i == GA_ENT_CMAP_SEED) {
+										RNG.nextInt(BASE_CONTACT_MAP_SEED.length);
+									} else {
+										RNG.nextLong();
+									}
+								} else {
+									entArr[i] = Double.parseDouble(ent[i]);
+									if (i != GA_ENT_FITNESS) {
+										// Dummy parameters to skip RNG value
+										RNG.nextDouble();
+									}
+								}
+							}
+							int key = Collections.binarySearch(ga_all_array, entArr, ga_population_equ_cmp);
+							if (key < 0) {
+								ga_all_array.add(~key, entArr);
+							}
+
+						}
+						reader.close();
+						
+						// Check for updated GA population, and generate new one if needed.
+						boolean updateGA = false;
+						for (Number[] ent : ga_population) {
+							if (Double.isNaN(ent[GA_ENT_FITNESS].doubleValue())) {
+								int key = Collections.binarySearch(ga_all_array, ent, ga_population_equ_cmp);
+								if (key >= 0) {
+									updateGA = true;
+									ent[GA_ENT_FITNESS] = ga_all_array.get(key)[GA_ENT_FITNESS];
+								}
+							}
+						}
+						if(updateGA) {
+							PrintWriter pWri = new PrintWriter(GA_POP_FILE);
+							for (Number[] ga_ent : ga_population) {
+								StringBuilder linebuilder = new StringBuilder();
+								for (Number val : ga_ent) {
+									if (linebuilder.length() != 0) {
+										linebuilder.append(',');
+									}
+									linebuilder.append(val.toString());
+								}
+								pWri.println(linebuilder.toString());
+							}
+							pWri.close();
+						}
+
+					}
+
+				} else if (GA_ALL_FILE.exists()) {
 					BufferedReader reader = new BufferedReader(new FileReader(GA_ALL_FILE));
 					String line;
 					while ((line = reader.readLine()) != null) {
@@ -522,20 +617,6 @@ public class Optimisation_Factory {
 						// Sort GA_POPULATION
 						Collections.sort(ga_population, ga_population_cmp);
 
-						// Export GA_POPULATION
-						PrintWriter pWri = new PrintWriter(GA_POP_FILE);
-						for (Number[] ga_ent : ga_population) {
-							StringBuilder line = new StringBuilder();
-							for (Number val : ga_ent) {
-								if (line.length() != 0) {
-									line.append(',');
-								}
-								line.append(val.toString());
-							}
-							pWri.println(line.toString());
-						}
-						pWri.close();
-
 						// Fill the rest with next generation
 						int next_gen_start = tournament_arity;
 
@@ -560,8 +641,23 @@ public class Optimisation_Factory {
 							}
 						}
 
-						System.out.printf("Generation #%d formed at %s. Contact map included = %d.\n", num_gen,
-								dateFormat.format(new Date(System.currentTimeMillis())), cMap_mapping.size());
+						// Export GA_POPULATION
+						PrintWriter pWri = new PrintWriter(GA_POP_FILE);
+						for (Number[] ga_ent : ga_population) {
+							StringBuilder line = new StringBuilder();
+							for (Number val : ga_ent) {
+								if (line.length() != 0) {
+									line.append(',');
+								}
+								line.append(val.toString());
+							}
+							pWri.println(line.toString());
+						}
+						pWri.close();
+
+						System.out.printf("Generation #%d formed at %s and exported to %s.\n", num_gen,
+								dateFormat.format(new Date(System.currentTimeMillis())), GA_POP_FILE.getAbsolutePath());
+
 						num_gen++;
 					}
 				}
