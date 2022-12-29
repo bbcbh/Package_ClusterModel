@@ -620,8 +620,7 @@ public class Optimisation_Factory {
 										}										
 										exec = Executors.newFixedThreadPool(numThreads);
 										threadCount = 0;
-									}																		
-									
+									}																										
 								}
 								
 							}
