@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -75,9 +76,12 @@ public class Optimisation_Factory {
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) GA_POP_SIZE (int) "
-				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> "
-				+ "<-useInitalValues false|true> <-useCMapMapping true|false> <-useCMapEdgeList true|false>"
-				+ "<-singleExecutor false|true>";
+				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-rss RNG_SEED_SKIP (int)"
+				+ "<-exportAll true|false> "
+				+ "<-useInitalValues false|true> "
+				+ "<-useCMapMapping true|false> "
+				+ "<-useCMapEdgeList true|false>"
+				+ "<-singleExecutor true>|false";
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -97,7 +101,8 @@ public class Optimisation_Factory {
 			boolean useInitValue = false;
 			boolean useCMapMapping = true;
 			boolean useCMapEdgeList = true;
-			boolean useSingleExecutor = false;
+			boolean useSingleExecutor = true;
+			int rngSeedSkip  = 0;
 
 			for (int a = 4; a < args.length; a += 2) {
 				if ("-ta".equals(args[a])) {
@@ -108,6 +113,9 @@ public class Optimisation_Factory {
 				}
 				if ("-mg".equals(args[a])) {
 					max_num_generation = Float.parseFloat(args[a + 1]);
+				}
+				if("-rss".equals(args[a])) {
+					rngSeedSkip = Integer.parseInt(args[a + 1]);
 				}
 				if ("-exportAll".equals(args[a])) {
 					exportAll = Boolean.parseBoolean(args[a + 1]);
@@ -140,9 +148,9 @@ public class Optimisation_Factory {
 			final int GA_ENT_PARM_START = GA_ENT_SIM_SEED + 1;
 
 			final double ABSOLUTE_TOLERANCE = 1e-10;
-
 			final File GA_ALL_FILE = new File(baseDir, "OptRes_GA_All.csv");
-			final File GA_POP_FILE = new File(baseDir, "OptRes_GA_Pop.csv");
+			final File GA_POP_FILE = new File(baseDir, String.format("OptRes_GA_Pop_%d.csv",rngSeedSkip));
+			
 			ArrayList<Number[]> ga_population = new ArrayList<>(GA_MAX_POP_SIZE + 1);
 
 			Comparator<Number[]> ga_population_cmp = new Comparator<Number[]>() {
@@ -230,7 +238,12 @@ public class Optimisation_Factory {
 
 				RandomGenerator RNG = new MersenneTwisterRandomGenerator(seed);
 				
-				System.out.printf("# processors available = %d. # threads used = %d.\n", Runtime.getRuntime().availableProcessors(), numThreads);
+				for(int s = 0; s < rngSeedSkip; s++) {
+					RNG = new MersenneTwisterRandomGenerator(RNG.nextLong());
+				}				
+				
+				System.out.printf("# Sim Seed = %d. # processors available = %d. # threads used = %d.\n",
+						seed, Runtime.getRuntime().availableProcessors(), numThreads);
 
 				// Check for contact cluster generated
 
@@ -593,6 +606,16 @@ public class Optimisation_Factory {
 												}
 												synchronized (GA_ALL_FILE) {
 													try {
+														final int max_retryAttempt = 5; 
+														int attempt = 0;
+														while(!GA_ALL_FILE.canWrite() && attempt < max_retryAttempt) {
+															try {
+																Thread.sleep(new Random().nextInt(1000));
+															}catch (InterruptedException e) {
+																e.printStackTrace(System.err);
+															}
+															attempt++;															
+														}																												
 														FileWriter export_all_fWri = new FileWriter(GA_ALL_FILE, true);
 														PrintWriter export_all_pWri = new PrintWriter(export_all_fWri);
 														export_all_pWri.println(ga_ent_disp.toString());
