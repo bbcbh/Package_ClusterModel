@@ -76,7 +76,8 @@ public class Optimisation_Factory {
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) GA_POP_SIZE (int) "
 				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-exportAll true|false> "
-				+ "<-useInitalValues false|true> <-useCMapMapping true|false> <-useCMapEdgeList true|false";
+				+ "<-useInitalValues false|true> <-useCMapMapping true|false> <-useCMapEdgeList true|false>"
+				+ "<-singleExecutor false|true>";
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -96,6 +97,7 @@ public class Optimisation_Factory {
 			boolean useInitValue = false;
 			boolean useCMapMapping = true;
 			boolean useCMapEdgeList = true;
+			boolean useSingleExecutor = false;
 
 			for (int a = 4; a < args.length; a += 2) {
 				if ("-ta".equals(args[a])) {
@@ -118,6 +120,9 @@ public class Optimisation_Factory {
 				}
 				if ("-useCMapEdgeList".equals(args[a])) {
 					useCMapEdgeList = Boolean.parseBoolean(args[a + 1]);
+				}
+				if("-singleExecutor".equals(args[a])) {
+					useSingleExecutor = Boolean.parseBoolean(args[a + 1]);
 				}
 
 			}
@@ -225,7 +230,7 @@ public class Optimisation_Factory {
 
 				RandomGenerator RNG = new MersenneTwisterRandomGenerator(seed);
 				
-				System.out.printf("# processor available = %d. # thread used = %d.\n", Runtime.getRuntime().availableProcessors(), numThreads);
+				System.out.printf("# processors available = %d. # threads used = %d.\n", Runtime.getRuntime().availableProcessors(), numThreads);
 
 				// Check for contact cluster generated
 
@@ -606,6 +611,19 @@ public class Optimisation_Factory {
 
 								exec.submit(fitness_thread);
 								threadCount++;
+								
+								if(!useSingleExecutor) {
+									if(threadCount == numThreads) {
+										exec.shutdown();
+										if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+											System.err.println("Thread time-out!");
+										}										
+										exec = Executors.newFixedThreadPool(numThreads);
+										threadCount = 0;
+									}																		
+									
+								}
+								
 							}
 						}
 
