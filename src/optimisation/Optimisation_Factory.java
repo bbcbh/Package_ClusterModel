@@ -76,11 +76,9 @@ public class Optimisation_Factory {
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) GA_POP_SIZE (int) "
-				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> <-rss RNG_SEED_SKIP (int)"
-				+ "<-exportAll true|false> "
-				+ "<-useInitalValues false|true> "
-				+ "<-useCMapMapping true|false> "
-				+ "<-useCMapEdgeList true|false>"
+				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> "
+				+ "<-rss RNG_SEED_SKIP (int)> " + "<-nib NUM_IN_BATCH (int)> " + "<-exportAll true|false> "
+				+ "<-useInitalValues false|true> " + "<-useCMapMapping true|false> " + "<-useCMapEdgeList true|false>"
 				+ "<-singleExecutor true>|false";
 
 		if (args.length < 3) {
@@ -102,7 +100,8 @@ public class Optimisation_Factory {
 			boolean useCMapMapping = true;
 			boolean useCMapEdgeList = true;
 			boolean useSingleExecutor = true;
-			int rngSeedSkip  = 0;
+			int rngSeedSkip = 0;
+			int numInBatch = 1;
 
 			for (int a = 4; a < args.length; a += 2) {
 				if ("-ta".equals(args[a])) {
@@ -114,8 +113,11 @@ public class Optimisation_Factory {
 				if ("-mg".equals(args[a])) {
 					max_num_generation = Float.parseFloat(args[a + 1]);
 				}
-				if("-rss".equals(args[a])) {
+				if ("-rss".equals(args[a])) {
 					rngSeedSkip = Integer.parseInt(args[a + 1]);
+				}
+				if ("-nib".equals(args[a])) {
+					numInBatch = Integer.parseInt(args[a + 1]);
 				}
 				if ("-exportAll".equals(args[a])) {
 					exportAll = Boolean.parseBoolean(args[a + 1]);
@@ -129,7 +131,7 @@ public class Optimisation_Factory {
 				if ("-useCMapEdgeList".equals(args[a])) {
 					useCMapEdgeList = Boolean.parseBoolean(args[a + 1]);
 				}
-				if("-singleExecutor".equals(args[a])) {
+				if ("-singleExecutor".equals(args[a])) {
 					useSingleExecutor = Boolean.parseBoolean(args[a + 1]);
 				}
 
@@ -149,8 +151,8 @@ public class Optimisation_Factory {
 
 			final double ABSOLUTE_TOLERANCE = 1e-10;
 			final File GA_ALL_FILE = new File(baseDir, "OptRes_GA_All.csv");
-			final File GA_POP_FILE = new File(baseDir, String.format("OptRes_GA_Pop_%d.csv",rngSeedSkip));
-			
+			final File GA_NEXT_POP_FILE = new File(baseDir, "OptRes_Next_GA_POP.csv");
+
 			ArrayList<Number[]> ga_population = new ArrayList<>(GA_MAX_POP_SIZE + 1);
 
 			Comparator<Number[]> ga_population_cmp = new Comparator<Number[]>() {
@@ -237,13 +239,13 @@ public class Optimisation_Factory {
 				}
 
 				RandomGenerator RNG = new MersenneTwisterRandomGenerator(seed);
-				
-				for(int s = 0; s < rngSeedSkip; s++) {
+
+				for (int s = 0; s < rngSeedSkip; s++) {
 					RNG = new MersenneTwisterRandomGenerator(RNG.nextLong());
-				}				
-				
-				System.out.printf("# Sim Seed = %d. # processors available = %d. # threads used = %d.\n",
-						seed, Runtime.getRuntime().availableProcessors(), numThreads);
+				}
+
+				System.out.printf("# Sim Seed = %d. # processors available = %d. # threads used = %d.\n", seed,
+						Runtime.getRuntime().availableProcessors(), numThreads);
 
 				// Check for contact cluster generated
 
@@ -277,9 +279,9 @@ public class Optimisation_Factory {
 
 				}
 
-				if (GA_POP_FILE.exists()) {
+				if (GA_NEXT_POP_FILE.exists()) {
 					// Fill previous pop file
-					BufferedReader reader = new BufferedReader(new FileReader(GA_POP_FILE));
+					BufferedReader reader = new BufferedReader(new FileReader(GA_NEXT_POP_FILE));
 					String line;
 					while ((line = reader.readLine()) != null) {
 						String[] ent = line.split(",");
@@ -294,9 +296,8 @@ public class Optimisation_Factory {
 						ga_population.add(entArr);
 					}
 					reader.close();
-					
-					
-					// Check if there is replacement entries from GA_ALL_FILE 
+
+					// Check if there is replacement entries from GA_ALL_FILE
 					if (GA_ALL_FILE.exists()) {
 						Comparator<Number[]> ga_population_equ_cmp = new Comparator<Number[]>() {
 							@Override
@@ -343,7 +344,7 @@ public class Optimisation_Factory {
 
 						}
 						reader.close();
-						
+
 						// Check for updated GA population, and generate new one if needed.
 						boolean updateGA = false;
 						for (Number[] ent : ga_population) {
@@ -355,8 +356,8 @@ public class Optimisation_Factory {
 								}
 							}
 						}
-						if(updateGA) {
-							PrintWriter pWri = new PrintWriter(GA_POP_FILE);
+						if (updateGA && (rngSeedSkip == 0 || numInBatch == 1)) {
+							PrintWriter pWri = new PrintWriter(GA_NEXT_POP_FILE);
 							for (Number[] ga_ent : ga_population) {
 								StringBuilder linebuilder = new StringBuilder();
 								for (Number val : ga_ent) {
@@ -458,194 +459,203 @@ public class Optimisation_Factory {
 						// Populate GA_POPULATION fitness
 
 						ExecutorService exec = Executors.newFixedThreadPool(numThreads);
+						int toBeGeneratedCount = 0;
 						int threadCount = 0;
 
 						for (Number[] ga_ent : ga_population) {
-							if (Double.isNaN(ga_ent[GA_ENT_FITNESS].doubleValue())) {
+							if (Double.isNaN(ga_ent[GA_ENT_FITNESS].doubleValue())) {								
+								int offset = toBeGeneratedCount - rngSeedSkip;
+								if (offset >= 0 && offset % numInBatch == 0) {
 
-								final int[] POP_COMPOSITION = pop_composition;
-								final int NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
-								final int NUM_SNAP = numSnap;
-								final int runnnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-										+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-										+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
-										+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
-								final Properties PROP = prop;
-								final int[][] SEED_INFECTION = seed_infection;
-								final int START_TIME = contact_map_start_time;
-								final float[][] OPT_TARGET = opt_target;
-								final boolean EXPORT_ALL = exportAll;
-								final File CMAP_DIR = contactMapDir;
-								final ConcurrentHashMap<Long, ContactMap> C_MAP_MAPPING = cMap_mapping;
-								final ConcurrentHashMap<Long, ArrayList<Integer[]>> C_MAP_EDGES_LIST_MAPPING = cMap_edgelist_mapping;
+									final int[] POP_COMPOSITION = pop_composition;
+									final int NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
+									final int NUM_SNAP = numSnap;
+									final int runnnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+											+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+											+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+											+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+									final Properties PROP = prop;
+									final int[][] SEED_INFECTION = seed_infection;
+									final int START_TIME = contact_map_start_time;
+									final float[][] OPT_TARGET = opt_target;
+									final boolean EXPORT_ALL = exportAll;
+									final File CMAP_DIR = contactMapDir;
+									final ConcurrentHashMap<Long, ContactMap> C_MAP_MAPPING = cMap_mapping;
+									final ConcurrentHashMap<Long, ArrayList<Integer[]>> C_MAP_EDGES_LIST_MAPPING = cMap_edgelist_mapping;
 
-								Runnable fitness_thread = new Runnable() {
-									@Override
-									public void run() {
-										long cMap_seed = (long) ga_ent[GA_ENT_CMAP_SEED];
-										ContactMap cmap = null;
-
-										if (C_MAP_MAPPING != null) {
-											cmap = C_MAP_MAPPING.get(cMap_seed);
-										}
-
-										if (cmap == null) {
-											String cmap_match_str = FILENAME_FORMAT_ALL_CMAP
-													.replaceFirst("%d", Long.toString(cMap_seed))
-													.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
-											File[] cmap_match_file = CMAP_DIR.listFiles(new FileFilter() {
-												@Override
-												public boolean accept(File pathname) {
-													return pathname.isFile()
-															&& Pattern.matches(cmap_match_str, pathname.getName());
-												}
-											});
-
-											if (cmap_match_file.length > 0) {
-												Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
-														.generateContactMapCallable(cmap_match_file[0]);
-												try {
-													cmap = cm_read_callable.call();
-												} catch (Exception e) {
-													e.printStackTrace(System.err);
-												}
-											}
+									Runnable fitness_thread = new Runnable() {
+										@Override
+										public void run() {
+											long cMap_seed = (long) ga_ent[GA_ENT_CMAP_SEED];
+											ContactMap cmap = null;
 
 											if (C_MAP_MAPPING != null) {
-												C_MAP_MAPPING.put(cMap_seed, cmap);
+												cmap = C_MAP_MAPPING.get(cMap_seed);
 											}
-										}
 
-										if (cmap != null) {
-											// Setting up runnable
+											if (cmap == null) {
+												String cmap_match_str = FILENAME_FORMAT_ALL_CMAP
+														.replaceFirst("%d", Long.toString(cMap_seed))
+														.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+												File[] cmap_match_file = CMAP_DIR.listFiles(new FileFilter() {
+													@Override
+													public boolean accept(File pathname) {
+														return pathname.isFile()
+																&& Pattern.matches(cmap_match_str, pathname.getName());
+													}
+												});
 
-											Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
-													(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
-													POP_COMPOSITION, cmap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
-											runnable.setBaseDir(baseDir);
-
-											if (C_MAP_EDGES_LIST_MAPPING != null) {
-												ArrayList<Integer[]> cMap_edges = C_MAP_EDGES_LIST_MAPPING
-														.get(cMap_seed);
-												if (cMap_edges == null) {
+												if (cmap_match_file.length > 0) {
+													Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
+															.generateContactMapCallable(cmap_match_file[0]);
 													try {
-														Callable<ArrayList<Integer[]>> callable = Runnable_ClusterModel_Transmission
-																.generateMapEdgeArray(cmap);
-														cMap_edges = callable.call();
+														cmap = cm_read_callable.call();
 													} catch (Exception e) {
 														e.printStackTrace(System.err);
 													}
-													C_MAP_EDGES_LIST_MAPPING.put(cMap_seed, cMap_edges);
 												}
-												runnable.setEdges_list(cMap_edges);
-											}
 
-											for (int i = runnnable_offset; i < runnnable_offset
-													+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
-
-												String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
-												if (PROP.containsKey(key)) {
-													runnable.getRunnable_fields()[i - runnnable_offset] = PropValUtils
-															.propStrToObject(PROP.getProperty(key),
-																	runnable.getRunnable_fields()[i - runnnable_offset]
-																			.getClass());
+												if (C_MAP_MAPPING != null) {
+													C_MAP_MAPPING.put(cMap_seed, cmap);
 												}
 											}
 
-											runnable.setSimSetting(1); // No output
-											Number[] param_number = Arrays.copyOfRange(ga_ent, GA_ENT_PARM_START,
-													ga_ent.length);
-											double[] param_double = new double[param_number.length];
-											for (int i = 0; i < param_number.length; i++) {
-												param_double[i] = param_number[i].doubleValue();
-											}
+											if (cmap != null) {
+												// Setting up runnable
 
-											setOptParamInRunnable(runnable, param_double, false);
-											runnable.initialse();
-											runnable.allocateSeedInfection(SEED_INFECTION, START_TIME);
+												Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
+														(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
+														POP_COMPOSITION, cmap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
+												runnable.setBaseDir(baseDir);
 
-											// Run simulation
-											runnable.run();
-
-											// Extract results
-											int start_k = 2;
-
-											Integer[] keys = new Integer[NUM_SNAP];
-											keys[0] = NUM_TIME_STEPS_PER_SNAP;
-											for (int k = 1; k < keys.length; k++) {
-												keys[k] = keys[k - 1] + NUM_TIME_STEPS_PER_SNAP;
-											}
-
-											@SuppressWarnings("unchecked")
-											HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable
-													.getSim_output()
-													.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
-
-											@SuppressWarnings("unchecked")
-											HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable
-													.getSim_output()
-													.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-
-											double sqSum = calculateOptFitness(param_double, OPT_TARGET,
-													POP_COMPOSITION, infectious_count_map, cumul_treatment_map, keys,
-													start_k,
-													String.format("CM_Seed = %d, sim_seed = %d",
-															(long) ga_ent[GA_ENT_CMAP_SEED],
-															(long) ga_ent[GA_ENT_SIM_SEED]),
-													null);
-
-											ga_ent[GA_ENT_FITNESS] = sqSum;
-
-											if (EXPORT_ALL) {
-												StringBuilder ga_ent_disp = new StringBuilder();
-												for (Number val : ga_ent) {
-													if (ga_ent_disp.length() != 0) {
-														ga_ent_disp.append(',');
+												if (C_MAP_EDGES_LIST_MAPPING != null) {
+													ArrayList<Integer[]> cMap_edges = C_MAP_EDGES_LIST_MAPPING
+															.get(cMap_seed);
+													if (cMap_edges == null) {
+														try {
+															Callable<ArrayList<Integer[]>> callable = Runnable_ClusterModel_Transmission
+																	.generateMapEdgeArray(cmap);
+															cMap_edges = callable.call();
+														} catch (Exception e) {
+															e.printStackTrace(System.err);
+														}
+														C_MAP_EDGES_LIST_MAPPING.put(cMap_seed, cMap_edges);
 													}
-													ga_ent_disp.append(val);
+													runnable.setEdges_list(cMap_edges);
 												}
-												synchronized (GA_ALL_FILE) {
-													try {
-														final int max_retryAttempt = 5; 
-														int attempt = 0;
-														while(!GA_ALL_FILE.canWrite() && attempt < max_retryAttempt) {
-															try {
-																Thread.sleep(new Random().nextInt(1000));
-															}catch (InterruptedException e) {
-																e.printStackTrace(System.err);
+
+												for (int i = runnnable_offset; i < runnnable_offset
+														+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+
+													String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
+													if (PROP.containsKey(key)) {
+														runnable.getRunnable_fields()[i
+																- runnnable_offset] = PropValUtils.propStrToObject(
+																		PROP.getProperty(key),
+																		runnable.getRunnable_fields()[i
+																				- runnnable_offset].getClass());
+													}
+												}
+
+												runnable.setSimSetting(1); // No output
+												Number[] param_number = Arrays.copyOfRange(ga_ent, GA_ENT_PARM_START,
+														ga_ent.length);
+												double[] param_double = new double[param_number.length];
+												for (int i = 0; i < param_number.length; i++) {
+													param_double[i] = param_number[i].doubleValue();
+												}
+
+												setOptParamInRunnable(runnable, param_double, false);
+												runnable.initialse();
+												runnable.allocateSeedInfection(SEED_INFECTION, START_TIME);
+
+												// Run simulation
+												runnable.run();
+
+												// Extract results
+												int start_k = 2;
+
+												Integer[] keys = new Integer[NUM_SNAP];
+												keys[0] = NUM_TIME_STEPS_PER_SNAP;
+												for (int k = 1; k < keys.length; k++) {
+													keys[k] = keys[k - 1] + NUM_TIME_STEPS_PER_SNAP;
+												}
+
+												@SuppressWarnings("unchecked")
+												HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable
+														.getSim_output()
+														.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
+
+												@SuppressWarnings("unchecked")
+												HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable
+														.getSim_output()
+														.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+
+												double sqSum = calculateOptFitness(param_double, OPT_TARGET,
+														POP_COMPOSITION, infectious_count_map, cumul_treatment_map,
+														keys, start_k,
+														String.format("CM_Seed = %d, sim_seed = %d",
+																(long) ga_ent[GA_ENT_CMAP_SEED],
+																(long) ga_ent[GA_ENT_SIM_SEED]),
+														null);
+
+												ga_ent[GA_ENT_FITNESS] = sqSum;
+
+												if (EXPORT_ALL) {
+													StringBuilder ga_ent_disp = new StringBuilder();
+													for (Number val : ga_ent) {
+														if (ga_ent_disp.length() != 0) {
+															ga_ent_disp.append(',');
+														}
+														ga_ent_disp.append(val);
+													}
+													synchronized (GA_ALL_FILE) {
+														try {
+															final int max_retryAttempt = 5;
+															int attempt = 0;
+															while (!GA_ALL_FILE.canWrite()
+																	&& attempt < max_retryAttempt) {
+																try {
+																	Thread.sleep(new Random().nextInt(1000));
+																} catch (InterruptedException e) {
+																	e.printStackTrace(System.err);
+																}
+																attempt++;
 															}
-															attempt++;															
-														}																												
-														FileWriter export_all_fWri = new FileWriter(GA_ALL_FILE, true);
-														PrintWriter export_all_pWri = new PrintWriter(export_all_fWri);
-														export_all_pWri.println(ga_ent_disp.toString());
-														export_all_pWri.close();
-														export_all_fWri.close();
-													} catch (IOException e) {
-														e.printStackTrace(System.err);
-													}
+															FileWriter export_all_fWri = new FileWriter(GA_ALL_FILE,
+																	true);
+															PrintWriter export_all_pWri = new PrintWriter(
+																	export_all_fWri);
+															export_all_pWri.println(ga_ent_disp.toString());
+															export_all_pWri.close();
+															export_all_fWri.close();
+														} catch (IOException e) {
+															e.printStackTrace(System.err);
+														}
 
+													}
 												}
 											}
+
 										}
+									};
 
+									exec.submit(fitness_thread);
+									threadCount++;
+
+									if (!useSingleExecutor) {
+										if (threadCount == numThreads) {
+											exec.shutdown();
+											if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+												System.err.println("Thread time-out!");
+											}
+											exec = Executors.newFixedThreadPool(numThreads);
+											threadCount = 0;
+										}
 									}
-								};
 
-								exec.submit(fitness_thread);
-								threadCount++;
-								
-								if(!useSingleExecutor) {
-									if(threadCount == numThreads) {
-										exec.shutdown();
-										if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
-											System.err.println("Thread time-out!");
-										}										
-										exec = Executors.newFixedThreadPool(numThreads);
-										threadCount = 0;
-									}																										
 								}
-								
+								toBeGeneratedCount++;
 							}
 						}
 
@@ -684,21 +694,24 @@ public class Optimisation_Factory {
 						}
 
 						// Export GA_POPULATION
-						PrintWriter pWri = new PrintWriter(GA_POP_FILE);
-						for (Number[] ga_ent : ga_population) {
-							StringBuilder line = new StringBuilder();
-							for (Number val : ga_ent) {
-								if (line.length() != 0) {
-									line.append(',');
+						if (rngSeedSkip == 0 || numInBatch == 1) {
+							PrintWriter pWri = new PrintWriter(GA_NEXT_POP_FILE);
+							for (Number[] ga_ent : ga_population) {
+								StringBuilder line = new StringBuilder();
+								for (Number val : ga_ent) {
+									if (line.length() != 0) {
+										line.append(',');
+									}
+									line.append(val.toString());
 								}
-								line.append(val.toString());
+								pWri.println(line.toString());
 							}
-							pWri.println(line.toString());
-						}
-						pWri.close();
+							pWri.close();
 
-						System.out.printf("Generation #%d formed at %s and exported to %s.\n", num_gen,
-								dateFormat.format(new Date(System.currentTimeMillis())), GA_POP_FILE.getAbsolutePath());
+							System.out.printf("Generation #%d formed at %s and exported to %s.\n", num_gen,
+									dateFormat.format(new Date(System.currentTimeMillis())),
+									GA_NEXT_POP_FILE.getAbsolutePath());
+						}
 
 						num_gen++;
 					}
