@@ -446,13 +446,7 @@ public class Optimisation_Factory {
 
 				while (!exiting) {
 					// GA evolve
-					if (ga_population.get(GA_MAX_POP_SIZE - 1)[GA_ENT_FITNESS].doubleValue()
-							- ga_population.get(0)[GA_ENT_FITNESS].doubleValue() < ABSOLUTE_TOLERANCE) {
-						System.out.printf(
-								"The difference between best and worst fit in GA_POPULATION is less than ABSOLUTE_TOLERANCE of %.f.\n",
-								ABSOLUTE_TOLERANCE);
-						exiting = true;
-					} else if (num_gen > max_num_generation) {
+					if (num_gen > max_num_generation) {
 						System.out.printf("Maximum number of generations (%d) reached.\n", (int) max_num_generation);
 						exiting = true;
 					} else {
@@ -463,7 +457,7 @@ public class Optimisation_Factory {
 						int threadCount = 0;
 
 						for (Number[] ga_ent : ga_population) {
-							if (Double.isNaN(ga_ent[GA_ENT_FITNESS].doubleValue())) {								
+							if (Double.isNaN(ga_ent[GA_ENT_FITNESS].doubleValue())) {
 								int offset = toBeGeneratedCount - rngSeedSkip;
 								if (offset >= 0 && offset % numInBatch == 0) {
 
@@ -669,26 +663,37 @@ public class Optimisation_Factory {
 						// Sort GA_POPULATION
 						Collections.sort(ga_population, ga_population_cmp);
 
-						// Fill the rest with next generation
-						int next_gen_start = tournament_arity;
+						if (ga_population.get(GA_MAX_POP_SIZE - 1)[GA_ENT_FITNESS].doubleValue()
+								- ga_population.get(0)[GA_ENT_FITNESS].doubleValue() < ABSOLUTE_TOLERANCE) {
+							System.out.printf(
+									"The difference between best and worst fit in GA_POPULATION is less than ABSOLUTE_TOLERANCE of %.f.\n",
+									ABSOLUTE_TOLERANCE);
+							exiting = true;
+							
+						} else {
 
-						for (int g = next_gen_start; g < GA_MAX_POP_SIZE; g++) {
-							Number[] ga_ent = ga_population.get(g);
-							ga_ent[GA_ENT_FITNESS] = Double.NaN;
-							ga_ent[GA_ENT_CMAP_SEED] = BASE_CONTACT_MAP_SEED[RNG.nextInt(BASE_CONTACT_MAP_SEED.length)];
-							ga_ent[GA_ENT_SIM_SEED] = RNG.nextLong();
+							// Fill the rest with next generation
+							int next_gen_start = tournament_arity;
 
-							int[] sel_indices = ArrayUtilsRandomGenerator.randomSelectIndex(2, 0, tournament_arity,
-									RNG);
+							for (int g = next_gen_start; g < GA_MAX_POP_SIZE; g++) {
+								Number[] ga_ent = ga_population.get(g);
+								ga_ent[GA_ENT_FITNESS] = Double.NaN;
+								ga_ent[GA_ENT_CMAP_SEED] = BASE_CONTACT_MAP_SEED[RNG
+										.nextInt(BASE_CONTACT_MAP_SEED.length)];
+								ga_ent[GA_ENT_SIM_SEED] = RNG.nextLong();
 
-							for (int p = GA_ENT_PARM_START; p < ga_ent.length; p++) {
-								if (RNG.nextFloat() < mutation_rate) {
-									ga_ent[p] = boundaries[0][p - GA_ENT_PARM_START]
-											+ RNG.nextFloat() * (boundaries[1][p - GA_ENT_PARM_START]
-													- boundaries[0][p - GA_ENT_PARM_START]);
-								} else {
-									// Best 2 as crossover candidate
-									ga_ent[p] = ga_population.get(sel_indices[RNG.nextInt(2)])[p];
+								int[] sel_indices = ArrayUtilsRandomGenerator.randomSelectIndex(2, 0, tournament_arity,
+										RNG);
+
+								for (int p = GA_ENT_PARM_START; p < ga_ent.length; p++) {
+									if (RNG.nextFloat() < mutation_rate) {
+										ga_ent[p] = boundaries[0][p - GA_ENT_PARM_START]
+												+ RNG.nextFloat() * (boundaries[1][p - GA_ENT_PARM_START]
+														- boundaries[0][p - GA_ENT_PARM_START]);
+									} else {
+										// Best 2 as crossover candidate
+										ga_ent[p] = ga_population.get(sel_indices[RNG.nextInt(2)])[p];
+									}
 								}
 							}
 						}
