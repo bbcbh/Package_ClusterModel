@@ -79,7 +79,7 @@ public class Optimisation_Factory {
 				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> "
 				+ "<-rss RNG_SEED_SKIP (int)> " + "<-nib NUM_IN_BATCH (int)> " + "<-exportAll true|false> "
 				+ "<-useInitalValues false|true> " + "<-useCMapMapping true|false> " + "<-useCMapEdgeList true|false>"
-				+ "<-singleExecutor true>|false";
+				+ "<-singleExecutor true>|false " + "<-printProgress false|true>" ;
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -100,6 +100,7 @@ public class Optimisation_Factory {
 			boolean useCMapMapping = true;
 			boolean useCMapEdgeList = true;
 			boolean useSingleExecutor = true;
+			boolean printProgress = false;
 			int rngSeedSkip = 0;
 			int numInBatch = 1;
 
@@ -133,6 +134,9 @@ public class Optimisation_Factory {
 				}
 				if ("-singleExecutor".equals(args[a])) {
 					useSingleExecutor = Boolean.parseBoolean(args[a + 1]);
+				}
+				if("-printProgress".equals(args[a])) {
+					printProgress = Boolean.parseBoolean(args[a + 1]);
 				}
 
 			}
@@ -476,6 +480,7 @@ public class Optimisation_Factory {
 									final File CMAP_DIR = contactMapDir;
 									final ConcurrentHashMap<Long, ContactMap> C_MAP_MAPPING = cMap_mapping;
 									final ConcurrentHashMap<Long, ArrayList<Integer[]>> C_MAP_EDGES_LIST_MAPPING = cMap_edgelist_mapping;
+									final boolean PRINT_PROGRESS = printProgress;
 
 									Runnable fitness_thread = new Runnable() {
 										@Override
@@ -521,6 +526,12 @@ public class Optimisation_Factory {
 														(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
 														POP_COMPOSITION, cmap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 												runnable.setBaseDir(baseDir);
+												
+												if(PRINT_PROGRESS) {
+													runnable.setPrint_progress(System.out);
+													runnable.setRunnableId(String.format("%d,%d", 
+															(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED]));
+												}
 
 												if (C_MAP_EDGES_LIST_MAPPING != null) {
 													ArrayList<Integer[]> cMap_edges = C_MAP_EDGES_LIST_MAPPING

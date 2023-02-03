@@ -1,6 +1,7 @@
 package sim;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -260,6 +261,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	final int NUM_SNAP;
 	protected final long sim_seed;
 	protected final long cMap_seed;
+	protected PrintStream print_progress = null;
 
 	protected RandomGenerator RNG;
 
@@ -327,7 +329,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// HashMap<Integer, int[]> with K = time, V= int[gender_positive_dx,
 	// gender_true_infection]
 	public static final String SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON = "SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON";
-	
 
 	// HashMap<Integer, int[][]>
 	// with K = time, V= int[gender]{proper,over treatment} measured in person-day
@@ -365,19 +366,18 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		this.sim_seed = sim_seed;
 
 	}
-	
-	
+
 	public long getSim_seed() {
 		return sim_seed;
 	}
-
 
 	public long getcMap_seed() {
 		return cMap_seed;
 	}
 
-
-
+	public void setPrint_progress(PrintStream print_progess) {
+		this.print_progress = print_progess;
+	}
 
 	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
 		this.propSwitch_map = propSwitch_map;
@@ -1186,8 +1186,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						sim_output.put(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON, cumul_treatment_map_by_person);
 					}
 					cumul_treatment_map_by_person.put(currentTime,
-							Arrays.copyOf(cumul_treatment_by_person, cumul_treatment_by_person.length));										
-					
+							Arrays.copyOf(cumul_treatment_by_person, cumul_treatment_by_person.length));
+
 					@SuppressWarnings("unchecked")
 					HashMap<Integer, int[]> cumul_positive_dx_map_by_person = (HashMap<Integer, int[]>) sim_output
 							.get(SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
@@ -1197,18 +1197,17 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 					cumul_positive_dx_map_by_person.put(currentTime,
 							Arrays.copyOf(cumul_positive_dx_by_person, cumul_positive_dx_by_person.length));
-					
+
 					@SuppressWarnings("unchecked")
 					HashMap<Integer, int[]> cumul_positive_dx_sought_map_by_person = (HashMap<Integer, int[]>) sim_output
 							.get(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);
 					if (cumul_positive_dx_sought_map_by_person == null) {
 						cumul_positive_dx_sought_map_by_person = new HashMap<>();
-						sim_output.put(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON, cumul_positive_dx_sought_map_by_person);
+						sim_output.put(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON,
+								cumul_positive_dx_sought_map_by_person);
 					}
-					cumul_positive_dx_sought_map_by_person.put(currentTime,
-							Arrays.copyOf(cumul_positive_dx_sought_by_person, cumul_positive_dx_sought_by_person.length));
-					
-					
+					cumul_positive_dx_sought_map_by_person.put(currentTime, Arrays
+							.copyOf(cumul_positive_dx_sought_by_person, cumul_positive_dx_sought_by_person.length));
 
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
@@ -1265,6 +1264,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					}
 
+					if (print_progress != null && runnableId != null) {	
+						try {
+							print_progress.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
+						} catch (Exception ex) {
+							System.err.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
+						}
+					}
+
 				}
 
 				snap_index = (snap_index + 1) % NUM_TIME_STEPS_PER_SNAP;
@@ -1274,7 +1281,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 			// End of simulations
 			if (runnableId != null) {
-				System.out.println(String.format("Thread <%s> completed.", runnableId));
+				System.out.printf("Thread <%s> completed.\n", runnableId);
 			}
 			postSimulation(simulation_store);
 
@@ -1581,23 +1588,24 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				pWri.close();
 			}
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
-				
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);				
+
+				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
 				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
 						new String[] { "Total_Positive_DX_Gender_%d", "True_Positive_DX_Gender_%d" });
 				pWri = new PrintWriter(new File(baseDir, String.format(
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON, cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
-				
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);				
+
+				count_map_by_person = (HashMap<Integer, int[]>) sim_output
+						.get(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);
 				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
 						new String[] { "Total_Positive_DX_SOUGHT_Gender_%d", "True_Positive_DX_SOUGHT_Gender_%d" });
-				pWri = new PrintWriter(new File(baseDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON, cMap_seed, sim_seed)));
+				pWri = new PrintWriter(new File(baseDir,
+						String.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON,
+								cMap_seed, sim_seed)));
 				pWri.println(str.toString());
 				pWri.close();
-				
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
 				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
