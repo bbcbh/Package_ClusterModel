@@ -79,7 +79,7 @@ public class Optimisation_Factory {
 				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> "
 				+ "<-rss RNG_SEED_SKIP (int)> " + "<-nib NUM_IN_BATCH (int)> " + "<-exportAll true|false> "
 				+ "<-useInitalValues false|true> " + "<-useCMapMapping true|false> " + "<-useCMapEdgeList true|false>"
-				+ "<-singleExecutor true>|false " + "<-printProgress false|true>" ;
+				+ "<-singleExecutor true|false> " + "<-printProgress false|true>" ;
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -140,6 +140,8 @@ public class Optimisation_Factory {
 				}
 
 			}
+			
+			
 			final File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
 
 			final String PROP_SEED_INFECTION = POP_PROP_INIT_PREFIX

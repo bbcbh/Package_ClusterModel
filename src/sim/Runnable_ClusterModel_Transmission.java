@@ -1266,7 +1266,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					if (print_progress != null && runnableId != null) {	
 						try {
-							print_progress.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
+							print_progress.printf("Thread <%s>: t = %d . Timestamp = %tc.\n", runnableId, currentTime, System.currentTimeMillis());
 						} catch (Exception ex) {
 							System.err.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
 						}
