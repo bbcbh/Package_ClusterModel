@@ -146,7 +146,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int VACCINATION_SETTING_BOOSTER_PERIOD = 0;
 	public static final int VACCINATION_SETTING_BOOSTER_LIMIT = VACCINATION_SETTING_BOOSTER_PERIOD + 1;
 	public static final int VACCINATION_SETTING_RATE_PER_TEST = VACCINATION_SETTING_BOOSTER_LIMIT + 1;
-	public static final int LENGTH_VACCINATION_SETTING = VACCINATION_SETTING_RATE_PER_TEST + 1;
+	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RATE = VACCINATION_SETTING_RATE_PER_TEST + 1;
+	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS = VACCINATION_SETTING_CONTACT_VACCINE_RATE
+			+ 1;
+	public static final int VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP = VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS
+			+ 1;
+	public static final int LENGTH_VACCINATION_SETTING = VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP + 1;
 
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ = 0;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE = RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ + 1;
@@ -276,8 +281,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<Integer, ArrayList<Integer>>[] schedule_incubation;
 	protected transient HashMap<Integer, ArrayList<Integer>>[] schedule_recovery;
 	protected transient HashMap<Integer, ArrayList<Integer>> schedule_testing;
-	protected transient HashMap<Integer, Integer[]> mapping_infection_schedule;
 
+	protected transient HashMap<Integer, Integer[]> mapping_infection_schedule;
 	protected transient HashMap<Integer, double[][]> trans_prob;
 
 	protected transient HashMap<Integer, Integer> risk_cat_map;
@@ -308,6 +313,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<Integer, int[]> vaccine_expiry_by_indivdual;
 	// Key = day, V = pid of those who receive booster shot
 	protected transient HashMap<Integer, ArrayList<Integer>> schedule_vaccination;
+
+	protected transient float[] vaccine_allocation_limit = new float[Population_Bridging.LENGTH_GENDER];
 
 	protected transient RealDistribution[][] vacc_dur = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 
@@ -1104,6 +1111,25 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 
 				// Vaccine or vaccine booster
+
+				// Reset global limit if needed
+				if (snap_index == 0) {
+					for (int g = 0; g < vaccine_allocation_limit.length; g++) {						
+						float vacc_limit = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[g][VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP];
+						
+						if(vacc_limit < 0) { // Global limit
+							for (int gl = 0; gl < vaccine_allocation_limit.length; gl++) {		
+								vaccine_allocation_limit[gl] = vacc_limit;								
+							}
+							g = vaccine_allocation_limit.length;
+							
+						}else {
+							vaccine_allocation_limit[g] = vacc_limit;
+						}
+					}
+
+				}
+
 				ArrayList<Integer> vaccineToday = schedule_vaccination.remove(currentTime);
 				if (vaccineToday != null) {
 					for (Integer vId : vaccineToday) {
@@ -1264,9 +1290,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					}
 
-					if (print_progress != null && runnableId != null) {	
+					if (print_progress != null && runnableId != null) {
 						try {
-							print_progress.printf("Thread <%s>: t = %d . Timestamp = %tc.\n", runnableId, currentTime, System.currentTimeMillis());
+							print_progress.printf("Thread <%s>: t = %d . Timestamp = %tc.\n", runnableId, currentTime,
+									System.currentTimeMillis());
 						} catch (Exception ex) {
 							System.err.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
 						}
@@ -1480,8 +1507,45 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
 
 		if (key < 0) {
+			if (vaccine_allocation_limit[gender] > 0) {
+				currently_vaccinated.add(~key, vaccinate_pid);
+				if (vacc_setting[VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP] < 0) {
+					for (int g = 0; g < vaccine_allocation_limit.length; g++) {
+						vaccine_allocation_limit[g]--;
+					}
+				} else {
+					vaccine_allocation_limit[gender]--;
+				}
+			}
+
+			// Vaccination by contact
+			float vacc_by_contact_rate = vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RATE];
+			int vacc_by_contact_scope = (int) vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS];
+			if (vacc_by_contact_rate > 0) {
+				Set<Integer[]> all_contact = BASE_CONTACT_MAP.edgesOf(vaccinate_pid);
+				ArrayList<Integer> vacc_candidate_list = new ArrayList<>();
+				for (Integer[] e : all_contact) {
+					int e_start = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
+					int scrope_start = currentTime - vacc_by_contact_scope;
+					if (scrope_start <= e_start && e_start < currentTime) {
+						if (RNG.nextFloat() < vacc_by_contact_rate) {
+							int candidate_id = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1] == vaccinate_pid
+									? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
+									: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
+							int key_c = Collections.binarySearch(vacc_candidate_list, candidate_id);
+							if (key_c < 0) {
+								vacc_candidate_list.add(~key_c, candidate_id);
+							}
+						}
+					}
+				}
+				for (Integer vacc_candidate : vacc_candidate_list) {
+					vaccine_person(vacc_candidate, currentTime);
+				}
+
+			}
+
 			// Schedule booster on first run
-			currently_vaccinated.add(~key, vaccinate_pid);
 			if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0) {
 				if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] > 0) {
 					for (int b = 0; b < vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT]; b++) {
