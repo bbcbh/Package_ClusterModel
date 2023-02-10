@@ -149,7 +149,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RATE = VACCINATION_SETTING_RATE_PER_TEST + 1;
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS = VACCINATION_SETTING_CONTACT_VACCINE_RATE
 			+ 1;
-	public static final int VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP = VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS
+	public static final int VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY = VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS + 1;
+	public static final int VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP = VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY
 			+ 1;
 	public static final int LENGTH_VACCINATION_SETTING = VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP + 1;
 
@@ -817,10 +818,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				edges_array_pt++;
 			}
 
-			// Schedule testing
+			// Schedule testing and vaccination limit
 			for (Integer personId : BASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
+			vaccineAllocLimitReset();
+
 			int snap_index = 0;
 
 			boolean hasInfected = hasInfectedInPop();
@@ -1112,24 +1115,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				// Vaccine or vaccine booster
 
-				// Reset global limit if needed
-				if (snap_index == 0) {
-					for (int g = 0; g < vaccine_allocation_limit.length; g++) {						
-						float vacc_limit = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[g][VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP];
-						
-						if(vacc_limit < 0) { // Global limit
-							for (int gl = 0; gl < vaccine_allocation_limit.length; gl++) {		
-								vaccine_allocation_limit[gl] = vacc_limit;								
-							}
-							g = vaccine_allocation_limit.length;
-							
-						}else {
-							vaccine_allocation_limit[g] = vacc_limit;
-						}
-					}
-
-				}
-
 				ArrayList<Integer> vaccineToday = schedule_vaccination.remove(currentTime);
 				if (vaccineToday != null) {
 					for (Integer vId : vaccineToday) {
@@ -1140,6 +1125,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				// Storing snapshot infected in sim_output
 
 				if (snap_index == 0) {
+
 					@SuppressWarnings("unchecked")
 					// K = time, V= int [gender][site]
 					HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) sim_output
@@ -1290,6 +1276,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					}
 
+					if (currentTime > startTime) {
+						// Reset vaccine global limit if needed
+						vaccineAllocLimitReset();
+					}
+
 					if (print_progress != null && runnableId != null) {
 						try {
 							print_progress.printf("Thread <%s>: t = %d . Timestamp = %tc.\n", runnableId, currentTime,
@@ -1314,6 +1305,22 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
+	}
+
+	private void vaccineAllocLimitReset() {
+		for (int g = 0; g < vaccine_allocation_limit.length; g++) {
+			float vacc_limit = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[g][VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP];
+
+			if (vacc_limit < 0) { // Global limit
+				for (int gl = 0; gl < vaccine_allocation_limit.length; gl++) {
+					vaccine_allocation_limit[gl] = -vacc_limit;
+				}
+				g = vaccine_allocation_limit.length;
+
+			} else {
+				vaccine_allocation_limit[g] = vacc_limit;
+			}
+		}
 	}
 
 	protected int testPerson(int currentTime, Integer testing_pid_signed) {
@@ -1506,89 +1513,117 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		int gender = getGenderType(vaccinate_pid);
 		float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
 
-		if (key < 0) {
-			if (vaccine_allocation_limit[gender] > 0) {
-				currently_vaccinated.add(~key, vaccinate_pid);
-				if (vacc_setting[VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP] < 0) {
-					for (int g = 0; g < vaccine_allocation_limit.length; g++) {
-						vaccine_allocation_limit[g]--;
-					}
-				} else {
-					vaccine_allocation_limit[gender]--;
+		if (vaccine_allocation_limit[gender] > 0) {
+			currently_vaccinated.add(~key, vaccinate_pid);
+			if (vacc_setting[VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP] < 0) {
+				for (int g = 0; g < vaccine_allocation_limit.length; g++) {
+					vaccine_allocation_limit[g]--;
 				}
+			} else {
+				vaccine_allocation_limit[gender]--;
 			}
 
-			// Vaccination by contact
-			float vacc_by_contact_rate = vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RATE];
-			int vacc_by_contact_scope = (int) vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS];
-			if (vacc_by_contact_rate > 0) {
-				Set<Integer[]> all_contact = BASE_CONTACT_MAP.edgesOf(vaccinate_pid);
-				ArrayList<Integer> vacc_candidate_list = new ArrayList<>();
-				for (Integer[] e : all_contact) {
-					int e_start = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
-					int scrope_start = currentTime - vacc_by_contact_scope;
-					if (scrope_start <= e_start && e_start < currentTime) {
-						if (RNG.nextFloat() < vacc_by_contact_rate) {
-							int candidate_id = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1] == vaccinate_pid
-									? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
-									: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
-							int key_c = Collections.binarySearch(vacc_candidate_list, candidate_id);
-							if (key_c < 0) {
-								vacc_candidate_list.add(~key_c, candidate_id);
+			if (key < 0) {
+
+				// Schedule booster on first run
+				if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0) {
+					if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] > 0) {
+						for (int b = 0; b < vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT]; b++) {
+							int booster_date = Math
+									.round(currentTime + (b + 1) * vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
+							ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
+							if (booster_candidate == null) {
+								booster_candidate = new ArrayList<>();
+								schedule_vaccination.put(booster_date, booster_candidate);
+							}
+							int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
+							if (b_key < 0) {
+								booster_candidate.add(~b_key, vaccinate_pid);
 							}
 						}
 					}
 				}
-				for (Integer vacc_candidate : vacc_candidate_list) {
-					vaccine_person(vacc_candidate, currentTime);
+			}
+
+			if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0
+					&& vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 0) { // Inf. booster
+				int booster_date = Math.round(currentTime + vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
+				ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
+				if (booster_candidate == null) {
+					booster_candidate = new ArrayList<>();
+					schedule_vaccination.put(booster_date, booster_candidate);
+				}
+				int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
+				if (b_key < 0) {
+					booster_candidate.add(~b_key, vaccinate_pid);
+				}
+			}
+
+			int[] vacc_expiry = vaccine_expiry_by_indivdual.get(vaccinate_pid);
+			if (vacc_expiry == null) {
+				vacc_expiry = new int[LENGTH_SITE];
+				vaccine_expiry_by_indivdual.put(vaccinate_pid, vacc_expiry);
+			}
+			for (int site = 0; site < LENGTH_SITE; site++) {
+				if (vacc_dur[gender][site] != null) {
+					vacc_expiry[site] = (int) Math.round(currentTime + vacc_dur[gender][site].sample());
+				} else {
+					vacc_expiry[site] = 0;
 				}
 
 			}
 
-			// Schedule booster on first run
-			if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0) {
-				if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] > 0) {
-					for (int b = 0; b < vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT]; b++) {
-						int booster_date = Math
-								.round(currentTime + (b + 1) * vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
-						ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
-						if (booster_candidate == null) {
-							booster_candidate = new ArrayList<>();
-							schedule_vaccination.put(booster_date, booster_candidate);
-						}
-						int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
-						if (b_key < 0) {
-							booster_candidate.add(~b_key, vaccinate_pid);
+			// Vaccination by contact
+			vaccinate_by_contact(vaccinate_pid, currentTime, vacc_setting);
+		}
+	}
+
+	private void vaccinate_by_contact(Integer vaccinate_pid, int currentTime, float[] vacc_setting) {
+		float vacc_by_contact_rate = vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RATE];
+		if (vacc_by_contact_rate != 0) {
+			int vacc_by_contact_scope = (int) vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS];
+			Set<Integer[]> all_contact = BASE_CONTACT_MAP.edgesOf(vaccinate_pid);
+			ArrayList<Integer> vacc_candidate_list = new ArrayList<>();
+			ArrayList<Integer> vacc_date = new ArrayList<>();
+			for (Integer[] e : all_contact) {
+				int e_start = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
+				if (vacc_by_contact_rate < 0 ? (currentTime - vacc_by_contact_scope <= e_start && e_start < currentTime)
+						: currentTime < e_start && e_start < currentTime + vacc_by_contact_scope) {
+					if (RNG.nextFloat() < Math.abs(vacc_by_contact_rate)) {
+						int candidate_id = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1] == vaccinate_pid
+								? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
+								: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
+						int key_c = Collections.binarySearch(vacc_candidate_list, candidate_id);
+						if (key_c < 0) {
+							vacc_candidate_list.add(~key_c, candidate_id);
+							int vacc_delay = RNG.nextInt((int) vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY] - 1) + 1;
+
+							if (vacc_by_contact_rate < 0) {
+								vacc_date.add(~key_c, currentTime + vacc_delay);
+							} else {
+								vacc_date.add(~key_c, e_start + vacc_delay);
+							}
 						}
 					}
 				}
 			}
-		}
+			for (int i = 0; i < vacc_candidate_list.size(); i++) {
+				Integer vacc_candidate = vacc_candidate_list.get(i);
+				Integer vacc_time = vacc_date.get(i);
 
-		if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0
-				&& vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 0) { // Inf. booster
-			int booster_date = Math.round(currentTime + vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
-			ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
-			if (booster_candidate == null) {
-				booster_candidate = new ArrayList<>();
-				schedule_vaccination.put(booster_date, booster_candidate);
-			}
-			int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
-			if (b_key < 0) {
-				booster_candidate.add(~b_key, vaccinate_pid);
-			}
-		}
-
-		int[] vacc_expiry = vaccine_expiry_by_indivdual.get(vaccinate_pid);
-		if (vacc_expiry == null) {
-			vacc_expiry = new int[LENGTH_SITE];
-			vaccine_expiry_by_indivdual.put(vaccinate_pid, vacc_expiry);
-		}
-		for (int site = 0; site < LENGTH_SITE; site++) {
-			if (vacc_dur[gender][site] != null) {
-				vacc_expiry[site] = (int) Math.round(currentTime + vacc_dur[gender][site].sample());
-			} else {
-				vacc_expiry[site] = 0;
+				if (vacc_time.equals(currentTime)) {
+					vaccine_person(vacc_candidate, currentTime);
+				} else {
+					ArrayList<Integer> vacc_by_contact_candidate = schedule_vaccination.get(vacc_time);
+					if (vacc_by_contact_candidate == null) {
+						vacc_by_contact_candidate = new ArrayList<>();
+						schedule_vaccination.put(vacc_time, vacc_by_contact_candidate);
+					}
+					int vc_key = Collections.binarySearch(vacc_by_contact_candidate, vaccinate_pid);
+					if (vc_key < 0) {
+						vacc_by_contact_candidate.add(~vc_key, vaccinate_pid);
+					}
+				}
 			}
 
 		}
