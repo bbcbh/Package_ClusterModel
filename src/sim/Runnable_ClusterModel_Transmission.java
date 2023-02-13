@@ -149,7 +149,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RATE = VACCINATION_SETTING_RATE_PER_TEST + 1;
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS = VACCINATION_SETTING_CONTACT_VACCINE_RATE
 			+ 1;
-	public static final int VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY = VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS + 1;
+	public static final int VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY = VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS
+			+ 1;
 	public static final int VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP = VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY
 			+ 1;
 	public static final int LENGTH_VACCINATION_SETTING = VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP + 1;
@@ -348,6 +349,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// HashMap<Integer, int[][][]>
 	// with K = time, V= int[gender][site]{valid, expired}
 	public static final String SIM_OUTPUT_VACCINE_COVERAGE = "SIM_OUTPUT_VACCINE_COVERAGE";
+	// HashMap<Integer, int[][]>
+	// with K = time, V= int[gender]{valid, partial, expired, unused}
+	public static final String SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON = "SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON";
 
 	private ArrayList<Integer[]> edges_list;
 	private static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
@@ -496,8 +500,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			antibotic_duration[g] = generateGammaDistribution(antibotic_dur[g]);
 		}
 
-		// Runnable properties switch
-		propSwitch_map = new HashMap<>();
+		// Runnable properties switch if has not already set
+		if (propSwitch_map == null) {
+			propSwitch_map = new HashMap<>();
+		}
 
 		// Vaccines
 		currently_vaccinated = new ArrayList<>();
@@ -1260,19 +1266,51 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 						int[][][] vaccine_coverage_ent = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][2];
 
+						@SuppressWarnings("unchecked")
+						HashMap<Integer, int[][]> vaccine_coverage_by_person = (HashMap<Integer, int[][]>) sim_output
+								.get(SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON);
+
+						if (vaccine_coverage_by_person == null) {
+							vaccine_coverage_by_person = new HashMap<>();
+							sim_output.put(SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON, vaccine_coverage_by_person);
+						}
+
+						// V= int[gender]{valid, partial, expired, unused}
+						int[][] vaccine_coverage_by_person_ent = new int[Population_Bridging.LENGTH_GENDER][4];
+
 						for (Integer pid : currently_vaccinated) {
 							int g = getGenderType(pid);
 							int[] vaccine_expiry = vaccine_expiry_by_indivdual.get(pid);
+
+							boolean hasValid = false;
+							boolean hasExpired = false;
+
 							for (int s = 0; s < LENGTH_SITE; s++) {
 								if (currentTime < vaccine_expiry[s]) {
 									vaccine_coverage_ent[g][s][0]++;
+									hasValid |= true;
+
 								} else {
 									vaccine_coverage_ent[g][s][1]++;
+									hasExpired |= true;
 								}
+							}
 
+							if (hasExpired && hasValid) {
+								vaccine_coverage_by_person_ent[g][1]++;
+							} else if (hasValid) {
+								vaccine_coverage_by_person_ent[g][0]++;
+							} else if (hasExpired) {
+								vaccine_coverage_by_person_ent[g][2]++;
 							}
 						}
+						for (int g = 0; g < vaccine_allocation_limit.length; g++) {
+							vaccine_coverage_by_person_ent[g][3] = (int) vaccine_allocation_limit[g];
+						}
+
 						vaccine_coverage_map.put(currentTime, vaccine_coverage_ent);
+
+						vaccine_coverage_by_person.put(currentTime, vaccine_coverage_by_person_ent);
 
 					}
 
@@ -1596,7 +1634,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						int key_c = Collections.binarySearch(vacc_candidate_list, candidate_id);
 						if (key_c < 0) {
 							vacc_candidate_list.add(~key_c, candidate_id);
-							int vacc_delay = RNG.nextInt((int) vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY] - 1) + 1;
+							int vacc_delay = RNG
+									.nextInt((int) vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_MAX_DELAY] - 1) + 1;
 
 							if (vacc_by_contact_rate < 0) {
 								vacc_date.add(~key_c, currentTime + vacc_delay);
@@ -1787,6 +1826,36 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 				pWri.println(str.toString());
 				pWri.close();
+
+				HashMap<Integer, int[][]> count_map_vacc_person = (HashMap<Integer, int[][]>) sim_output
+						.get(SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON);
+				pWri = new PrintWriter(new File(baseDir, String
+						.format(Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON, cMap_seed, sim_seed)));
+
+				time_array = count_map_vacc_person.keySet().toArray(new Integer[count_map_vacc.size()]);
+				Arrays.sort(time_array);
+				str = new StringBuilder();
+
+				str.append("Time");
+				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+					str.append(String.format(",%d_Active,%d_Partial,%d_Expired,%d_Unallocated", g, g, g, g));
+				}
+				str.append('\n');
+
+				for (Integer t : time_array) {
+					int[][] ent = count_map_vacc_person.get(t);
+					str.append(t);
+					for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+						for (int v = 0; v < ent[g].length; v++) {
+							str.append(',');
+							str.append(ent[g][v]);
+						}
+					}
+					str.append('\n');
+				}
+				pWri.println(str.toString());
+				pWri.close();
+
 			}
 
 		} catch (Exception e) {

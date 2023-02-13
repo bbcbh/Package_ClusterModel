@@ -79,7 +79,8 @@ public class Optimisation_Factory {
 				+ "<-ta TOURNAMENT_ARITY (int)> <-mr MUTATION_RATE (float)> <-mg MAX_GENERATION (int)> "
 				+ "<-rss RNG_SEED_SKIP (int)> " + "<-nib NUM_IN_BATCH (int)> " + "<-exportAll true|false> "
 				+ "<-useInitalValues false|true> " + "<-useCMapMapping true|false> " + "<-useCMapEdgeList true|false>"
-				+ "<-singleExecutor true|false> " + "<-printProgress false|true>" ;
+				+ "<-singleExecutor true|false> " 
+				+ "<" + Simulation_ClusterModelTransmission.LAUNCH_ARGS_PRINT_PROGRESS + " false|true>" ;
 
 		if (args.length < 3) {
 			System.out.println(USAGE_INFO);
@@ -135,7 +136,7 @@ public class Optimisation_Factory {
 				if ("-singleExecutor".equals(args[a])) {
 					useSingleExecutor = Boolean.parseBoolean(args[a + 1]);
 				}
-				if("-printProgress".equals(args[a])) {
+				if(Simulation_ClusterModelTransmission.LAUNCH_ARGS_PRINT_PROGRESS.equals(args[a])) {
 					printProgress = Boolean.parseBoolean(args[a + 1]);
 				}
 

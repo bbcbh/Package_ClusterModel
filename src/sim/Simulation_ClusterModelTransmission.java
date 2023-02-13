@@ -44,12 +44,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected long baseContactMapSeed = -1;
 	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
 	protected boolean exportSkipBackup = false;
+	protected boolean printProgress = false;
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
 	public static final String LAUNCH_ARGS_SKIP_BACKUP = "-export_skip_backup";
+	public static final String LAUNCH_ARGS_PRINT_PROGRESS = "-printProgress";
 
 	public static final String FILENAME_INDEX_CASE_LIST = "Seed_IndexCases_%d_%d.txt";
 	public static final String FILENAME_PREVALENCE_SITE = "Prevalence_Site_%d_%d.csv";
@@ -63,6 +65,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_CUMUL_ANTIBIOTIC_USAGE = "Antibiotic_usage_%d_%d.csv";
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP = "All_transmap_%d_%d.csv";
 	public static final String FILENAME_VACCINE_COVERAGE = "Vaccine_coverage_%d_%d.csv";
+	public static final String FILENAME_VACCINE_COVERAGE_PERSON = "Vaccine_coverage_Person_%d_%d.csv";
 
 	public static final String FILENAME_INDEX_CASE_LIST_ZIP = FILENAME_INDEX_CASE_LIST.replaceFirst("_%d", "") + ".7z";
 	public static final String FILENAME_PREVALENCE_SITE_ZIP = FILENAME_PREVALENCE_SITE.replaceFirst("_%d", "") + ".7z";
@@ -86,6 +89,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP_ZIP = FILENAME_ALL_TRANSMISSION_CMAP.replaceFirst("_%d",
 			"") + ".7z";
 	public static final String FILENAME_VACCINE_COVERAGE_ZIP = FILENAME_VACCINE_COVERAGE.replaceFirst("_%d", "")
+			+ ".7z";
+	public static final String FILENAME_VACCINE_COVERAGE_PERSON_ZIP = FILENAME_VACCINE_COVERAGE_PERSON.replaceFirst("_%d", "")
 			+ ".7z";
 
 	// Switching parameter
@@ -149,6 +154,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void setExportSkipBackup(boolean exportSkipBackup) {
 		this.exportSkipBackup = exportSkipBackup;
+	}		
+
+	public void setPrintProgress(boolean printProgress) {
+		this.printProgress = printProgress;
 	}
 
 	@Override
@@ -388,6 +397,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				runnable[s].setEdges_list(edge_list);
 				runnable[s].setSimSetting(simSetting);
 				runnable[s].setPropSwitch_map(propSwitch_map);
+				
+				if(printProgress) {
+					runnable[s].setPrint_progress(System.out);
+					runnable[s].setRunnableId(String.format("%d,%d",baseContactMapSeed, simSeed));
+				}
+				
 
 				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
 					int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
@@ -535,6 +550,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE) != 0) {
 			zipSelectedOutputs(FILENAME_VACCINE_COVERAGE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_VACCINE_COVERAGE_ZIP, baseContactMapSeed));
+			
+			zipSelectedOutputs(FILENAME_VACCINE_COVERAGE_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_VACCINE_COVERAGE_PERSON_ZIP, baseContactMapSeed));
 		}
 	}
 
@@ -697,6 +715,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						for (int ai = 1; ai < args.length; ai++) {
 							if (LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
 								sim.setExportSkipBackup(true);
+							}
+							if(LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {
+								sim.setPrintProgress(true);
 							}
 
 						}
