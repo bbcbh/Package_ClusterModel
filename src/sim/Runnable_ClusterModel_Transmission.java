@@ -1552,7 +1552,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
 
 		if (vaccine_allocation_limit[gender] > 0) {
-			currently_vaccinated.add(~key, vaccinate_pid);
+			
 			if (vacc_setting[VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP] < 0) {
 				for (int g = 0; g < vaccine_allocation_limit.length; g++) {
 					vaccine_allocation_limit[g]--;
@@ -1561,8 +1561,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				vaccine_allocation_limit[gender]--;
 			}
 
-			if (key < 0) {
-
+			if (key < 0) {				
+				currently_vaccinated.add(~key, vaccinate_pid);
 				// Schedule booster on first run
 				if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0) {
 					if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] > 0) {
