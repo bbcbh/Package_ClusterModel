@@ -34,6 +34,24 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 	public void setCumulative(boolean isCumulative) {
 		this.isCumulative = isCumulative;
 	}
+	
+	public void addRow(Integer time, double[] values) {
+		int time_index = Collections.binarySearch(time_pt, time);
+		if (time_index < 0) {
+			time_pt.add(~time_index, time);
+		}
+		for (int s =0; s < values.length; s++) {
+			String key = String.format("%d,%d", time, s+1);
+			double value = values[s];
+			ArrayList<Double> map_ent = this.get(key);
+			if (map_ent == null) {
+				map_ent = new ArrayList<>();
+				this.put(key, map_ent);
+			}
+			map_ent.add(value);
+		}
+		
+	}
 
 	public void addRow(String csv_line) {
 		String[] entry = csv_line.split(",");

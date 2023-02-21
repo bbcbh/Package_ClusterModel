@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -31,18 +32,16 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 					"(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"),
-			Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP.replaceAll("%d",
-					"(-{0,1}(?!0)\\\\d+)"),
+			Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON_ZIP.replaceAll("%d",
 					"(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON_ZIP.replaceAll("%d",
 					"(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP.replaceAll("%d",
-					"(-{0,1}(?!0)\\\\d+)"),
-			};
+					"(-{0,1}(?!0)\\\\d+)"), };
 
 	public static final String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
-			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History.csv",  
+			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History.csv",
 			"Summary_DX_Person_%s.csv", "Summary_DX_Sought_Person_%s.csv", "Summary_Vaccine_Person_%s.csv" };
 
 	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false };
@@ -81,7 +80,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 					if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP
 							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
 						// Special case for infection history
-						
+
 						Properties prop = new Properties();
 						FileInputStream fIS = new FileInputStream(propFile);
 						prop.loadFromXML(fIS);
@@ -92,17 +91,17 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						int[] gender_dist = (int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),
 								int[].class);
 						int[] incl_range = new int[] { 2920, 4745 }; // 5 years
-						
+
 						int[] cuml_gender_dist = Arrays.copyOf(gender_dist, gender_dist.length);
 						// Cumul. gender dist
 						for (int i = 1; i < cuml_gender_dist.length; i++) {
 							cuml_gender_dist[i] += cuml_gender_dist[i - 1];
 						}
-						
+
 						int[][] total_no_incident_reported = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
 						HashMap<String, ArrayList<Integer>> inf_history_map = new HashMap<>();
-						
+
 						for (File f : zipFiles) {
 							SevenZFile resultZip = new SevenZFile(f);
 							SevenZArchiveEntry ent;
@@ -121,10 +120,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 									txt_entries.append(new String(Arrays.copyOf(buf, count)));
 								}
 
-
-								Util_CSV_Table_Map.updateInfectionHistoryMap(inf_history_map, 
-										cuml_gender_dist, incl_range, total_no_incident_reported,
-										 ent.getName(), txt_entries.toString());
+								Util_CSV_Table_Map.updateInfectionHistoryMap(inf_history_map, cuml_gender_dist,
+										incl_range, total_no_incident_reported, ent.getName(), txt_entries.toString());
 
 							}
 							resultZip.close();
@@ -169,6 +166,18 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 					} else {
 
 						Util_CSV_Table_Map csvTableMapping = null;
+						ArrayList<Util_CSV_Table_Map> csvTableExtra = new ArrayList<>();
+						ArrayList<int[][]> csvTableExtra_colSel = new ArrayList<>();
+						ArrayList<String> csvTableExtra_filename = new ArrayList<>();
+
+						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP
+								.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
+							csvTableExtra.add(new Util_CSV_Table_Map("Time,Heterosexual,MSM,All"));
+							csvTableExtra_colSel.add(
+									new int[][] { new int[] { 1, 2 }, new int[] { 3, 4 }, new int[] { 1, 2, 3, 4 }, });
+							csvTableExtra_filename.add("Summary_Prevalence_Person_BehavGrp_%s.csv");
+						}
+
 						for (File f : zipFiles) {
 							SevenZFile resultZip = new SevenZFile(f);
 							SevenZArchiveEntry ent;
@@ -190,6 +199,20 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 									if (line.length() > 0) {
 										try {
 											csvTableMapping.addRow(line);
+											if (!csvTableExtra.isEmpty()) {
+												String[] lineAtt = line.split(",");
+												Integer time = Integer.parseInt(lineAtt[0]);
+												for (int i = 0; i < csvTableExtra.size(); i++) {
+													int[][] colSel = csvTableExtra_colSel.get(i);
+													double[] col_selSum = new double[colSel.length];
+													for (int c = 0; c < colSel.length; c++) {
+														for (int cI : colSel[c]) {
+															col_selSum[c] += Double.parseDouble(lineAtt[cI]);
+														}
+													}
+													csvTableExtra.get(i).addRow(time, col_selSum);
+												}
+											}
 										} catch (Exception ex) {
 											System.err.printf("Error in adding row from %s (%s)\n", ent.getName(),
 													line);
@@ -201,44 +224,55 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						}
 
 						if (csvTableMapping != null) {
-							String[] headers = csvTableMapping.getHeader();
-							for (int s = 1; s < headers.length; s++) {
-								String summary = csvTableMapping.displayStat(s);
-								File summaryFile = new File(baseDir, String.format(stat_filename_format, headers[s]));
-								PrintWriter pWri = new PrintWriter(summaryFile);
-								pWri.println(summary);
-								pWri.close();
-							}
-
+							String summaryFileFormat = stat_filename_format;
+							printSummaryFile(csvTableMapping, summaryFileFormat);
 						}
+						if (!csvTableExtra.isEmpty()) {
+							for (int i = 0; i < csvTableExtra.size(); i++) {
+								printSummaryFile(csvTableExtra.get(i), csvTableExtra_filename.get(i));
+							}														
+						}
+
 					}
 
 				}
 
 			}
-			
+
 			System.out.println("Output analysis completed.");
-		} else {
+		} else
+
+		{
 			System.out.printf("Properties file %s NOT found. Exiting...\n", propFile.getAbsolutePath());
 			System.exit(-1);
 		}
 
 	}
 
-	/*
-	public static void main(String[] args) throws IOException {
-
-		Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
-
-		if (args.length == 0) {
-			System.out.printf("Usage: java %s PROP_FILE_DIRECTORY\n", analysis.getClass().toString());
-			System.exit(0);
-		} else {
-			analysis.setBaseDir(new File(args[0]));
-			analysis.analyse_outputs();
+	private void printSummaryFile(Util_CSV_Table_Map csvTableMapping, String summaryFileFormat)
+			throws FileNotFoundException {
+		String[] headers = csvTableMapping.getHeader();							
+		for (int s = 1; s < headers.length; s++) {
+			String summary = csvTableMapping.displayStat(s);
+			File summaryFile = new File(baseDir, String.format(summaryFileFormat, headers[s]));
+			PrintWriter pWri = new PrintWriter(summaryFile);
+			pWri.println(summary);
+			pWri.close();
 		}
-
 	}
-	*/
+
+	/*
+	 * public static void main(String[] args) throws IOException {
+	 * 
+	 * Util_Analyse_ClusterModel_Transmission_Output analysis = new
+	 * Util_Analyse_ClusterModel_Transmission_Output();
+	 * 
+	 * if (args.length == 0) {
+	 * System.out.printf("Usage: java %s PROP_FILE_DIRECTORY\n",
+	 * analysis.getClass().toString()); System.exit(0); } else {
+	 * analysis.setBaseDir(new File(args[0])); analysis.analyse_outputs(); }
+	 * 
+	 * }
+	 */
 
 }
