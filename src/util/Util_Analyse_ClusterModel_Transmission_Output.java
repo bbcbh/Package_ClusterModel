@@ -46,7 +46,17 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false };
 
+	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false };
+
 	public Util_Analyse_ClusterModel_Transmission_Output() {
+
+	}
+
+	public void setSkipAnalysis(int key) {
+		// Ox1 = skip 1st, Ox11 = skip 1st and 2nd etc.
+		for (int i = 0; i < SKIP_ANALYSIS.length; i++) {
+			SKIP_ANALYSIS[i] = (key & (1 << i)) != 0;
+		}
 
 	}
 
@@ -73,6 +83,10 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						return pattern_zip.matcher(pathname.getName()).matches();
 					}
 				});
+
+				if (SKIP_ANALYSIS[z]) {
+					zipFiles = new File[0];
+				}
 
 				if (zipFiles.length > 0) {
 					System.out.printf("Analysing %d file(s) of format \"%s\".\n", zipFiles.length, zipFileName);
@@ -178,6 +192,14 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 							csvTableExtra_filename.add("Summary_Prevalence_Person_BehavGrp_%s.csv");
 						}
 
+						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP
+								.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
+							csvTableExtra.add(new Util_CSV_Table_Map("Time,All_Active,All_Partial,All_Expired"));
+							csvTableExtra_colSel.add(new int[][] { new int[] { 1, 5, 9, 13 },
+									new int[] { 2, 6, 10, 14 }, new int[] { 3, 7, 11, 15 }, });
+							csvTableExtra_filename.add("Summary_Vaccine_Person_BehavGrp_%s.csv");
+						}
+
 						for (File f : zipFiles) {
 							SevenZFile resultZip = new SevenZFile(f);
 							SevenZArchiveEntry ent;
@@ -230,7 +252,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						if (!csvTableExtra.isEmpty()) {
 							for (int i = 0; i < csvTableExtra.size(); i++) {
 								printSummaryFile(csvTableExtra.get(i), csvTableExtra_filename.get(i));
-							}														
+							}
 						}
 
 					}
@@ -251,7 +273,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	private void printSummaryFile(Util_CSV_Table_Map csvTableMapping, String summaryFileFormat)
 			throws FileNotFoundException {
-		String[] headers = csvTableMapping.getHeader();							
+		String[] headers = csvTableMapping.getHeader();
 		for (int s = 1; s < headers.length; s++) {
 			String summary = csvTableMapping.displayStat(s);
 			File summaryFile = new File(baseDir, String.format(summaryFileFormat, headers[s]));

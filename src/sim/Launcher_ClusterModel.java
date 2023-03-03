@@ -39,6 +39,9 @@ public class Launcher_ClusterModel {
 			} else if ("-analyse".equals(flag)) {
 				Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
 				analysis.setBaseDir(new File(args[1]));
+				if(args.length > 2) {
+					analysis.setSkipAnalysis(Integer.parseInt(args[2]));
+				}								
 				analysis.analyse_outputs();
 			} else if("-analyse_map".equals(flag)) {
 				Util_Analyse_ContactMap_Outputs analysis = new Util_Analyse_ContactMap_Outputs(args[1], 
