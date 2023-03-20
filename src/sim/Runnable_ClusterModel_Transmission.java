@@ -134,7 +134,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// float[gender][site][effect]
 	private float[][][] DEFAULT_VACCINE_PROPERTIES = new float[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][LENGTH_VACCINE_PROPERTIES];
 
-	public static final int VACCINE_PROPERTIES_MEAN_VAC_DURATION = 0; // Set to < 0 for uniform duration for all anatomical sites.	
+	public static final int VACCINE_PROPERTIES_MEAN_VAC_DURATION = 0; // Set to < 0 for same duration for all anatomical sites.	
 	public static final int VACCINE_PROPERTIES_INF_DURATION_ADJUST = VACCINE_PROPERTIES_MEAN_VAC_DURATION + 1;
 	public static final int VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST = VACCINE_PROPERTIES_INF_DURATION_ADJUST + 1;
 	public static final int VACCINE_PROPERTIES_TRANSMISSION_ADJ = VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST + 1;
