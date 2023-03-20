@@ -134,7 +134,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// float[gender][site][effect]
 	private float[][][] DEFAULT_VACCINE_PROPERTIES = new float[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][LENGTH_VACCINE_PROPERTIES];
 
-	public static final int VACCINE_PROPERTIES_MEAN_VAC_DURATION = 0;
+	public static final int VACCINE_PROPERTIES_MEAN_VAC_DURATION = 0; // Set to < 0 for uniform duration for all anatomical sites.	
 	public static final int VACCINE_PROPERTIES_INF_DURATION_ADJUST = VACCINE_PROPERTIES_MEAN_VAC_DURATION + 1;
 	public static final int VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST = VACCINE_PROPERTIES_INF_DURATION_ADJUST + 1;
 	public static final int VACCINE_PROPERTIES_TRANSMISSION_ADJ = VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST + 1;
@@ -144,7 +144,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private float[][] DEFAULT_VACCINATION_SETTING = new float[Population_Bridging.LENGTH_GENDER][LENGTH_VACCINATION_SETTING];
 
 	public static final int VACCINATION_SETTING_BOOSTER_PERIOD = 0;
-	public static final int VACCINATION_SETTING_BOOSTER_LIMIT = VACCINATION_SETTING_BOOSTER_PERIOD + 1;
+	public static final int VACCINATION_SETTING_BOOSTER_LIMIT = VACCINATION_SETTING_BOOSTER_PERIOD + 1; //Set to between 0 and 1 for booster drop off. 
 	public static final int VACCINATION_SETTING_RATE_PER_TEST = VACCINATION_SETTING_BOOSTER_LIMIT + 1;
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RATE = VACCINATION_SETTING_RATE_PER_TEST + 1;
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS = VACCINATION_SETTING_CONTACT_VACCINE_RATE
@@ -1552,6 +1552,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		int key = Collections.binarySearch(currently_vaccinated, vaccinate_pid);
 		int gender = getGenderType(vaccinate_pid);
 		float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
+		float[][] vacc_prop = ((float[][][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_PROPERTIES])[gender];
 
 		if (vaccine_allocation_limit[gender] > 0) {
 
@@ -1568,17 +1569,34 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				// Schedule booster on first run
 				if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0) {
 					if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] > 0) {
-						for (int b = 0; b < vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT]; b++) {
-							int booster_date = Math
-									.round(currentTime + (b + 1) * vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
-							ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
-							if (booster_candidate == null) {
-								booster_candidate = new ArrayList<>();
-								schedule_vaccination.put(booster_date, booster_candidate);
-							}
-							int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
-							if (b_key < 0) {
-								booster_candidate.add(~b_key, vaccinate_pid);
+						if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 1) {
+							if(RNG.nextFloat() < vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT]) {								
+								int booster_date = Math.round(
+										currentTime + 1 * vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
+								ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
+								if (booster_candidate == null) {
+									booster_candidate = new ArrayList<>();
+									schedule_vaccination.put(booster_date, booster_candidate);
+								}
+								int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
+								if (b_key < 0) {
+									booster_candidate.add(~b_key, vaccinate_pid);
+								}
+								
+							}							
+						} else {
+							for (int b = 0; b < vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT]; b++) {
+								int booster_date = Math.round(
+										currentTime + (b + 1) * vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
+								ArrayList<Integer> booster_candidate = schedule_vaccination.get(booster_date);
+								if (booster_candidate == null) {
+									booster_candidate = new ArrayList<>();
+									schedule_vaccination.put(booster_date, booster_candidate);
+								}
+								int b_key = Collections.binarySearch(booster_candidate, vaccinate_pid);
+								if (b_key < 0) {
+									booster_candidate.add(~b_key, vaccinate_pid);
+								}
 							}
 						}
 					}
@@ -1604,13 +1622,20 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				vacc_expiry = new int[LENGTH_SITE];
 				vaccine_expiry_by_indivdual.put(vaccinate_pid, vacc_expiry);
 			}
+
+			int maxDur = 0;
 			for (int site = 0; site < LENGTH_SITE; site++) {
 				if (vacc_dur[gender][site] != null) {
 					vacc_expiry[site] = (int) Math.round(currentTime + vacc_dur[gender][site].sample());
+					maxDur = Math.max(maxDur, vacc_expiry[site]);
 				} else {
 					vacc_expiry[site] = 0;
 				}
-
+			}
+			for (int site = 0; site < LENGTH_SITE; site++) {
+				if (vacc_expiry[site] == 0 && vacc_prop[site][VACCINE_PROPERTIES_MEAN_VAC_DURATION] < 0) {
+					vacc_expiry[site] = maxDur;
+				}
 			}
 
 			// Vaccination by contact
