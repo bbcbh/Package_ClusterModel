@@ -136,9 +136,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	public static final int VACCINE_PROPERTIES_MEAN_VAC_DURATION = 0; // Set to < 0 for same duration for all sites.
 	public static final int VACCINE_PROPERTIES_INF_DURATION_ADJUST = VACCINE_PROPERTIES_MEAN_VAC_DURATION + 1;
-	public static final int VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST = VACCINE_PROPERTIES_INF_DURATION_ADJUST + 1;
-	public static final int VACCINE_PROPERTIES_TRANSMISSION_ADJ = VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST + 1;
-	public static final int VACCINE_PROPERTIES_SYMPTOM_ADJ = VACCINE_PROPERTIES_TRANSMISSION_ADJ + 1;
+	public static final int VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST = VACCINE_PROPERTIES_INF_DURATION_ADJUST + 1; 
+	public static final int VACCINE_PROPERTIES_TRANSMISSION_ADJ = VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST + 1;    	// proportional adjustment if >0
+	public static final int VACCINE_PROPERTIES_SYMPTOM_ADJ = VACCINE_PROPERTIES_TRANSMISSION_ADJ + 1;            	// proportional adjustment if >0
 	public static final int LENGTH_VACCINE_PROPERTIES = VACCINE_PROPERTIES_SYMPTOM_ADJ + 1;
 
 	private float[][] DEFAULT_VACCINATION_SETTING = new float[Population_Bridging.LENGTH_GENDER][LENGTH_VACCINATION_SETTING];
@@ -1016,12 +1016,24 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 														// Reduction of transProb due to vaccine
 														if (vaccine_expiry_src != null) {
 															if (currentTime < vaccine_expiry_src[site_src]) {
-																transProb *= vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ];
+																if (vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ] < 0) {
+																	if (RNG.nextFloat() < -vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ]) {
+																		transProb *= 0;
+																	}
+																} else {
+																	transProb *= vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ];
+																}
 															}
 														}
 														if (vaccine_expiry_target != null) {
-															if (currentTime < vaccine_expiry_target[site_target]) {
-																transProb *= vaccine_effect[g_t][site_target][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST];
+															if (currentTime < vaccine_expiry_target[site_target]) {																
+																if (vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST] < 0) {																	
+																	if (RNG.nextFloat() < -vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST]) {
+																		transProb *= 0;
+																	}																	
+																} else {
+																	transProb *= vaccine_effect[g_t][site_target][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST];
+																}
 															}
 														}
 
@@ -1572,7 +1584,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				// Schedule booster on first run
 				if (vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD] > 0) {
 					if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 1) { // Inf booster or booster drop off
-						if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 0 
+						if (vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT] < 0
 								|| RNG.nextFloat() < vacc_setting[VACCINATION_SETTING_BOOSTER_LIMIT]) {
 							int booster_date = Math
 									.round(currentTime + 1 * vacc_setting[VACCINATION_SETTING_BOOSTER_PERIOD]);
@@ -1604,7 +1616,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 
 				}
-			}			
+			}
 
 			int[] vacc_expiry = vaccine_expiry_by_indivdual.get(vaccinate_pid);
 			if (vacc_expiry == null) {
