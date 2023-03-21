@@ -43,6 +43,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	protected boolean stopNextTurn = false;
 	protected Properties loadedProperties = null; // From .prop file, if any
 	protected ArrayList<Long> skipSeeds = null;
+	protected ArrayList<Long> useSeeds = null;
 	protected transient Map<Long, ContactMap[]> contactMapSet = null;
 	protected transient Map<Long, Runnable_ClusterModel_ContactMap_Generation> runnablesMap = null;
 
@@ -58,6 +59,11 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public void setSkipSeeds(ArrayList<Long> skipSeeds) {
 		this.skipSeeds = skipSeeds;
 		Collections.sort(this.skipSeeds);
+	}
+
+	public void setUseSeeds(ArrayList<Long> useSeeds) {
+		this.useSeeds = useSeeds;
+		Collections.sort(this.useSeeds);
 	}
 
 	public Simulation_ClusterModelGeneration() {
@@ -189,8 +195,18 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		Runnable_ClusterModel_ContactMap_Generation[] runnables = new Runnable_ClusterModel_ContactMap_Generation[numSim];
 		runnablesMap = new HashMap<Long, Runnable_ClusterModel_ContactMap_Generation>();
 
+		if (useSeeds != null) {
+			numSim = useSeeds.size();
+		}
+
 		for (int i = 0; i < numSim; i++) {
-			long popSeed = rngBase.nextLong();
+			long popSeed;
+
+			if (useSeeds != null) {
+				popSeed = useSeeds.get(i);
+			} else {				
+				popSeed = rngBase.nextLong();
+			}
 
 			if (skipSeeds == null || Collections.binarySearch(skipSeeds, popSeed) < 0) {
 
@@ -240,7 +256,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					} else {
 						outputPS = new PrintStream[1];
 					}
-					File outputFile = new File(baseDir, String.format(FILENAME_FORMAT_OUTPUT, r.getPopulation().getSeed()));
+					File outputFile = new File(baseDir,
+							String.format(FILENAME_FORMAT_OUTPUT, r.getPopulation().getSeed()));
 					FileOutputStream fOut = new FileOutputStream(outputFile, true);
 					outputPS[0] = new PrintStream(fOut);
 
@@ -282,7 +299,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		contactMapSet = new HashMap<Long, ContactMap[]>();
 
 		for (int r = 0; r < runnables.length; r++) {
-			if(runnables[r] != null) {			
+			if (runnables[r] != null) {
 				contactMapSet.put(runnables[r].getPopulation().getSeed(), runnables[r].getGen_cMap());
 			}
 		}
@@ -303,6 +320,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		ArrayList<Long> preGenClusterSeed = new ArrayList<>();
 
 		boolean printOut = false;
+		boolean useExistingPop = false;
 
 		if (args.length > 0) {
 			baseDir = new File(args[0]);
@@ -310,6 +328,9 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 			for (int i = 1; i < args.length; i++) {
 				if (args[i].equals("-printOutput")) {
 					printOut = true;
+				}
+				if (args[i].equals("-useExistingPop")) {
+					useExistingPop = true;
 				}
 			}
 
@@ -357,6 +378,33 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				sim.setSkipSeeds(preGenClusterSeed);
 				sim.loadProperties(prop);
 				sim.setPrintOutput(printOut);
+
+				if (useExistingPop) {
+					ArrayList<Long> useSeeds = new ArrayList<>();
+					final String regEx_PopSnap = Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME
+							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+					final Pattern pattern_pop_snap = Pattern.compile(regEx_PopSnap);
+
+					File[] existingPops = baseDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return pathname.isFile() && Pattern.matches(regEx_PopSnap, pathname.getName());
+
+						}
+					});
+
+					for (File existPop : existingPops) {
+						Matcher m = pattern_pop_snap.matcher(existPop.getName());
+						if (m.matches()) {
+							long seed = Long.parseLong(m.group(1));
+							useSeeds.add(seed);
+							System.out.printf("Attempt to continue population of seed #%d located at %s\n",
+									seed, existPop.getName());
+						}
+					}
+					sim.setUseSeeds(useSeeds);
+				}
+
 				sim.generateOneResultSet();
 
 			}
