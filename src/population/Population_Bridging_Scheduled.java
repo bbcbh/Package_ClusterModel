@@ -131,7 +131,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 		// Initiation of transient fields
 		pop.initialiseTransientFields();
-		pop.schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) (decoded_fields[decoded_fields.length - 1]);
+		pop.schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) (decoded_fields[decoded_fields.length - 1]);				
+		pop.lastPartnershipScheduling = (globalTime / AbstractIndividualInterface.ONE_YEAR_INT) * AbstractIndividualInterface.ONE_YEAR_INT;
+		
 		return pop;
 	}
 

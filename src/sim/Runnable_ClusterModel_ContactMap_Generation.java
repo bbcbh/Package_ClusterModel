@@ -198,7 +198,8 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 								gen_cMap[i] = new ContactMap();
 							}
 						}
-					}										
+					}									
+					
 					popFileloaded = true;
 
 				} catch (Exception e) {
