@@ -279,22 +279,7 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 		}
 
 		if (baseDir != null) {
-
-			ContactMap cMap = gen_cMap[0];
-			File allContactFile = new File(baseDir,
-					String.format(Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP, population.getSeed(),
-							cMap.vertexSet().size()));
-
-			BufferedWriter fileWriAll;
-			try {
-				fileWriAll = new BufferedWriter(new FileWriter(allContactFile));
-				fileWriAll.append(cMap.toFullString());
-				fileWriAll.close();
-			} catch (IOException e) {
-				e.printStackTrace(System.err);
-				System.out.println(cMap.toFullString());
-			}
-
+			
 			exportPopSnap(System.currentTimeMillis());
 
 			if (printStatus != null) {
@@ -314,9 +299,9 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 
 	}
 
-	private void exportPopSnap(long snapTime) {
-		File[] oldPopulationSnapFiles;
-		try {
+	private void exportPopSnap(long snapTime) {		
+		try {			
+
 			File exportFile = new File(baseDir,
 					String.format(EXPORT_POP_FILENAME, population.getSeed(), population.getGlobalTime()));
 
@@ -331,7 +316,7 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 				String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
 				final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
 
-				oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
+				File[] oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
 					@Override
 					public boolean accept(File pathname) {
 						return pathname.getName().startsWith(fileCheckPrefix) && !pathname.equals(exportFile);

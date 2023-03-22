@@ -1,10 +1,12 @@
 package population;
 
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -33,6 +35,7 @@ import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
 import relationship.RelationshipMap;
 import sim.Runnable_ClusterModel_ContactMap_Generation;
+import sim.Simulation_ClusterModelGeneration;
 
 public class Population_Bridging_Scheduled extends Population_Bridging {
 	/**
@@ -131,9 +134,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 		// Initiation of transient fields
 		pop.initialiseTransientFields();
-		pop.schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) (decoded_fields[decoded_fields.length - 1]);				
-		pop.lastPartnershipScheduling = (globalTime / AbstractIndividualInterface.ONE_YEAR_INT) * AbstractIndividualInterface.ONE_YEAR_INT;
-		
+		pop.schedule_partnership = (HashMap<Integer, ArrayList<Integer[]>>) (decoded_fields[decoded_fields.length - 1]);
+		pop.lastPartnershipScheduling = (globalTime / AbstractIndividualInterface.ONE_YEAR_INT)
+				* AbstractIndividualInterface.ONE_YEAR_INT;
+
 		return pop;
 	}
 
@@ -236,6 +240,22 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		}
 
 		if (reportPartnerStat) {
+			// Export contact map
+			ContactMap cMap = ((ContactMap[]) getFields()[Population_Bridging.FIELD_CONTACT_MAP])[0];
+			File allContactFile = new File(baseDir, String
+					.format(Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP, getSeed(), getGlobalTime()));
+
+			BufferedWriter fileWriAll;
+
+			try {
+				fileWriAll = new BufferedWriter(new FileWriter(allContactFile));
+				fileWriAll.append(cMap.toFullString());
+				fileWriAll.close();
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+				System.out.println(cMap.toFullString());
+			}
+
 			if (printStatus != null) {
 				if (population_num_partner_in_last_12_months.length == LENGTH_GENDER) {
 					for (PrintStream out : printStatus) {
@@ -925,7 +945,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 						Files.move(progressFile.toPath(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 					}
 
-					// Only write progress if there are still src_pdIndex to go through 
+					// Only write progress if there are still src_pdIndex to go through
 					if (f_next_completed_src_pdIndex_pt < f_completed_src_pdIndex.length) {
 						ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(newProgresFile));
 						objOut.writeObject(schedule_partnership);
