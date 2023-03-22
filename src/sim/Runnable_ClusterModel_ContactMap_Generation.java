@@ -190,6 +190,15 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 					if (population instanceof Population_Bridging_Scheduled) {
 						((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
 					}
+					
+					if(contactMapValidRange[0] < population.getGlobalTime()
+							&&  population.getGlobalTime() < contactMapValidRange[1]) {
+						for(int i = 0; i < gen_cMap.length; i++) {
+							if(gen_cMap[i] == null) {
+								gen_cMap[i] = new ContactMap();
+							}
+						}
+					}										
 					popFileloaded = true;
 
 				} catch (Exception e) {
