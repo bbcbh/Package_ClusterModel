@@ -44,7 +44,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	protected Properties loadedProperties = null; // From .prop file, if any
 	protected ArrayList<Long> skipSeeds = null;
 	protected ArrayList<Long> useSeeds = null;
-	protected transient Map<Long, ContactMap[]> contactMapSet = null;
+	//protected transient Map<Long, ContactMap[]> contactMapSet = null;
 	protected transient Map<Long, Runnable_ClusterModel_ContactMap_Generation> runnablesMap = null;
 
 	protected boolean printOutput = false;
@@ -83,9 +83,11 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		return runnablesMap;
 	}
 
+	/*
 	public Map<Long, ContactMap[]> getContactMapSet() {
 		return contactMapSet;
 	}
+	*/
 
 	@Override
 	public void loadProperties(Properties prop) {
@@ -280,8 +282,12 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 						}
 						numInPool = 0;
 						executor = null;
+						System.gc();
 					}
 				}
+				
+				runnables[i] =  null; // Free up memory?
+				
 			} else {
 				showStrStatus(String.format("Contact cluster with seed of %d skipped", popSeed));
 			}
@@ -294,8 +300,11 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 			}
 			numInPool = 0;
 			executor = null;
+			System.gc();
 		}
-
+		
+		
+		/*
 		contactMapSet = new HashMap<Long, ContactMap[]>();
 
 		for (int r = 0; r < runnables.length; r++) {
@@ -303,6 +312,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				contactMapSet.put(runnables[r].getPopulation().getSeed(), runnables[r].getGen_cMap());
 			}
 		}
+		*/
 
 		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
 	}
