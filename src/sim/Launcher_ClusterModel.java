@@ -10,6 +10,7 @@ import java.util.InvalidPropertiesFormatException;
 import optimisation.Optimisation_Factory;
 import util.Util_Analyse_ClusterModel_Transmission_Output;
 import util.Util_Analyse_ContactMap_Outputs;
+import util.Util_Combine_ContactMap;
 import util.Util_Compare_ClusterModel_Transmission_Output;
 
 public class Launcher_ClusterModel {
@@ -17,7 +18,7 @@ public class Launcher_ClusterModel {
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans, -opt, -analyse, -analyse_map or -compare> PROP_FILE_DIRECTORY <...>\n"
+				"Usage: java %s <-gen, -trans, -opt, -analyse, -analyse_map, -combine_map or -compare> PROP_FILE_DIRECTORY <...>\n"
 						+ "or    java %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName());
 
@@ -47,6 +48,9 @@ public class Launcher_ClusterModel {
 				Util_Analyse_ContactMap_Outputs analysis = new Util_Analyse_ContactMap_Outputs(args[1], 
 						Integer.parseInt(args[2]), Integer.parseInt(args[3]));
 				analysis.analyse_output();
+			} else if ("-combine_map".equals(flag)) {				
+				Util_Combine_ContactMap combine = new Util_Combine_ContactMap(args[1], args[2], args[3]);											
+				combine.combineMaps();				
 			} else if ("-compare".equals(flag)) {
 				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
 

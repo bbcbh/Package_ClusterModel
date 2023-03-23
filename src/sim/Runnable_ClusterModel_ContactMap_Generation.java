@@ -2,12 +2,10 @@ package sim;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -324,7 +322,12 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 				});
 
 				for (File df : oldPopulationSnapFiles) {
-					Files.delete(df.toPath());
+					
+					try {
+						Files.delete(df.toPath());
+					} catch (Exception e) {
+						System.err.printf("Error in deleteing %s. Skipped deleted", df.toPath().toString());
+					}
 				}
 			}
 

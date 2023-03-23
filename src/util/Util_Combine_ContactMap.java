@@ -22,6 +22,16 @@ public class Util_Combine_ContactMap {
 
 	final Pattern PATTERN_CONTACT_MAP = Pattern.compile(
 			Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+	
+	
+	public Util_Combine_ContactMap(String dirSrcBase, String dirSrcNew, String dirRes) {
+		super();
+		this.dirSrcBase = new File(dirSrcBase);
+		this.dirSrcNew = new File(dirSrcNew);
+		this.dirRes = new File(dirRes);
+	}
+
+	
 
 	public Util_Combine_ContactMap(File dirSrcBase, File dirSrcNew, File dirRes) {
 		super();
