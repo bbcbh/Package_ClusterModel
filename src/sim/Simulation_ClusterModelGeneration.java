@@ -351,7 +351,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				System.out.println(String.format("Properties file < %s > loaded.", propFile.getAbsolutePath()));
 
 				// Check for cluster generated previously
-				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "-{0,1}(?!0)\\\\d+");
+				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
 
 				preGenClusterFile = baseDir.listFiles(new FileFilter() {
 					@Override
