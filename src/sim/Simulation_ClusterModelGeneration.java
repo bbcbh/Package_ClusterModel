@@ -392,7 +392,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				if (useExistingPop) {
 					ArrayList<Long> useSeeds = new ArrayList<>();
 					final String regEx_PopSnap = Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME
-							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+							.replaceAll("%d", "(0|-{0,1}(?!0)\\\\d+)");
 					final Pattern pattern_pop_snap = Pattern.compile(regEx_PopSnap);
 
 					File[] existingPops = baseDir.listFiles(new FileFilter() {
