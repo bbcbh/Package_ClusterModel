@@ -242,18 +242,21 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		if (reportPartnerStat) {
 			// Export contact map
 			ContactMap cMap = ((ContactMap[]) getFields()[Population_Bridging.FIELD_CONTACT_MAP])[0];
-			File allContactFile = new File(baseDir, String
-					.format(Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP, getSeed(), getGlobalTime()));
 
-			BufferedWriter fileWriAll;
+			if (cMap != null) {
+				File allContactFile = new File(baseDir, String.format(
+						Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP, getSeed(), getGlobalTime()));
 
-			try {
-				fileWriAll = new BufferedWriter(new FileWriter(allContactFile));
-				fileWriAll.append(cMap.toFullString());
-				fileWriAll.close();
-			} catch (IOException e) {
-				e.printStackTrace(System.err);
-				System.out.println(cMap.toFullString());
+				BufferedWriter fileWriAll;
+
+				try {
+					fileWriAll = new BufferedWriter(new FileWriter(allContactFile));
+					fileWriAll.append(cMap.toFullString());
+					fileWriAll.close();
+				} catch (IOException e) {
+					e.printStackTrace(System.err);
+					System.out.println(cMap.toFullString());
+				}
 			}
 
 			if (printStatus != null) {
