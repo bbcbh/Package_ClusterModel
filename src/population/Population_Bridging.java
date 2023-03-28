@@ -1153,8 +1153,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					if (link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] >= 0) {
 						c.addEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], link);
 					} else {
-						System.err.println(String.format("checkContactMaps: Edge of %d duration not added.",
-								link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]));
+						//System.err.println(String.format("checkContactMaps: Edge of %d duration not added.",
+						//		link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]));
 					}
 				} else {
 					// Edge already existed
