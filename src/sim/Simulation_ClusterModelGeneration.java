@@ -23,7 +23,6 @@ import population.Population_Bridging;
 import population.Population_Bridging_Scheduled;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
-import relationship.ContactMap;
 import util.PersonClassifier;
 import util.PropValUtils;
 

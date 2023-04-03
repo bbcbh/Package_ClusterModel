@@ -136,9 +136,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	public static final int VACCINE_PROPERTIES_MEAN_VAC_DURATION = 0; // Set to < 0 for same duration for all sites.
 	public static final int VACCINE_PROPERTIES_INF_DURATION_ADJUST = VACCINE_PROPERTIES_MEAN_VAC_DURATION + 1;
-	public static final int VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST = VACCINE_PROPERTIES_INF_DURATION_ADJUST + 1; 
-	public static final int VACCINE_PROPERTIES_TRANSMISSION_ADJ = VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST + 1;    	// proportional adjustment if >0
-	public static final int VACCINE_PROPERTIES_SYMPTOM_ADJ = VACCINE_PROPERTIES_TRANSMISSION_ADJ + 1;            	// proportional adjustment if >0
+	public static final int VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST = VACCINE_PROPERTIES_INF_DURATION_ADJUST + 1;
+	public static final int VACCINE_PROPERTIES_TRANSMISSION_ADJ = VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST + 1; // proportional
+																												// adjustment
+																												// if >0
+	public static final int VACCINE_PROPERTIES_SYMPTOM_ADJ = VACCINE_PROPERTIES_TRANSMISSION_ADJ + 1; // proportional
+																										// adjustment if
+																										// >0
 	public static final int LENGTH_VACCINE_PROPERTIES = VACCINE_PROPERTIES_SYMPTOM_ADJ + 1;
 
 	private float[][] DEFAULT_VACCINATION_SETTING = new float[Population_Bridging.LENGTH_GENDER][LENGTH_VACCINATION_SETTING];
@@ -148,7 +152,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 																										// between 0 and
 																										// 1 for booster
 																										// drop off.
-	public static final int VACCINATION_SETTING_RATE_PER_TEST = VACCINATION_SETTING_BOOSTER_LIMIT + 1;
+	public static final int VACCINATION_SETTING_RATE_PER_TEST = VACCINATION_SETTING_BOOSTER_LIMIT + 1; // If >=1, the
+																										// rate is
+																										// defined as
+																										// (num_partner_in_last_12_months).rate
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RATE = VACCINATION_SETTING_RATE_PER_TEST + 1;
 	public static final int VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS = VACCINATION_SETTING_CONTACT_VACCINE_RATE
 			+ 1;
@@ -566,6 +573,22 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 
 		}
+
+	}
+
+	private int getNumPartnerPerSnap(Integer personId, int currentTime) {
+		int count = 0;
+		if (currentTime > NUM_TIME_STEPS_PER_SNAP) {
+			Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
+			for (Integer[] e : edges) {
+				if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= currentTime
+						- NUM_TIME_STEPS_PER_SNAP
+						&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < currentTime) {
+					count++;
+				}
+			}
+		}
+		return count;
 
 	}
 
@@ -1026,11 +1049,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 															}
 														}
 														if (vaccine_expiry_target != null) {
-															if (currentTime < vaccine_expiry_target[site_target]) {																
-																if (vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST] < 0) {																	
+															if (currentTime < vaccine_expiry_target[site_target]) {
+																if (vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST] < 0) {
 																	if (RNG.nextFloat() < -vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST]) {
 																		transProb *= 0;
-																	}																	
+																	}
 																} else {
 																	transProb *= vaccine_effect[g_t][site_target][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST];
 																}
@@ -1555,6 +1578,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		// Only vaccinate possible if they have not done so before
 		if (key < 0) {
+			if (vacc_coverage_by_test > 1) {
+				int num_partner_limit = (int) vacc_coverage_by_test;
+				vacc_coverage_by_test = vacc_coverage_by_test - num_partner_limit;
+				if (getNumPartnerPerSnap(test_pid, currentTime) < num_partner_limit) {
+					vacc_coverage_by_test = 0;
+				}
+			}
+
 			if (vacc_coverage_by_test > 0 && RNG.nextFloat() < vacc_coverage_by_test) {
 				vaccine_person(test_pid, currentTime);
 			}
