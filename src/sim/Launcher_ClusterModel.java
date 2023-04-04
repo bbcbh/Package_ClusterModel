@@ -35,22 +35,22 @@ public class Launcher_ClusterModel {
 			} else if ("-opt".equals(flag)) {
 				Optimisation_Factory
 						.stable_prevalence_by_tranmission_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
-			} else if("-optGA".equals(flag)) {
+			} else if ("-optGA".equals(flag)) {
 				Optimisation_Factory.stable_prevalence_by_tranmission_fit_GA(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-analyse".equals(flag)) {
 				Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
 				analysis.setBaseDir(new File(args[1]));
-				if(args.length > 2) {
+				if (args.length > 2) {
 					analysis.setSkipAnalysis(Integer.parseInt(args[2]));
-				}								
+				}
 				analysis.analyse_outputs();
-			} else if("-analyse_map".equals(flag)) {
-				Util_Analyse_ContactMap_Outputs analysis = new Util_Analyse_ContactMap_Outputs(args[1], 
+			} else if ("-analyse_map".equals(flag)) {
+				Util_Analyse_ContactMap_Outputs analysis = new Util_Analyse_ContactMap_Outputs(args[1],
 						Integer.parseInt(args[2]), Integer.parseInt(args[3]));
 				analysis.analyse_output();
-			} else if ("-combine_map".equals(flag)) {				
-				Util_Combine_ContactMap combine = new Util_Combine_ContactMap(args[1], args[2], args[3]);											
-				combine.combineMaps();				
+			} else if ("-combine_map".equals(flag)) {
+				Util_Combine_ContactMap combine = new Util_Combine_ContactMap(args[1], args[2], args[3]);
+				combine.combineMaps();
 			} else if ("-compare".equals(flag)) {
 				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
 
@@ -59,11 +59,13 @@ public class Launcher_ClusterModel {
 				BufferedReader reader = new BufferedReader(new FileReader(commands));
 				String line;
 				while ((line = reader.readLine()) != null) {
-					String[] lines = line.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-					for (int i = 0; i < lines.length; i++) {
-						lines[i] = lines[i].replaceAll("\"", "");
+					if (!line.startsWith("//")) {
+						String[] lines = line.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+						for (int i = 0; i < lines.length; i++) {
+							lines[i] = lines[i].replaceAll("\"", "");
+						}
+						Launcher_ClusterModel.main(lines);
 					}
-					Launcher_ClusterModel.main(lines);
 				}
 				reader.close();
 
