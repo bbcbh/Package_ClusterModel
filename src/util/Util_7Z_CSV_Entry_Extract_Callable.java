@@ -18,11 +18,13 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 
 	final private File BaseDir;
 	final private String[] CSV_Filenames_Pattern;
+	final private String CMapId;
 	final private int[][] Entry_Pairs; // {[File_id, colNum}
 
-	public Util_7Z_CSV_Entry_Extract_Callable(File baseDir, String[] csv_Filenames_Pattern, int[][] entry_Pairs) {
+	public Util_7Z_CSV_Entry_Extract_Callable(File baseDir, String cMapId, String[] csv_Filenames_Pattern, int[][] entry_Pairs) {
 		super();
 		BaseDir = baseDir;
+		CMapId = cMapId;
 		CSV_Filenames_Pattern = csv_Filenames_Pattern;
 		Entry_Pairs = entry_Pairs;
 	}
@@ -36,8 +38,7 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 		for (int file_id = 0; file_id < CSV_Filenames_Pattern.length; file_id++) {
 
 			Pattern pattern_archive_file = Pattern
-					.compile((CSV_Filenames_Pattern[file_id].replaceFirst("_%d", "") + ".7z").replaceAll("%d",
-							"(-{0,1}(?!0)\\\\d+)"));
+					.compile((CSV_Filenames_Pattern[file_id].replaceFirst("_%d", "") + ".7z").replaceAll("%d",CMapId));
 			Pattern pattern_csv_file = Pattern
 					.compile(CSV_Filenames_Pattern[file_id].replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
 
