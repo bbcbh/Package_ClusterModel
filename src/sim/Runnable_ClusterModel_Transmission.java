@@ -1,6 +1,7 @@
 package sim;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -1753,6 +1754,41 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		StringBuilder str = null;
 
 		try {
+			
+			// Store index case(s)
+			StringBuilder seedInfectedStr = new StringBuilder();
+			int[][] seedInfected = (int[][]) simulation_store[0];
+			for (int site = 0; site < seedInfected.length; site++) {
+				for (int i = 0; i < seedInfected[site].length; i++) {
+					seedInfectedStr.append(site);
+					seedInfectedStr.append(',');
+					seedInfectedStr.append(seedInfected[site][i]);
+					seedInfectedStr.append('\n');
+				}
+			}
+
+			File printFile;
+			PrintWriter expWri;
+
+			printFile = new File(baseDir, String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST,
+					this.cMap_seed, this.sim_seed));
+
+			try {
+				expWri = new PrintWriter(printFile);
+				expWri.println(seedInfectedStr.toString());
+				expWri.close();
+			} catch (IOException ex) {
+				ex.printStackTrace(System.err);
+				System.out.println("Index case:");
+				System.out.println(seedInfectedStr.toString());
+
+			}
+			
+			
+			
+			
+			
+			
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
 				str = printCountMap(count_map, "Gender_%d_Site_%d");

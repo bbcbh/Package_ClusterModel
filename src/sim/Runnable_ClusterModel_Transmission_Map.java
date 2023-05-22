@@ -18,9 +18,8 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 
 	protected TransmissionMap transmissionMap = null;
 
-	public Runnable_ClusterModel_Transmission_Map(long cMap_seed, long sim_seed, 
-			int[] POP_COMPOSITION, ContactMap BASE_CONTACT_MAP,
-			int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
+	public Runnable_ClusterModel_Transmission_Map(long cMap_seed, long sim_seed, int[] POP_COMPOSITION,
+			ContactMap BASE_CONTACT_MAP, int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
 		super(cMap_seed, sim_seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 
 	}
@@ -46,16 +45,15 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 			}
 			if (!transmissionMap.containsVertex(partner)) {
 				transmissionMap.addVertex(partner);
-			}			
-			
-			Integer[] transEdge = new Integer[Abstract_Runnable_ClusterModel.LENGTH_TRANS_MAP_EDGE];			
+			}
+
+			Integer[] transEdge = new Integer[Abstract_Runnable_ClusterModel.LENGTH_TRANS_MAP_EDGE];
 			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_INFECTIOUS] = infectious;
 			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_SUSCEPTIBLE] = partner;
 			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_START_TIME] = currentTime;
-			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_ACT_INVOLVED] = actType;					
+			transEdge[Abstract_Runnable_ClusterModel.TRANS_MAP_EDGE_ACT_INVOLVED] = actType;
 			transmissionMap.addEdge(infectious, partner, transEdge);
 
-			
 		}
 	}
 
@@ -97,8 +95,8 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 
 		if (transmissionMap != null) {
 
-			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);			
-	
+			sim_output.put(SIM_OUTPUT_TRANMISSION_MAP, transmissionMap);
+
 			Set<TransmissionMap> clustersSet = new java.util.HashSet<>();
 			clustersSet.add(transmissionMap);
 			sim_output.put(SIM_OUTPUT_CLUSTERS, clustersSet);
@@ -112,25 +110,21 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 				}
 			});
 
-			File clusterExport = baseDir; //new File(baseDir, String.format(DIRNAME_FORMAT_TRANSMISSION_CMAP, this.sim_seed));
+			File clusterExport = baseDir; // new File(baseDir, String.format(DIRNAME_FORMAT_TRANSMISSION_CMAP,
+											// this.sim_seed));
 			clusterExport.mkdirs();
 
-			File printFile;
-			PrintWriter expWri;
-
 			try {
-
-				printFile = new File(clusterExport, String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST, this.cMap_seed,this.sim_seed));
-
-				expWri = new PrintWriter(printFile);
-				expWri.println(seedInfectedStr.toString());
-				expWri.close();
+				
+				File printFile;
+				PrintWriter expWri;
 
 				for (int cI = 0; cI < clusters.length; cI++) {
 					TransmissionMap c = clusters[cI];
 
 					printFile = new File(clusterExport,
-							String.format(Simulation_ClusterModelTransmission.FILENAME_ALL_TRANSMISSION_CMAP, this.cMap_seed ,this.sim_seed));
+							String.format(Simulation_ClusterModelTransmission.FILENAME_ALL_TRANSMISSION_CMAP,
+									this.cMap_seed, this.sim_seed));
 
 					expWri = new PrintWriter(printFile);
 					expWri.println(c.toFullString());

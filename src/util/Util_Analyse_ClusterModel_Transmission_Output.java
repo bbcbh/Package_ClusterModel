@@ -40,16 +40,19 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP.replaceAll("%d",
 					"(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP.replaceAll("%d",
-					"(-{0,1}(?!0)\\\\d+)"), };
+					"(-{0,1}(?!0)\\\\d+)"),
+			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP.replaceAll("%d",
+					"(-{0,1}(?!0)\\\\d+)"),				
+	};
 
 	public static final String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
 			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History.csv",
 			"Summary_DX_Person_%s.csv", "Summary_DX_Sought_Person_%s.csv", "Summary_Vaccine_Person_%s.csv",
-			"Summary_Antibiotic_Usage_%s.csv" };
+			"Summary_Cumul_Antibiotic_Usage_%s.csv", "Summary_Cumul_Infection_%s.csv" };
 
-	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, true };
+	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, false, false };
 
-	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false,
+	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false, false,
 			false };
 
 	public Util_Analyse_ClusterModel_Transmission_Output() {
