@@ -20,7 +20,7 @@ public class Launcher_ClusterModel {
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans, -opt, -analyse, -analyse_rx -analyse_map, -combine_map or -compare> PROP_FILE_DIRECTORY <...>\n"
+				"Usage: java %s <-gen, -trans, -opt, -analyse, -analyse_rx -analyse_map, -combine_map, -compare -clean_up> PROP_FILE_DIRECTORY <...>\n"
 						+ "or    java %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName());
 
@@ -83,7 +83,8 @@ public class Launcher_ClusterModel {
 				combine.combineMaps();
 			} else if ("-compare".equals(flag)) {
 				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
-
+			}else if ("-clean_up".equals(flag)) {
+				Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(new File(args[0]));
 			} else if ("-batch".equals(flag)) {
 				File commands = new File(args[1]);
 				BufferedReader reader = new BufferedReader(new FileReader(commands));

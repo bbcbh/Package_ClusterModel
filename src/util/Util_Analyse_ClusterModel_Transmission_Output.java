@@ -13,10 +13,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
+import org.apache.commons.io.FileUtils;
 
 import population.Population_Bridging;
 import sim.Runnable_ClusterModel_Transmission;
@@ -287,6 +290,119 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			PrintWriter pWri = new PrintWriter(summaryFile);
 			pWri.println(summary);
 			pWri.close();
+		}
+	}
+
+	public static void cleanUpOutputDir(File cleanupDir) {
+		Pattern outputZipsPattern = Pattern.compile("(.+_)(-{0,1}(?!0)\\d+)\\.csv\\.7z");
+		HashMap<Long, ArrayList<Long>> sim_listing = new HashMap<>();
+	
+		File[] archiveFiles = cleanupDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return outputZipsPattern.matcher(pathname.getName()).matches();
+			}
+		});
+	
+		for (File archiveFile : archiveFiles) {
+			Matcher mArchive = outputZipsPattern.matcher(archiveFile.getName());
+			mArchive.matches();
+	
+			String filePrefix = mArchive.group(1);
+			long cMapSeed = Long.parseLong(mArchive.group(2));
+			Pattern ent_patten = Pattern
+					.compile(String.format("%s%d_(-{0,1}(?!0)\\d+)\\.csv", filePrefix, cMapSeed));
+			Pattern remove_pattern = Pattern
+					.compile(String.format("%s%d\\.csv\\.7z_(-{0,1}(?!0)\\d+)\\.7z", filePrefix, cMapSeed));
+	
+			ArrayList<Long> simSeedArr = sim_listing.get(cMapSeed);
+			if (simSeedArr == null) {
+				simSeedArr = new ArrayList<>();
+				sim_listing.put(cMapSeed, simSeedArr);
+			}
+	
+			try {
+				SevenZFile archive7Z = new SevenZFile(archiveFile);
+				SevenZArchiveEntry ent;
+				while ((ent = archive7Z.getNextEntry()) != null) {
+					Matcher mEnt = ent_patten.matcher(ent.getName());
+					mEnt.matches();
+					long simSeed = Long.parseLong(mEnt.group(1));
+					int res = Collections.binarySearch(simSeedArr, simSeed);
+					if (res < 0) {
+						simSeedArr.add(~res, simSeed);
+					}
+				}
+				archive7Z.close();
+	
+				// Remove backup 7z files
+				File[] toBeRemoved = cleanupDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return remove_pattern.matcher(pathname.getName()).matches();
+					}
+				});
+	
+				for (File removed : toBeRemoved) {
+					FileUtils.delete(removed);
+				}
+	
+			} catch (IOException ex) {
+				System.err.printf("File clean up for %s failed. File not removed.\n",
+						archiveFile.getAbsolutePath());
+				ex.printStackTrace(System.err);
+	
+			}
+		}
+	
+		// Adding SeedIndexCases file if needed
+		for (Long cMapSeed : sim_listing.keySet()) {							
+			String seedFileName = String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST_ZIP,
+					cMapSeed);				
+			File seedFile = new File(cleanupDir, seedFileName);				
+			try {
+				if (!seedFile.exists()) {
+					ArrayList<Long> simSeedArr = sim_listing.get(cMapSeed);
+					SevenZOutputFile outputZip = new SevenZOutputFile(seedFile);
+					SevenZArchiveEntry entry;
+					FileInputStream fIn;
+	
+					for (Long simSeed : simSeedArr) {
+						String genSeedFileName = String.format(
+								Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST, cMapSeed, simSeed);
+						File dummmyFile = new File(cleanupDir, genSeedFileName);
+						PrintWriter pWri = new PrintWriter(dummmyFile);
+						pWri.printf("Dummy entry created at %d", System.currentTimeMillis());
+						pWri.close();
+						entry = outputZip.createArchiveEntry(dummmyFile, genSeedFileName);
+						outputZip.putArchiveEntry(entry);
+						fIn = new FileInputStream(dummmyFile);
+						outputZip.write(fIn);
+						outputZip.closeArchiveEntry();
+						fIn.close();
+						FileUtils.delete(dummmyFile);
+					}
+					outputZip.close();
+	
+				} else {
+					// Remove backup seed archive
+					Pattern remove_pattern_seed = Pattern
+							.compile(String.format("%s_(-{0,1}(?!0)\\d+)\\.7z", seedFileName));
+					File[] toBeRemovedSeed = cleanupDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return remove_pattern_seed.matcher(pathname.getName()).matches();
+						}
+					});
+					for (File removed : toBeRemovedSeed) {
+						FileUtils.delete(removed);
+					}
+				}
+			} catch (IOException e) {
+				System.err.printf("File operation for %s failed.\n", seedFile.getAbsolutePath());
+				e.printStackTrace(System.err);
+			}
+	
 		}
 	}
 
