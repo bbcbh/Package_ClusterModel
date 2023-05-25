@@ -294,6 +294,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 	}
 
 	public static void cleanUpOutputDir(File cleanupDir) {
+		System.out.printf("Cleaning up outputs in %s\n", cleanupDir.getAbsolutePath());
 		Pattern outputZipsPattern = Pattern.compile("(.+_)(-{0,1}(?!0)\\d+)\\.csv\\.7z");
 		HashMap<Long, ArrayList<Long>> sim_listing = new HashMap<>();
 	

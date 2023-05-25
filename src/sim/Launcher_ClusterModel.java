@@ -84,7 +84,7 @@ public class Launcher_ClusterModel {
 			} else if ("-compare".equals(flag)) {
 				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
 			}else if ("-clean_up".equals(flag)) {
-				Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(new File(args[0]));
+				Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(new File(args[1]));
 			} else if ("-batch".equals(flag)) {
 				File commands = new File(args[1]);
 				BufferedReader reader = new BufferedReader(new FileReader(commands));
