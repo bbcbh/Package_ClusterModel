@@ -73,7 +73,7 @@ public class Launcher_ClusterModel {
 						Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
 
 					}
-					System.out.printf("%d directories analysised and clean up.\n", candidateDir.length);
+					System.out.printf("%d directories analysed and cleaned up.\n", candidateDir.length);
 					
 				}
 
