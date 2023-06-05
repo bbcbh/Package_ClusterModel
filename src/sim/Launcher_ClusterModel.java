@@ -69,7 +69,8 @@ public class Launcher_ClusterModel {
 						if (args.length > 3) {
 							analysis.setSkipAnalysis(Integer.parseInt(args[3]));
 						}
-						analysis.analyse_outputs();
+						analysis.analyse_outputs();												
+						Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
 
 					}
 				}
