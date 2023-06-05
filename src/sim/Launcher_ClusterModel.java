@@ -73,6 +73,8 @@ public class Launcher_ClusterModel {
 						Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
 
 					}
+					System.out.printf("%d directories analysised and clean up.\n", candidateDir.length);
+					
 				}
 
 			} else if ("-analyse_map".equals(flag)) {
