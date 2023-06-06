@@ -20,9 +20,11 @@ public class Launcher_ClusterModel {
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans, -opt, -analyse, -analyse_rx -analyse_map, -combine_map, -compare -clean_up> PROP_FILE_DIRECTORY <...>\n"
-						+ "or    java %s <-batch> COMMAND_AS_TEXT",
-				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName());
+				"Usage: java %s <-gen, -trans, -opt, -analyse, -analyse_map, -combine_map, -compare> PROP_FILE_DIRECTORY <...>\n"
+						+ " or\tjava %s <-analyse_rx,  -clean_up_rx> FILE_DIRECTORY PATTERN <...>"
+						+ " or\tjava %s <-batch> COMMAND_AS_TEXT",
+				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName(),
+				Launcher_ClusterModel.class.getName());
 
 		if (args.length < 1) {
 			System.out.println(USAGE_INFO);
@@ -42,7 +44,7 @@ public class Launcher_ClusterModel {
 			} else if ("-analyse".equals(flag)) {
 				Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
 				File dir = new File(args[1]);
-				analysis.setBaseDir(dir);				
+				analysis.setBaseDir(dir);
 				System.out.printf("=== %s ===\n", dir.getName());
 				if (args.length > 2) {
 					analysis.setSkipAnalysis(Integer.parseInt(args[2]));
@@ -51,7 +53,8 @@ public class Launcher_ClusterModel {
 			} else if ("-analyse_rx".equals(flag)) {
 				File baseDir = new File(args[1]);
 				if (args.length < 2) {
-					System.out.printf("Usage: java %s -analyse_rx FILE_DIRECTORY PATTERN [skip_analysis_int] [-skip_cleanup]\n" );
+					System.out.printf(
+							"Usage: java %s -analyse_rx FILE_DIRECTORY PATTERN [skip_analysis_int] [-skip_cleanup]\n");
 					System.exit(0);
 				} else {
 					Pattern dirPattern = Pattern.compile(args[2]);
@@ -66,21 +69,21 @@ public class Launcher_ClusterModel {
 						System.out.printf("=== %s ===\n", dir.getName());
 						Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
 						analysis.setBaseDir(dir);
-						if (args.length > 3) {																				
+						if (args.length > 3) {
 							analysis.setSkipAnalysis(Integer.parseInt(args[3]));
 						}
 						analysis.analyse_outputs();
-						
+
 						boolean skipCleanup = false;
-						if(args.length > 4) {
-							skipCleanup = "-skip_cleanup".equals(args[4]);							
+						if (args.length > 4) {
+							skipCleanup = "-skip_cleanup".equals(args[4]);
 						}
-						if(!skipCleanup) {
+						if (!skipCleanup) {
 							Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
 						}
 					}
 					System.out.printf("%d directories analysed.\n", candidateDir.length);
-					
+
 				}
 
 			} else if ("-analyse_map".equals(flag)) {
@@ -92,8 +95,28 @@ public class Launcher_ClusterModel {
 				combine.combineMaps();
 			} else if ("-compare".equals(flag)) {
 				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
-			}else if ("-clean_up".equals(flag)) {
+			} else if ("-clean_up".equals(flag)) {
 				Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(new File(args[1]));
+			} else if ("-clean_up_rx".equals(flag)) {
+				File baseDir = new File(args[1]);
+				if (args.length < 2) {
+					System.out.printf("Usage: java %s -clean_up_rx FILE_DIRECTORY PATTERN\n");
+					System.exit(0);
+				} else {
+					Pattern dirPattern = Pattern.compile(args[2]);
+					File[] candidateDir = baseDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return pathname.isDirectory() && dirPattern.matcher(pathname.getName()).matches();
+						}
+					});
+					System.out.printf("Number of diretories to be clean up = %d\n", candidateDir.length);
+					for (File dir : candidateDir) {
+						Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
+					}
+					System.out.printf("%d directories clean up.\n", candidateDir.length);
+				}
+
 			} else if ("-batch".equals(flag)) {
 				File commands = new File(args[1]);
 				BufferedReader reader = new BufferedReader(new FileReader(commands));
