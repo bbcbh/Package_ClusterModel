@@ -51,7 +51,7 @@ public class Launcher_ClusterModel {
 			} else if ("-analyse_rx".equals(flag)) {
 				File baseDir = new File(args[1]);
 				if (args.length < 2) {
-					System.out.printf("Usage: java %s -analyse_rx FILE_DIRECTORY PATTERN\n" );
+					System.out.printf("Usage: java %s -analyse_rx FILE_DIRECTORY PATTERN [skip_analysis_int] [-skip_cleanup]\n" );
 					System.exit(0);
 				} else {
 					Pattern dirPattern = Pattern.compile(args[2]);
@@ -66,14 +66,20 @@ public class Launcher_ClusterModel {
 						System.out.printf("=== %s ===\n", dir.getName());
 						Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
 						analysis.setBaseDir(dir);
-						if (args.length > 3) {
+						if (args.length > 3) {																				
 							analysis.setSkipAnalysis(Integer.parseInt(args[3]));
 						}
-						analysis.analyse_outputs();												
-						Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
-
+						analysis.analyse_outputs();
+						
+						boolean skipCleanup = false;
+						if(args.length > 4) {
+							skipCleanup = "-skip_cleanup".equals(args[4]);							
+						}
+						if(!skipCleanup) {
+							Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
+						}
 					}
-					System.out.printf("%d directories analysed and cleaned up.\n", candidateDir.length);
+					System.out.printf("%d directories analysed.\n", candidateDir.length);
 					
 				}
 
