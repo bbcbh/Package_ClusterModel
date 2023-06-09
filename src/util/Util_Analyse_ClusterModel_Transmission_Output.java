@@ -354,10 +354,14 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				ex.printStackTrace(System.err);
 	
 			}
-		}
+		}						
 	
 		// Adding SeedIndexCases file if needed
-		for (Long cMapSeed : sim_listing.keySet()) {							
+		for (Long cMapSeed : sim_listing.keySet()) {
+			
+			System.out.printf("\tCMap_Seed = %d, # sim = %d\n", cMapSeed, sim_listing.get(cMapSeed).size());
+			
+			
 			String seedFileName = String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST_ZIP,
 					cMapSeed);				
 			File seedFile = new File(cleanupDir, seedFileName);				
