@@ -19,14 +19,21 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 	final private String[] CSV_Filenames_Pattern;
 	final private String CMapId;
 	final private int[][] Entry_Pairs; // {[File_id, colNum}
+	final private int[] TimePoint; // Read last line if null 
 
 	public Util_7Z_CSV_Entry_Extract_Callable(File baseDir, String cMapId, String[] csv_Filenames_Pattern,
-			int[][] entry_Pairs) {
+			int[][] entry_Pairs, int[] timePoint) {
 		super();
 		BaseDir = baseDir;
 		CMapId = cMapId;
 		CSV_Filenames_Pattern = csv_Filenames_Pattern;
 		Entry_Pairs = entry_Pairs;
+		TimePoint = timePoint;
+	}
+
+	public Util_7Z_CSV_Entry_Extract_Callable(File baseDir, String cMapId, String[] csv_Filenames_Pattern,
+			int[][] entry_Pairs) {
+		this(baseDir, cMapId, csv_Filenames_Pattern, entry_Pairs, null);
 	}
 
 	@Override
@@ -48,37 +55,84 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 				Matcher m = pattern_csv_file.matcher(ent.getName());
 				if (m.matches()) {
 					String res_key = String.format("%s_%s", m.group(1), m.group(2));
-					long[] res_ent = res.get(res_key);
-					if (res_ent == null) {
-						res_ent = new long[Entry_Pairs.length];
-						Arrays.fill(res_ent, -1);
-						res.put(res_key, res_ent);
+
+					if (TimePoint != null) {
+						for (int i : TimePoint) {
+							String res_key_time = String.format("%s_%d", res_key, i);
+							long[] res_ent = res.get(res_key_time);
+							if (res_ent == null) {
+								res_ent = new long[Entry_Pairs.length];
+								Arrays.fill(res_ent, 0);
+								res.put(res_key_time, res_ent);
+							}
+						}
+
+					} else {
+						long[] res_ent = res.get(res_key);
+						if (res_ent == null) {
+							res_ent = new long[Entry_Pairs.length];
+							Arrays.fill(res_ent, -1);
+							res.put(res_key, res_ent);
+						}
 					}
+
 					StringBuilder txt_entries = new StringBuilder();
 					int count;
 					while ((count = archive7Z.read(buf, 0, BUFFER)) != -1) {
 						txt_entries.append(new String(Arrays.copyOf(buf, count)));
 					}
-					String line, lastline = "";
+					String line, lastline = "", headerLine = null;
 					BufferedReader lines = new BufferedReader(new StringReader(txt_entries.toString()));
+
 					while ((line = lines.readLine()) != null) {
 						if (line.length() > 0) {
-							lastline = line;
+							if (headerLine == null) {
+								headerLine = line;
+							} else {
+								if (TimePoint != null) {
+									String[] lineEnt = line.split(",");
+									int time = Integer.parseInt(lineEnt[0]);
+									int key = Arrays.binarySearch(TimePoint, time);
+									if (key >= 0) {
+										String res_key_time = String.format("%s_%d", res_key, TimePoint[key]);
+										long[] res_ent = res.get(res_key_time);
+										for (int k = 0; k < Entry_Pairs.length; k++) {
+											if (Entry_Pairs[k][0] == file_id) {
+												try {
+													res_ent[k] = Long.parseLong(lineEnt[Entry_Pairs[k][1]]);
+												} catch (ArrayIndexOutOfBoundsException ex) {
+													System.err.printf("Error reading line with time = %d in %s : %s\n",
+															TimePoint[key], BaseDir.getName(), ent.getName());
+													if (res_ent[k] != -1) {
+														res_ent[k] = -1;
+													}
+												}
+											}
+										}
+									}
+								}
+								lastline = line;
+							}
 						}
 					}
 					lines.close();
-					String[] lastlineEnt = lastline.split(",");
-					for (int k = 0; k < Entry_Pairs.length; k++) {
-						if (Entry_Pairs[k][0] == file_id) {							
-							try {
-								res_ent[k] = Long.parseLong(lastlineEnt[Entry_Pairs[k][1]]);
-							} catch(ArrayIndexOutOfBoundsException ex) {
-								System.err.printf("Error in last line in %s : %s\n",
-										BaseDir.getName(), ent.getName());
-								if(res_ent[k] != -1) {									
-									res_ent[k] = -1;
+
+					if (TimePoint == null) {
+						long[] res_ent = res.get(res_key);
+
+						String[] lastlineEnt = lastline.split(",");
+						for (int k = 0; k < Entry_Pairs.length; k++) {
+							if (Entry_Pairs[k][0] == file_id) {
+								try {
+									res_ent[k] = Long.parseLong(lastlineEnt[Entry_Pairs[k][1]]);
+								} catch (ArrayIndexOutOfBoundsException ex) {
+									System.err.printf("Error in last line in %s : %s\n", BaseDir.getName(),
+											ent.getName());
+									if (res_ent[k] != -1) {
+										res_ent[k] = -1;
+									}
+
 								}
-								
 							}
 						}
 					}
