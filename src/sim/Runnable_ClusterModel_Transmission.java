@@ -43,6 +43,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected static final int TEST_OUTCOME_TREATMENT_APPLIED_ON_TRUE_INFECTION = TEST_OUTCOME_TREATMENT_APPLIED + 1;
 	protected static final int TEST_OUTCOME_POSITIVE_TEST = TEST_OUTCOME_TREATMENT_APPLIED_ON_TRUE_INFECTION + 1;
 	protected static final int TEST_OUTCOME_POSITIVE_TEST_ON_TRUE_INFECTION = TEST_OUTCOME_POSITIVE_TEST + 1;
+	protected static final int TEST_OUTCOME_TREATMENT_APPLIED_ON_INCUBATON = TEST_OUTCOME_POSITIVE_TEST_ON_TRUE_INFECTION
+			+ 1;
+	protected static final int TEST_OUTCOME_TREATMENT_APPLIED_ON_RECOVERY = TEST_OUTCOME_TREATMENT_APPLIED_ON_INCUBATON
+			+ 1;
 
 	protected int simSetting = 1;
 
@@ -1408,9 +1412,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		int gender = getGenderType(test_pid);
 
 		boolean positve_dx = false;
-		boolean positiv_dx_on_infectious = false;
+		boolean positive_dx_on_infectious = false;
 		boolean applyTreatment = false;
 		boolean applyTreatment_on_infectious = false;
+		boolean applyTreatment_on_incubation = false;
+		boolean applyTreatment_on_recovery = false;
 
 		// float[dx_sensitivity, dx_specificity][gender][site]
 		// or float[dx_sensitivity, dx_specificity, treatment_rate][gender][site]
@@ -1433,7 +1439,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 
 				positve_dx |= posDx;
-				positiv_dx_on_infectious |= posDx;
+				positive_dx_on_infectious |= posDx;
 
 				// Apply treatment
 				if (posDx) {
@@ -1527,7 +1533,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 
 			// Remove from incubation and recovery
-
 			if (infection_schMap != null) {
 				for (int i = 0; i < infection_schMap.length; i++) {
 					if (infection_schMap[i] != null) {
@@ -1538,10 +1543,21 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							schArr = schedule_incubation[site].get(dateEnt);
 						} else {
 							schArr = schedule_recovery[site].get(dateEnt);
+
 						}
 						int key = Collections.binarySearch(schArr, test_pid);
 						if (key >= 0) {
-							schArr.remove(key);
+							if (i < LENGTH_SITE) {
+								if ((simSetting
+										& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY) == 0) {
+									applyTreatment_on_incubation |= true;
+									schArr.remove(key);
+								}
+							} else {
+								applyTreatment_on_recovery |= true;
+								schArr.remove(key);
+							}
+
 						}
 
 					}
@@ -1561,7 +1577,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		if (positve_dx) {
 			res |= 1 << TEST_OUTCOME_POSITIVE_TEST;
 		}
-		if (positiv_dx_on_infectious) {
+		if (positive_dx_on_infectious) {
 			res |= 1 << TEST_OUTCOME_POSITIVE_TEST_ON_TRUE_INFECTION;
 		}
 		if (applyTreatment) {
@@ -1569,6 +1585,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 		if (applyTreatment_on_infectious) {
 			res |= 1 << TEST_OUTCOME_TREATMENT_APPLIED_ON_TRUE_INFECTION;
+		}
+		if (applyTreatment_on_incubation) {
+			res |= 1 << TEST_OUTCOME_TREATMENT_APPLIED_ON_INCUBATON;
+		}
+		if (applyTreatment_on_recovery) {
+			res |= 1 << TEST_OUTCOME_TREATMENT_APPLIED_ON_RECOVERY;
 		}
 
 		// Vaccination by test
@@ -1754,7 +1776,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		StringBuilder str = null;
 
 		try {
-			
+
 			// Store index case(s)
 			StringBuilder seedInfectedStr = new StringBuilder();
 			int[][] seedInfected = (int[][]) simulation_store[0];
@@ -1783,12 +1805,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				System.out.println(seedInfectedStr.toString());
 
 			}
-			
-			
-			
-			
-			
-			
+
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
 				str = printCountMap(count_map, "Gender_%d_Site_%d");

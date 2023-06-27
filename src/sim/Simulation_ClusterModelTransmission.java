@@ -111,6 +111,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_TRACK_INFECTION_HISTORY = SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER + 1;
 	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
 	public static final int SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE = SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE + 1;
+	public static final int SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY = SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE + 1;
 	
 	public static final String PROP_CONTACT_MAP_LOC = "PROP_CONTACT_MAP_LOC";
 
@@ -414,6 +415,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
 					((Runnable_ClusterModel_Transmission_Map) runnable[s]).setTransmissionMap(new TransmissionMap());
 				}
+				
+				
+				if ((simSetting & 1 << SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY) != 0) {
+					System.out.println("Note: Assuming treatment applied on infectious only");
+				}
+				
+				
 				runnable[s].initialse();
 
 				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0) {
