@@ -349,8 +349,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				for (int i = 0; i < possible_replace_file.length && !replacement_found; i++) {
 					try {
 						SevenZFile archive7Z = new SevenZFile(possible_replace_file[i]);
-						archive7Z.close();						
-						FileUtils.copyFile(possible_replace_file[i], zf,  StandardCopyOption.REPLACE_EXISTING);
+						archive7Z.close();
+						FileUtils.copyFile(possible_replace_file[i], zf, StandardCopyOption.REPLACE_EXISTING);
 						System.out.printf("Replaced by '%s'\n", possible_replace_file[i].getCanonicalPath());
 						replacement_found = true;
 					} catch (IOException ex1) {
@@ -365,16 +365,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 		// Zipping CSV if found
-		File[] preCSV = baseDir.listFiles(new FileFilter() {			
+		File[] preCSV = baseDir.listFiles(new FileFilter() {
 			@Override
-			public boolean accept(File pathname) {				
+			public boolean accept(File pathname) {
 				return pathname.getName().endsWith(".csv");
 			}
 		});
-		if(preCSV.length > 0) {
+		if (preCSV.length > 0) {
 			zipOutputFiles();
-		}							
-		
+		}
 
 		// Map stat
 		@SuppressWarnings("unchecked")

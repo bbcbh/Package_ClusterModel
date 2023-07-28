@@ -446,8 +446,16 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		double[][] durParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
 		double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_INCUBATION_PERIOD];
 		for (int s = 0; s < infectious_period.length; s++) {
-			infectious_period[s] = generateGammaDistribution(durParam[s]);
-			incubation_period[s] = new UniformRealDistribution(RNG, incParam[s][0], incParam[s][1]);
+			if (durParam[s] != null) {
+				infectious_period[s] = generateGammaDistribution(durParam[s]);
+			} else {
+				infectious_period[s] = null;
+			}
+			if (incParam[s] != null) {
+				incubation_period[s] = new UniformRealDistribution(RNG, incParam[s][0], incParam[s][1]);
+			} else {
+				incubation_period[s] = null;
+			}
 		}
 
 		sym_test_period_by_gender = new RealDistribution[Population_Bridging.LENGTH_GENDER];
@@ -1022,6 +1030,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 												case SITE_RECTUM:
 													actType = ACT_INDEX_ANAL;
 													break;
+												case SITE_PENIS:
+													actType = ACT_INDEX_GENITAL; // Special - for non-site-specific
+																					// model
+													break;
 												default:
 													actType = -1;
 												}
@@ -1567,7 +1579,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
-		if (testing_pid_signed < 0) {
+		if (testing_pid_signed > 0) {
 			// Schedule next test
 			scheduleNextTest(test_pid, currentTime);
 		}
