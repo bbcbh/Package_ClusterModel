@@ -1008,6 +1008,10 @@ public class Optimisation_Factory {
 								System.out.println("null");	
 							}else if(obj instanceof Object[]) {
 								System.out.println(Arrays.deepToString((Object[]) obj));
+							}else if(obj instanceof float[]) {
+								System.out.println(Arrays.toString((float[]) obj));								
+							}else if(obj instanceof double[]) {
+								System.out.println(Arrays.toString((double[]) obj));								
 							}else {
 								System.out.println(obj.toString());	
 							}				
