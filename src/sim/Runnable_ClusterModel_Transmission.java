@@ -1787,208 +1787,219 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		HashMap<Integer, int[]> count_map_by_person;
 		StringBuilder str = null;
 
-		try {
-
-			// Store index case(s)
-			StringBuilder seedInfectedStr = new StringBuilder();
-			int[][] seedInfected = (int[][]) simulation_store[0];
-			for (int site = 0; site < seedInfected.length; site++) {
-				for (int i = 0; i < seedInfected[site].length; i++) {
-					seedInfectedStr.append(site);
-					seedInfectedStr.append(',');
-					seedInfectedStr.append(seedInfected[site][i]);
-					seedInfectedStr.append('\n');
-				}
-			}
-
-			File printFile;
-			PrintWriter expWri;
-
-			printFile = new File(baseDir, String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST,
-					this.cMap_seed, this.sim_seed));
+		if (simulation_store != null && simulation_store.length > 0) {
 
 			try {
-				expWri = new PrintWriter(printFile);
-				expWri.println(seedInfectedStr.toString());
-				expWri.close();
-			} catch (IOException ex) {
-				ex.printStackTrace(System.err);
-				System.out.println("Index case:");
-				System.out.println(seedInfectedStr.toString());
 
-			}
+				// Store index case(s)
+				StringBuilder seedInfectedStr = new StringBuilder();
+				int[][] seedInfected = (int[][]) simulation_store[0];
+				for (int site = 0; site < seedInfected.length; site++) {
+					for (int i = 0; i < seedInfected[site].length; i++) {
+						seedInfectedStr.append(site);
+						seedInfectedStr.append(',');
+						seedInfectedStr.append(seedInfected[site][i]);
+						seedInfectedStr.append('\n');
+					}
+				}
 
-			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
-				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
-				str = printCountMap(count_map, "Gender_%d_Site_%d");
-				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
+				File printFile;
+				PrintWriter expWri;
 
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
-				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON, cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
+				printFile = new File(baseDir, String.format(
+						Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST, this.cMap_seed, this.sim_seed));
 
-			}
-			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
-				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
-				str = printCountMap(count_map, "Gender_%d_Site_%d");
-				pWri = new PrintWriter(new File(baseDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
+				try {
+					expWri = new PrintWriter(printFile);
+					expWri.println(seedInfectedStr.toString());
+					expWri.close();
+				} catch (IOException ex) {
+					ex.printStackTrace(System.err);
+					System.out.println("Index case:");
+					System.out.println(seedInfectedStr.toString());
 
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
-				pWri = new PrintWriter(new File(baseDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
-			}
-			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+				}
 
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
-						new String[] { "Total_Positive_DX_Gender_%d", "True_Positive_DX_Gender_%d" });
-				pWri = new PrintWriter(new File(baseDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON, cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
+				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
+					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
+					str = printCountMap(count_map, "Gender_%d_Site_%d");
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
 
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output
-						.get(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
-						new String[] { "Total_Positive_DX_SOUGHT_Gender_%d", "True_Positive_DX_SOUGHT_Gender_%d" });
-				pWri = new PrintWriter(new File(baseDir,
-						String.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON,
-								cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
+					count_map_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
+					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON, cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
 
-				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
-						new String[] { "Total_Treatment_Gender_%d", "True_Treatment_Gender_%d" });
-				pWri = new PrintWriter(new File(baseDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
+				}
+				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
+					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
+					str = printCountMap(count_map, "Gender_%d_Site_%d");
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
 
-			}
+					count_map_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
+					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
+				}
+				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 
-			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
-				Integer[] pids = infection_history.keySet().toArray(new Integer[infection_history.size()]);
-				Arrays.sort(pids);
-				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY, cMap_seed, sim_seed)));
-				for (Integer pid : pids) {
-					ArrayList<Integer>[] hist = infection_history.get(pid);
-					for (int site = 0; site < hist.length; site++) {
-						pWri.print(pid.toString());
-						pWri.print(',');
-						pWri.print(site);
-						for (Integer timeEnt : hist[site]) {
+					count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
+					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
+							new String[] { "Total_Positive_DX_Gender_%d", "True_Positive_DX_Gender_%d" });
+					pWri = new PrintWriter(new File(baseDir,
+							String.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON,
+									cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
+
+					count_map_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);
+					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
+							new String[] { "Total_Positive_DX_SOUGHT_Gender_%d", "True_Positive_DX_SOUGHT_Gender_%d" });
+					pWri = new PrintWriter(new File(baseDir,
+							String.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON,
+									cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
+
+					count_map_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
+							new String[] { "Total_Treatment_Gender_%d", "True_Treatment_Gender_%d" });
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
+
+				}
+
+				if ((simSetting
+						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
+					Integer[] pids = infection_history.keySet().toArray(new Integer[infection_history.size()]);
+					Arrays.sort(pids);
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY, cMap_seed, sim_seed)));
+					for (Integer pid : pids) {
+						ArrayList<Integer>[] hist = infection_history.get(pid);
+						for (int site = 0; site < hist.length; site++) {
+							pWri.print(pid.toString());
 							pWri.print(',');
-							pWri.print(timeEnt);
-						}
-						pWri.println();
-					}
-				}
-
-				pWri.close();
-
-			}
-
-			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
-				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE);
-				str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 },
-						"Gender_%d_Usage_%d"); // Proper, Over treatment
-				pWri = new PrintWriter(new File(baseDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE, cMap_seed, sim_seed)));
-				pWri.println(str.toString());
-				pWri.close();
-			}
-
-			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE) != 0) {
-				HashMap<Integer, int[][][]> count_map_vacc = (HashMap<Integer, int[][][]>) sim_output
-						.get(SIM_OUTPUT_VACCINE_COVERAGE);
-				pWri = new PrintWriter(new File(baseDir, String
-						.format(Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE, cMap_seed, sim_seed)));
-				Integer[] time_array = count_map_vacc.keySet().toArray(new Integer[count_map_vacc.size()]);
-				Arrays.sort(time_array);
-				str = new StringBuilder();
-
-				str.append("Time");
-				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-					for (int s = 0; s < LENGTH_SITE; s++) {
-						for (String v : new String[] { "valid", "expired" }) {
-							str.append(',');
-							str.append(g);
-							str.append('_');
-							str.append(s);
-							str.append('_');
-							str.append(v);
+							pWri.print(site);
+							for (Integer timeEnt : hist[site]) {
+								pWri.print(',');
+								pWri.print(timeEnt);
+							}
+							pWri.println();
 						}
 					}
+
+					pWri.close();
+
 				}
-				str.append('\n');
-				for (Integer t : time_array) {
-					int[][][] ent = count_map_vacc.get(t);
-					str.append(t);
+
+				if ((simSetting
+						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
+					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE);
+					str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 },
+							"Gender_%d_Usage_%d"); // Proper, Over treatment
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE, cMap_seed, sim_seed)));
+					pWri.println(str.toString());
+					pWri.close();
+				}
+
+				if ((simSetting
+						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE) != 0) {
+					HashMap<Integer, int[][][]> count_map_vacc = (HashMap<Integer, int[][][]>) sim_output
+							.get(SIM_OUTPUT_VACCINE_COVERAGE);
+					pWri = new PrintWriter(new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE, cMap_seed, sim_seed)));
+					Integer[] time_array = count_map_vacc.keySet().toArray(new Integer[count_map_vacc.size()]);
+					Arrays.sort(time_array);
+					str = new StringBuilder();
+
+					str.append("Time");
 					for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 						for (int s = 0; s < LENGTH_SITE; s++) {
-							for (int v = 0; v < ent[g][s].length; v++) {
+							for (String v : new String[] { "valid", "expired" }) {
 								str.append(',');
-								str.append(ent[g][s][v]);
+								str.append(g);
+								str.append('_');
+								str.append(s);
+								str.append('_');
+								str.append(v);
 							}
 						}
 					}
 					str.append('\n');
-				}
-				pWri.println(str.toString());
-				pWri.close();
-
-				HashMap<Integer, int[][]> count_map_vacc_person = (HashMap<Integer, int[][]>) sim_output
-						.get(SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON);
-				pWri = new PrintWriter(new File(baseDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON, cMap_seed, sim_seed)));
-
-				time_array = count_map_vacc_person.keySet().toArray(new Integer[count_map_vacc.size()]);
-				Arrays.sort(time_array);
-				str = new StringBuilder();
-
-				str.append("Time");
-				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-					str.append(String.format(",%d_Active,%d_Partial,%d_Expired,%d_Unallocated", g, g, g, g));
-				}
-				str.append('\n');
-
-				for (Integer t : time_array) {
-					int[][] ent = count_map_vacc_person.get(t);
-					str.append(t);
-					for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-						for (int v = 0; v < ent[g].length; v++) {
-							str.append(',');
-							str.append(ent[g][v]);
+					for (Integer t : time_array) {
+						int[][][] ent = count_map_vacc.get(t);
+						str.append(t);
+						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							for (int s = 0; s < LENGTH_SITE; s++) {
+								for (int v = 0; v < ent[g][s].length; v++) {
+									str.append(',');
+									str.append(ent[g][s][v]);
+								}
+							}
 						}
+						str.append('\n');
+					}
+					pWri.println(str.toString());
+					pWri.close();
+
+					HashMap<Integer, int[][]> count_map_vacc_person = (HashMap<Integer, int[][]>) sim_output
+							.get(SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON);
+					pWri = new PrintWriter(new File(baseDir,
+							String.format(Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON,
+									cMap_seed, sim_seed)));
+
+					time_array = count_map_vacc_person.keySet().toArray(new Integer[count_map_vacc.size()]);
+					Arrays.sort(time_array);
+					str = new StringBuilder();
+
+					str.append("Time");
+					for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+						str.append(String.format(",%d_Active,%d_Partial,%d_Expired,%d_Unallocated", g, g, g, g));
 					}
 					str.append('\n');
+
+					for (Integer t : time_array) {
+						int[][] ent = count_map_vacc_person.get(t);
+						str.append(t);
+						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							for (int v = 0; v < ent[g].length; v++) {
+								str.append(',');
+								str.append(ent[g][v]);
+							}
+						}
+						str.append('\n');
+					}
+					pWri.println(str.toString());
+					pWri.close();
+
 				}
-				pWri.println(str.toString());
-				pWri.close();
+
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
+				if (str != null) {
+					System.err.println("Outcome so far");
+					System.err.println(str.toString());
+				}
 
 			}
-
-		} catch (Exception e) {
-			e.printStackTrace(System.err);
-			if (str != null) {
-				System.err.println("Outcome so far");
-				System.err.println(str.toString());
-			}
-
 		}
 
 	}
