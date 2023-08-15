@@ -57,10 +57,11 @@ public class Optimisation_Factory {
 
 	private static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	private static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
+	private static final String CMAP_REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
 
 	public static final String POP_PROP_OPT_TARGET = "POP_PROP_OPT_TARGET";
 
-	// Format:
+	// Format (for stable fit):
 	// float[][] opt_target = new float[NUM_DATA_TO_FIT]
 	// { DATA_FITTING_TYPE, GROUPS_TO_INCLUDE, OPT_WEIGHTING, OPT_TARGET_VALUES_0,
 	// ...}
@@ -72,6 +73,327 @@ public class Optimisation_Factory {
 	private static final int OPT_TARGET_GROUPS_TO_INCLUDE = OPT_TARGET_FITTING_TYPE + 1;
 	private static final int OPT_TARGET_OPT_WEIGHTING = OPT_TARGET_GROUPS_TO_INCLUDE + 1;
 	private static final int OPT_TARGET_TARGET_VALUES_0 = OPT_TARGET_OPT_WEIGHTING + 1;
+
+	public static final String OPT_TREND_TYPE = "Type";
+	public static final String OPT_TREND_TARGET_GRP = "Target_Grp";
+	public static final String OPT_TREND_WEIGHT = "Weight";
+	public static final String OPT_TREND_FIT = "Fit";
+
+	public static final String OPT_TRAND_CSV_RANGE = "CSV_RANGE";
+
+	private static final int OPT_TREND_MAP_KEY_PATH = 0;
+	private static final int OPT_TREND_MAP_KEY_TYPE = OPT_TREND_MAP_KEY_PATH + 1;
+	private static final int OPT_TREND_MAP_KEY_TARGET_GRP = OPT_TREND_MAP_KEY_TYPE + 1;
+	private static final int OPT_TREND_MAP_KEY_WEIGHT = OPT_TREND_MAP_KEY_TARGET_GRP + 1;
+	private static final String OPT_TREND_MAP_KEY_FORMAT = "%s,%s,%d,%s";
+
+	private static final String PROP_SEED_INFECTION = POP_PROP_INIT_PREFIX + Integer.toString(
+			Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+					+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+					+ Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION); // "POP_PROP_INIT_PREFIX_14";
+
+	private static int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+			+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+
+	public static void trend_fit_Simplex(String[] args) throws FileNotFoundException, IOException {
+		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  <optional: NUM_EVAL (int)>";
+
+		if (args.length < 3) {
+			System.out.println(USAGE_INFO);
+			System.exit(0);
+		} else {
+			int numEval = 100;
+
+			// Read input argument
+			File baseDir = new File(args[0]);
+			double[] init_param = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
+			double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);
+
+			if (args.length > 3) {
+				numEval = (int) Integer.parseInt(args[3]);
+			}
+
+			File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
+
+			if (!propFile.exists()) {
+				System.out.println(String.format("Properties file < %s > NOT found.", propFile.getAbsolutePath()));
+			} else {
+				FileInputStream fIS = new FileInputStream(propFile);
+				Properties prop = new Properties();
+				prop.loadFromXML(fIS);
+				fIS.close();
+
+				System.out.println(String.format("Properties file < %s > loaded.", propFile.getAbsolutePath()));
+
+				long seed = System.currentTimeMillis();
+				int numSnap = 1;
+				int num_time_steps_per_snap = 1;
+				int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
+				int numThreads = Runtime.getRuntime().availableProcessors();
+
+				int[][] seed_infection = null;
+				int contact_map_start_time = 365;
+
+				// Load trend CSV
+				// Key: Path,type,tar_grp,weight
+				HashMap<String, double[][]> target_trend_collection = loadTrendCSV(prop);
+
+				if (target_trend_collection.size() > 0) {
+					// ContactMap Dir
+					File contactMapDir = baseDir;
+					if (prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+						contactMapDir = new File(
+								prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+						if (!contactMapDir.exists() || !contactMapDir.isDirectory()) {
+							contactMapDir = baseDir;
+						}
+					}
+					if (prop.containsKey(PROP_SEED_INFECTION)) {
+						seed_infection = (int[][]) PropValUtils.propStrToObject(prop.getProperty(PROP_SEED_INFECTION),
+								int[][].class);
+					}
+					if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
+						seed = Long.parseLong(
+								prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
+					}
+					if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
+						numSnap = Integer.parseInt(
+								prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
+					}
+					if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
+						num_time_steps_per_snap = Integer.parseInt(
+								prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
+					}
+					if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL])) {
+						numThreads = Integer.parseInt(
+								prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_USE_PARALLEL]));
+					}
+					String popCompositionKey = POP_PROP_INIT_PREFIX
+							+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+					if (prop.containsKey(popCompositionKey)) {
+						pop_composition = (int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),
+								int[].class);
+					}
+					String contactMapRangeKey = POP_PROP_INIT_PREFIX
+							+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+									+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+									+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
+					if (prop.containsKey(contactMapRangeKey)) {
+						contact_map_start_time = ((int[]) PropValUtils
+								.propStrToObject(prop.getProperty(contactMapRangeKey), int[].class))[0];
+					}
+
+					File[] preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return pathname.isFile() && Pattern.matches(CMAP_REGEX_STR, pathname.getName());
+
+						}
+					});
+
+					numThreads = Math.min(numThreads, preGenClusterFiles.length);
+
+					long tic = System.currentTimeMillis();
+
+					final int NUM_THREADS = numThreads;
+					final ContactMap[] BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
+					final long[] BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
+					final RandomGenerator RNG = new MersenneTwisterRandomGenerator(seed);
+					final int[] POP_COMPOSITION = pop_composition;
+					final int NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
+					final int NUM_SNAP = numSnap;
+					final Properties PROP = prop;
+					final int[][] SEED_INFECTION = seed_infection;
+					final int START_TIME = contact_map_start_time;
+
+					int cMap_count = extractContactMap(BASE_CONTACT_MAP, BASE_CONTACT_MAP_SEED, preGenClusterFiles,
+							NUM_THREADS);
+
+					System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
+							contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+
+					MultivariateFunction func = new MultivariateFunction() {
+						@Override
+						public double value(double[] point) {
+							double best_fitting_sq_sum = Double.MAX_VALUE;
+							long sim_seed = RNG.nextLong();
+							ContactMap[] cMap = BASE_CONTACT_MAP;
+							long[] cMap_seed = BASE_CONTACT_MAP_SEED;
+
+							if (BASE_CONTACT_MAP.length == 0) {
+								cMap = new ContactMap[] { null }; // Special case for opt parameter value disp.
+								cMap_seed = new long[] { 0 };
+							}
+
+							Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[cMap.length];
+							int rId = 0;
+
+							ExecutorService exec = null;
+							long tic = System.currentTimeMillis();
+
+							for (ContactMap c : cMap) {
+								runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[rId], sim_seed,
+										POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
+								runnable[rId].setBaseDir(baseDir);
+
+								for (int i = RUNNABLE_OFFSET; i < RUNNABLE_OFFSET
+										+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+
+									String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
+									if (PROP.containsKey(key)) {
+										runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils
+												.propStrToObject(PROP.getProperty(key),
+														runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET]
+																.getClass());
+									}
+
+								}
+
+								runnable[rId].setSimSetting(1); // No output
+								setOptParamInRunnable(runnable[rId], point, c == null);
+								runnable[rId].initialse();
+								runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
+								rId++;
+							}
+
+							if (rId == 1 || NUM_THREADS <= 1) {
+								for (int r = 0; r < rId; r++) {
+									runnable[r].run();
+								}
+							} else {
+								exec = Executors.newFixedThreadPool(NUM_THREADS);
+								for (int r = 0; r < rId; r++) {
+									exec.submit(runnable[r]);
+								}
+								exec.shutdown();
+								try {
+									if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+										throw new InterruptedException("Time out");
+									}
+								} catch (InterruptedException e) {
+									e.printStackTrace(System.err);
+									for (int r = 0; r < rId; r++) {
+										runnable[r].run();
+									}
+								}
+							}
+
+							
+
+							double[][] time_range = target_trend_collection.remove(OPT_TRAND_CSV_RANGE);
+
+							for (int r = 0; r < rId; r++) {
+								@SuppressWarnings("unchecked")
+								HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable[r]
+										.getSim_output()
+										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
+
+								@SuppressWarnings("unchecked")
+								HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable[r]
+										.getSim_output()
+										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+	
+								Integer[] simTime = infectious_count_map.keySet().toArray(new Integer[infectious_count_map.size()]);								
+								Arrays.sort(simTime);
+
+								// TODO Auto-generated method stub
+								int best_offset_r = 0;
+								double best_fitting_sq_sum_r = Double.MAX_VALUE;
+								
+							
+								for (int offset = 0; offset < time_range[0][1] - time_range[0][1] ; offset++) {																		
+									for (String opt_target_trend_key : target_trend_collection.keySet()) {
+
+										
+									}
+								}
+
+							}
+
+							StringBuilder param_str = new StringBuilder();
+							for (double pt : point) {
+								if (param_str.length() != 0) {
+									param_str.append(',');
+								}
+								param_str.append(String.format("%.5f", pt));
+							}
+
+							
+							return best_fitting_sq_sum;
+						}
+
+					};
+
+					runSimplex(func, init_param, boundaries, numEval);
+
+				} // End of if (target_trend_collection.size() > 0)
+
+			} // End of propFile.exists()
+
+		} // End of if (args.length > 3)
+
+	}
+
+	private static HashMap<String, double[][]> loadTrendCSV(Properties prop) throws FileNotFoundException, IOException {
+		HashMap<String, double[][]> target_trend_collection = new HashMap<>();
+		if (prop.getProperty(POP_PROP_OPT_TARGET) != null) {
+			double[] time_range = new double[] { Double.MIN_VALUE, Double.MAX_VALUE };
+
+			String[] target_trent_csv = prop.getProperty(POP_PROP_OPT_TARGET).replaceAll("\n", "").split(",");
+			for (String csv_path : target_trent_csv) {
+				File csv_file = new File(csv_path);
+				ArrayList<Double> fit_t = new ArrayList<>();
+				ArrayList<Double> fit_y = new ArrayList<>();
+				String line, type = null;
+				int tar_grp = -1;
+				double weight = -1;
+				BufferedReader csv_reader = new BufferedReader(new FileReader(csv_file));
+				while ((line = csv_reader.readLine()) != null) {
+					String[] ent = line.split(",");
+					if (OPT_TREND_TYPE.equals(ent[0])) {
+						type = ent[1];
+					} else if (OPT_TREND_FIT.equals(ent[0])) {
+						// Do nothing
+					} else if (OPT_TREND_TARGET_GRP.equals(ent[0])) {
+						tar_grp = Integer.parseInt(ent[1]);
+					} else if (OPT_TREND_WEIGHT.equals(ent[0])) {
+						weight = Double.parseDouble(ent[1]);
+					} else {
+						double t = Double.parseDouble(ent[0]);
+						double y = Double.parseDouble(ent[1]);
+						int key = Collections.binarySearch(fit_t, t);
+						if (key < 0) {
+							fit_t.add(~key, t);
+							fit_y.add(~key, y);
+						}
+						time_range[0] = Math.max(time_range[0], t);
+						time_range[1] = Math.min(time_range[1], t);
+
+					}
+				}
+				csv_reader.close();
+
+				if (fit_t.size() > 0 && fit_y.size() == fit_t.size()) {
+					String mapKey = String.format(OPT_TREND_MAP_KEY_FORMAT, csv_path, type, tar_grp,
+							Double.toString(weight));
+					double[][] mapEntry = new double[2][fit_t.size()];
+					for (int i = 0; i < fit_t.size(); i++) {
+						mapEntry[0][i] = fit_t.get(i);
+						mapEntry[1][i] = fit_y.get(i);
+					}
+					target_trend_collection.put(mapKey, mapEntry);
+				}
+
+			}
+			if (target_trend_collection.size() > 0) {
+				target_trend_collection.put(OPT_TRAND_CSV_RANGE, new double[][] { time_range });
+			}
+
+		}
+		return target_trend_collection;
+	}
 
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {
@@ -254,14 +576,12 @@ public class Optimisation_Factory {
 						Runtime.getRuntime().availableProcessors(), numThreads);
 
 				// Check for contact cluster generated
-
-				final String filename_cmap_regex = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
-				final Pattern pattern_baseCMap_filename = Pattern.compile(filename_cmap_regex);
+				final Pattern pattern_baseCMap_filename = Pattern.compile(CMAP_REGEX_STR);
 
 				File[] preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
 					@Override
 					public boolean accept(File pathname) {
-						return pathname.isFile() && Pattern.matches(filename_cmap_regex, pathname.getName());
+						return pathname.isFile() && Pattern.matches(CMAP_REGEX_STR, pathname.getName());
 
 					}
 				});
@@ -768,15 +1088,7 @@ public class Optimisation_Factory {
 			final double[][] boundaries, int numEval)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
 
-		final double RELATIVE_TOLERANCE = 1e-5;
-		final double ABSOLUTE_TOLERANCE = 1e-10;
 		final File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
-
-		final String PROP_SEED_INFECTION = POP_PROP_INIT_PREFIX
-				+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-						+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-						+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
-						+ Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION); // "POP_PROP_INIT_PREFIX_14";
 
 		if (propFile.exists()) {
 			FileInputStream fIS = new FileInputStream(propFile);
@@ -848,12 +1160,10 @@ public class Optimisation_Factory {
 
 			// Check for contact cluster generated
 
-			final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
-
 			File[] preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File pathname) {
-					return pathname.isFile() && Pattern.matches(REGEX_STR, pathname.getName());
+					return pathname.isFile() && Pattern.matches(CMAP_REGEX_STR, pathname.getName());
 
 				}
 			});
@@ -884,63 +1194,11 @@ public class Optimisation_Factory {
 
 			BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
 			BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
-			Pattern pattern_baseCMap_filename = Pattern.compile(REGEX_STR);
 
 			long tic = System.currentTimeMillis();
 
-			if (NUM_THREADS > 1 || preGenClusterFiles.length > 1) {
-
-				ExecutorService exec = null;
-				@SuppressWarnings("unchecked")
-				Future<ContactMap>[] cm_futures = new Future[preGenClusterFiles.length];
-
-				exec = Executors.newFixedThreadPool(NUM_THREADS);
-				int mapPt = 0;
-				for (File cMap_file : preGenClusterFiles) {
-					Matcher m = pattern_baseCMap_filename.matcher(cMap_file.getName());
-					m.matches();
-					BASE_CONTACT_MAP_SEED[mapPt] = Long.parseLong(m.group(1));
-
-					Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
-							.generateContactMapCallable(cMap_file);
-					cm_futures[mapPt] = exec.submit(cm_read_callable);
-					mapPt++;
-				}
-
-				try {
-					exec.shutdown();
-					if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
-						throw new InterruptedException("Time out");
-					}
-
-					for (int c = 0; c < cm_futures.length; c++) {
-						BASE_CONTACT_MAP[c] = cm_futures[c].get();
-					}
-				} catch (InterruptedException | ExecutionException e) {
-					e.printStackTrace(System.err);
-				}
-			}
-
-			// Non-thread version
-			int cMap_count = 0;
-			for (int c = 0; c < BASE_CONTACT_MAP.length; c++) {
-				if (BASE_CONTACT_MAP[c] == null) {
-					Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
-							.generateContactMapCallable(preGenClusterFiles[c]);
-					try {
-						BASE_CONTACT_MAP[c] = cm_read_callable.call();
-					} catch (Exception e) {
-						e.printStackTrace(System.err);
-					}
-				}
-				if (BASE_CONTACT_MAP[c] != null) {
-					Matcher m = pattern_baseCMap_filename.matcher(preGenClusterFiles[c].getName());
-					m.matches();
-					BASE_CONTACT_MAP_SEED[c] = Long.parseLong(m.group(1));
-					BASE_CONTACT_MAP[c].setId(BASE_CONTACT_MAP_SEED[c]);
-					cMap_count++;
-				}
-			}
+			int cMap_count = extractContactMap(BASE_CONTACT_MAP, BASE_CONTACT_MAP_SEED, preGenClusterFiles,
+					NUM_THREADS);
 
 			System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
 					contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
@@ -952,11 +1210,6 @@ public class Optimisation_Factory {
 
 					ContactMap[] cMap = BASE_CONTACT_MAP;
 					long[] cMap_seed = BASE_CONTACT_MAP_SEED;
-					
-					int runnnable_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-							+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-							+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
-							+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 					if (BASE_CONTACT_MAP.length == 0) {
 						cMap = new ContactMap[] { null }; // Special case for opt parameter value disp.
@@ -975,16 +1228,14 @@ public class Optimisation_Factory {
 								POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 						runnable[rId].setBaseDir(baseDir);
 
-						
-
-						for (int i = runnnable_offset; i < runnnable_offset
+						for (int i = RUNNABLE_OFFSET; i < RUNNABLE_OFFSET
 								+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
 
 							String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
 							if (PROP.containsKey(key)) {
-								runnable[rId].getRunnable_fields()[i - runnnable_offset] = PropValUtils.propStrToObject(
+								runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils.propStrToObject(
 										PROP.getProperty(key),
-										runnable[rId].getRunnable_fields()[i - runnnable_offset].getClass());
+										runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET].getClass());
 							}
 
 						}
@@ -997,25 +1248,25 @@ public class Optimisation_Factory {
 						rId++;
 					}
 
-					if (OPT_TARGET == null || OPT_TARGET.length == 0) {						
-						System.out.println("OPT_TARGET missing. Printing out runnable fields instead.");						
+					if (OPT_TARGET == null || OPT_TARGET.length == 0) {
+						System.out.println("OPT_TARGET missing. Printing out runnable fields instead.");
 						Runnable_ClusterModel_Transmission showRunnable = runnable[0];
-						for(int i = 0; i < showRunnable.getRunnable_fields().length; i++) {
-							System.out.printf("Runnable field #%d:\n",i+runnnable_offset);
+						for (int i = 0; i < showRunnable.getRunnable_fields().length; i++) {
+							System.out.printf("Runnable field #%d:\n", i + RUNNABLE_OFFSET);
 							Object obj = showRunnable.runnable_fields[i];
 							System.out.println("Entry:");
-							if(obj == null) {
-								System.out.println("null");	
-							}else if(obj instanceof Object[]) {
+							if (obj == null) {
+								System.out.println("null");
+							} else if (obj instanceof Object[]) {
 								System.out.println(Arrays.deepToString((Object[]) obj));
-							}else if(obj instanceof float[]) {
-								System.out.println(Arrays.toString((float[]) obj));								
-							}else if(obj instanceof double[]) {
-								System.out.println(Arrays.toString((double[]) obj));								
-							}else {
-								System.out.println(obj.toString());	
-							}				
-						}											
+							} else if (obj instanceof float[]) {
+								System.out.println(Arrays.toString((float[]) obj));
+							} else if (obj instanceof double[]) {
+								System.out.println(Arrays.toString((double[]) obj));
+							} else {
+								System.out.println(obj.toString());
+							}
+						}
 						System.exit(1);
 						return Double.NaN;
 
@@ -1144,24 +1395,58 @@ public class Optimisation_Factory {
 				}
 
 			};
+			runSimplex(func, init_transmissionProb, boundaries, numEval);
+		}
 
-			MultivariateFunctionMappingAdapter wrapper = new MultivariateFunctionMappingAdapter(func, boundaries[0],
-					boundaries[1]);
+	}
 
-			ObjectiveFunction objFunc = new ObjectiveFunction(wrapper);
+	private static void runSimplex(MultivariateFunction func, final double[] param_init,
+			final double[][] param_boundaries, int numEval) {
+		final double RELATIVE_TOLERANCE = 1e-5;
+		final double ABSOLUTE_TOLERANCE = 1e-10;
 
-			InitialGuess initial_guess;
-			final NelderMeadSimplex simplex;
+		MultivariateFunctionMappingAdapter wrapper = new MultivariateFunctionMappingAdapter(func, param_boundaries[0],
+				param_boundaries[1]);
 
-			initial_guess = new InitialGuess(wrapper.boundedToUnbounded(init_transmissionProb));
+		ObjectiveFunction objFunc = new ObjectiveFunction(wrapper);
 
-			simplex = new NelderMeadSimplex(init_transmissionProb.length);
+		InitialGuess initial_guess;
+		final NelderMeadSimplex simplex;
 
-			SimplexOptimizer optimizer = new SimplexOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE);
+		initial_guess = new InitialGuess(wrapper.boundedToUnbounded(param_init));
 
-			try {
-				PointValuePair pV;
-				pV = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess, new MaxEval(numEval));
+		simplex = new NelderMeadSimplex(param_init.length);
+
+		SimplexOptimizer optimizer = new SimplexOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE);
+
+		try {
+			PointValuePair pV;
+			pV = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess, new MaxEval(numEval));
+			double[] point = wrapper.unboundedToBounded(pV.getPoint());
+
+			StringBuilder pt_str = new StringBuilder();
+			for (double pt : point) {
+				if (pt_str.length() != 0) {
+					pt_str.append(',');
+				}
+				pt_str.append(String.format("%.5f", pt));
+			}
+
+			System.out.printf("Optimisation Completed.\nP = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
+
+		} catch (org.apache.commons.math3.exception.TooManyEvaluationsException ex) {
+			System.out.printf("Eval limit of %d reached.\nSimplex (bounded):\n", numEval);
+
+			PointValuePair[] res = simplex.getPoints();
+			Arrays.sort(res, new Comparator<PointValuePair>() {
+				@Override
+				public int compare(PointValuePair o1, PointValuePair o2) {
+					return Double.compare(o1.getValue(), o2.getValue());
+				}
+
+			});
+
+			for (PointValuePair pV : res) {
 				double[] point = wrapper.unboundedToBounded(pV.getPoint());
 
 				StringBuilder pt_str = new StringBuilder();
@@ -1172,39 +1457,70 @@ public class Optimisation_Factory {
 					pt_str.append(String.format("%.5f", pt));
 				}
 
-				System.out.printf("Optimisation Completed.\nP = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
-
-			} catch (org.apache.commons.math3.exception.TooManyEvaluationsException ex) {
-				System.out.printf("Eval limit of %d reached.\nSimplex (bounded):\n", numEval);
-
-				PointValuePair[] res = simplex.getPoints();
-				Arrays.sort(res, new Comparator<PointValuePair>() {
-					@Override
-					public int compare(PointValuePair o1, PointValuePair o2) {
-						return Double.compare(o1.getValue(), o2.getValue());
-					}
-
-				});
-
-				for (PointValuePair pV : res) {
-					double[] point = wrapper.unboundedToBounded(pV.getPoint());
-
-					StringBuilder pt_str = new StringBuilder();
-					for (double pt : point) {
-						if (pt_str.length() != 0) {
-							pt_str.append(',');
-						}
-						pt_str.append(String.format("%.5f", pt));
-					}
-
-					System.out.printf("P = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
-
-				}
+				System.out.printf("P = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
 
 			}
 
 		}
+	}
 
+	private static int extractContactMap(final ContactMap[] BASE_CONTACT_MAP, final long[] BASE_CONTACT_MAP_SEED,
+			File[] preGenClusterFiles, final int NUM_THREADS) {
+		Pattern pattern_baseCMap_filename = Pattern.compile(CMAP_REGEX_STR);
+		if (NUM_THREADS > 1 || preGenClusterFiles.length > 1) {
+
+			ExecutorService exec = null;
+			@SuppressWarnings("unchecked")
+			Future<ContactMap>[] cm_futures = new Future[preGenClusterFiles.length];
+
+			exec = Executors.newFixedThreadPool(NUM_THREADS);
+			int mapPt = 0;
+			for (File cMap_file : preGenClusterFiles) {
+				Matcher m = pattern_baseCMap_filename.matcher(cMap_file.getName());
+				m.matches();
+				BASE_CONTACT_MAP_SEED[mapPt] = Long.parseLong(m.group(1));
+
+				Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
+						.generateContactMapCallable(cMap_file);
+				cm_futures[mapPt] = exec.submit(cm_read_callable);
+				mapPt++;
+			}
+
+			try {
+				exec.shutdown();
+				if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+					throw new InterruptedException("Time out");
+				}
+
+				for (int c = 0; c < cm_futures.length; c++) {
+					BASE_CONTACT_MAP[c] = cm_futures[c].get();
+				}
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace(System.err);
+			}
+		}
+
+		// Non-thread version
+		int cMap_count = 0;
+		for (int c = 0; c < BASE_CONTACT_MAP.length; c++) {
+			if (BASE_CONTACT_MAP[c] == null) {
+				Callable<ContactMap> cm_read_callable = Abstract_Runnable_ClusterModel
+						.generateContactMapCallable(preGenClusterFiles[c]);
+				try {
+					BASE_CONTACT_MAP[c] = cm_read_callable.call();
+				} catch (Exception e) {
+					e.printStackTrace(System.err);
+				}
+			}
+			if (BASE_CONTACT_MAP[c] != null) {
+				Matcher m = pattern_baseCMap_filename.matcher(preGenClusterFiles[c].getName());
+				m.matches();
+				BASE_CONTACT_MAP_SEED[c] = Long.parseLong(m.group(1));
+				BASE_CONTACT_MAP[c].setId(BASE_CONTACT_MAP_SEED[c]);
+				cMap_count++;
+			}
+		}
+		return cMap_count;
 	}
 
 	public static void partnerDistributionFit_Simplex(File baseDir, final double[] init_val_bounded,

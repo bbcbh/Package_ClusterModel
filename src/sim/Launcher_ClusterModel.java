@@ -20,7 +20,7 @@ public class Launcher_ClusterModel {
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans, -opt, -analyse, -analyse_map, -combine_map, -compare> PROP_FILE_DIRECTORY <...>\n"
+				"Usage: java %s <-gen, -trans, -opt, -opt_trend, -optGA, -analyse, -analyse_map, -combine_map, -compare> PROP_FILE_DIRECTORY <...>\n"
 						+ " or\tjava %s <-analyse_rx,  -clean_up_rx> FILE_DIRECTORY PATTERN <...>"
 						+ " or\tjava %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName(),
@@ -31,7 +31,6 @@ public class Launcher_ClusterModel {
 			System.exit(0);
 		} else {
 			String flag = args[0];
-
 			if ("-gen".equals(flag)) {
 				Simulation_ClusterModelGeneration.launch(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-trans".equals(flag)) {
@@ -39,6 +38,8 @@ public class Launcher_ClusterModel {
 			} else if ("-opt".equals(flag)) {
 				Optimisation_Factory
 						.stable_prevalence_by_tranmission_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
+			} else if ("-opt_trend".equals(flag)) {
+				Optimisation_Factory.trend_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-optGA".equals(flag)) {
 				Optimisation_Factory.stable_prevalence_by_tranmission_fit_GA(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-analyse".equals(flag)) {
