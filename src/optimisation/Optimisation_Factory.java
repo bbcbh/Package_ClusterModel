@@ -280,8 +280,6 @@ public class Optimisation_Factory {
 								}
 							}
 
-							
-
 							double[][] time_range = target_trend_collection.remove(OPT_TRAND_CSV_RANGE);
 
 							for (int r = 0; r < rId; r++) {
@@ -294,19 +292,18 @@ public class Optimisation_Factory {
 								HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable[r]
 										.getSim_output()
 										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-	
-								Integer[] simTime = infectious_count_map.keySet().toArray(new Integer[infectious_count_map.size()]);								
+
+								Integer[] simTime = infectious_count_map.keySet()
+										.toArray(new Integer[infectious_count_map.size()]);
 								Arrays.sort(simTime);
 
 								// TODO Auto-generated method stub
 								int best_offset_r = 0;
 								double best_fitting_sq_sum_r = Double.MAX_VALUE;
-								
-							
-								for (int offset = 0; offset < time_range[0][1] - time_range[0][1] ; offset++) {																		
+
+								for (int offset = 0; offset < time_range[0][1] - time_range[0][1]; offset++) {
 									for (String opt_target_trend_key : target_trend_collection.keySet()) {
 
-										
 									}
 								}
 
@@ -320,7 +317,6 @@ public class Optimisation_Factory {
 								param_str.append(String.format("%.5f", pt));
 							}
 
-							
 							return best_fitting_sq_sum;
 						}
 
@@ -339,7 +335,7 @@ public class Optimisation_Factory {
 	private static HashMap<String, double[][]> loadTrendCSV(Properties prop) throws FileNotFoundException, IOException {
 		HashMap<String, double[][]> target_trend_collection = new HashMap<>();
 		if (prop.getProperty(POP_PROP_OPT_TARGET) != null) {
-			double[] time_range = new double[] { Double.MIN_VALUE, Double.MAX_VALUE };
+			double[] time_range = new double[] { Double.NaN, Double.NaN };
 
 			String[] target_trent_csv = prop.getProperty(POP_PROP_OPT_TARGET).replaceAll("\n", "").split(",");
 			for (String csv_path : target_trent_csv) {
@@ -368,9 +364,14 @@ public class Optimisation_Factory {
 							fit_t.add(~key, t);
 							fit_y.add(~key, y);
 						}
-						time_range[0] = Math.max(time_range[0], t);
-						time_range[1] = Math.min(time_range[1], t);
+						if (Double.isNaN(time_range[0])) {
+							time_range[0] = t;
+							time_range[1] = t;
 
+						} else {
+							time_range[0] = Math.min(time_range[0], t);
+							time_range[1] = Math.max(time_range[1], t);
+						}
 					}
 				}
 				csv_reader.close();

@@ -209,6 +209,17 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 									new int[] { 2, 6, 10, 14 }, new int[] { 3, 7, 11, 15 }, });
 							csvTableExtra_filename.add("Summary_Vaccine_Person_BehavGrp_%s.csv");
 						}
+						
+						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP
+								.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
+							csvTableExtra.add(new Util_CSV_Table_Map("Time,Site_1,Site_2,Site_3"));
+							csvTableExtra_colSel.add(
+									new int[][] { new int[] { 10, 14 }, new int[] { 11, 15 }, new int[] {12, 16}, });
+							csvTableExtra_filename.add("Summary_Prevalence_MSM_%s.csv");
+						}
+						
+						
+						
 
 						for (File f : zipFiles) {
 							SevenZFile resultZip = new SevenZFile(f);
