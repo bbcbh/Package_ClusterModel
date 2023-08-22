@@ -9,6 +9,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,12 +65,28 @@ public class Optimisation_Factory {
 	private static final String CMAP_REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
 
 	public static final String POP_PROP_OPT_TARGET = "POP_PROP_OPT_TARGET";
-	
-	
+
 	// POP_PROP_OPT_PARAM_FIT
-	// Format: String[] { popPropInitPrefix_IncIndices_... , ...}  
-	public static final String POP_PROP_OPT_PARAM_FIT = "POP_PROP_OPT_PARAM_FIT";
-	
+	// Format: String[] { popPropInitPrefix_IncIndices_... , ...}
+	// Examples:
+	// 16_2_1_1 = TRANS_P2V
+	// 16_1_2_1 = TRANS_V2P
+	// 16_2_4_1 = TRANS_P2R
+	// 16_4_2_1 = TRANS_R2P
+	// 16_2_8_1 = TRANS_P2O
+	// 16_8_2_1 = TRANS_O2P
+	// 16_4_8_1 = TRANS_R2O
+	// 16_8_4_1 = TRANS_O2R
+	// 16_8_8_1 = TRANS_O2O
+	// 17_1_1 = MEAN_DUR_V
+	// 17_2_1 = MEAN_DUR_P
+	// 17_4_1 = MEAN_DUR_R
+	// 17_8_1 = MEAN_DUR_O
+	// 19_14_2 = % Sym. for all male at P
+	// 22_1 = Mean period sym hetro female of seeking treatment
+	// 22_4 = Mean period sym hetro male of seeking treatment
+
+	public static final String POP_PROP_OPT_PARAM_FIT_SETTING = "POP_PROP_OPT_PARAM_FIT_SETTING";
 
 	// Format (for stable fit):
 	// float[][] opt_target = new float[NUM_DATA_TO_FIT]
@@ -279,7 +296,6 @@ public class Optimisation_Factory {
 							int rId = 0;
 
 							ExecutorService exec = null;
-							long tic = System.currentTimeMillis();
 
 							for (ContactMap c : cMap) {
 								runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[rId], sim_seed,
@@ -300,7 +316,7 @@ public class Optimisation_Factory {
 								}
 
 								runnable[rId].setSimSetting(1); // No output
-								setOptParamInRunnable(runnable[rId], point, c == null);
+								setOptParamInRunnable(runnable[rId], PROP, point, c == null);
 								runnable[rId].initialse();
 								runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
 								rId++;
@@ -545,7 +561,7 @@ public class Optimisation_Factory {
 										pWri.printf("Param   =[%s]\n", param_str.toString());
 										pWri.printf("Residue =%f\n", bestResidue_by_runnable[r]);
 										pWri.printf("Offset  =%d\n", bestMatchStart_by_runnable[r]);
-										
+
 										for (StringBuilder s : str_disp) {
 											pWri.println(s.toString());
 										}
@@ -559,7 +575,6 @@ public class Optimisation_Factory {
 									}
 
 								} // if (simTime != null) {
-									
 
 							} // End of for (int r = 0; r < rId; r++) {
 
@@ -1147,7 +1162,7 @@ public class Optimisation_Factory {
 													param_double[i] = param_number[i].doubleValue();
 												}
 
-												setOptParamInRunnable(runnable, param_double, false);
+												setOptParamInRunnable(runnable, PROP, param_double, false);
 												runnable.initialse();
 												runnable.allocateSeedInfection(SEED_INFECTION, START_TIME);
 
@@ -1495,7 +1510,7 @@ public class Optimisation_Factory {
 						}
 
 						runnable[rId].setSimSetting(1); // No output
-						setOptParamInRunnable(runnable[rId], point, c == null);
+						setOptParamInRunnable(runnable[rId], PROP, point, c == null);
 						runnable[rId].initialse();
 						runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
 
@@ -1988,18 +2003,145 @@ public class Optimisation_Factory {
 		}
 	}
 
-	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission targer_runnable, double[] point,
+	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable, Properties prop,
+			double[] point, boolean display_only) {
+
+		String[] parameter_settings = null;
+		HashMap<Integer, Object> modified_param = new HashMap<>();
+
+		if (prop.containsKey(POP_PROP_OPT_PARAM_FIT_SETTING)) {
+			parameter_settings = prop.getProperty(POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
+		}
+
+		if (parameter_settings == null || parameter_settings.length != point.length) {
+			// Backward compatibility.
+			System.out.println("Warning Parameter setting not used as it mismatches with number or parameters.");
+			setOptParamInRunnable(target_runnable, point, display_only);
+		} else {
+			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
+				String param_setting = parameter_settings[param_arr_index];
+				param_setting = param_setting.replaceAll("\\s", "");
+				String[] param_setting_arr = param_setting.split("_");
+				int param_name_index = Integer.parseInt(param_setting_arr[0]);
+				Object val = target_runnable.getRunnable_fields()[param_name_index - RUNNABLE_OFFSET];
+				if (val != null) {
+					int setting_level = 1;
+					switch (param_name_index - RUNNABLE_OFFSET) {						
+					case Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
+						double[][] inf_dur = (double[][]) val;
+						int site_key = Integer.parseInt(param_setting_arr[1]);
+						for(int s = 0; s < inf_dur.length; s++) {
+							if((1 << s &  site_key) != 0) {							
+								double org_mean = inf_dur[s][0];
+								inf_dur[s][0] = point[param_arr_index];
+								// Adjust SD based on ratio from mean
+								inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
+							}
+						}																					
+						break;
+					case Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
+						double[] sought_test_param = (double[]) val;
+						int index_key = Integer.parseInt(param_setting_arr[1]);						
+						for(int s = 0; s < sought_test_param.length; s++) {
+							if((1 << s &  index_key) != 0) {	
+								double org_dur = sought_test_param[s];
+								sought_test_param[s] = point[param_arr_index];
+								if(s%2 == 0) {								 
+									// Adjust SD based on ratio from mean
+									sought_test_param[s+1] = (point[9] / org_dur) * sought_test_param[s+1];
+								}
+							}														
+						}
+						break;						
+					default:
+						recursiveRunnableFieldReplace(val, param_arr_index, point, 
+								param_setting_arr, setting_level);
+
+					}
+
+					// Special modification for
+
+					modified_param.put(param_name_index, val);
+
+				} else {
+					System.err.printf("Setting of parameter not supported (wrong param number of %d?). Exiting.\n",
+							param_name_index);
+
+				}
+			}
+
+			if (display_only) {
+				System.out.println("Opt. parameter display:");
+				Integer[] param = modified_param.keySet().toArray(new Integer[modified_param.size()]);
+				Arrays.sort(param);
+				for (Integer pI : param) {
+					System.out.printf("POP_PROP_INIT_PREFIX_%d:\n", pI);
+					Object val = modified_param.get(pI);
+					System.out.println(PropValUtils.objectToPropStr(val, val.getClass()));
+					System.out.println();					
+				}
+				System.exit(0);
+
+			}
+
+		}
+	}
+
+	private static void recursiveRunnableFieldReplace(Object runnableField, int param_index, double[] param_val_all,
+			String[] param_setting_all, int setting_level) {
+		int arraySel =Integer.parseInt(param_setting_all[setting_level]);
+		if (runnableField instanceof int[]) {
+			int[] val_int_array = (int[]) runnableField;
+			for (int i = 0; i < val_int_array.length; i++) {
+				if ((arraySel & 1 << i) != 0) {
+					val_int_array[i] = (int) Math.round(param_val_all[param_index]);
+				}
+			}
+		} else if (runnableField instanceof float[]) {
+			float[] val_float_array = (float[]) runnableField;
+			for (int i = 0; i < val_float_array.length; i++) {
+				if ((arraySel & 1 << i) != 0) {
+					val_float_array[i] = (float) param_val_all[param_index];
+				}
+			}
+		} else if (runnableField instanceof double[]) {
+			double[] val_double_array = (double[]) runnableField;
+			for (int i = 0; i < val_double_array.length; i++) {
+				if ((arraySel & 1 << i) != 0) {
+					val_double_array[i] = param_val_all[param_index];
+				}
+			}
+		} else {
+			if (runnableField.getClass().isArray()) {
+				Object[] obj_array = (Object[]) runnableField;
+				for (int i = 0; i < obj_array.length; i++) {
+					if ((arraySel & 1 << i) != 0) {
+						recursiveRunnableFieldReplace(obj_array[i], param_index, param_val_all, param_setting_all,
+								setting_level + 1);
+
+					}
+				}
+			} else {
+				System.err.printf("Class contructor for %s not supported (wrong param number?). Exiting.\n",
+						runnableField.getClass().getName());
+				System.exit(1);
+			}
+
+		}
+	}
+
+	private static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable, double[] point,
 			boolean display_only) {
-		double[][][] transmission_rate = (double[][][]) targer_runnable
+		double[][][] transmission_rate = (double[][][]) target_runnable
 				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
 
-		double[] sym_test_rate = (double[]) targer_runnable
+		double[] sym_test_rate = (double[]) target_runnable
 				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 
-		double[][] inf_dur = (double[][]) targer_runnable
+		double[][] inf_dur = (double[][]) target_runnable
 				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
 
-		float[][] sym_rate = (float[][]) targer_runnable
+		float[][] sym_rate = (float[][]) target_runnable
 				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
 
 		switch (point.length) {
@@ -2070,7 +2212,7 @@ public class Optimisation_Factory {
 					if (sym_test_rate.length < 2 * Population_Bridging.LENGTH_GENDER) {
 						sym_test_rate = Arrays.copyOf(sym_test_rate,
 								sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
-						targer_runnable.runnable_fields[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
+						target_runnable.runnable_fields[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
 						for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
 							sym_test_rate[2 * g] = sym_test_rate[0];
 							sym_test_rate[2 * g + 1] = sym_test_rate[1];
