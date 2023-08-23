@@ -9,7 +9,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -456,8 +455,7 @@ public class Optimisation_Factory {
 
 											if (str_disp[t_pt] == null) {
 												str_disp[t_pt] = new StringBuilder();
-												str_disp[t_pt].append(time);
-												str_disp[t_pt].append(',');
+												str_disp[t_pt].append(time);												
 											}
 
 											double newVal = 0;
@@ -524,18 +522,25 @@ public class Optimisation_Factory {
 									}
 									// Calculate best fit for all target
 									for (int match_start_time = simTime[0]; match_start_time < simTime[simTime.length
-											- 1] - (time_range[0][1] - time_range[0][1]); match_start_time++) {
+											- 1] - (time_range[0][1] - time_range[0][0]); match_start_time++) {
+										
 										double residue = 0;
-										for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
+										for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {											
+											double offset = 0;
+											if(trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE].startsWith("Cumul")) {
+												offset =  interpolation[trend_target_pt].value(match_start_time);
+											}											
 											for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
 												double model_adj_tar_t = match_start_time
 														+ tar_values[trend_target_pt][0][i];
 												double target_y = tar_values[trend_target_pt][1][i];
-												double model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
-												residue += weight[trend_target_pt] * Math.pow(model_y - target_y, 2);
+												double model_y = interpolation[trend_target_pt].value(model_adj_tar_t);																								
+												
+												residue += weight[trend_target_pt] * Math.pow((model_y - offset) - target_y, 2);
 											}
 
-										}
+										}																				
+										//System.out.printf("Start_time = %d, R = %f\n", match_start_time, residue);
 										if (bestResidue_by_runnable[r] > residue) {
 											bestResidue_by_runnable[r] = residue;
 											bestMatchStart_by_runnable[r] = match_start_time;
@@ -558,9 +563,9 @@ public class Optimisation_Factory {
 											pWri.println();
 										}
 
-										pWri.printf("Param   =[%s]\n", param_str.toString());
-										pWri.printf("Residue =%f\n", bestResidue_by_runnable[r]);
-										pWri.printf("Offset  =%d\n", bestMatchStart_by_runnable[r]);
+										pWri.printf("Param   = [%s]\n", param_str.toString());
+										pWri.printf("Residue = %f\n", bestResidue_by_runnable[r]);
+										pWri.printf("Offset  = %d\n", bestMatchStart_by_runnable[r]);
 
 										for (StringBuilder s : str_disp) {
 											pWri.println(s.toString());
