@@ -141,6 +141,9 @@ public class Optimisation_Factory {
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+	
+	
+	private final static String FILENAME_OPT_RESULT = "Opt_res.txt";
 
 	public static void trend_fit_Simplex(String[] args) throws FileNotFoundException, IOException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  <optional: NUM_EVAL (int)>";
@@ -242,31 +245,32 @@ public class Optimisation_Factory {
 
 					long tic = System.currentTimeMillis();
 
-					final int NUM_THREADS = numThreads;
-					final ContactMap[] BASE_CONTACT_MAP = new ContactMap[preGenClusterFiles.length];
-					final long[] BASE_CONTACT_MAP_SEED = new long[BASE_CONTACT_MAP.length];
-					final RandomGenerator RNG = new MersenneTwisterRandomGenerator(seed);
-					final int[] POP_COMPOSITION = pop_composition;
-					final int NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
-					final int NUM_SNAP = numSnap;
-					final Properties PROP = prop;
-					final int[][] SEED_INFECTION = seed_infection;
-					final int START_TIME = contact_map_start_time;
+					ContactMap[] baseCMaps = new ContactMap[preGenClusterFiles.length];
+					long[] baseCMapSeeds = new long[baseCMaps.length];
+					RandomGenerator rng = new MersenneTwisterRandomGenerator(seed);
+					double[][] time_range = target_trend_collection.remove(OPT_TREND_CSV_RANGE);
 
-					int cMap_count = extractContactMap(BASE_CONTACT_MAP, BASE_CONTACT_MAP_SEED, preGenClusterFiles,
-							NUM_THREADS);
+					int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, numThreads);
 
 					System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
 							contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+
+					// Function final variable
+					final int NUM_THREADS = numThreads;
+					final int[] POP_COMPOSITION = pop_composition;
+					final int NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
+					final int NUM_SNAP = numSnap;
+					final int[][] SEED_INFECTION = seed_infection;
+					final int START_TIME = contact_map_start_time;
 
 					MultivariateFunction func = new MultivariateFunction() {
 						@SuppressWarnings("unchecked")
 						@Override
 						public double value(double[] point) {
 							double best_fitting_sq_sum;
-							long sim_seed = RNG.nextLong();
-							ContactMap[] cMap = BASE_CONTACT_MAP;
-							long[] cMap_seed = BASE_CONTACT_MAP_SEED;
+							long sim_seed = rng.nextLong();
+							ContactMap[] cMap = baseCMaps;
+							long[] cMap_seed = baseCMapSeeds;
 
 							int[] bestMatchStart_by_runnable;
 							double[] bestResidue_by_runnable;
@@ -279,7 +283,7 @@ public class Optimisation_Factory {
 								param_str.append(String.format("%.5f", pt));
 							}
 
-							if (BASE_CONTACT_MAP.length == 0) {
+							if (baseCMaps.length == 0) {
 								cMap = new ContactMap[] { null }; // Special case for opt parameter value disp.
 								cMap_seed = new long[] { 0 };
 							}
@@ -305,9 +309,9 @@ public class Optimisation_Factory {
 										+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
 
 									String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
-									if (PROP.containsKey(key)) {
+									if (prop.containsKey(key)) {
 										runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils
-												.propStrToObject(PROP.getProperty(key),
+												.propStrToObject(prop.getProperty(key),
 														runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET]
 																.getClass());
 									}
@@ -315,7 +319,7 @@ public class Optimisation_Factory {
 								}
 
 								runnable[rId].setSimSetting(1); // No output
-								setOptParamInRunnable(runnable[rId], PROP, point, c == null);
+								setOptParamInRunnable(runnable[rId], prop, point, c == null);
 								runnable[rId].initialse();
 								runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
 								rId++;
@@ -343,9 +347,6 @@ public class Optimisation_Factory {
 								}
 							}
 
-							double[][] time_range = target_trend_collection.remove(OPT_TREND_CSV_RANGE);
-
-							@SuppressWarnings("unchecked")
 							HashMap<Integer, int[][]>[] countMapBySite = new HashMap[LENGTH_OPT_TREND_COUNT_MAP_BY_SITE];
 							HashMap<Integer, int[]>[] countMapByPerson = new HashMap[LENGTH_OPT_TREND_COUNT_MAP_BY_PERSON];
 
@@ -455,7 +456,7 @@ public class Optimisation_Factory {
 
 											if (str_disp[t_pt] == null) {
 												str_disp[t_pt] = new StringBuilder();
-												str_disp[t_pt].append(time);												
+												str_disp[t_pt].append(time);
 											}
 
 											double newVal = 0;
@@ -523,24 +524,26 @@ public class Optimisation_Factory {
 									// Calculate best fit for all target
 									for (int match_start_time = simTime[0]; match_start_time < simTime[simTime.length
 											- 1] - (time_range[0][1] - time_range[0][0]); match_start_time++) {
-										
+
 										double residue = 0;
-										for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {											
+										for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 											double offset = 0;
-											if(trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE].startsWith("Cumul")) {
-												offset =  interpolation[trend_target_pt].value(match_start_time);
-											}											
+											if (trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE]
+													.startsWith("Cumul")) {
+												offset = interpolation[trend_target_pt].value(match_start_time);
+											}
 											for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
 												double model_adj_tar_t = match_start_time
 														+ tar_values[trend_target_pt][0][i];
 												double target_y = tar_values[trend_target_pt][1][i];
-												double model_y = interpolation[trend_target_pt].value(model_adj_tar_t);																								
-												
-												residue += weight[trend_target_pt] * Math.pow((model_y - offset) - target_y, 2);
+												double model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
+
+												residue += weight[trend_target_pt]
+														* Math.pow((model_y - offset) - target_y, 2);
 											}
 
-										}																				
-										//System.out.printf("Start_time = %d, R = %f\n", match_start_time, residue);
+										}
+										// System.out.printf("Start_time = %d, R = %f\n", match_start_time, residue);
 										if (bestResidue_by_runnable[r] > residue) {
 											bestResidue_by_runnable[r] = residue;
 											bestMatchStart_by_runnable[r] = match_start_time;
@@ -570,6 +573,8 @@ public class Optimisation_Factory {
 										for (StringBuilder s : str_disp) {
 											pWri.println(s.toString());
 										}
+										
+										pWri.println();
 
 										pWri.close();
 										fWri.close();
@@ -588,6 +593,34 @@ public class Optimisation_Factory {
 							for (double r : bestResidue_by_runnable) {
 								best_fitting_sq_sum += r;
 							}
+							
+							String outMsg;
+							
+							if (runnable.length == 1) {
+								outMsg = String.format(
+										"P = [%s], V = %.2e, map_seed= %d, sim_seed = %d, Time req = %.3fs\n",
+										param_str.toString(), best_fitting_sq_sum, runnable[0].getcMap_seed(),
+										runnable[0].getSim_seed(), (System.currentTimeMillis() - tic) / 1000f);
+
+							} else {
+								outMsg = String.format("P = [%s], V = %f, Time req = %.3fs\n", param_str.toString(),
+										best_fitting_sq_sum, (System.currentTimeMillis() - tic) / 1000f);
+							}
+
+							try {
+								File opt_output_file = new File(baseDir, FILENAME_OPT_RESULT);
+								FileWriter fWri = new FileWriter(opt_output_file, true);
+								PrintWriter pWri = new PrintWriter(fWri);
+								pWri.print(outMsg);
+								pWri.close();
+								fWri.close();
+
+							} catch (IOException ex) {
+								ex.printStackTrace(System.err);
+							}
+
+							System.out.println(outMsg);
+							
 
 							return best_fitting_sq_sum;
 						}
@@ -1645,12 +1678,12 @@ public class Optimisation_Factory {
 									runnable[0].getSim_seed(), (System.currentTimeMillis() - tic) / 1000f);
 
 						} else {
-							outMsg = String.format("P = [%s], V = %.2e, Time req = %.3fs\n", pt_str.toString(),
+							outMsg = String.format("P = [%s], V = %f, Time req = %.3fs\n", pt_str.toString(),
 									sqSumTotal, (System.currentTimeMillis() - tic) / 1000f);
 						}
 
 						try {
-							File opt_output_file = new File(baseDir, "Opt_res.txt");
+							File opt_output_file = new File(baseDir, FILENAME_OPT_RESULT);
 							FileWriter fWri = new FileWriter(opt_output_file, true);
 							PrintWriter pWri = new PrintWriter(fWri);
 							pWri.print(outMsg);
@@ -1706,7 +1739,7 @@ public class Optimisation_Factory {
 				pt_str.append(String.format("%.5f", pt));
 			}
 
-			System.out.printf("Optimisation Completed.\nP = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
+			System.out.printf("Optimisation Completed.\nP = [%s], V = %f\n", pt_str.toString(), pV.getValue());
 
 		} catch (org.apache.commons.math3.exception.TooManyEvaluationsException ex) {
 			System.out.printf("Eval limit of %d reached.\nSimplex (bounded):\n", numEval);
@@ -1731,7 +1764,7 @@ public class Optimisation_Factory {
 					pt_str.append(String.format("%.5f", pt));
 				}
 
-				System.out.printf("P = [%s], V = %.2e\n", pt_str.toString(), pV.getValue());
+				System.out.printf("P = [%s], V = %f\n", pt_str.toString(), pV.getValue());
 
 			}
 
@@ -2031,36 +2064,35 @@ public class Optimisation_Factory {
 				Object val = target_runnable.getRunnable_fields()[param_name_index - RUNNABLE_OFFSET];
 				if (val != null) {
 					int setting_level = 1;
-					switch (param_name_index - RUNNABLE_OFFSET) {						
+					switch (param_name_index - RUNNABLE_OFFSET) {
 					case Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
 						double[][] inf_dur = (double[][]) val;
 						int site_key = Integer.parseInt(param_setting_arr[1]);
-						for(int s = 0; s < inf_dur.length; s++) {
-							if((1 << s &  site_key) != 0) {							
+						for (int s = 0; s < inf_dur.length; s++) {
+							if ((1 << s & site_key) != 0) {
 								double org_mean = inf_dur[s][0];
 								inf_dur[s][0] = point[param_arr_index];
 								// Adjust SD based on ratio from mean
 								inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
 							}
-						}																					
+						}
 						break;
 					case Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
 						double[] sought_test_param = (double[]) val;
-						int index_key = Integer.parseInt(param_setting_arr[1]);						
-						for(int s = 0; s < sought_test_param.length; s++) {
-							if((1 << s &  index_key) != 0) {	
+						int index_key = Integer.parseInt(param_setting_arr[1]);
+						for (int s = 0; s < sought_test_param.length; s++) {
+							if ((1 << s & index_key) != 0) {
 								double org_dur = sought_test_param[s];
 								sought_test_param[s] = point[param_arr_index];
-								if(s%2 == 0) {								 
+								if (s % 2 == 0) {
 									// Adjust SD based on ratio from mean
-									sought_test_param[s+1] = (point[9] / org_dur) * sought_test_param[s+1];
+									sought_test_param[s + 1] = (point[9] / org_dur) * sought_test_param[s + 1];
 								}
-							}														
+							}
 						}
-						break;						
+						break;
 					default:
-						recursiveRunnableFieldReplace(val, param_arr_index, point, 
-								param_setting_arr, setting_level);
+						recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 
 					}
 
@@ -2083,7 +2115,7 @@ public class Optimisation_Factory {
 					System.out.printf("POP_PROP_INIT_PREFIX_%d:\n", pI);
 					Object val = modified_param.get(pI);
 					System.out.println(PropValUtils.objectToPropStr(val, val.getClass()));
-					System.out.println();					
+					System.out.println();
 				}
 				System.exit(0);
 
@@ -2094,7 +2126,7 @@ public class Optimisation_Factory {
 
 	private static void recursiveRunnableFieldReplace(Object runnableField, int param_index, double[] param_val_all,
 			String[] param_setting_all, int setting_level) {
-		int arraySel =Integer.parseInt(param_setting_all[setting_level]);
+		int arraySel = Integer.parseInt(param_setting_all[setting_level]);
 		if (runnableField instanceof int[]) {
 			int[] val_int_array = (int[]) runnableField;
 			for (int i = 0; i < val_int_array.length; i++) {
