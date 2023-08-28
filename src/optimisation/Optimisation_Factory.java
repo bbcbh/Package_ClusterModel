@@ -141,8 +141,7 @@ public class Optimisation_Factory {
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
-	
-	
+
 	private final static String FILENAME_OPT_RESULT = "Opt_res.txt";
 
 	public static void trend_fit_Simplex(String[] args) throws FileNotFoundException, IOException {
@@ -180,6 +179,7 @@ public class Optimisation_Factory {
 				int num_time_steps_per_snap = 1;
 				int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
 				int numThreads = Runtime.getRuntime().availableProcessors();
+				int numSimPerMap = 1;
 
 				int[][] seed_infection = null;
 				int contact_map_start_time = 365;
@@ -233,6 +233,11 @@ public class Optimisation_Factory {
 								.propStrToObject(prop.getProperty(contactMapRangeKey), int[].class))[0];
 					}
 
+					if (prop.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SIM_PER_SET])) {
+						numSimPerMap = Integer.parseInt(prop
+								.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SIM_PER_SET]));
+					}
+
 					File[] preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
 						@Override
 						public boolean accept(File pathname) {
@@ -260,6 +265,7 @@ public class Optimisation_Factory {
 					final int[] POP_COMPOSITION = pop_composition;
 					final int NUM_TIME_STEPS_PER_SNAP = num_time_steps_per_snap;
 					final int NUM_SNAP = numSnap;
+					final int NUM_SIM_PER_MAP = numSimPerMap;
 					final int[][] SEED_INFECTION = seed_infection;
 					final int START_TIME = contact_map_start_time;
 
@@ -268,7 +274,7 @@ public class Optimisation_Factory {
 						@Override
 						public double value(double[] point) {
 							double best_fitting_sq_sum;
-							long sim_seed = rng.nextLong();
+
 							ContactMap[] cMap = baseCMaps;
 							long[] cMap_seed = baseCMapSeeds;
 
@@ -288,7 +294,8 @@ public class Optimisation_Factory {
 								cMap_seed = new long[] { 0 };
 							}
 
-							Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[cMap.length];
+							Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[cMap.length
+									* NUM_SIM_PER_MAP];
 
 							bestMatchStart_by_runnable = new int[runnable.length];
 							bestResidue_by_runnable = new double[runnable.length];
@@ -297,32 +304,34 @@ public class Optimisation_Factory {
 							Arrays.fill(bestResidue_by_runnable, Double.POSITIVE_INFINITY);
 
 							int rId = 0;
-
+							int cMap_id = 0;
 							ExecutorService exec = null;
 
-							for (ContactMap c : cMap) {
-								runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[rId], sim_seed,
-										POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
-								runnable[rId].setBaseDir(baseDir);
+							for (ContactMap c : cMap) {									
+								for (int r = 0; r < NUM_SIM_PER_MAP; r++) {
+									long sim_seed = rng.nextLong();
+									runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[cMap_id], sim_seed,
+											POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
+									runnable[rId].setBaseDir(baseDir);
 
-								for (int i = RUNNABLE_OFFSET; i < RUNNABLE_OFFSET
-										+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+									for (int i = RUNNABLE_OFFSET; i < RUNNABLE_OFFSET
+											+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
 
-									String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
-									if (prop.containsKey(key)) {
-										runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils
-												.propStrToObject(prop.getProperty(key),
-														runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET]
-																.getClass());
+										String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
+										if (prop.containsKey(key)) {
+											runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils
+													.propStrToObject(prop.getProperty(key),
+															runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET]
+																	.getClass());
+										}
 									}
-
+									runnable[rId].setSimSetting(1); // No output
+									setOptParamInRunnable(runnable[rId], prop, point, c == null);
+									runnable[rId].initialse();
+									runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
+									rId++;
 								}
-
-								runnable[rId].setSimSetting(1); // No output
-								setOptParamInRunnable(runnable[rId], prop, point, c == null);
-								runnable[rId].initialse();
-								runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
-								rId++;
+								cMap_id++;
 							}
 
 							if (rId == 1 || NUM_THREADS <= 1) {
@@ -573,7 +582,7 @@ public class Optimisation_Factory {
 										for (StringBuilder s : str_disp) {
 											pWri.println(s.toString());
 										}
-										
+
 										pWri.println();
 
 										pWri.close();
@@ -593,9 +602,9 @@ public class Optimisation_Factory {
 							for (double r : bestResidue_by_runnable) {
 								best_fitting_sq_sum += r;
 							}
-							
+
 							String outMsg;
-							
+
 							if (runnable.length == 1) {
 								outMsg = String.format(
 										"P = [%s], V = %.2e, map_seed= %d, sim_seed = %d, Time req = %.3fs\n",
@@ -620,7 +629,6 @@ public class Optimisation_Factory {
 							}
 
 							System.out.println(outMsg);
-							
 
 							return best_fitting_sq_sum;
 						}
