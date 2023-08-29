@@ -86,6 +86,7 @@ public class Optimisation_Factory {
 	// 22_4 = Mean period sym hetro male of seeking treatment
 
 	public static final String POP_PROP_OPT_PARAM_FIT_SETTING = "POP_PROP_OPT_PARAM_FIT_SETTING";
+	private static final Pattern POP_PROP_OPT_PARAM_DIFF_FORMAT = Pattern.compile("Diff(\\d+)");
 
 	// Format (for stable fit):
 	// float[][] opt_target = new float[NUM_DATA_TO_FIT]
@@ -307,7 +308,7 @@ public class Optimisation_Factory {
 							int cMap_id = 0;
 							ExecutorService exec = null;
 
-							for (ContactMap c : cMap) {									
+							for (ContactMap c : cMap) {
 								for (int r = 0; r < NUM_SIM_PER_MAP; r++) {
 									long sim_seed = rng.nextLong();
 									runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[cMap_id], sim_seed,
@@ -531,32 +532,76 @@ public class Optimisation_Factory {
 
 									}
 									// Calculate best fit for all target
-									for (int match_start_time = simTime[0]; match_start_time < simTime[simTime.length
-											- 1] - (time_range[0][1] - time_range[0][0]); match_start_time++) {
+									boolean hasCompleteRun = simTime[0] < simTime[simTime.length - 1]
+											- (time_range[0][1] - time_range[0][0]);
 
+									if (hasCompleteRun) {
+										for (int match_start_time = simTime[0]; match_start_time < simTime[simTime.length
+												- 1] - (time_range[0][1] - time_range[0][0]); match_start_time++) {
+											double residue = 0;
+
+											for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
+												double offset = 0;
+												if (trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE]
+														.startsWith("Cumul")) {
+													offset = interpolation[trend_target_pt].value(match_start_time);
+												}
+												for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
+													double model_adj_tar_t = match_start_time
+															+ tar_values[trend_target_pt][0][i];
+													double target_y = tar_values[trend_target_pt][1][i];
+													double model_y = interpolation[trend_target_pt]
+															.value(model_adj_tar_t);
+
+													residue += weight[trend_target_pt]
+															* Math.pow((model_y - offset) - target_y, 2);
+												}
+
+											}
+											// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
+											// residue);
+											if (bestResidue_by_runnable[r] > residue) {
+												bestResidue_by_runnable[r] = residue;
+												bestMatchStart_by_runnable[r] = match_start_time;
+											}
+										}
+									} else {
+										// Has no complete run - e.g. due to extinction
 										double residue = 0;
+										int match_start_time = simTime[0];
 										for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 											double offset = 0;
+											double no_match_val = 0;
 											if (trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE]
 													.startsWith("Cumul")) {
 												offset = interpolation[trend_target_pt].value(match_start_time);
+												no_match_val = interpolation[trend_target_pt].value(simTime[simTime.length-1]);
+
 											}
 											for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
 												double model_adj_tar_t = match_start_time
 														+ tar_values[trend_target_pt][0][i];
 												double target_y = tar_values[trend_target_pt][1][i];
-												double model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
+												double model_y;
+												
+												if(model_adj_tar_t <= simTime[simTime.length-1]) {												
+													model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
+												}else {
+													model_y = no_match_val;
+												}
 
 												residue += weight[trend_target_pt]
 														* Math.pow((model_y - offset) - target_y, 2);
 											}
 
 										}
-										// System.out.printf("Start_time = %d, R = %f\n", match_start_time, residue);
+										// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
+										// residue);
 										if (bestResidue_by_runnable[r] > residue) {
 											bestResidue_by_runnable[r] = residue;
 											bestMatchStart_by_runnable[r] = match_start_time;
 										}
+
 									}
 
 									// Display trends
@@ -575,6 +620,8 @@ public class Optimisation_Factory {
 											pWri.println();
 										}
 
+										pWri.printf("CMAP    = %d\n", runnable[r].getcMap_seed());
+										pWri.printf("SimSeed = %d\n", runnable[r].getSim_seed());
 										pWri.printf("Param   = [%s]\n", param_str.toString());
 										pWri.printf("Residue = %f\n", bestResidue_by_runnable[r]);
 										pWri.printf("Offset  = %d\n", bestMatchStart_by_runnable[r]);
@@ -2135,27 +2182,39 @@ public class Optimisation_Factory {
 	private static void recursiveRunnableFieldReplace(Object runnableField, int param_index, double[] param_val_all,
 			String[] param_setting_all, int setting_level) {
 		int arraySel = Integer.parseInt(param_setting_all[setting_level]);
-		if (runnableField instanceof int[]) {
-			int[] val_int_array = (int[]) runnableField;
-			for (int i = 0; i < val_int_array.length; i++) {
-				if ((arraySel & 1 << i) != 0) {
-					val_int_array[i] = (int) Math.round(param_val_all[param_index]);
+
+		double offset = 0;
+
+		if (runnableField instanceof int[] || runnableField instanceof float[] || runnableField instanceof double[]) {
+			Matcher m = POP_PROP_OPT_PARAM_DIFF_FORMAT.matcher(param_setting_all[param_setting_all.length - 1]);
+			if (m.find()) {
+				int offsetIndex = Integer.parseInt((m.group(1)));
+				offset = param_val_all[offsetIndex];
+			}
+
+			if (runnableField instanceof int[]) {
+				int[] val_int_array = (int[]) runnableField;
+				for (int i = 0; i < val_int_array.length; i++) {
+					if ((arraySel & 1 << i) != 0) {
+						val_int_array[i] = (int) Math.round(offset + param_val_all[param_index]);
+					}
+				}
+			} else if (runnableField instanceof float[]) {
+				float[] val_float_array = (float[]) runnableField;
+				for (int i = 0; i < val_float_array.length; i++) {
+					if ((arraySel & 1 << i) != 0) {
+						val_float_array[i] = (float) (offset + param_val_all[param_index]);
+					}
+				}
+			} else if (runnableField instanceof double[]) {
+				double[] val_double_array = (double[]) runnableField;
+				for (int i = 0; i < val_double_array.length; i++) {
+					if ((arraySel & 1 << i) != 0) {
+						val_double_array[i] = offset + param_val_all[param_index];
+					}
 				}
 			}
-		} else if (runnableField instanceof float[]) {
-			float[] val_float_array = (float[]) runnableField;
-			for (int i = 0; i < val_float_array.length; i++) {
-				if ((arraySel & 1 << i) != 0) {
-					val_float_array[i] = (float) param_val_all[param_index];
-				}
-			}
-		} else if (runnableField instanceof double[]) {
-			double[] val_double_array = (double[]) runnableField;
-			for (int i = 0; i < val_double_array.length; i++) {
-				if ((arraySel & 1 << i) != 0) {
-					val_double_array[i] = param_val_all[param_index];
-				}
-			}
+
 		} else {
 			if (runnableField.getClass().isArray()) {
 				Object[] obj_array = (Object[]) runnableField;

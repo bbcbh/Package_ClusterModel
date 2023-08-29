@@ -246,6 +246,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					DEFAULT_INFECTIOUS_PERIOD_RECTUM, DEFAULT_INFECTIOUS_PERIOD_OROPHARYNX, },
 			// RUNNABLE_FIELD_INCUBATION_PERIOD
 			// double[SITE]
+			// Alt Format:
+			// double [SITE]{ min_incubation, max_incubation, min_recovery, max_recovery }
 			new double[][] { DEFAULT_INCUBATION_RANGE, DEFAULT_INCUBATION_RANGE, DEFAULT_INCUBATION_RANGE,
 					DEFAULT_INCUBATION_RANGE },
 			// RUNNABLE_FIELD_TRANSMISSION_SYM_RATE
@@ -290,12 +292,16 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient RealDistribution[][] tranmissionMatrix = new RealDistribution[LENGTH_SITE][LENGTH_SITE];
 	protected transient RealDistribution[] infectious_period = new RealDistribution[LENGTH_SITE];
 	protected transient RealDistribution[] incubation_period = new RealDistribution[LENGTH_SITE];
+	protected transient RealDistribution[] immune_period = new RealDistribution[LENGTH_SITE];
 	protected transient RealDistribution[] sym_test_period_by_gender = new RealDistribution[Population_Bridging.LENGTH_GENDER];
 
 	protected transient ArrayList<Integer>[] currently_infectious;
 
+	// Key = pid, val = immune until
+	protected transient HashMap<Integer, Integer> currently_immune = new HashMap<>();
+
 	// For schedule, key are day and entries are list of person id, ordered
-	protected transient HashMap<Integer, ArrayList<Integer>>[] schedule_incubation;
+	protected transient HashMap<Integer, ArrayList<Integer>>[] schedule_becoming_infectious;
 	protected transient HashMap<Integer, ArrayList<Integer>>[] schedule_recovery;
 	protected transient HashMap<Integer, ArrayList<Integer>> schedule_testing;
 
@@ -453,9 +459,18 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 			if (incParam[s] != null) {
 				incubation_period[s] = new UniformRealDistribution(RNG, incParam[s][0], incParam[s][1]);
+
+				if (incParam[s].length > 2) {
+					immune_period[s] = new UniformRealDistribution(RNG, incParam[s][2], incParam[s][3]);
+				} else {
+					immune_period[s] = null;
+				}
+
 			} else {
 				incubation_period[s] = null;
+				immune_period[s] = null;
 			}
+
 		}
 
 		sym_test_period_by_gender = new RealDistribution[Population_Bridging.LENGTH_GENDER];
@@ -477,12 +492,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		// Lists
 		currently_infectious = new ArrayList[LENGTH_SITE];
-		schedule_incubation = new HashMap[LENGTH_SITE];
+		schedule_becoming_infectious = new HashMap[LENGTH_SITE];
 		schedule_recovery = new HashMap[LENGTH_SITE];
 
 		for (int s = 0; s < LENGTH_SITE; s++) {
 			currently_infectious[s] = new ArrayList<>();
-			schedule_incubation[s] = new HashMap<>();
+			schedule_becoming_infectious[s] = new HashMap<>();
 			schedule_recovery[s] = new HashMap<>();
 
 		}
@@ -760,6 +775,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		int key = Collections.binarySearch(currently_infectious[site], infectedId);
 		if (key >= 0) {
 			currently_infectious[site].remove(key);
+
+			if (immune_period[site] != null) {
+				int immuneUntil = (int) Math.round(recoverTime + immune_period[site].sample());
+				currently_immune.put(infectedId, immuneUntil);
+			}
+
 			updateScheduleMap(infectedId, LENGTH_SITE + site, null);
 			if (key >= 0) {
 				if ((simSetting
@@ -935,7 +956,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				for (int site_src = 0; site_src < LENGTH_SITE; site_src++) {
 					// Update infectious
-					ArrayList<Integer> becomeInfectiousToday = schedule_incubation[site_src].remove(currentTime);
+					ArrayList<Integer> becomeInfectiousToday = schedule_becoming_infectious[site_src]
+							.remove(currentTime);
 
 					if (becomeInfectiousToday != null) {
 						for (Integer toInfectiousId : becomeInfectiousToday) {
@@ -977,6 +999,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 								int partner = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1].equals(infectious)
 										? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
 										: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
+								
+								
+								Integer immune_until = currently_immune.get(partner);
+								
+								boolean tar_immune = immune_until != null && immune_until > currentTime;
 
 								int g_s = getGenderType(infectious);
 								int g_t = getGenderType(partner);
@@ -1038,7 +1065,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 													actType = -1;
 												}
 											}
-											boolean transmission_possible = actType != -1;
+											boolean transmission_possible = !tar_immune && actType != -1;
 
 											if (transmission_possible) {
 
@@ -1552,7 +1579,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						int site = i % LENGTH_SITE;
 						ArrayList<Integer> schArr;
 						if (i < LENGTH_SITE) {
-							schArr = schedule_incubation[site].get(dateEnt);
+							schArr = schedule_becoming_infectious[site].get(dateEnt);
 						} else {
 							schArr = schedule_recovery[site].get(dateEnt);
 
@@ -1765,7 +1792,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected boolean hasInfectedInPop() {
 		boolean hasInfected = false;
 		for (int site_src = 0; site_src < LENGTH_SITE && !hasInfected; site_src++) {
-			hasInfected |= !(schedule_incubation[site_src].isEmpty() && currently_infectious[site_src].isEmpty());
+			hasInfected |= !(schedule_becoming_infectious[site_src].isEmpty()
+					&& currently_infectious[site_src].isEmpty());
 		}
 		return hasInfected;
 	}
@@ -2078,10 +2106,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected void transmission_success(int currentTime, Integer infectious, int partner, int site_target, int actType,
 			Object[] simulation_store) {
 		Integer incubation_end_at = currentTime + (int) incubation_period[site_target].sample();
-		ArrayList<Integer> ent = schedule_incubation[site_target].get(incubation_end_at);
+		ArrayList<Integer> ent = schedule_becoming_infectious[site_target].get(incubation_end_at);
 		if (ent == null) {
 			ent = new ArrayList<>();
-			schedule_incubation[site_target].put(incubation_end_at, ent);
+			schedule_becoming_infectious[site_target].put(incubation_end_at, ent);
 		}
 		int key = Collections.binarySearch(ent, partner);
 		if (key < 0) {
