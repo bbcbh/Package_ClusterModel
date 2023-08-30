@@ -54,6 +54,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		Callable<ContactMap> callable = new Callable<ContactMap>() {
 			@Override
 			public ContactMap call() throws Exception {
+				long tic = System.currentTimeMillis();
 				StringWriter cMap_str = new StringWriter();
 				PrintWriter pWri = new PrintWriter(cMap_str);
 				BufferedReader reader = new BufferedReader(new FileReader(cMap_file));
@@ -64,7 +65,11 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 
 				pWri.close();
 				reader.close();
-				return ContactMap.ContactMapFromFullString(cMap_str.toString());
+				ContactMap map = ContactMap.ContactMapFromFullString(cMap_str.toString());				
+				System.out.printf("Contact map generated from %s. Time required = %.3fs\n", cMap_file.getName(), 
+						(System.currentTimeMillis() - tic) / 1000f);								
+				
+				return map;
 			}
 
 		};
