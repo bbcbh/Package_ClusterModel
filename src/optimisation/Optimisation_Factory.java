@@ -271,24 +271,12 @@ public class Optimisation_Factory {
 					final int START_TIME = contact_map_start_time;
 
 					MultivariateFunction func = new MultivariateFunction() {
-						@SuppressWarnings("unchecked")
 						@Override
 						public double value(double[] point) {
 							double best_fitting_sq_sum;
 
 							ContactMap[] cMap = baseCMaps;
-							long[] cMap_seed = baseCMapSeeds;
-
-							int[] bestMatchStart_by_runnable;
-							double[] bestResidue_by_runnable;
-
-							StringBuilder param_str = new StringBuilder();
-							for (double pt : point) {
-								if (param_str.length() != 0) {
-									param_str.append(',');
-								}
-								param_str.append(String.format("%.5f", pt));
-							}
+							long[] cMap_seed = baseCMapSeeds;						
 
 							if (baseCMaps.length == 0) {
 								cMap = new ContactMap[] { null }; // Special case for opt parameter value disp.
@@ -296,353 +284,12 @@ public class Optimisation_Factory {
 							}
 
 							Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[cMap.length
-									* NUM_SIM_PER_MAP];
+									* NUM_SIM_PER_MAP];											
 
-							bestMatchStart_by_runnable = new int[runnable.length];
-							bestResidue_by_runnable = new double[runnable.length];
-
-							Arrays.fill(bestMatchStart_by_runnable, -1);
-							Arrays.fill(bestResidue_by_runnable, Double.POSITIVE_INFINITY);
-
-							int rId = 0;
-							int cMap_id = 0;
-							ExecutorService exec = null;
-
-							for (ContactMap c : cMap) {
-								for (int r = 0; r < NUM_SIM_PER_MAP; r++) {
-									long sim_seed = rng.nextLong();
-									runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[cMap_id], sim_seed,
-											POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
-									runnable[rId].setBaseDir(baseDir);
-
-									for (int i = RUNNABLE_OFFSET; i < RUNNABLE_OFFSET
-											+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
-
-										String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
-										if (prop.containsKey(key)) {
-											runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils
-													.propStrToObject(prop.getProperty(key),
-															runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET]
-																	.getClass());
-										}
-									}
-									runnable[rId].setSimSetting(1); // No output
-									setOptParamInRunnable(runnable[rId], prop, point, c == null);
-									runnable[rId].initialse();
-									runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
-									rId++;
-								}
-								cMap_id++;
-							}
-
-							if (rId == 1 || NUM_THREADS <= 1) {
-								for (int r = 0; r < rId; r++) {
-									runnable[r].run();
-								}
-							} else {
-								exec = Executors.newFixedThreadPool(NUM_THREADS);
-								for (int r = 0; r < rId; r++) {
-									exec.submit(runnable[r]);
-								}
-								exec.shutdown();
-								try {
-									if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
-										throw new InterruptedException("Time out");
-									}
-								} catch (InterruptedException e) {
-									e.printStackTrace(System.err);
-									for (int r = 0; r < rId; r++) {
-										runnable[r].run();
-									}
-								}
-							}
-
-							HashMap<Integer, int[][]>[] countMapBySite = new HashMap[LENGTH_OPT_TREND_COUNT_MAP_BY_SITE];
-							HashMap<Integer, int[]>[] countMapByPerson = new HashMap[LENGTH_OPT_TREND_COUNT_MAP_BY_PERSON];
-
-							for (int r = 0; r < rId; r++) {
-								countMapBySite[OPT_TREND_COUNT_MAP_INFECTION_COUNT] = (HashMap<Integer, int[][]>) runnable[r]
-										.getSim_output()
-										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
-								countMapBySite[OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE] = (HashMap<Integer, int[][]>) runnable[r]
-										.getSim_output()
-										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_INCIDENCE);
-
-								countMapByPerson[OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
-										.getSim_output()
-										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
-								countMapByPerson[OPT_TREND_CUMUL_INCIDENCE_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
-										.getSim_output()
-										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
-								countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
-										.getSim_output()
-										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
-								countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
-										.getSim_output()
-										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);
-
-								Integer[] simTime = null;
-
-								for (HashMap<Integer, int[][]> map : countMapBySite) {
-									if (map != null) {
-										if (simTime == null || map.keySet().size() > simTime.length) {
-											simTime = map.keySet().toArray(new Integer[map.size()]);
-										}
-									}
-								}
-								for (HashMap<Integer, int[]> map : countMapByPerson) {
-									if (map != null) {
-										if (simTime == null || map.keySet().size() > simTime.length) {
-											simTime = map.keySet().toArray(new Integer[map.size()]);
-										}
-									}
-								}
-
-								if (simTime == null) {
-									System.err.printf(
-											"Simulation results not found for simulation with CMAP_SEED = %d and SIM_SEED = %d.\n",
-											runnable[r].getcMap_seed(), runnable[r].getSim_seed());
-								} else {
-									Arrays.sort(simTime);
-									int num_target_trend = target_trend_collection.size();
-									String[] trend_target_key = target_trend_collection.keySet()
-											.toArray(new String[num_target_trend]);
-
-									Arrays.sort(trend_target_key);
-									double[] t_values = new double[simTime.length];
-									for (int i = 0; i < simTime.length; i++) {
-										t_values[i] = simTime[i];
-									}
-
-									// Trim simTime to valid starting point
-
-									int minFitFrom = simTime[0];
-									String[][] trend_target_key_split = new String[trend_target_key.length][];
-									for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
-										trend_target_key_split[trend_target_pt] = trend_target_key[trend_target_pt]
-												.split(",");
-										minFitFrom = Math.max(minFitFrom, Integer.parseInt(
-												trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_FITFROM]));
-									}
-
-									if (minFitFrom > simTime[0]) {
-										int trimFrom = Arrays.binarySearch(simTime, minFitFrom);
-										if (trimFrom < 0) {
-											trimFrom = ~trimFrom - 1;
-										}
-										simTime = Arrays.copyOfRange(simTime, Math.max(0, trimFrom), simTime.length);
-									}
-
-									double[][][] tar_values = new double[num_target_trend][][];
-									double[] weight = new double[num_target_trend];
-									UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
-									UnivariateInterpolator interpolator = new LinearInterpolator();
-
-									StringBuilder[] str_disp = new StringBuilder[simTime.length];
-
-									// Fill interpolation, tar_values and weight for trend_target
-									for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
-										String[] trend_keys = trend_target_key_split[trend_target_pt];
-										String type_key = trend_keys[OPT_TREND_MAP_KEY_TYPE];
-										int site = -1;
-										int incl_grp = Integer.parseInt(trend_keys[OPT_TREND_MAP_KEY_TARGET_GRP]);
-
-										double[] y_values = new double[t_values.length];
-
-										tar_values[trend_target_pt] = target_trend_collection
-												.get(trend_target_key[trend_target_pt]);
-										weight[trend_target_pt] = Double
-												.parseDouble(trend_keys[OPT_TREND_MAP_KEY_WEIGHT]);
-
-										Matcher m = OPT_TREND_TYPE_FORMAT_BY_SITE
-												.matcher(trend_keys[OPT_TREND_MAP_KEY_TYPE]);
-										if (m.find()) {
-											site = Integer.parseInt(m.group(2));
-											type_key = m.group(1);
-										}
-
-										for (int t_pt = 0; t_pt < simTime.length; t_pt++) {
-											Integer time = simTime[t_pt];
-
-											if (str_disp[t_pt] == null) {
-												str_disp[t_pt] = new StringBuilder();
-												str_disp[t_pt].append(time);
-											}
-
-											double newVal = 0;
-
-											if (OPT_TREND_TYPE_NUMINF.equals(type_key)
-													|| OPT_TREND_TYPE_INCID.equals(type_key)) {
-												if (site < 0) {
-													// V= int[gender]
-													int[] ent = OPT_TREND_TYPE_NUMINF.equals(type_key)
-															? countMapByPerson[OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON]
-																	.get(time)
-															: countMapByPerson[OPT_TREND_CUMUL_INCIDENCE_BY_PERSON]
-																	.get(time);
-													if (ent != null) {
-														for (int g = 0; g < ent.length; g++) {
-															if ((incl_grp & 1 << g) != 0) {
-																newVal = ent[g];
-															}
-														}
-													}
-												} else {
-													// V= int[gender][site]
-													int[][] ent = OPT_TREND_TYPE_NUMINF.equals(type_key)
-															? countMapBySite[OPT_TREND_COUNT_MAP_INFECTION_COUNT]
-																	.get(time)
-															: countMapBySite[OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE]
-																	.get(time);
-
-													if (ent != null) {
-														for (int g = 0; g < ent.length; g++) {
-															if ((incl_grp & 1 << g) != 0) {
-																newVal = ent[g][site];
-															}
-														}
-													}
-												}
-											} else if (OPT_TREND_TYPE_DX.equals(type_key)) {
-												// V= int[gender_positive_dx, gender_true_infection]
-												int[][] ent_collection = new int[][] {
-														countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON]
-																.get(time),
-														countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON]
-																.get(time),
-
-												};
-												for (int[] ent : ent_collection) {
-													if (ent != null) {
-														for (int g = 0; g < ent.length / 2; g++) {
-															if ((incl_grp & 1 << g) != 0) {
-																newVal = ent[g];
-															}
-														}
-													}
-												}
-											}
-											y_values[t_pt] += newVal;
-											str_disp[t_pt].append(',');
-											str_disp[t_pt].append(newVal);
-
-										}
-
-										interpolation[trend_target_pt] = interpolator.interpolate(t_values, y_values);
-
-									}
-									// Calculate best fit for all target
-									boolean hasCompleteRun = simTime[0] < simTime[simTime.length - 1]
-											- (time_range[0][1] - time_range[0][0]);
-
-									if (hasCompleteRun) {
-										for (int match_start_time = simTime[0]; match_start_time < simTime[simTime.length
-												- 1] - (time_range[0][1] - time_range[0][0]); match_start_time++) {
-											double residue = 0;
-
-											for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
-												double offset = 0;
-												if (trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE]
-														.startsWith("Cumul")) {
-													offset = interpolation[trend_target_pt].value(match_start_time);
-												}
-												for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
-													double model_adj_tar_t = match_start_time
-															+ tar_values[trend_target_pt][0][i];
-													double target_y = tar_values[trend_target_pt][1][i];
-													double model_y = interpolation[trend_target_pt]
-															.value(model_adj_tar_t);
-
-													residue += weight[trend_target_pt]
-															* Math.pow((model_y - offset) - target_y, 2);
-												}
-
-											}
-											// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
-											// residue);
-											if (bestResidue_by_runnable[r] > residue) {
-												bestResidue_by_runnable[r] = residue;
-												bestMatchStart_by_runnable[r] = match_start_time;
-											}
-										}
-									} else {
-										// Has no complete run - e.g. due to extinction
-										double residue = 0;
-										int match_start_time = simTime[0];
-										for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
-											double offset = 0;
-											double no_match_val = 0;
-											if (trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE]
-													.startsWith("Cumul")) {
-												offset = interpolation[trend_target_pt].value(match_start_time);
-												no_match_val = interpolation[trend_target_pt].value(simTime[simTime.length-1]);
-
-											}
-											for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
-												double model_adj_tar_t = match_start_time
-														+ tar_values[trend_target_pt][0][i];
-												double target_y = tar_values[trend_target_pt][1][i];
-												double model_y;
-												
-												if(model_adj_tar_t <= simTime[simTime.length-1]) {												
-													model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
-												}else {
-													model_y = no_match_val;
-												}
-
-												residue += weight[trend_target_pt]
-														* Math.pow((model_y - offset) - target_y, 2);
-											}
-
-										}
-										// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
-										// residue);
-										if (bestResidue_by_runnable[r] > residue) {
-											bestResidue_by_runnable[r] = residue;
-											bestMatchStart_by_runnable[r] = match_start_time;
-										}
-
-									}
-
-									// Display trends
-									try {
-										File opt_output_file = new File(baseDir, String.format("Opt_trend_%d.txt", r));
-										boolean newFile = !opt_output_file.exists();
-
-										FileWriter fWri = new FileWriter(opt_output_file, true);
-										PrintWriter pWri = new PrintWriter(fWri);
-
-										if (newFile) {
-											pWri.printf("Fitting %s target trend:\n", num_target_trend);
-											for (String sKey : trend_target_key) {
-												pWri.println(sKey);
-											}
-											pWri.println();
-										}
-
-										pWri.printf("CMAP    = %d\n", runnable[r].getcMap_seed());
-										pWri.printf("SimSeed = %d\n", runnable[r].getSim_seed());
-										pWri.printf("Param   = [%s]\n", param_str.toString());
-										pWri.printf("Residue = %f\n", bestResidue_by_runnable[r]);
-										pWri.printf("Offset  = %d\n", bestMatchStart_by_runnable[r]);
-
-										for (StringBuilder s : str_disp) {
-											pWri.println(s.toString());
-										}
-
-										pWri.println();
-
-										pWri.close();
-										fWri.close();
-
-									} catch (IOException e) {
-										e.printStackTrace(System.err);
-
-									}
-
-								} // if (simTime != null) {
-
-							} // End of for (int r = 0; r < rId; r++) {
+							double[] bestResidue_by_runnable = calculate_residue_opt_trend(baseDir, prop, runnable,
+									target_trend_collection, point, cMap, cMap_seed, rng, time_range, NUM_THREADS,
+									POP_COMPOSITION, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP, NUM_SIM_PER_MAP, SEED_INFECTION,
+									START_TIME); 
 
 							best_fitting_sq_sum = 0;
 
@@ -651,15 +298,24 @@ public class Optimisation_Factory {
 							}
 
 							String outMsg;
+							
+							StringBuilder param_disp = new StringBuilder();
+							for (double pt : point) {
+								if (param_disp.length() != 0) {
+									param_disp.append(',');
+								}
+								param_disp.append(String.format("%.5f", pt));
+							}
+							
 
 							if (runnable.length == 1) {
 								outMsg = String.format(
 										"P = [%s], V = %.2e, map_seed= %d, sim_seed = %d, Time req = %.3fs\n",
-										param_str.toString(), best_fitting_sq_sum, runnable[0].getcMap_seed(),
+										param_disp.toString(), best_fitting_sq_sum, runnable[0].getcMap_seed(),
 										runnable[0].getSim_seed(), (System.currentTimeMillis() - tic) / 1000f);
 
 							} else {
-								outMsg = String.format("P = [%s], V = %f, Time req = %.3fs\n", param_str.toString(),
+								outMsg = String.format("P = [%s], V = %f, Time req = %.3fs\n", param_disp.toString(),
 										best_fitting_sq_sum, (System.currentTimeMillis() - tic) / 1000f);
 							}
 
@@ -679,6 +335,8 @@ public class Optimisation_Factory {
 
 							return best_fitting_sq_sum;
 						}
+
+						
 
 					};
 
@@ -755,6 +413,372 @@ public class Optimisation_Factory {
 
 		}
 		return target_trend_collection;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static double[] calculate_residue_opt_trend(File baseDir, Properties prop,
+			Runnable_ClusterModel_Transmission[] runnable,
+			HashMap<String, double[][]> target_trend_collection, double[] point, ContactMap[] cMap,
+			long[] cMap_seed, RandomGenerator rng, double[][] time_range, final int NUM_THREADS,
+			final int[] POP_COMPOSITION, final int NUM_TIME_STEPS_PER_SNAP, final int NUM_SNAP,
+			final int NUM_SIM_PER_MAP, final int[][] SEED_INFECTION, final int START_TIME) {
+		int[] bestMatchStart_by_runnable;
+		double[] bestResidue_by_runnable;
+
+		bestMatchStart_by_runnable = new int[runnable.length];
+		bestResidue_by_runnable = new double[runnable.length];													
+
+		Arrays.fill(bestMatchStart_by_runnable, -1);
+		Arrays.fill(bestResidue_by_runnable, Double.POSITIVE_INFINITY);
+		
+		StringBuilder param_str = new StringBuilder();
+		for (double pt : point) {
+			if (param_str.length() != 0) {
+				param_str.append(',');
+			}
+			param_str.append(String.format("%.5f", pt));
+		}
+		
+
+		int rId = 0;
+		int cMap_id = 0;
+		ExecutorService exec = null;
+
+		for (ContactMap c : cMap) {
+			for (int r = 0; r < NUM_SIM_PER_MAP; r++) {
+				long sim_seed = rng.nextLong();
+				runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[cMap_id], sim_seed,
+						POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
+				runnable[rId].setBaseDir(baseDir);
+
+				for (int i = RUNNABLE_OFFSET; i < RUNNABLE_OFFSET
+						+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+
+					String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
+					if (prop.containsKey(key)) {
+						runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils
+								.propStrToObject(prop.getProperty(key),
+										runnable[rId].getRunnable_fields()[i - RUNNABLE_OFFSET]
+												.getClass());
+					}
+				}
+				runnable[rId].setSimSetting(1); // No output
+				setOptParamInRunnable(runnable[rId], prop, point, c == null);
+				runnable[rId].initialse();
+				runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
+				rId++;
+			}
+			cMap_id++;
+		}
+
+		if (rId == 1 || NUM_THREADS <= 1) {
+			for (int r = 0; r < rId; r++) {
+				runnable[r].run();
+			}
+		} else {
+			exec = Executors.newFixedThreadPool(NUM_THREADS);
+			for (int r = 0; r < rId; r++) {
+				exec.submit(runnable[r]);
+			}
+			exec.shutdown();
+			try {
+				if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+					throw new InterruptedException("Time out");
+				}
+			} catch (InterruptedException e) {
+				e.printStackTrace(System.err);
+				for (int r = 0; r < rId; r++) {
+					runnable[r].run();
+				}
+			}
+		}
+		HashMap<Integer, int[][]>[] countMapBySite = new HashMap[LENGTH_OPT_TREND_COUNT_MAP_BY_SITE];
+		HashMap<Integer, int[]>[] countMapByPerson = new HashMap[LENGTH_OPT_TREND_COUNT_MAP_BY_PERSON];
+
+		for (int r = 0; r < rId; r++) {
+			countMapBySite[OPT_TREND_COUNT_MAP_INFECTION_COUNT] = (HashMap<Integer, int[][]>) runnable[r]
+					.getSim_output()
+					.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
+			countMapBySite[OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE] = (HashMap<Integer, int[][]>) runnable[r]
+					.getSim_output()
+					.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_INCIDENCE);
+
+			countMapByPerson[OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
+					.getSim_output()
+					.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
+			countMapByPerson[OPT_TREND_CUMUL_INCIDENCE_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
+					.getSim_output()
+					.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
+			countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
+					.getSim_output()
+					.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
+			countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
+					.getSim_output()
+					.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);
+
+			Integer[] simTime = null;
+
+			for (HashMap<Integer, int[][]> map : countMapBySite) {
+				if (map != null) {
+					if (simTime == null || map.keySet().size() > simTime.length) {
+						simTime = map.keySet().toArray(new Integer[map.size()]);
+					}
+				}
+			}
+			for (HashMap<Integer, int[]> map : countMapByPerson) {
+				if (map != null) {
+					if (simTime == null || map.keySet().size() > simTime.length) {
+						simTime = map.keySet().toArray(new Integer[map.size()]);
+					}
+				}
+			}
+
+			if (simTime == null) {
+				System.err.printf(
+						"Simulation results not found for simulation with CMAP_SEED = %d and SIM_SEED = %d.\n",
+						runnable[r].getcMap_seed(), runnable[r].getSim_seed());
+			} else {
+				Arrays.sort(simTime);
+				int num_target_trend = target_trend_collection.size();
+				String[] trend_target_key = target_trend_collection.keySet()
+						.toArray(new String[num_target_trend]);
+
+				Arrays.sort(trend_target_key);
+				double[] t_values = new double[simTime.length];
+				for (int i = 0; i < simTime.length; i++) {
+					t_values[i] = simTime[i];
+				}
+
+				// Trim simTime to valid starting point
+
+				int minFitFrom = simTime[0];
+				String[][] trend_target_key_split = new String[trend_target_key.length][];
+				for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
+					trend_target_key_split[trend_target_pt] = trend_target_key[trend_target_pt]
+							.split(",");
+					minFitFrom = Math.max(minFitFrom, Integer.parseInt(
+							trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_FITFROM]));
+				}
+
+				if (minFitFrom > simTime[0]) {
+					int trimFrom = Arrays.binarySearch(simTime, minFitFrom);
+					if (trimFrom < 0) {
+						trimFrom = ~trimFrom - 1;
+					}
+					simTime = Arrays.copyOfRange(simTime, Math.max(0, trimFrom), simTime.length);
+				}
+
+				double[][][] tar_values = new double[num_target_trend][][];
+				double[] weight = new double[num_target_trend];
+				UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
+				UnivariateInterpolator interpolator = new LinearInterpolator();
+
+				StringBuilder[] str_disp = new StringBuilder[simTime.length];
+
+				// Fill interpolation, tar_values and weight for trend_target
+				for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
+					String[] trend_keys = trend_target_key_split[trend_target_pt];
+					String type_key = trend_keys[OPT_TREND_MAP_KEY_TYPE];
+					int site = -1;
+					int incl_grp = Integer.parseInt(trend_keys[OPT_TREND_MAP_KEY_TARGET_GRP]);
+
+					double[] y_values = new double[t_values.length];
+
+					tar_values[trend_target_pt] = target_trend_collection
+							.get(trend_target_key[trend_target_pt]);
+					weight[trend_target_pt] = Double
+							.parseDouble(trend_keys[OPT_TREND_MAP_KEY_WEIGHT]);
+
+					Matcher m = OPT_TREND_TYPE_FORMAT_BY_SITE
+							.matcher(trend_keys[OPT_TREND_MAP_KEY_TYPE]);
+					if (m.find()) {
+						site = Integer.parseInt(m.group(2));
+						type_key = m.group(1);
+					}
+
+					for (int t_pt = 0; t_pt < simTime.length; t_pt++) {
+						Integer time = simTime[t_pt];
+
+						if (str_disp[t_pt] == null) {
+							str_disp[t_pt] = new StringBuilder();
+							str_disp[t_pt].append(time);
+						}
+
+						double newVal = 0;
+
+						if (OPT_TREND_TYPE_NUMINF.equals(type_key)
+								|| OPT_TREND_TYPE_INCID.equals(type_key)) {
+							if (site < 0) {
+								// V= int[gender]
+								int[] ent = OPT_TREND_TYPE_NUMINF.equals(type_key)
+										? countMapByPerson[OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON]
+												.get(time)
+										: countMapByPerson[OPT_TREND_CUMUL_INCIDENCE_BY_PERSON]
+												.get(time);
+								if (ent != null) {
+									for (int g = 0; g < ent.length; g++) {
+										if ((incl_grp & 1 << g) != 0) {
+											newVal = ent[g];
+										}
+									}
+								}
+							} else {
+								// V= int[gender][site]
+								int[][] ent = OPT_TREND_TYPE_NUMINF.equals(type_key)
+										? countMapBySite[OPT_TREND_COUNT_MAP_INFECTION_COUNT]
+												.get(time)
+										: countMapBySite[OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE]
+												.get(time);
+
+								if (ent != null) {
+									for (int g = 0; g < ent.length; g++) {
+										if ((incl_grp & 1 << g) != 0) {
+											newVal = ent[g][site];
+										}
+									}
+								}
+							}
+						} else if (OPT_TREND_TYPE_DX.equals(type_key)) {
+							// V= int[gender_positive_dx, gender_true_infection]
+							int[][] ent_collection = new int[][] {
+									countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON]
+											.get(time),
+									countMapByPerson[OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON]
+											.get(time),
+
+							};
+							for (int[] ent : ent_collection) {
+								if (ent != null) {
+									for (int g = 0; g < ent.length / 2; g++) {
+										if ((incl_grp & 1 << g) != 0) {
+											newVal = ent[g];
+										}
+									}
+								}
+							}
+						}
+						y_values[t_pt] += newVal;
+						str_disp[t_pt].append(',');
+						str_disp[t_pt].append(newVal);
+
+					}
+
+					interpolation[trend_target_pt] = interpolator.interpolate(t_values, y_values);
+
+				}
+				// Calculate best fit for all target
+				boolean hasCompleteRun = simTime[0] < simTime[simTime.length - 1]
+						- (time_range[0][1] - time_range[0][0]);
+
+				if (hasCompleteRun) {
+					for (int match_start_time = simTime[0]; match_start_time < simTime[simTime.length
+							- 1] - (time_range[0][1] - time_range[0][0]); match_start_time++) {
+						double residue = 0;
+
+						for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
+							double offset = 0;
+							if (trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE]
+									.startsWith("Cumul")) {
+								offset = interpolation[trend_target_pt].value(match_start_time);
+							}
+							for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
+								double model_adj_tar_t = match_start_time
+										+ tar_values[trend_target_pt][0][i];
+								double target_y = tar_values[trend_target_pt][1][i];
+								double model_y = interpolation[trend_target_pt]
+										.value(model_adj_tar_t);
+
+								residue += weight[trend_target_pt]
+										* Math.pow((model_y - offset) - target_y, 2);
+							}
+
+						}
+						// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
+						// residue);
+						if (bestResidue_by_runnable[r] > residue) {
+							bestResidue_by_runnable[r] = residue;
+							bestMatchStart_by_runnable[r] = match_start_time;
+						}
+					}
+				} else {
+					// Has no complete run - e.g. due to extinction
+					double residue = 0;
+					int match_start_time = simTime[0];
+					for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
+						double offset = 0;
+						double no_match_val = 0;
+						if (trend_target_key_split[trend_target_pt][OPT_TREND_MAP_KEY_TYPE]
+								.startsWith("Cumul")) {
+							offset = interpolation[trend_target_pt].value(match_start_time);
+							no_match_val = interpolation[trend_target_pt].value(simTime[simTime.length-1]);
+
+						}
+						for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
+							double model_adj_tar_t = match_start_time
+									+ tar_values[trend_target_pt][0][i];
+							double target_y = tar_values[trend_target_pt][1][i];
+							double model_y;
+							
+							if(model_adj_tar_t <= simTime[simTime.length-1]) {												
+								model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
+							}else {
+								model_y = no_match_val;
+							}
+
+							residue += weight[trend_target_pt]
+									* Math.pow((model_y - offset) - target_y, 2);
+						}
+
+					}
+					// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
+					// residue);
+					if (bestResidue_by_runnable[r] > residue) {
+						bestResidue_by_runnable[r] = residue;
+						bestMatchStart_by_runnable[r] = match_start_time;
+					}
+
+				}
+
+				// Display trends
+				try {
+					File opt_output_file = new File(baseDir, String.format("Opt_trend_%d.txt", r));
+					boolean newFile = !opt_output_file.exists();
+
+					FileWriter fWri = new FileWriter(opt_output_file, true);
+					PrintWriter pWri = new PrintWriter(fWri);
+
+					if (newFile) {
+						pWri.printf("Fitting %s target trend:\n", num_target_trend);
+						for (String sKey : trend_target_key) {
+							pWri.println(sKey);
+						}
+						pWri.println();
+					}
+
+					pWri.printf("CMAP    = %d\n", runnable[r].getcMap_seed());
+					pWri.printf("SimSeed = %d\n", runnable[r].getSim_seed());
+					pWri.printf("Param   = [%s]\n", param_str.toString());
+					pWri.printf("Residue = %f\n", bestResidue_by_runnable[r]);
+					pWri.printf("Offset  = %d\n", bestMatchStart_by_runnable[r]);
+
+					for (StringBuilder s : str_disp) {
+						pWri.println(s.toString());
+					}
+
+					pWri.println();
+
+					pWri.close();
+					fWri.close();
+
+				} catch (IOException e) {
+					e.printStackTrace(System.err);
+
+				}
+
+			} // if (simTime != null) {
+
+		}
+		return bestResidue_by_runnable;
 	}
 
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
