@@ -71,5 +71,10 @@
     <version>1.9</version>
 </dependency>
 	
+	<dependency>
+		<groupId>com.github.haifengl</groupId>
+		<artifactId>smile-core</artifactId>
+		<version>3.0.2</version>
+	</dependency>
 </dependencies>
 </project>

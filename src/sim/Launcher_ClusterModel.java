@@ -40,6 +40,8 @@ public class Launcher_ClusterModel {
 						.stable_prevalence_by_tranmission_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-opt_trend".equals(flag)) {
 				Optimisation_Factory.trend_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
+			} else if ("-opt_trend_bayesian".equals(flag)) {
+				Optimisation_Factory.trend_fit_Bayesian(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-optGA".equals(flag)) {
 				Optimisation_Factory.stable_prevalence_by_tranmission_fit_GA(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-analyse".equals(flag)) {
