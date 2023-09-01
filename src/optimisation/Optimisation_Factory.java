@@ -62,7 +62,8 @@ import smile.stat.distribution.GaussianDistribution;
 import util.ArrayUtilsRandomGenerator;
 import util.PropValUtils;
 
-public class Optimisation_Factory {
+public class Optimisation_Factory {		
+	
 	private static final class OptTrendFittingFunctionWrapper extends MultivariateFunctionMappingAdapter {
 
 		OptTrendFittingFunction bounded;
@@ -80,13 +81,12 @@ public class Optimisation_Factory {
 			return bounded.getBestResidue_by_runnable();
 		}
 
-	}
+	}		
 
-	private static final class OptTrendFittingFunction implements MultivariateFunction {
+	private static class OptTrendFittingFunction implements MultivariateFunction {
 		private final int nUM_THREADS;
 		private final RandomGenerator rng;
 		private final int[][] sEED_INFECTION;
-		private final long tic;
 		private final File baseDir;
 		private final ContactMap[] baseCMaps;
 		private final HashMap<String, double[][]> target_trend_collection;
@@ -101,15 +101,14 @@ public class Optimisation_Factory {
 
 		private Runnable_ClusterModel_Transmission[] runnable;
 		private double[] bestResidue_by_runnable;
-
-		private OptTrendFittingFunction(int nUM_THREADS, RandomGenerator rng, int[][] sEED_INFECTION, long tic,
+	
+		private OptTrendFittingFunction(int nUM_THREADS, RandomGenerator rng, int[][] sEED_INFECTION, 
 				File baseDir, ContactMap[] baseCMaps, HashMap<String, double[][]> target_trend_collection,
 				int nUM_SIM_PER_MAP, int[] pOP_COMPOSITION, int nUM_SNAP, Properties prop, int sTART_TIME,
 				double[][] time_range, long[] baseCMapSeeds, int nUM_TIME_STEPS_PER_SNAP) {
 			this.nUM_THREADS = nUM_THREADS;
 			this.rng = rng;
-			this.sEED_INFECTION = sEED_INFECTION;
-			this.tic = tic;
+			this.sEED_INFECTION = sEED_INFECTION;	
 			this.baseDir = baseDir;
 			this.baseCMaps = baseCMaps;
 			this.target_trend_collection = target_trend_collection;
@@ -135,6 +134,7 @@ public class Optimisation_Factory {
 
 		@Override
 		public double value(double[] point) {
+			long tic = System.currentTimeMillis();
 			double best_fitting_sq_sum;
 
 			ContactMap[] cMap = baseCMaps;
@@ -420,161 +420,13 @@ public class Optimisation_Factory {
 						contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
 
 				OptTrendFittingFunction opt_trend_obj_func = new OptTrendFittingFunction(numThreads, rng,
-						seed_infection, tic, baseDir, baseCMaps, target_trend_collection, numSimPerMap, pop_composition,
+						seed_infection, baseDir, baseCMaps, target_trend_collection, numSimPerMap, pop_composition,
 						numSnap, prop, contact_map_start_time, time_range, baseCMapSeeds, num_time_steps_per_snap);
 
 				switch (optMethod) {
 
 				case OPT_METHOD_BAYESIAN:
-
-					double sigma = 0.06;
-					double noise = 0.01;
-					int maxSize = 10000;
-
-					ArrayList<double[]> observations = new ArrayList<>(); // cMap_Seed, sim_seed, parameters, residue
-					File obsCSV = new File(baseDir, FILENAME_OPT_BAYESIAN_OBS);
-					int nextRowToPrint = 0;
-					int numEval_current = 0;
-					double[] bestRow = null;
-
-					if (obsCSV.exists()) {
-						BufferedReader reader = new BufferedReader(new FileReader(obsCSV));
-						String line;
-						while ((line = reader.readLine()) != null) {
-							String[] val_str = line.split(",");
-							double[] val = new double[val_str.length];
-							for (int i = 0; i < val.length; i++) {
-								val[i] = Double.parseDouble(val_str[i]);
-							}
-							observations.add(val);
-							nextRowToPrint++;
-						}
-						reader.close();
-					}
-
-					OptTrendFittingFunctionWrapper opt_trend_obj_func_wrapper = new OptTrendFittingFunctionWrapper(
-							opt_trend_obj_func, boundaries[0], boundaries[1]);
-
-					if (observations.size() == 0) {
-						addObservationCollection(observations, opt_trend_obj_func_wrapper, init_param);
-						numEval_current++;
-						// Add initial observations
-						for (int i = 0; i < init_param.length; i++) {
-							double[] adj_param = Arrays.copyOf(init_param, init_param.length);
-							adj_param[i] = (init_param[i] + boundaries[0][i]) / 2;
-							addObservationCollection(observations, opt_trend_obj_func_wrapper, adj_param);
-							numEval_current++;
-							adj_param[i] = (init_param[i] + boundaries[1][i]) / 2;
-							addObservationCollection(observations, opt_trend_obj_func_wrapper, adj_param);
-							numEval_current++;
-						}
-						nextRowToPrint = exportObservationsToFile(observations, obsCSV, opt_trend_obj_func_wrapper, 0);
-					}
-
-					while (numEval_current < numEval) {
-						// Surrogate function
-
-						double[][] x = new double[observations.size()][]; // unbounded
-						double[] y = new double[observations.size()];
-						GaussianProcessRegression<double[]> surrogate;
-
-						double best_y = Double.NEGATIVE_INFINITY;
-						double[] best_x = null; // unbounded
-
-						int pt = 0;
-						for (double[] arr : observations) {
-							x[pt] = Arrays.copyOfRange(arr, 2, arr.length - 1);
-							y[pt] = arr[arr.length - 1];
-
-							if (best_y > y[pt]) {
-								best_y = y[pt];
-								best_x = x[pt];
-								bestRow = arr;
-							}
-
-							pt++;
-						}
-
-						if (observations.size() < maxSize) {
-							surrogate = GaussianProcessRegression.fit(x, y, new GaussianKernel(sigma), noise);
-						} else {
-							RandomGenerator rngPick = new MersenneTwisterRandomGenerator(seed);
-							double[][] t = new double[maxSize][];
-							int t_pt = 0;
-							for (int i = 0; i < x.length && t_pt < t.length; i++) {
-								if (rngPick.nextInt(x.length - i) < maxSize - t_pt) {
-									t[t_pt] = Arrays.copyOf(x[i], x[i].length);
-									t_pt++;
-								}
-							}
-							surrogate = GaussianProcessRegression.fit(x, y, t, new GaussianKernel(sigma), noise);
-						}
-
-						// Expected improvement
-						final double BEST_Y = best_y;
-						MultivariateFunction expected_improvement = new MultivariateFunction() {
-
-							@Override
-							public double value(double[] point) {
-								double[] est = new double[2];
-								surrogate.predict(point, est);
-								if (est[1] == 0) {
-									return 0;
-								} else {
-									GaussianDistribution norm = new GaussianDistribution(1, 0);
-									double z = (est[0] - BEST_Y) / est[1];
-									return -((est[0] - BEST_Y) * norm.cdf(z) + est[1] * norm.p(z));
-								}
-							}
-						};
-
-						// Use simplex to find the maximum
-						double[] next_x; // unbounded
-						final double RELATIVE_TOLERANCE = 1e-5;
-						final double ABSOLUTE_TOLERANCE = 1e-10;
-						final int SIMPLEX_MAX_EVAL = 100;
-
-						ObjectiveFunction objFunc = new ObjectiveFunction(expected_improvement);
-
-						InitialGuess initial_guess;
-						final NelderMeadSimplex simplex;
-
-						initial_guess = new InitialGuess(best_x);
-
-						simplex = new NelderMeadSimplex(best_x.length);
-
-						SimplexOptimizer optimizer = new SimplexOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE);
-
-						try {
-							PointValuePair pV;
-							pV = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess,
-									new MaxEval(SIMPLEX_MAX_EVAL));
-							next_x = pV.getPoint();
-
-						} catch (org.apache.commons.math3.exception.TooManyEvaluationsException ex) {
-							PointValuePair[] res = simplex.getPoints();
-							Arrays.sort(res, new Comparator<PointValuePair>() {
-								@Override
-								public int compare(PointValuePair o1, PointValuePair o2) {
-									return Double.compare(o1.getValue(), o2.getValue());
-								}
-
-							});
-							next_x = res[0].getPoint();
-						}
-
-						addObservationCollection(observations, opt_trend_obj_func_wrapper,
-								opt_trend_obj_func_wrapper.unboundedToBounded(next_x));
-						nextRowToPrint = exportObservationsToFile(observations, obsCSV, opt_trend_obj_func_wrapper,
-								nextRowToPrint);
-
-						numEval_current++;
-					}
-
-					if (bestRow != null) {
-						System.out.printf("Optimisation Completed.\n Best obs. = %s\n", Arrays.toString(bestRow));
-					}
-
+					runBayesianOpt(opt_trend_obj_func, init_param, boundaries, numEval, baseDir, seed);
 					break;
 
 				default:
@@ -590,6 +442,191 @@ public class Optimisation_Factory {
 		}
 
 	}
+	
+	
+	
+	
+	
+	
+
+	private static void runBayesianOpt(OptTrendFittingFunction opt_trend_obj_func, double[] init_param,
+			double[][] boundaries, int numEval, File baseDir, long seed) throws FileNotFoundException, IOException {
+		double sigma = 0.06;
+		double xi = 0.01;
+		double noise = 0.01;
+		int maxSize = 10000;
+
+		ArrayList<double[]> observations = new ArrayList<>(); // cMap_Seed, sim_seed, unbounded_parameters, residue
+		File obsCSV = new File(baseDir, FILENAME_OPT_BAYESIAN_OBS);
+		int nextRowToPrint = 0;
+		int numEval_current = 0;
+		double[] bestRow = null;
+
+		if (obsCSV.exists()) {
+			BufferedReader reader = new BufferedReader(new FileReader(obsCSV));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				String[] val_str = line.split(",");
+				double[] val = new double[val_str.length];
+				for (int i = 0; i < val.length; i++) {
+					val[i] = Double.parseDouble(val_str[i]);
+				}
+				observations.add(val);
+				nextRowToPrint++;
+			}
+			reader.close();
+		}
+
+		OptTrendFittingFunctionWrapper opt_trend_obj_func_wrapper = new OptTrendFittingFunctionWrapper(
+				opt_trend_obj_func, boundaries[0], boundaries[1]);
+
+		if (observations.size() == 0) {
+			addObservationCollection(observations, opt_trend_obj_func_wrapper, init_param);
+			numEval_current++;
+			// Add initial observations
+			for (int i = 0; i < init_param.length; i++) {
+				double[] adj_param = Arrays.copyOf(init_param, init_param.length);
+				adj_param[i] = (init_param[i] + boundaries[0][i]) / 2;
+				addObservationCollection(observations, opt_trend_obj_func_wrapper, adj_param);
+				numEval_current++;
+				adj_param[i] = (init_param[i] + boundaries[1][i]) / 2;
+				addObservationCollection(observations, opt_trend_obj_func_wrapper, adj_param);
+				numEval_current++;
+			}
+			nextRowToPrint = exportObservationsToFile(observations, obsCSV, opt_trend_obj_func_wrapper, 0);
+		}
+			
+		int numEval_base= numEval_current;
+		
+		while (numEval_current < numEval) {
+			// Surrogate function
+
+			double[][] x = new double[observations.size()][]; // unbounded
+			double[] y = new double[observations.size()];
+			GaussianProcessRegression<double[]> surrogate;
+
+			double best_y = Double.NEGATIVE_INFINITY; // Max_y
+			double[] best_x = null; // unbounded
+			int pt = 0;
+			
+			
+			
+			for (double[] arr : observations) {
+				x[pt] = Arrays.copyOfRange(arr, 2, arr.length - 1);
+				y[pt] = arr[arr.length - 1];
+
+				if (best_y < y[pt]) {
+					best_y = y[pt];
+					best_x = x[pt];
+					bestRow = arr;
+				}
+
+				pt++;
+			}
+
+			if (observations.size() < maxSize) {
+				surrogate = GaussianProcessRegression.fit(x, y, new GaussianKernel(sigma), noise);
+			} else {
+				RandomGenerator rngPick = new MersenneTwisterRandomGenerator(seed);
+				double[][] t = new double[maxSize][];
+				int t_pt = 0;
+				for (int i = 0; i < x.length && t_pt < t.length; i++) {
+					if (rngPick.nextInt(x.length - i) < maxSize - t_pt) {
+						t[t_pt] = Arrays.copyOf(x[i], x[i].length);
+						t_pt++;
+					}
+				}
+				surrogate = GaussianProcessRegression.fit(x, y, t, new GaussianKernel(sigma), noise);
+			}
+
+			// Expected improvement
+			// See Brochu et. al 2010, A Tutorial on Bayesian Optimization of
+			// Expensive Cost Functions, with Application to
+			// Active User Modeling and Hierarchical
+			// Reinforcement Learning (Eq4) 
+			final double BEST_Y = best_y;
+			final GaussianDistribution norm = new GaussianDistribution(0, 1);
+			final double ADJ_XI = Math.pow(xi,numEval_current-numEval_base+1);
+			MultivariateFunction expected_improvement = new MultivariateFunction() {
+				@Override
+				public double value(double[] point) {
+					double[] est = new double[2];
+					surrogate.predict(point, est);
+					
+					double eI = 0;
+					
+					if (est[1] != 0) {											
+						double z = (est[0] - BEST_Y- ADJ_XI) / est[1];											
+						eI= (est[0] - BEST_Y-ADJ_XI) * norm.cdf(z) + est[1] * norm.p(z);											
+						//System.out.printf("CDF(z)=%f, PDF(z)=%f",norm.cdf(z), norm.p(z));						
+						//System.out.printf("Unbounbed param = %s, EI = %f\n", Arrays.toString(point), eI);
+					}				
+					
+					
+					
+					return eI;
+				}
+			};
+
+			// Use simplex to find the maximum
+			double[] next_x; // unbounded
+			final double RELATIVE_TOLERANCE = 1e-5;
+			final double ABSOLUTE_TOLERANCE = 1e-10;
+			final int SIMPLEX_MAX_EVAL = 100;
+
+			ObjectiveFunction objFunc = new ObjectiveFunction(expected_improvement);
+
+			InitialGuess initial_guess;
+			final NelderMeadSimplex simplex;
+
+			initial_guess = new InitialGuess(best_x);
+
+			simplex = new NelderMeadSimplex(best_x.length);
+
+			SimplexOptimizer optimizer = new SimplexOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE);
+
+			try {
+				PointValuePair pV;
+				pV = optimizer.optimize(objFunc, simplex, GoalType.MAXIMIZE, initial_guess,
+						new MaxEval(SIMPLEX_MAX_EVAL));
+				next_x = pV.getPoint();
+
+			} catch (org.apache.commons.math3.exception.TooManyEvaluationsException ex) {
+				PointValuePair[] res = simplex.getPoints();
+				Arrays.sort(res, new Comparator<PointValuePair>() {
+					@Override
+					public int compare(PointValuePair o1, PointValuePair o2) {
+						return Double.compare(o1.getValue(), o2.getValue());
+					}
+
+				});
+				next_x = res[0].getPoint();
+			}
+
+			addObservationCollection(observations, opt_trend_obj_func_wrapper,
+					opt_trend_obj_func_wrapper.unboundedToBounded(next_x));
+			nextRowToPrint = exportObservationsToFile(observations, obsCSV, opt_trend_obj_func_wrapper,
+					nextRowToPrint);
+
+			numEval_current++;
+		}
+
+		if (bestRow != null) {
+			if(numEval_current >= numEval){
+				System.out.printf("Max number of evaluations (%d) reached.\n",numEval);
+			}						
+			
+			System.out.printf("Best obs. = %s\n", Arrays.toString(bestRow));
+			
+			double[] best_param_unbound = Arrays.copyOfRange(bestRow, 2, bestRow.length-1);
+	
+			System.out.printf("Best param (bounded) = %s\n", 
+					Arrays.toString(opt_trend_obj_func_wrapper.unboundedToBounded(best_param_unbound)));
+			
+			
+			
+		}
+	}
 
 	private static int exportObservationsToFile(ArrayList<double[]> observations, File obsCSV,
 			MultivariateFunctionMappingAdapter wrapper, int fromRow) throws IOException {
@@ -600,10 +637,8 @@ public class Optimisation_Factory {
 
 		PrintWriter pWri_Disp = new PrintWriter(new FileWriter(dispFile, true));
 
-		if (!dispFile.isFile()) {
-
+		if (!dispFile.exists()) {
 			pWri_Disp.println("CMAP_Seed, Sim_Seed,Bounded_Obs");
-
 		}
 
 		int nextRow = fromRow;
@@ -637,7 +672,7 @@ public class Optimisation_Factory {
 			pWri.println();
 			pWri_Disp.println();
 			nextRow++;
-		}
+		}		
 		pWri.close();
 		pWri_Disp.close();
 
@@ -647,20 +682,29 @@ public class Optimisation_Factory {
 	private static void addObservationCollection(ArrayList<double[]> observationsCollection,
 			OptTrendFittingFunctionWrapper func, double[] param) {
 		double[] unbound_param = func.boundedToUnbounded(param);
-		double sum_r = func.value(param);
+		double best_r = func.value(unbound_param);
 		double[] r_by_runnable = func.getBestResidue_by_runnable();
 		Runnable_ClusterModel_Transmission[] runnable = func.getRunnable();
-
+		
 		for (int r = 0; r < runnable.length; r++) {
 			double[] val = new double[param.length + 3];
-			val[0] = runnable[r].getcMap_seed();
-			val[1] = runnable[r].getSim_seed();
+			if( runnable[r] != null) {
+				val[0] = runnable[r].getcMap_seed();
+				val[1] = runnable[r].getSim_seed();
+			}else {
+				val[0] = Double.NaN;
+				val[1] = Double.NaN;
+			}
 			int pt = 2;
 			for (double p : unbound_param) {
 				val[pt] = p;
 				pt++;
 			}
-			val[pt] = -r_by_runnable[r]; // Maximum
+			if(runnable[r] != null) {
+				val[pt] = -r_by_runnable[r]; // Maximum
+			}else {
+				val[pt] = -best_r;
+			}
 			observationsCollection.add(val);
 		}
 	}
@@ -2136,6 +2180,9 @@ public class Optimisation_Factory {
 
 		}
 	}
+	
+	
+	
 
 	private static int extractContactMap(final ContactMap[] BASE_CONTACT_MAP, final long[] BASE_CONTACT_MAP_SEED,
 			File[] preGenClusterFiles, final int NUM_THREADS) {
@@ -2786,6 +2833,49 @@ public class Optimisation_Factory {
 			}
 		}
 		return sqSum;
+	}
+	
+	public static void main(String[] arg) throws FileNotFoundException, IOException {
+		System.out.println("Testing Baynesian Opt...");
+		
+		//Optimisation test using Rosenbrock banana function, with minimum at (a,b)
+		
+		final double a = 20;
+		final double b = 100;
+		final double[] init_param = new double[] {10.37426803031267, 111.72886188162924};
+		final double[][] boundaries = new double[][] {
+			new double[] {0, 0},  new double[] {200, 200}
+		};
+		final int numEval = 1000;
+		final File baseDir = new File("C:\\Users\\Bhui\\Documents\\Java_Test\\SimClusterModel_Opt_Trend_MP");
+	
+		final long seed = 2251912217291119l;
+		
+		OptTrendFittingFunction func = new OptTrendFittingFunction
+				(0, null, null, null, null, null, 0, null, 0, null, 0, null, null, 0) {
+			
+			double var = Double.NaN;
+			
+			@Override
+			public double value(double[] x) {				
+				var =  Math.pow(a - x[0],2) + Math.pow(b*(x[1]-x[0] * x[0]),2);
+				return var;
+			}
+
+			@Override
+			public Runnable_ClusterModel_Transmission[] getRunnable() {			
+				return new Runnable_ClusterModel_Transmission[1];
+			}
+
+			@Override
+			public double[] getBestResidue_by_runnable() {				
+				return new double[] {var};
+			}
+			
+		};						
+		runBayesianOpt(func, init_param, boundaries, numEval, baseDir, seed);							
+		
+		
 	}
 
 }

@@ -76,5 +76,21 @@
 		<artifactId>smile-core</artifactId>
 		<version>3.0.2</version>
 	</dependency>
+	    <dependency>
+        <groupId>org.bytedeco</groupId>
+        <artifactId>javacpp-platform</artifactId>
+        <version>1.5.9</version>
+    </dependency>
+    <dependency>
+        <groupId>org.bytedeco</groupId>
+        <artifactId>openblas-platform</artifactId>
+        <version>0.3.23-1.5.9</version>
+    </dependency>
+    <dependency>
+        <groupId>org.bytedeco</groupId>
+        <artifactId>arpack-ng-platform</artifactId>
+        <version>3.9.0-1.5.9</version>
+    </dependency>
+
 </dependencies>
 </project>
