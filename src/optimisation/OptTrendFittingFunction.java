@@ -52,8 +52,7 @@ class OptTrendFittingFunction extends OptFittingFunction {
 	private double[] bestResidue_by_runnable;
 
 	public static final String POP_PROP_OPT_PARAM_FIT_SETTING = "POP_PROP_OPT_PARAM_FIT_SETTING";
-
-	// POP_PROP_OPT_PARAM_FIT
+	// POP_PROP_OPT_PARAM_FIT_SETTING
 	// Format: String[] { popPropInitPrefix_IncIndices_... , ...}
 	// Examples:
 	// 16_2_1_1 = TRANS_P2V
@@ -73,7 +72,9 @@ class OptTrendFittingFunction extends OptFittingFunction {
 	// 22_1 = Mean period sym hetro female of seeking treatment
 	// 22_4 = Mean period sym hetro male of seeking treatment
 
-	public static final Pattern POP_PROP_OPT_PARAM_DIFF_FORMAT = Pattern.compile("Diff(\\d+)");
+	public static final Pattern POP_PROP_OPT_PARAM_FIT_SETTING_DIFF_FORMAT = Pattern.compile("Diff(\\d+)");
+	// Eg. 18_Diff1 means Param[18] = opt. parameter value + value of opt parameter
+	// with index 1
 
 	// Opt trend output keys
 	public static final String OPT_TREND_OUTPUT_RESULT_DISP = "OPT_TREND_OUTPUT_RESULT_DISP";
@@ -81,40 +82,45 @@ class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String OPT_TREND_OUTPUT_COUNT_BY_SITE = "OPT_TREND_OUTPUT_COUNT_BY_SITE";
 	public static final String OPT_TREND_OUTPUT_RUNNABLE = "OPT_TREND_OUTPUT_RUNNABLE";
 	public static final String OPT_TREND_OUTPUT_BEST_RESIDUE = "OPT_TREND_OUTPUT_BEST_RESIDUE";
-
 	public static final String OPT_TREND_CALLABLE_OUTPUT_BEST_SO_FAR = "OPT_TREND_CALLABLE_OUTPUT_BEST_SO_FAR";
 	public static final String OPT_TREND_CALLABLE_OUTPUT_RESULT_KEY = "OPT_TREND_CALLABLE_OUTPUT_RESULT_KEY";
 
-	public static final int OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON = 0;
-	public static final int OPT_TREND_CUMUL_INCIDENCE_BY_PERSON = OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON + 1;
-	public static final int OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON = OPT_TREND_CUMUL_INCIDENCE_BY_PERSON + 1;
-	public static final int OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON = OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON
+	// Opt trend count map index
+	private static final int OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON = 0;
+	private static final int OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_PERSON = OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON
 			+ 1;
-	public static final int LENGTH_OPT_TREND_COUNT_MAP_BY_PERSON = OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON
+	private static final int OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON = OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_PERSON
+			+ 1;
+	private static final int OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON = OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON
+			+ 1;
+	private static final int LENGTH_OPT_TREND_COUNT_MAP_BY_PERSON = OPT_TREND_COUNT_MAP_CUMUL_POS_DX_SOUGHT_BY_PERSON
 			+ 1;
 
-	private static final int OPT_TREND_COUNT_MAP_INFECTION_COUNT = 0;
-	private static final int OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE = OPT_TREND_COUNT_MAP_INFECTION_COUNT + 1;
-	private static final int LENGTH_OPT_TREND_COUNT_MAP_BY_SITE = OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE + 1;
+	private static final int OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_SITE = 0;
+	private static final int OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_SITE = OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_SITE
+			+ 1;
+	private static final int LENGTH_OPT_TREND_COUNT_MAP_BY_SITE = OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_SITE + 1;
 
+	// Fields for input trend file
 	public static final String OPT_TREND_MAP_KEY_FORMAT = "%s,%s,%d,%s,%d";
-	public static final String OPT_TREND_FILE_NAME_FOMRMAT = "Opt_trend__%d_%d_%d.txt";
+	public static final String OPT_TREND_INPUT_KEY_TYPE = "Type";
+	public static final String OPT_TREND_INPUT_KEY_WEIGHT = "Weight";
+	public static final String OPT_TREND_INPUT_KEY_FITFROM = "FitFrom";
+	public static final String OPT_TREND_INPUT_TARGET_GRP = "Target_Grp";
 
-	// Header entries for Opt trend CSV files
+	public static final String OPT_TREND_CSV_RANGE = "CSV_RANGE";
 	private static final int OPT_TREND_MAP_KEY_PATH = 0;
 	private static final int OPT_TREND_MAP_KEY_TYPE = OPT_TREND_MAP_KEY_PATH + 1;
 	private static final int OPT_TREND_MAP_KEY_TARGET_GRP = OPT_TREND_MAP_KEY_TYPE + 1;
 	private static final int OPT_TREND_MAP_KEY_WEIGHT = OPT_TREND_MAP_KEY_TARGET_GRP + 1;
 	private static final int OPT_TREND_MAP_KEY_FITFROM = OPT_TREND_MAP_KEY_WEIGHT + 1;
 
-	public static final String OPT_TREND_CSV_RANGE = "CSV_RANGE";
-	public static final String OPT_TREND_TYPE_DX = "CumulDX";
-	public static final String OPT_TREND_TYPE_NUMINF = "NumInf";
-	public static final String OPT_TREND_FITFROM = "FitFrom";
-	public static final String OPT_TREND_TYPE_INCID = "CumulIncid";
-	public static final String OPT_TREND_WEIGHT = "Weight";
-	public static final String OPT_TREND_TARGET_GRP = "Target_Grp";
-	public static final String OPT_TREND_TYPE = "Type";
+	// Fields for output file
+	public static final String OPT_TREND_FILE_NAME_FOMRMAT = "Opt_trend_%d_%d_%d.txt";
+
+	public static final String OPT_TREND_INPUT_TYPE_NUMINF = "NumInf";
+	public static final String OPT_TREND_INPUT_TYPE_INCID = "CumulIncid";
+	public static final String OPT_TREND_INPUT_TYPE_DX = "CumulDX";
 
 	public static final String OPT_TREND_OUTPUT_PREFIX_CMAP = "CMAP    = ";
 	public static final String OPT_TREND_OUTPUT_PREFIX_SIMSEED = "SimSeed = ";
@@ -262,13 +268,13 @@ class OptTrendFittingFunction extends OptFittingFunction {
 				BufferedReader csv_reader = new BufferedReader(new FileReader(csv_file));
 				while ((line = csv_reader.readLine()) != null) {
 					String[] ent = line.split(",");
-					if (OPT_TREND_TYPE.equals(ent[0])) {
+					if (OPT_TREND_INPUT_KEY_TYPE.equals(ent[0])) {
 						type = ent[1];
-					} else if (OPT_TREND_FITFROM.equals(ent[0])) {
+					} else if (OPT_TREND_INPUT_KEY_FITFROM.equals(ent[0])) {
 						fitFrom = Integer.parseInt(ent[1]);
-					} else if (OPT_TREND_TARGET_GRP.equals(ent[0])) {
+					} else if (OPT_TREND_INPUT_TARGET_GRP.equals(ent[0])) {
 						tar_grp = Integer.parseInt(ent[1]);
-					} else if (OPT_TREND_WEIGHT.equals(ent[0])) {
+					} else if (OPT_TREND_INPUT_KEY_WEIGHT.equals(ent[0])) {
 						weight = Double.parseDouble(ent[1]);
 					} else {
 						double t = Double.parseDouble(ent[0]);
@@ -437,14 +443,14 @@ class OptTrendFittingFunction extends OptFittingFunction {
 		HashMap<Integer, int[]>[] countMapByPerson = new HashMap[OptTrendFittingFunction.LENGTH_OPT_TREND_COUNT_MAP_BY_PERSON];
 
 		for (int r = 0; r < rId; r++) {
-			countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_INFECTION_COUNT] = (HashMap<Integer, int[][]>) runnable[r]
+			countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_SITE] = (HashMap<Integer, int[][]>) runnable[r]
 					.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
-			countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE] = (HashMap<Integer, int[][]>) runnable[r]
+			countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_SITE] = (HashMap<Integer, int[][]>) runnable[r]
 					.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_INCIDENCE);
 
 			countMapByPerson[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
 					.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
-			countMapByPerson[OptTrendFittingFunction.OPT_TREND_CUMUL_INCIDENCE_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
+			countMapByPerson[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
 					.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
 			countMapByPerson[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON] = (HashMap<Integer, int[]>) runnable[r]
 					.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
@@ -538,39 +544,39 @@ class OptTrendFittingFunction extends OptFittingFunction {
 
 						double newVal = 0;
 
-						if (OptTrendFittingFunction.OPT_TREND_TYPE_NUMINF.equals(type_key)
-								|| OptTrendFittingFunction.OPT_TREND_TYPE_INCID.equals(type_key)) {
+						if (OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_NUMINF.equals(type_key)
+								|| OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_INCID.equals(type_key)) {
 							if (site < 0) {
 								// V= int[gender]
-								int[] ent = OptTrendFittingFunction.OPT_TREND_TYPE_NUMINF.equals(type_key)
+								int[] ent = OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_NUMINF.equals(type_key)
 										? countMapByPerson[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_PERSON]
 												.get(time)
-										: countMapByPerson[OptTrendFittingFunction.OPT_TREND_CUMUL_INCIDENCE_BY_PERSON]
+										: countMapByPerson[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_PERSON]
 												.get(time);
 								if (ent != null) {
 									for (int g = 0; g < ent.length; g++) {
 										if ((incl_grp & 1 << g) != 0) {
-											newVal = ent[g];
+											newVal += ent[g];
 										}
 									}
 								}
 							} else {
 								// V= int[gender][site]
-								int[][] ent = OptTrendFittingFunction.OPT_TREND_TYPE_NUMINF.equals(type_key)
-										? countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_INFECTION_COUNT]
+								int[][] ent = OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_NUMINF.equals(type_key)
+										? countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_SITE]
 												.get(time)
-										: countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE]
+										: countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_INCIDENCE_BY_SITE]
 												.get(time);
 
 								if (ent != null) {
 									for (int g = 0; g < ent.length; g++) {
 										if ((incl_grp & 1 << g) != 0) {
-											newVal = ent[g][site];
+											newVal += ent[g][site];
 										}
 									}
 								}
 							}
-						} else if (OptTrendFittingFunction.OPT_TREND_TYPE_DX.equals(type_key)) {
+						} else if (OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_DX.equals(type_key)) {
 							// V= int[gender_positive_dx, gender_true_infection]
 							int[][] ent_collection = new int[][] {
 									countMapByPerson[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON]
@@ -583,13 +589,13 @@ class OptTrendFittingFunction extends OptFittingFunction {
 								if (ent != null) {
 									for (int g = 0; g < ent.length / 2; g++) {
 										if ((incl_grp & 1 << g) != 0) {
-											newVal = ent[g];
+											newVal += ent[g];
 										}
 									}
 								}
 							}
 						}
-						y_values[t_pt] += newVal;
+						y_values[t_pt] = newVal;
 						str_disp[t_pt].append(',');
 						str_disp[t_pt].append(newVal);
 
@@ -659,7 +665,7 @@ class OptTrendFittingFunction extends OptFittingFunction {
 					}
 					// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
 					// residue);
-					if (bestResidue_by_runnable[r] > residue) {
+					if (residue < bestResidue_by_runnable[r]) {
 						bestResidue_by_runnable[r] = residue;
 						bestMatchStart_by_runnable[r] = match_start_time;
 					}

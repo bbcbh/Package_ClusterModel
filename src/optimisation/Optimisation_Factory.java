@@ -681,7 +681,7 @@ public class Optimisation_Factory {
 					}
 
 					line = reader.readLine();
-					val[pt] = Double.parseDouble(
+					val[pt] = -Double.parseDouble(
 							line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_RESIDUE.length()));
 					pt++;
 
@@ -2339,9 +2339,7 @@ public class Optimisation_Factory {
 						recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 
 					}
-
 					// Special modification for
-
 					modified_param.put(param_name_index, val);
 
 				} else {
@@ -2375,7 +2373,7 @@ public class Optimisation_Factory {
 		double offset = 0;
 
 		if (runnableField instanceof int[] || runnableField instanceof float[] || runnableField instanceof double[]) {
-			Matcher m = OptTrendFittingFunction.POP_PROP_OPT_PARAM_DIFF_FORMAT
+			Matcher m = OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING_DIFF_FORMAT
 					.matcher(param_setting_all[param_setting_all.length - 1]);
 			if (m.find()) {
 				int offsetIndex = Integer.parseInt((m.group(1)));
