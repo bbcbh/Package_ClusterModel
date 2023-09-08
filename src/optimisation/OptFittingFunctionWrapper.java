@@ -6,7 +6,7 @@ import sim.Runnable_ClusterModel_Transmission;
 
 public final class OptFittingFunctionWrapper extends MultivariateFunctionMappingAdapter {
 
-	OptFittingFunction bounded;
+	private OptFittingFunction bounded;
 
 	public OptFittingFunctionWrapper(OptFittingFunction bounded, double[] lower, double[] upper) {
 		super(bounded, lower, upper);
@@ -19,6 +19,10 @@ public final class OptFittingFunctionWrapper extends MultivariateFunctionMapping
 
 	public double[] getBestResidue_by_runnable() {
 		return bounded.getBestResidue_by_runnable();
+	}
+
+	public OptFittingFunction getBoundedFunc() {
+		return bounded;
 	}
 
 }

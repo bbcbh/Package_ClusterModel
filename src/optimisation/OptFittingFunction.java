@@ -7,7 +7,11 @@ import sim.Runnable_ClusterModel_Transmission;
 public abstract class OptFittingFunction implements MultivariateFunction {
 
 	private Runnable_ClusterModel_Transmission[] runnables;
-	private double[] bestResidue_by_runnable;		
+	private double[] bestResidue_by_runnable;
+	
+	
+	public abstract long[] getSim_seeds();	
+	public abstract long[] getCMap_seeds();	
 
 	public Runnable_ClusterModel_Transmission[] getRunnables() {
 		return runnables;
