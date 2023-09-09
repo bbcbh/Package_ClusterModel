@@ -1,24 +1,16 @@
 package optimisation;
 
+import java.util.Properties;
+
 import org.apache.commons.math3.analysis.MultivariateFunction;
 
 import sim.Runnable_ClusterModel_Transmission;
 
-public abstract class OptFittingFunction implements MultivariateFunction {
-
-	private Runnable_ClusterModel_Transmission[] runnables;
-	private double[] bestResidue_by_runnable;
-	
+public abstract class OptFittingFunction implements MultivariateFunction {   
 	
 	public abstract long[] getSim_seeds();	
 	public abstract long[] getCMap_seeds();	
-
-	public Runnable_ClusterModel_Transmission[] getRunnables() {
-		return runnables;
-	}
-
-	public double[] getBestResidue_by_runnable() {
-		return bestResidue_by_runnable;
-	}
+	public abstract Properties getProperties();	
+	public abstract double[] getBestResidue_by_runnable();
 
 }

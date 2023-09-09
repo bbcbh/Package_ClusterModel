@@ -11,15 +11,7 @@ public final class OptFittingFunctionWrapper extends MultivariateFunctionMapping
 	public OptFittingFunctionWrapper(OptFittingFunction bounded, double[] lower, double[] upper) {
 		super(bounded, lower, upper);
 		this.bounded = bounded;
-	}
-
-	public Runnable_ClusterModel_Transmission[] getRunnables() {
-		return bounded.getRunnables();
-	}
-
-	public double[] getBestResidue_by_runnable() {
-		return bounded.getBestResidue_by_runnable();
-	}
+	}	
 
 	public OptFittingFunction getBoundedFunc() {
 		return bounded;

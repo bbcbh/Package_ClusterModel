@@ -58,44 +58,7 @@ import util.PropValUtils;
 
 public class Optimisation_Factory {
 
-	static final class Comparator_BayesianObservationCollection implements Comparator<double[]> {
-		int[] range;
-
-		public Comparator_BayesianObservationCollection(int[] range) {
-			this.range = range;
-		}
-
-		@Override
-		public int compare(double[] o1, double[] o2) {
-			int r = 0;
-			int pt = range[0];
-			int maxLength = Math.min(o1.length, o2.length);
-			if (range[1] < 0) {
-				maxLength = maxLength + range[1];
-			}
-			while (r == 0 && pt < maxLength) {
-				r = Double.compare(o1[pt], o2[pt]);
-				pt++;
-			}
-			return r;
-		}
-
-	}
-
-	static class OptTrendFittingCallable implements Callable<HashMap<String, Object>> {
-
-		public static final String ARGS_CMAP = "ARGS_CMAP";
-		public static final String ARGS_CMAP_SEED = "ARGS_CMAP_SEED";
-		public static final String ARGS_SIM_SEED = "ARGS_SIM_SEED";
-		public static final String ARGS_BASEDIR = "ARGS_BASEDIR";
-		public static final String ARGS_NUM_EVAL = "ARGS_NUM_EVAL";
-		public static final String ARGS_INIT_PARAM = "ARGS_INIT_PARAM";
-		public static final String ARGS_BOUNDARIES = "ARGS_BOUNDARIES";
-		public static final String ARGS_PROP = "ARGS_PROP";
-		public static final String ARGS_TAR_TRENDS_COLLECTIONS = "ARGS_TAR_TRENDS_COLLECTIONS";
-		public static final String ARGS_TAR_TRENDS_TIMERANGE = "ARGS_TAR_TRENDS_TIMERANGE";
-		public static final String ARGS_OPT_METHOD = "ARGS_OPT_METHOD";
-		public static final String ARGS_PROGRESS_DISP = "ARGS_PROGRESS_DISP";
+	static class OptTrendFittingCallable_FS implements Callable<HashMap<String, Object>> {
 
 		HashMap<String, Object> opt_outputs;
 		HashMap<String, Object> args;
@@ -112,15 +75,15 @@ public class Optimisation_Factory {
 		double best_so_far = Double.POSITIVE_INFINITY;
 		private final String FILE_FORMAT_BEST_SO_FAR = "BestFit_%d_%d.txt";
 
-		public OptTrendFittingCallable(HashMap<String, Object> args) {
+		public OptTrendFittingCallable_FS(HashMap<String, Object> args) {
 			this.args = args;
 			opt_outputs = new HashMap<>();
 			try {
-				this.baseDir = (File) args.get(ARGS_BASEDIR);
-				this.num_eval = (int) args.get(ARGS_NUM_EVAL);
-				this.init_param = (double[]) args.get(ARGS_INIT_PARAM);
-				this.boundaries = (double[][]) args.get(ARGS_BOUNDARIES);
-				this.optMethod = (int) args.get(ARGS_OPT_METHOD);
+				this.baseDir = (File) args.get(OptTrendFittingFunction.ARGS_BASEDIR);
+				this.num_eval = (int) args.get(OptTrendFittingFunction.ARGS_NUM_EVAL);
+				this.init_param = (double[]) args.get(OptTrendFittingFunction.ARGS_INIT_PARAM);
+				this.boundaries = (double[][]) args.get(OptTrendFittingFunction.ARGS_BOUNDARIES);
+				this.optMethod = (int) args.get(OptTrendFittingFunction.ARGS_OPT_METHOD);
 
 			} catch (ClassCastException e) {
 				e.printStackTrace(System.err);
@@ -129,8 +92,8 @@ public class Optimisation_Factory {
 
 		@Override
 		public HashMap<String, Object> call() throws Exception {
-			long[] cMap_seed = (long[]) args.get(OptTrendFittingCallable.ARGS_CMAP_SEED);
-			long[] sim_seed = (long[]) args.get(OptTrendFittingCallable.ARGS_SIM_SEED);
+			long[] cMap_seed = (long[]) args.get(OptTrendFittingFunction.ARGS_CMAP_SEED);
+			long[] sim_seed = (long[]) args.get(OptTrendFittingFunction.ARGS_SIM_SEED);
 
 			opt_outputs.put(OptTrendFittingFunction.OPT_TREND_CALLABLE_OUTPUT_RESULT_KEY,
 					String.format(OPT_TREND_CALLABLE_OUTPUT_RESULT_KEY_FORMAT, cMap_seed[0], sim_seed[0]));
@@ -148,14 +111,13 @@ public class Optimisation_Factory {
 				}
 
 				@Override
-				public Runnable_ClusterModel_Transmission[] getRunnables() {
-					return (Runnable_ClusterModel_Transmission[]) opt_outputs
-							.get(OptTrendFittingFunction.OPT_TREND_OUTPUT_RUNNABLE);
+				public double[] getBestResidue_by_runnable() {
+					return (double[]) opt_outputs.get(OptTrendFittingFunction.OPT_TREND_OUTPUT_BEST_RESIDUE);
 				}
 
 				@Override
-				public double[] getBestResidue_by_runnable() {
-					return (double[]) opt_outputs.get(OptTrendFittingFunction.OPT_TREND_OUTPUT_BEST_RESIDUE);
+				public Properties getProperties() {
+					return (Properties) args.get(OptTrendFittingFunction.ARGS_PROP);
 				}
 
 				@Override
@@ -189,7 +151,7 @@ public class Optimisation_Factory {
 			switch (optMethod) {
 			case OPT_METHOD_BAYESIAN_FS:
 				runBayesianOpt(func, init_param, boundaries, num_eval, baseDir, sim_seed[0],
-						(boolean) args.get(OptTrendFittingCallable.ARGS_PROGRESS_DISP),
+						(boolean) args.get(OptTrendFittingFunction.ARGS_PROGRESS_DISP),
 						String.format("%d_%d_", cMap_seed[0], sim_seed[0]));
 				break;
 			default:
@@ -200,6 +162,40 @@ public class Optimisation_Factory {
 		}
 
 	}
+
+	public static final class Comparator_ResultLookup implements Comparator<Number[]> {
+		int[] range;
+
+		public Comparator_ResultLookup(int[] range) {
+			this.range = range;
+		}
+
+		@Override
+		public int compare(Number[] o1, Number[] o2) {
+			// CMap_Seed, Sim_Seed, Parameters ... , Residue
+			int r = 0;
+			int pt = range[0];
+			int maxLength = Math.min(o1.length, o2.length);
+			if (range[1] < 0) {
+				maxLength = maxLength + range[1];
+			}
+			while (r == 0 && pt < maxLength) {
+				if (o1[pt] instanceof Long) {
+					r = Long.compare((Long) o1[pt], (Long) o2[pt]);
+				} else {
+					r = Double.compare((Double) o1[pt], (Double) o2[pt]);
+				}
+				pt++;
+			}
+			return r;
+		}
+
+	}
+
+	public static final Comparator_ResultLookup COMPARATOR_RESULT_LOOKUP_ALL = new Comparator_ResultLookup(
+			new int[] { 0, Integer.MAX_VALUE });
+	public static final Comparator_ResultLookup COMPARATOR_RESULT_LOOKUP_PARAM = new Comparator_ResultLookup(
+			new int[] { 0, -1 });
 
 	private static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	private static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
@@ -239,11 +235,6 @@ public class Optimisation_Factory {
 
 	public final static String FILENAME_OPT_BAYESIAN_OBS = "Opt_Bayesian_Obs.csv";
 	public final static String FILENAME_OPT_BAYESIAN_OBS_BOUNDED = "Opt_Bayesian_Obs_Bounded.csv";
-
-	private static final Comparator_BayesianObservationCollection OBS_COMP_ALL = new Comparator_BayesianObservationCollection(
-			new int[] { 0, Integer.MAX_VALUE });
-	private static final Comparator_BayesianObservationCollection OBS_COMP_PARAM_ONLY = new Comparator_BayesianObservationCollection(
-			new int[] { 0, -1 });
 
 	private static final Pattern PATTERN_OPT_TREND_TXT = Pattern
 			.compile(OptTrendFittingFunction.OPT_TREND_FILE_NAME_FOMRMAT.replaceAll("%d", "(-{0,1}\\\\d+)"));
@@ -377,6 +368,59 @@ public class Optimisation_Factory {
 				System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
 						contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
 
+				// Loading of previous optTrend text output files
+
+				// Add opt_trend from previous collection
+				File[] optTrend_txt_files = baseDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return PATTERN_OPT_TREND_TXT.matcher(pathname.getName()).matches();
+					}
+				});
+
+				ArrayList<Number[]> results_lookup_arr = new ArrayList<>();
+
+				for (File optTrend_txt_file : optTrend_txt_files) {
+					BufferedReader reader = new BufferedReader(new FileReader(optTrend_txt_file));
+					String line;
+					while ((line = reader.readLine()) != null) {
+						if (line.startsWith(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP)) {
+							// cMap_Seed, sim_seed, unbounded_parameters, residue
+							Number[] val = new Number[init_param.length + 3];
+							int pt = 0;
+							val[pt] = Long.parseLong(
+									line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP.length()));
+							pt++;
+							line = reader.readLine();
+							val[pt] = Long.parseLong(
+									line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_SIMSEED.length()));
+							pt++;
+							line = reader.readLine();
+							String[] param_ent = (line.substring(
+									OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_PARAM.length() + 1,
+									line.length() - 1)).split(",");
+							for (int p = 0; p < param_ent.length; p++) {
+								val[pt] = Double.parseDouble(param_ent[p]);
+								pt++;
+							}
+
+							line = reader.readLine();
+							val[pt] = Double.parseDouble(
+									line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_RESIDUE.length()));
+							pt++;
+
+							int key = Collections.binarySearch(results_lookup_arr, val, COMPARATOR_RESULT_LOOKUP_ALL);
+							if (key < 0) {
+								results_lookup_arr.add(~key, val);
+							}
+						}
+					}
+					reader.close();
+				}
+
+				Number[][] results_lookup = results_lookup_arr.toArray(new Number[results_lookup_arr.size()][]);
+				prop.put(OptTrendFittingFunction.ARGS_PREV_RESULTS, results_lookup);
+
 				switch (optMethod) {
 				case OPT_METHOD_SIMPLEX:
 				case OPT_METHOD_BAYESIAN:
@@ -398,7 +442,7 @@ public class Optimisation_Factory {
 
 				case OPT_METHOD_BAYESIAN_FS:
 				case OPT_METHOD_SIMPLEX_FS:
-					OptTrendFittingCallable[] opt_callable = new OptTrendFittingCallable[baseCMaps.length
+					OptTrendFittingCallable_FS[] opt_callable = new OptTrendFittingCallable_FS[baseCMaps.length
 							* numSimPerMap];
 
 					Number[][] result_collection = new Number[opt_callable.length][];
@@ -415,13 +459,12 @@ public class Optimisation_Factory {
 						while ((line = reader.readLine()) != null) {
 							String[] ent = line.split(",");
 							result_collection[cId] = new Number[ent.length];
-
-							result_collection[cId][0] = Double.parseDouble(ent[0]); // Residue;
-							result_collection[cId][1] = Long.parseLong(ent[1]); // CMap_Seed
-							result_collection[cId][2] = Long.parseLong(ent[2]); // Sim_Seed
-							for (int c = 3; c < ent.length; c++) {
+							result_collection[cId][0] = Long.parseLong(ent[0]); // CMap_Seed
+							result_collection[cId][1] = Long.parseLong(ent[1]); // Sim_Seed
+							for (int c = 2; c < ent.length; c++) {
 								result_collection[cId][c] = Double.parseDouble(ent[c]); // Best fit parameter
 							}
+							result_collection[cId][ent.length - 1] = Double.parseDouble(ent[ent.length - 1]); // Residue;
 							cId++;
 						}
 						reader.close();
@@ -432,9 +475,9 @@ public class Optimisation_Factory {
 								long cMap_seed = baseCMapSeeds[mapId];
 								for (int s = 0; s < numSimPerMap; s++) {
 									result_collection[cId] = new Number[3 + init_param.length];
-									result_collection[cId][0] = Double.POSITIVE_INFINITY;
-									result_collection[cId][1] = cMap_seed;
-									result_collection[cId][2] = rng.nextLong();
+									result_collection[cId][0] = cMap_seed;
+									result_collection[cId][1] = rng.nextLong();
+									result_collection[cId][result_collection[cId].length - 1] = Double.NaN;
 								}
 								cId++;
 							}
@@ -446,25 +489,26 @@ public class Optimisation_Factory {
 					cId = 0;
 
 					for (Number[] row : result_collection) {
-						long cMap_seed = row[1].longValue();
+						long cMap_seed = row[0].longValue();
 						int cMap_index = Arrays.binarySearch(baseCMapSeeds, cMap_seed);
 						if (cMap_index >= 0) {
 							ContactMap cMap = baseCMaps[cMap_index];
-							long sim_seed = row[2].longValue();
+							long sim_seed = row[1].longValue();
 							HashMap<String, Object> arg = new HashMap<>();
-							arg.put(OptTrendFittingCallable.ARGS_CMAP, new ContactMap[] { cMap });
-							arg.put(OptTrendFittingCallable.ARGS_CMAP_SEED, new long[] { cMap_seed });
-							arg.put(OptTrendFittingCallable.ARGS_SIM_SEED, new long[] { sim_seed });
-							arg.put(OptTrendFittingCallable.ARGS_BASEDIR, baseDir);
-							arg.put(OptTrendFittingCallable.ARGS_NUM_EVAL, numEval);
-							arg.put(OptTrendFittingCallable.ARGS_INIT_PARAM, init_param);
-							arg.put(OptTrendFittingCallable.ARGS_BOUNDARIES, boundaries);
-							arg.put(OptTrendFittingCallable.ARGS_TAR_TRENDS_COLLECTIONS, target_trend_collection);
-							arg.put(OptTrendFittingCallable.ARGS_TAR_TRENDS_TIMERANGE, targer_trend_time_range);
-							arg.put(OptTrendFittingCallable.ARGS_PROP, prop);
-							arg.put(OptTrendFittingCallable.ARGS_OPT_METHOD, optMethod);
-							arg.put(OptTrendFittingCallable.ARGS_PROGRESS_DISP, numThreads <= 1);
-							opt_callable[cId] = new OptTrendFittingCallable(arg);
+							arg.put(OptTrendFittingFunction.ARGS_CMAP, new ContactMap[] { cMap });
+							arg.put(OptTrendFittingFunction.ARGS_CMAP_SEED, new long[] { cMap_seed });
+							arg.put(OptTrendFittingFunction.ARGS_SIM_SEED, new long[] { sim_seed });
+							arg.put(OptTrendFittingFunction.ARGS_BASEDIR, baseDir);
+							arg.put(OptTrendFittingFunction.ARGS_NUM_EVAL, numEval);
+							arg.put(OptTrendFittingFunction.ARGS_INIT_PARAM, init_param);
+							arg.put(OptTrendFittingFunction.ARGS_BOUNDARIES, boundaries);
+							arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS, target_trend_collection);
+							arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_TIMERANGE, targer_trend_time_range);
+							arg.put(OptTrendFittingFunction.ARGS_PROP, prop);
+							arg.put(OptTrendFittingFunction.ARGS_OPT_METHOD, optMethod);
+							arg.put(OptTrendFittingFunction.ARGS_PROGRESS_DISP, numThreads <= 1);
+							arg.put(OptTrendFittingFunction.ARGS_PREV_RESULTS, results_lookup);
+							opt_callable[cId] = new OptTrendFittingCallable_FS(arg);
 							cId++;
 						}
 
@@ -532,7 +576,7 @@ public class Optimisation_Factory {
 
 	}
 
-	private static void executeOptTrendFittingCallable(ExecutorService exec, OptTrendFittingCallable[] opt_callable,
+	private static void executeOptTrendFittingCallable(ExecutorService exec, OptTrendFittingCallable_FS[] opt_callable,
 			Future<HashMap<String, Object>>[] output_future, Number[][] result_collection, File resList, int inPoolFrom,
 			int inPoolTo) {
 		exec.shutdown();
@@ -636,64 +680,8 @@ public class Optimisation_Factory {
 			reader.close();
 		}
 
-		observations.sort(OBS_COMP_ALL);
-
 		OptFittingFunctionWrapper opt_trend_obj_func_wrapper = new OptFittingFunctionWrapper(opt_trend_obj_func,
 				boundaries[0], boundaries[1]);
-
-		// Add opt_trend from previous collection
-		File[] optTrend_files = baseDir.listFiles(new FileFilter() {
-			@Override
-			public boolean accept(File pathname) {
-				return PATTERN_OPT_TREND_TXT.matcher(pathname.getName()).matches();
-			}
-		});
-
-		for (File optTrend_file : optTrend_files) {
-			BufferedReader reader = new BufferedReader(new FileReader(optTrend_file));
-			String line;
-			while ((line = reader.readLine()) != null) {
-				if (line.startsWith(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP)) {
-					// cMap_Seed, sim_seed, unbounded_parameters, residue
-					double[] val = new double[init_param.length + 3];
-					int pt = 0;
-					val[pt] = Long
-							.parseLong(line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP.length()));
-					pt++;
-					line = reader.readLine();
-					val[pt] = Long.parseLong(
-							line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_SIMSEED.length()));
-					pt++;
-					line = reader.readLine();
-					String[] param_ent = (line.substring(
-							OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_PARAM.length() + 1, line.length() - 1))
-							.split(",");
-
-					double[] param_bounded = new double[param_ent.length];
-					for (int p = 0; p < param_ent.length; p++) {
-						param_bounded[p] = Double.parseDouble(param_ent[p]);
-					}
-
-					double[] param_unbounded = opt_trend_obj_func_wrapper.boundedToUnbounded(param_bounded);
-					for (int p = 0; p < param_unbounded.length; p++) {
-						val[pt] = param_unbounded[p];
-						pt++;
-					}
-
-					line = reader.readLine();
-					val[pt] = -Double.parseDouble(
-							line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_RESIDUE.length()));
-					pt++;
-
-					int key = Collections.binarySearch(observations, val, OBS_COMP_ALL);
-					if (key < 0) {
-						observations.add(~key, val);
-					}
-
-				}
-			}
-			reader.close();
-		}
 
 		if (observations.size() < 2 * init_param.length) {
 			addBayesianObservationCollection(observations, opt_trend_obj_func_wrapper, init_param, disp);
@@ -890,60 +878,35 @@ public class Optimisation_Factory {
 	private static void addBayesianObservationCollection(ArrayList<double[]> observationsCollection,
 			OptFittingFunctionWrapper func, double[] param, boolean disp_val) {
 
-		long[] cMap_seeds = func.getBoundedFunc().getCMap_seeds();
-		long[] sim_seeds = func.getBoundedFunc().getSim_seeds();
 		double[] unbound_param = func.boundedToUnbounded(param);
 
 		double[] val = new double[param.length + 3];
 
-		boolean needRunFunction = false;
+		double best_r = func.value(unbound_param);
+		double[] r_by_runnable = func.getBoundedFunc().getBestResidue_by_runnable();
+		long[] cMap_seeds = func.getBoundedFunc().getCMap_seeds();
+		long[] sim_seeds = func.getBoundedFunc().getSim_seeds();
 
-		// Check if entry already in collection
-		for (long cSeed : cMap_seeds) {
-			val[0] = cSeed;
-			for (long sSeed : sim_seeds) {
-				val[1] = sSeed;
-				int pt = 2;
-				for (double p : unbound_param) {
-					val[pt] = p;
-					pt++;
-				}
-			}
-			int key = Collections.binarySearch(observationsCollection, val, OBS_COMP_PARAM_ONLY);
-			needRunFunction |= (key < 0);
-		}
-
-		if (needRunFunction) {
-			double best_r = func.value(unbound_param);
-			double[] r_by_runnable = func.getBestResidue_by_runnable();
-			Runnable_ClusterModel_Transmission[] runnable = func.getRunnables();
-
-			for (int r = 0; r < runnable.length; r++) {
-				Arrays.fill(val, Double.NaN);
-				if (runnable[r] != null) {
-					val[0] = runnable[r].getcMap_seed();
-					val[1] = runnable[r].getSim_seed();
-				}
-				int pt = 2;
-				for (double p : unbound_param) {
-					val[pt] = p;
-					pt++;
-				}
-				if (runnable[r] != null) {
-					val[pt] = -r_by_runnable[r]; // Maximum
-				} else {
-					val[pt] = -best_r;
-				}
-
-				int key = Collections.binarySearch(observationsCollection, val, OBS_COMP_PARAM_ONLY);
-				if (key < 0) {
-					observationsCollection.add(~key, val);
-					if (disp_val) {
-						System.out.printf("Added Obs : %s -> %f\n", Arrays.toString(param), val[pt]);
-					}
-				}
+		for (int r = 0; r < r_by_runnable.length; r++) {
+			Arrays.fill(val, Double.NaN);
+			val[0] = cMap_seeds[r];
+			val[1] = sim_seeds[r];
+			int pt = 2;
+			for (double p : unbound_param) {
+				val[pt] = p;
+				pt++;
+			}			
+			if(Double.isNaN(-r_by_runnable[r])) {
+				val[pt] = - best_r;
+			}else {
+				val[pt] = -r_by_runnable[r]; // Maximum
+			}			
+			observationsCollection.add(val);
+			if (disp_val) {
+				System.out.printf("Added Obs : %s -> %f\n", Arrays.toString(param), val[pt]);
 			}
 		}
+
 	}
 
 	public static void stable_prevalence_by_tranmission_fit_GA(String[] args)
