@@ -445,7 +445,7 @@ public class Optimisation_Factory {
 					OptTrendFittingCallable_FS[] opt_callable = new OptTrendFittingCallable_FS[baseCMaps.length
 							* numSimPerMap];
 
-					Number[][] result_collection = new Number[opt_callable.length][];
+					Number[][] best_result_collection = new Number[opt_callable.length][];
 
 					int cId = 0;
 
@@ -458,13 +458,13 @@ public class Optimisation_Factory {
 						String line;
 						while ((line = reader.readLine()) != null) {
 							String[] ent = line.split(",");
-							result_collection[cId] = new Number[ent.length];
-							result_collection[cId][0] = Long.parseLong(ent[0]); // CMap_Seed
-							result_collection[cId][1] = Long.parseLong(ent[1]); // Sim_Seed
+							best_result_collection[cId] = new Number[ent.length];
+							best_result_collection[cId][0] = Long.parseLong(ent[0]); // CMap_Seed
+							best_result_collection[cId][1] = Long.parseLong(ent[1]); // Sim_Seed
 							for (int c = 2; c < ent.length; c++) {
-								result_collection[cId][c] = Double.parseDouble(ent[c]); // Best fit parameter
+								best_result_collection[cId][c] = Double.parseDouble(ent[c]); // Best fit parameter
 							}
-							result_collection[cId][ent.length - 1] = Double.parseDouble(ent[ent.length - 1]); // Residue;
+							best_result_collection[cId][ent.length - 1] = Double.parseDouble(ent[ent.length - 1]); // Residue;
 							cId++;
 						}
 						reader.close();
@@ -474,10 +474,10 @@ public class Optimisation_Factory {
 							for (int mapId = 0; mapId < baseCMaps.length; mapId++) {
 								long cMap_seed = baseCMapSeeds[mapId];
 								for (int s = 0; s < numSimPerMap; s++) {
-									result_collection[cId] = new Number[3 + init_param.length];
-									result_collection[cId][0] = cMap_seed;
-									result_collection[cId][1] = rng.nextLong();
-									result_collection[cId][result_collection[cId].length - 1] = Double.NaN;
+									best_result_collection[cId] = new Number[3 + init_param.length];
+									best_result_collection[cId][0] = cMap_seed;
+									best_result_collection[cId][1] = rng.nextLong();
+									best_result_collection[cId][best_result_collection[cId].length - 1] = Double.NaN;
 								}
 								cId++;
 							}
@@ -485,10 +485,10 @@ public class Optimisation_Factory {
 					}
 
 					// Export current result collection
-					exportResultCollection(result_collection, resList);
+					exportResultCollection(best_result_collection, resList);
 					cId = 0;
 
-					for (Number[] row : result_collection) {
+					for (Number[] row : best_result_collection) {
 						long cMap_seed = row[0].longValue();
 						int cMap_index = Arrays.binarySearch(baseCMapSeeds, cMap_seed);
 						if (cMap_index >= 0) {
@@ -523,9 +523,9 @@ public class Optimisation_Factory {
 							if (opt_callable[cId] != null) {
 								try {
 									opt_outputs[cId] = opt_callable[cId].call();
-									result_collection[cId][0] = (Double) opt_outputs[cId]
+									best_result_collection[cId][0] = (Double) opt_outputs[cId]
 											.get(OptTrendFittingFunction.OPT_TREND_CALLABLE_OUTPUT_BEST_SO_FAR);
-									exportResultCollection(result_collection, resList);
+									exportResultCollection(best_result_collection, resList);
 								} catch (Exception e) {
 									e.printStackTrace(System.err);
 								}
@@ -549,13 +549,13 @@ public class Optimisation_Factory {
 							cId++;
 
 							if ((cId - inPoolFrom) == numThreads) {
-								executeOptTrendFittingCallable(exec, opt_callable, output_future, result_collection,
+								executeOptTrendFittingCallable(exec, opt_callable, output_future, best_result_collection,
 										resList, inPoolFrom, cId);
 								exec = null;
 							}
 						}
 						if (exec != null) {
-							executeOptTrendFittingCallable(exec, opt_callable, output_future, result_collection,
+							executeOptTrendFittingCallable(exec, opt_callable, output_future, best_result_collection,
 									resList, inPoolFrom, cId);
 							exec = null;
 
@@ -577,7 +577,7 @@ public class Optimisation_Factory {
 	}
 
 	private static void executeOptTrendFittingCallable(ExecutorService exec, OptTrendFittingCallable_FS[] opt_callable,
-			Future<HashMap<String, Object>>[] output_future, Number[][] result_collection, File resList, int inPoolFrom,
+			Future<HashMap<String, Object>>[] output_future, Number[][] best_result_collection, File resList, int inPoolFrom,
 			int inPoolTo) {
 		exec.shutdown();
 		try {
@@ -591,7 +591,7 @@ public class Optimisation_Factory {
 			if (opt_callable[c] != null) {
 				try {
 					HashMap<String, Object> opt_output = output_future[c].get();
-					result_collection[c][0] = (Double) opt_output
+					best_result_collection[c][0] = (Double) opt_output
 							.get(OptTrendFittingFunction.OPT_TREND_CALLABLE_OUTPUT_BEST_SO_FAR);
 				} catch (InterruptedException | ExecutionException e) {
 					e.printStackTrace(System.err);
@@ -600,7 +600,7 @@ public class Optimisation_Factory {
 		}
 
 		try {
-			exportResultCollection(result_collection, resList);
+			exportResultCollection(best_result_collection, resList);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace(System.err);
 		}
@@ -613,7 +613,7 @@ public class Optimisation_Factory {
 		Arrays.sort(result_collection, new Comparator<Number[]>() {
 			@Override
 			public int compare(Number[] o1, Number[] o2) {
-				int res = -Double.compare((Double) o1[0], (Double) o2[0]);
+				int res = -Double.compare((Double) o1[o1.length-1], (Double) o2[o2.length-1]);
 				if (res == 0) {
 					res = Long.compare((Long) o1[1], (Long) o2[1]); // cMap_seed
 				}
@@ -621,8 +621,8 @@ public class Optimisation_Factory {
 			}
 		});
 
-		PrintWriter pWri = new PrintWriter(resList);
-		pWri.println("RESIDUE,CMAP_SEED,SIM_SEED,PARAM");
+		PrintWriter pWri = new PrintWriter(resList);		
+		pWri.print("CMAP_SEED,SIM_SEED,PARAM");		
 
 		for (Number[] row : result_collection) {
 			StringBuilder line = null;
