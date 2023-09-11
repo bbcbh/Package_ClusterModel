@@ -2,8 +2,6 @@ package optimisation;
 
 import org.apache.commons.math3.optim.nonlinear.scalar.MultivariateFunctionMappingAdapter;
 
-import sim.Runnable_ClusterModel_Transmission;
-
 public final class OptFittingFunctionWrapper extends MultivariateFunctionMappingAdapter {
 
 	private OptFittingFunction bounded;
