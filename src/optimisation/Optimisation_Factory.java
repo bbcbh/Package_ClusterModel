@@ -73,7 +73,6 @@ public class Optimisation_Factory {
 		int contact_map_start_time = 365;
 
 		double best_so_far = Double.POSITIVE_INFINITY;
-		private final String FILE_FORMAT_BEST_SO_FAR = "BestFit_%d_%d.txt";
 
 		public OptTrendFittingCallable_FS(HashMap<String, Object> args) {
 			this.args = args;
@@ -131,7 +130,8 @@ public class Optimisation_Factory {
 						if (resp_disp != null) {
 							try {
 								PrintWriter pWri_best_so_far = new PrintWriter(new File(baseDir,
-										String.format(FILE_FORMAT_BEST_SO_FAR, cMap_seed[0], sim_seed[0])));
+										String.format(OptTrendFittingFunction.OPT_TREND_FILE_NAME_BEST_SO_FAR,
+												cMap_seed[0], sim_seed[0])));
 								for (String disp : resp_disp) {
 									pWri_best_so_far.println(disp);
 								}
@@ -165,6 +165,7 @@ public class Optimisation_Factory {
 
 	public static final class Comparator_ResultLookup implements Comparator<Number[]> {
 		int[] range;
+		final double PARAM_TOL = 0.0000005;
 
 		public Comparator_ResultLookup(int[] range) {
 			this.range = range;
@@ -174,7 +175,8 @@ public class Optimisation_Factory {
 		public int compare(Number[] o1, Number[] o2) {
 			// CMap_Seed, Sim_Seed, Parameters ... , Residue
 			int r = 0;
-			int pt = range[0];
+			int pt = range[0];			
+			                  
 			int maxLength = Math.min(o1.length, o2.length);
 			if (range[1] < 0) {
 				maxLength = maxLength + range[1];
@@ -183,7 +185,11 @@ public class Optimisation_Factory {
 				if (o1[pt] instanceof Long) {
 					r = Long.compare((Long) o1[pt], (Long) o2[pt]);
 				} else {
-					r = Double.compare((Double) o1[pt], (Double) o2[pt]);
+					if (Math.abs((Double) o1[pt] - (Double) o2[pt]) < PARAM_TOL) {						
+						r = 0;
+					} else {
+						r = Double.compare((Double) o1[pt], (Double) o2[pt]);
+					}
 				}
 				pt++;
 			}
@@ -237,7 +243,7 @@ public class Optimisation_Factory {
 	public final static String FILENAME_OPT_BAYESIAN_OBS_BOUNDED = "Opt_Bayesian_Obs_Bounded.csv";
 
 	private static final Pattern PATTERN_OPT_TREND_TXT = Pattern
-			.compile(OptTrendFittingFunction.OPT_TREND_FILE_NAME_FOMRMAT.replaceAll("%d", "(-{0,1}\\\\d+)"));
+			.compile(OptTrendFittingFunction.OPT_TREND_FILE_NAME_TREND_OUTPUT.replaceAll("%d", "(-{0,1}\\\\d+)"));
 
 	public static void trend_fit_Simplex(String[] args) throws FileNotFoundException, IOException {
 		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  <optional: NUM_EVAL (int)>";
@@ -549,8 +555,8 @@ public class Optimisation_Factory {
 							cId++;
 
 							if ((cId - inPoolFrom) == numThreads) {
-								executeOptTrendFittingCallable(exec, opt_callable, output_future, best_result_collection,
-										resList, inPoolFrom, cId);
+								executeOptTrendFittingCallable(exec, opt_callable, output_future,
+										best_result_collection, resList, inPoolFrom, cId);
 								exec = null;
 							}
 						}
@@ -577,8 +583,8 @@ public class Optimisation_Factory {
 	}
 
 	private static void executeOptTrendFittingCallable(ExecutorService exec, OptTrendFittingCallable_FS[] opt_callable,
-			Future<HashMap<String, Object>>[] output_future, Number[][] best_result_collection, File resList, int inPoolFrom,
-			int inPoolTo) {
+			Future<HashMap<String, Object>>[] output_future, Number[][] best_result_collection, File resList,
+			int inPoolFrom, int inPoolTo) {
 		exec.shutdown();
 		try {
 			if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
@@ -613,7 +619,7 @@ public class Optimisation_Factory {
 		Arrays.sort(result_collection, new Comparator<Number[]>() {
 			@Override
 			public int compare(Number[] o1, Number[] o2) {
-				int res = -Double.compare((Double) o1[o1.length-1], (Double) o2[o2.length-1]);
+				int res = -Double.compare((Double) o1[o1.length - 1], (Double) o2[o2.length - 1]);
 				if (res == 0) {
 					res = Long.compare((Long) o1[1], (Long) o2[1]); // cMap_seed
 				}
@@ -621,8 +627,8 @@ public class Optimisation_Factory {
 			}
 		});
 
-		PrintWriter pWri = new PrintWriter(resList);		
-		pWri.print("CMAP_SEED,SIM_SEED,PARAM");		
+		PrintWriter pWri = new PrintWriter(resList);
+		pWri.println("CMAP_SEED,SIM_SEED,PARAM");
 
 		for (Number[] row : result_collection) {
 			StringBuilder line = null;
@@ -895,12 +901,12 @@ public class Optimisation_Factory {
 			for (double p : unbound_param) {
 				val[pt] = p;
 				pt++;
-			}			
-			if(Double.isNaN(-r_by_runnable[r])) {
-				val[pt] = - best_r;
-			}else {
+			}
+			if (Double.isNaN(-r_by_runnable[r])) {
+				val[pt] = -best_r;
+			} else {
 				val[pt] = -r_by_runnable[r]; // Maximum
-			}			
+			}
 			observationsCollection.add(val);
 			if (disp_val) {
 				System.out.printf("Added Obs : %s -> %f\n", Arrays.toString(param), val[pt]);

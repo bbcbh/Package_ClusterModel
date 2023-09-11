@@ -44,6 +44,8 @@ public class Launcher_ClusterModel {
 				Optimisation_Factory.trend_fit_Bayesian(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-opt_trend_bayesian_fs".equals(flag)) {
 				Optimisation_Factory.trend_fit_Bayesian_fs(Arrays.copyOfRange(args, 1, args.length));
+			} else if ("-opt_trend_fs".equals(flag)) {
+				Optimisation_Factory.trend_fit_Simplex_fs(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-optGA".equals(flag)) {
 				Optimisation_Factory.stable_prevalence_by_tranmission_fit_GA(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-analyse".equals(flag)) {

@@ -2,6 +2,7 @@ package optimisation;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -10,6 +11,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -32,8 +34,8 @@ import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
 import util.PropValUtils;
 
-class OptTrendFittingFunction extends OptFittingFunction {
-	
+public class OptTrendFittingFunction extends OptFittingFunction {
+
 	private static Pattern OPT_TREND_TYPE_FORMAT_BY_SITE = Pattern.compile("(.*)_(\\d+)");
 
 	private final ContactMap[] baseCMaps;
@@ -126,7 +128,8 @@ class OptTrendFittingFunction extends OptFittingFunction {
 	private static final int OPT_TREND_MAP_KEY_FITFROM = OPT_TREND_MAP_KEY_WEIGHT + 1;
 
 	// Fields for output file
-	public static final String OPT_TREND_FILE_NAME_FOMRMAT = "Opt_trend_%d_%d_%d.txt";
+	public static final String OPT_TREND_FILE_NAME_TREND_OUTPUT = "Opt_trend_%d_%d_%d.txt";
+	public static final String OPT_TREND_FILE_NAME_BEST_SO_FAR = "BestFit_%d_%d.txt";
 
 	public static final String OPT_TREND_INPUT_TYPE_NUMINF = "NumInf";
 	public static final String OPT_TREND_INPUT_TYPE_INCID = "CumulIncid";
@@ -137,6 +140,9 @@ class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String OPT_TREND_OUTPUT_PREFIX_PARAM = "Param   = ";
 	public static final String OPT_TREND_OUTPUT_PREFIX_RESIDUE = "Residue = ";
 	public static final String OPT_TREND_OUTPUT_PREFIX_OFFSET = "Offset  = ";
+
+	public static final String OPT_SUMMARY_FILE = "Opt_Summary.csv";
+	public static final String OPT_SUMMARY_TREND_FILE = "Opt_Summary_Trend_%d.csv";
 
 	public OptTrendFittingFunction(File baseDir, Properties prop, ContactMap[] baseCMaps, long[] baseCMapSeeds,
 			long[] sim_seeds, HashMap<String, double[][]> target_trend_collection, double[][] trend_time_range,
@@ -259,6 +265,157 @@ class OptTrendFittingFunction extends OptFittingFunction {
 		System.out.println(outMsg);
 
 		return best_fitting_sq_sum;
+	}
+
+	public static void extractBestOptrendResults(File basedir, Pattern subDirPattern) throws IOException {
+
+		final Pattern bestFileFile_pattern = Pattern
+				.compile(OPT_TREND_FILE_NAME_BEST_SO_FAR.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+		File[] subDirs = basedir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return pathname.isDirectory() && subDirPattern.matcher(pathname.getName()).matches();
+			}
+		});
+
+		// double residue, long cMapSeed, long simSeed, long offset, String[] param_str,
+		// String[] trends
+		ArrayList<Object[]> resultsCollections = new ArrayList<>();
+		final Comparator<Object[]> resultCollectionsComp = new Comparator<Object[]>() {
+			@Override
+			public int compare(Object[] o1, Object[] o2) {
+				int r = 0;
+				for (int p = 0; (r == 0) && (p < o1.length); p++) {
+					if (o1[p] instanceof Double) {
+						r = Double.compare((Double) o1[p], (Double) o2[p]);
+					} else if (o1[p] instanceof Long) {
+						r = Long.compare((Long) o1[p], (Long) o2[p]);
+					} else {
+						String[] s1 = (String[]) o1[p];
+						String[] s2 = (String[]) o2[p];
+						for (int s = 0; ((r == 0) && s < s1.length); s++) {
+							r = s1[s].compareTo(s2[s]);
+						}
+					}
+				}
+				return r;
+			}
+		};
+
+		for (File subDir : subDirs) {
+			File[] bestFitFiles = subDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return bestFileFile_pattern.matcher(pathname.getName()).matches();
+				}
+			});
+			for (File bestFitFile : bestFitFiles) {
+
+				BufferedReader reader = new BufferedReader(new FileReader(bestFitFile));
+				String line;
+
+				Matcher m = bestFileFile_pattern.matcher(bestFitFile.getName());
+				m.matches();
+
+				long cMapSeed = Long.parseLong(m.group(1));
+				long simSeed = Long.parseLong(m.group(2));
+
+				while ((line = reader.readLine()) != null) {
+					if (line.startsWith(OPT_TREND_OUTPUT_PREFIX_PARAM)) {
+						String[] param_str = line
+								.substring(OPT_TREND_OUTPUT_PREFIX_PARAM.length() + 1, line.length() - 1).split(",");
+
+						line = reader.readLine();
+						double residue = Double.parseDouble(line.substring(OPT_TREND_OUTPUT_PREFIX_RESIDUE.length()));
+
+						line = reader.readLine();
+						long offset = Integer.parseInt(line.substring(OPT_TREND_OUTPUT_PREFIX_OFFSET.length()));
+
+						ArrayList<String> trend_arr = new ArrayList<>();
+
+						// TrendEntry
+						while ((line = reader.readLine()) != null) {
+							if(!line.isBlank()) {
+								trend_arr.add(line);
+							}
+						}
+						String[] trends = trend_arr.toArray(new String[trend_arr.size()]);
+						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends };
+
+						int key = Collections.binarySearch(resultsCollections, val, resultCollectionsComp);
+						resultsCollections.add(~key, val);
+					}
+				}
+				reader.close();
+			}
+		}
+
+		// Print of results
+		PrintWriter pWri_summary = new PrintWriter(new File(basedir, OPT_SUMMARY_FILE));
+		pWri_summary.println("Residue,CMapSeed,SimSeed,Param");
+
+		PrintWriter[] pWri_trend = null;
+
+		for (Object[] val : resultsCollections) {
+			pWri_summary.printf("%f,%d,%d", (Double) val[0], (Long) val[1], (Long) val[2]);
+			String[] param = (String[]) val[4];
+			for (int s = 0; s < param.length; s++) {
+				pWri_summary.print(',');
+				pWri_summary.print(param[s]);
+			}
+			pWri_summary.println();
+
+			String[] trends = (String[]) val[5];
+			int offset = ((Long) val[3]).intValue();
+
+			if (pWri_trend == null) {
+				String[] firstLine = trends[0].split(",");
+				pWri_trend = new PrintWriter[firstLine.length];
+				for (int w = 1; w < pWri_trend.length; w++) {
+					pWri_trend[w] = new PrintWriter(new File(basedir, String.format(OPT_SUMMARY_TREND_FILE, w)));
+				}
+			}
+
+			StringBuilder timeline = new StringBuilder();
+
+			for (int t = 0; t < trends.length; t++) {
+				String[] ent = trends[t].split(",");
+				int time_adj = Integer.parseInt(ent[0]) - offset;
+				if (t != 0) {
+					timeline.append(',');
+				}
+				timeline.append(time_adj);
+			}
+
+			for (int v = 1; v < pWri_trend.length; v++) {
+				pWri_trend[v].println(timeline.toString());
+			}
+
+			for (int t = 0; t < trends.length; t++) {
+				String[] ent = trends[t].split(",");
+				for (int v = 1; v < ent.length; v++) {
+					if (t != 0) {
+						pWri_trend[v].print(',');
+					}
+					pWri_trend[v].print(ent[v]);
+				}
+			}
+
+			for (int v = 1; v < pWri_trend.length; v++) {
+				pWri_trend[v].println();
+			}
+
+		}
+
+		pWri_summary.close();
+		for (PrintWriter pWri : pWri_trend) {
+			if (pWri != null) {
+				pWri.close();
+			}
+		}
+		
+		System.out.printf("Export opt trend result completed at %s./n", basedir.getAbsolutePath());
+
 	}
 
 	public static HashMap<String, double[][]> loadTrendCSV(Properties prop) throws FileNotFoundException, IOException {
@@ -391,7 +548,7 @@ class OptTrendFittingFunction extends OptFittingFunction {
 			if (param_str.length() != 0) {
 				param_str.append(',');
 			}
-			param_str.append(String.format("%.5f", pt));
+			param_str.append(String.format("%f", pt));
 		}
 
 		int rId = 0;
@@ -408,7 +565,8 @@ class OptTrendFittingFunction extends OptFittingFunction {
 					for (int p = 2; p < val.length - 1; p++) {
 						val[p] = point[p - 2];
 					}
-					int k = Arrays.binarySearch(result_lookup, val, Optimisation_Factory.COMPARATOR_RESULT_LOOKUP_PARAM);
+					int k = Arrays.binarySearch(result_lookup, val,
+							Optimisation_Factory.COMPARATOR_RESULT_LOOKUP_PARAM);
 					if (k >= 0) {
 						bestResidue_by_runnable[rId] = (double) val[val.length - 1];
 						runnable[rId] = null;
@@ -709,7 +867,7 @@ class OptTrendFittingFunction extends OptFittingFunction {
 					try {
 						File opt_output_file;
 
-						opt_output_file = new File(baseDir, String.format(OPT_TREND_FILE_NAME_FOMRMAT,
+						opt_output_file = new File(baseDir, String.format(OPT_TREND_FILE_NAME_TREND_OUTPUT,
 								runnable[r].getcMap_seed(), runnable[r].getSim_seed(), r));
 
 						boolean newFile = !opt_output_file.exists();
