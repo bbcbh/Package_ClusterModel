@@ -123,23 +123,7 @@ public class Optimisation_Factory {
 				public double value(double[] point) {
 					double[] bestResidue = OptTrendFittingFunction.calculate_residue_opt_trend(point, args, opt_outputs,
 							1);
-
 					if (bestResidue[0] < best_so_far) {
-						String[] resp_disp = (String[]) opt_outputs
-								.get(OptTrendFittingFunction.OPT_TREND_OUTPUT_RESULT_DISP);
-						if (resp_disp != null) {
-							try {
-								PrintWriter pWri_best_so_far = new PrintWriter(new File(baseDir,
-										String.format(OptTrendFittingFunction.OPT_TREND_FILE_NAME_BEST_SO_FAR,
-												cMap_seed[0], sim_seed[0])));
-								for (String disp : resp_disp) {
-									pWri_best_so_far.println(disp);
-								}
-								pWri_best_so_far.close();
-							} catch (IOException e) {
-								e.printStackTrace(System.err);
-							}
-						}
 						best_so_far = bestResidue[0];
 						opt_outputs.put(OptTrendFittingFunction.OPT_TREND_CALLABLE_OUTPUT_BEST_SO_FAR, best_so_far);
 					}
@@ -175,8 +159,8 @@ public class Optimisation_Factory {
 		public int compare(Number[] o1, Number[] o2) {
 			// CMap_Seed, Sim_Seed, Parameters ... , Residue
 			int r = 0;
-			int pt = range[0];			
-			                  
+			int pt = range[0];
+
 			int maxLength = Math.min(o1.length, o2.length);
 			if (range[1] < 0) {
 				maxLength = maxLength + range[1];
@@ -185,7 +169,7 @@ public class Optimisation_Factory {
 				if (o1[pt] instanceof Long) {
 					r = Long.compare((Long) o1[pt], (Long) o2[pt]);
 				} else {
-					if (Math.abs((Double) o1[pt] - (Double) o2[pt]) < PARAM_TOL) {						
+					if (Math.abs((Double) o1[pt] - (Double) o2[pt]) < PARAM_TOL) {
 						r = 0;
 					} else {
 						r = Double.compare((Double) o1[pt], (Double) o2[pt]);
@@ -376,55 +360,9 @@ public class Optimisation_Factory {
 
 				// Loading of previous optTrend text output files
 
-				// Add opt_trend from previous collection
-				File[] optTrend_txt_files = baseDir.listFiles(new FileFilter() {
-					@Override
-					public boolean accept(File pathname) {
-						return PATTERN_OPT_TREND_TXT.matcher(pathname.getName()).matches();
-					}
-				});
+				int num_param = init_param.length;
+				Number[][] results_lookup = extractPreviousOptTrend(baseDir, num_param);
 
-				ArrayList<Number[]> results_lookup_arr = new ArrayList<>();
-
-				for (File optTrend_txt_file : optTrend_txt_files) {
-					BufferedReader reader = new BufferedReader(new FileReader(optTrend_txt_file));
-					String line;
-					while ((line = reader.readLine()) != null) {
-						if (line.startsWith(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP)) {
-							// cMap_Seed, sim_seed, unbounded_parameters, residue
-							Number[] val = new Number[init_param.length + 3];
-							int pt = 0;
-							val[pt] = Long.parseLong(
-									line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP.length()));
-							pt++;
-							line = reader.readLine();
-							val[pt] = Long.parseLong(
-									line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_SIMSEED.length()));
-							pt++;
-							line = reader.readLine();
-							String[] param_ent = (line.substring(
-									OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_PARAM.length() + 1,
-									line.length() - 1)).split(",");
-							for (int p = 0; p < param_ent.length; p++) {
-								val[pt] = Double.parseDouble(param_ent[p]);
-								pt++;
-							}
-
-							line = reader.readLine();
-							val[pt] = Double.parseDouble(
-									line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_RESIDUE.length()));
-							pt++;
-
-							int key = Collections.binarySearch(results_lookup_arr, val, COMPARATOR_RESULT_LOOKUP_ALL);
-							if (key < 0) {
-								results_lookup_arr.add(~key, val);
-							}
-						}
-					}
-					reader.close();
-				}
-
-				Number[][] results_lookup = results_lookup_arr.toArray(new Number[results_lookup_arr.size()][]);
 				prop.put(OptTrendFittingFunction.ARGS_PREV_RESULTS, results_lookup);
 
 				switch (optMethod) {
@@ -486,6 +424,43 @@ public class Optimisation_Factory {
 									best_result_collection[cId][best_result_collection[cId].length - 1] = Double.NaN;
 								}
 								cId++;
+							}
+						}
+					}
+
+					// Fill results with result lookup (if needed)
+					if (results_lookup != null) {
+						for (Number[] best_res : best_result_collection) {
+
+							Number[] searchkey_min = new Number[best_res.length];
+							Number[] searchkey_max = new Number[best_res.length];
+							Arrays.fill(searchkey_min, Double.NEGATIVE_INFINITY);
+							Arrays.fill(searchkey_max, Double.POSITIVE_INFINITY);
+							searchkey_min[0] = best_res[0];
+							searchkey_min[1] = best_res[1];
+							searchkey_max[0] = best_res[0];
+							searchkey_max[1] = best_res[1];
+
+							int k_min = Arrays.binarySearch(results_lookup, searchkey_min,
+									COMPARATOR_RESULT_LOOKUP_ALL);
+							int k_max = Arrays.binarySearch(results_lookup, searchkey_max,
+									COMPARATOR_RESULT_LOOKUP_ALL);
+
+							if (k_min < 0) {
+								k_min = ~k_min;
+							}
+							if (k_max < 0) {
+								k_max = ~k_max;
+							}
+
+							for (int check_k = k_min; check_k < k_max; check_k++) {
+								double best_res_residue_so_far = best_res[best_res.length - 1].doubleValue();
+								if (results_lookup[check_k][results_lookup[check_k].length - 1]
+										.doubleValue() < best_res_residue_so_far) {
+									for (int i = 2; i < best_res.length; i++) {
+										best_res[i] = results_lookup[check_k][i];
+									}
+								}
 							}
 						}
 					}
@@ -580,6 +555,76 @@ public class Optimisation_Factory {
 			System.out.printf("Properties file < %s > NOT found.\n", propFile.getAbsolutePath());
 		}
 
+	}
+
+	private static Number[][] extractPreviousOptTrend(File baseDir, int num_param_input)
+			throws FileNotFoundException, IOException {
+		// Add opt_trend from previous collection
+		File[] optTrend_txt_files = baseDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return PATTERN_OPT_TREND_TXT.matcher(pathname.getName()).matches();
+			}
+		});
+
+		ArrayList<Number[]> results_lookup_arr = new ArrayList<>();
+
+		int num_param = num_param_input;
+
+		for (File optTrend_txt_file : optTrend_txt_files) {
+			BufferedReader reader = new BufferedReader(new FileReader(optTrend_txt_file));
+			String line;
+
+			if (num_param < 0) {
+				while ((line = reader.readLine()) != null && num_param > 0) {
+					if (line.startsWith(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_PARAM)) {
+						num_param = (line.substring(
+								OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_PARAM.length() + 1, line.length() - 1))
+								.split(",").length;
+						break;
+					}
+				}
+				reader.close();
+				reader = new BufferedReader(new FileReader(optTrend_txt_file));
+			}
+
+			while ((line = reader.readLine()) != null && num_param > 0) {
+				if (line.startsWith(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP)) {
+					// cMap_Seed, sim_seed, unbounded_parameters, residue
+					Number[] val = new Number[num_param + 3];
+					int pt = 0;
+					val[pt] = Long
+							.parseLong(line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_CMAP.length()));
+					pt++;
+					line = reader.readLine();
+					val[pt] = Long.parseLong(
+							line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_SIMSEED.length()));
+					pt++;
+					line = reader.readLine();
+					String[] param_ent = (line.substring(
+							OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_PARAM.length() + 1, line.length() - 1))
+							.split(",");
+					for (int p = 0; p < param_ent.length; p++) {
+						val[pt] = Double.parseDouble(param_ent[p]);
+						pt++;
+					}
+
+					line = reader.readLine();
+					val[pt] = Double.parseDouble(
+							line.substring(OptTrendFittingFunction.OPT_TREND_OUTPUT_PREFIX_RESIDUE.length()));
+					pt++;
+
+					int key = Collections.binarySearch(results_lookup_arr, val, COMPARATOR_RESULT_LOOKUP_ALL);
+					if (key < 0) {
+						results_lookup_arr.add(~key, val);
+					}
+				}
+			}
+			reader.close();
+		}
+
+		Number[][] results_lookup = results_lookup_arr.toArray(new Number[results_lookup_arr.size()][]);
+		return results_lookup;
 	}
 
 	private static void executeOptTrendFittingCallable(ExecutorService exec, OptTrendFittingCallable_FS[] opt_callable,

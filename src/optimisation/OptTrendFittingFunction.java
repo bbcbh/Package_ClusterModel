@@ -89,7 +89,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	// with index 1
 
 	// Opt trend output keys
-	public static final String OPT_TREND_OUTPUT_RESULT_DISP = "OPT_TREND_OUTPUT_RESULT_DISP";
 	public static final String OPT_TREND_OUTPUT_COUNT_BY_PERSON = "OPT_TREND_OUTPUT_COUNT_BY_PERSON";
 	public static final String OPT_TREND_OUTPUT_COUNT_BY_SITE = "OPT_TREND_OUTPUT_COUNT_BY_SITE";
 	public static final String OPT_TREND_OUTPUT_RUNNABLE = "OPT_TREND_OUTPUT_RUNNABLE";
@@ -129,7 +128,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 	// Fields for output file
 	public static final String OPT_TREND_FILE_NAME_TREND_OUTPUT = "Opt_trend_%d_%d_%d.txt";
-	public static final String OPT_TREND_FILE_NAME_BEST_SO_FAR = "BestFit_%d_%d.txt";
+	
 
 	public static final String OPT_TREND_INPUT_TYPE_NUMINF = "NumInf";
 	public static final String OPT_TREND_INPUT_TYPE_INCID = "CumulIncid";
@@ -270,7 +269,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static void extractBestOptrendResults(File basedir, Pattern subDirPattern) throws IOException {
 
 		final Pattern bestFileFile_pattern = Pattern
-				.compile(OPT_TREND_FILE_NAME_BEST_SO_FAR.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+				.compile(OPT_TREND_FILE_NAME_TREND_OUTPUT.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
 		File[] subDirs = basedir.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
@@ -280,8 +279,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 		// double residue, long cMapSeed, long simSeed, long offset, String[] param_str,
 		// String[] trends
-		ArrayList<Object[]> resultsCollections = new ArrayList<>();
-		final Comparator<Object[]> resultCollectionsComp = new Comparator<Object[]>() {
+		ArrayList<Object[]> resultsTrendCollections = new ArrayList<>();
+		final Comparator<Object[]> resultTrendCollectionsComp = new Comparator<Object[]>() {
 			@Override
 			public int compare(Object[] o1, Object[] o2) {
 				int r = 0;
@@ -303,18 +302,19 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		};
 
 		for (File subDir : subDirs) {
-			File[] bestFitFiles = subDir.listFiles(new FileFilter() {
+				
+			File[] trendFiles = subDir.listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File pathname) {
 					return bestFileFile_pattern.matcher(pathname.getName()).matches();
 				}
 			});
-			for (File bestFitFile : bestFitFiles) {
+			for (File trendFile : trendFiles) {
 
-				BufferedReader reader = new BufferedReader(new FileReader(bestFitFile));
+				BufferedReader reader = new BufferedReader(new FileReader(trendFile));
 				String line;
 
-				Matcher m = bestFileFile_pattern.matcher(bestFitFile.getName());
+				Matcher m = bestFileFile_pattern.matcher(trendFile.getName());
 				m.matches();
 
 				long cMapSeed = Long.parseLong(m.group(1));
@@ -335,15 +335,15 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 						// TrendEntry
 						while ((line = reader.readLine()) != null) {
-							if(!line.isBlank()) {
+							if (!line.isBlank()) {
 								trend_arr.add(line);
 							}
 						}
 						String[] trends = trend_arr.toArray(new String[trend_arr.size()]);
 						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends };
 
-						int key = Collections.binarySearch(resultsCollections, val, resultCollectionsComp);
-						resultsCollections.add(~key, val);
+						int key = Collections.binarySearch(resultsTrendCollections, val, resultTrendCollectionsComp);
+						resultsTrendCollections.add(~key, val);
 					}
 				}
 				reader.close();
@@ -356,7 +356,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 		PrintWriter[] pWri_trend = null;
 
-		for (Object[] val : resultsCollections) {
+		for (Object[] val : resultsTrendCollections) {
 			pWri_summary.printf("%f,%d,%d", (Double) val[0], (Long) val[1], (Long) val[2]);
 			String[] param = (String[]) val[4];
 			for (int s = 0; s < param.length; s++) {
@@ -408,13 +408,16 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		}
 
 		pWri_summary.close();
-		for (PrintWriter pWri : pWri_trend) {
-			if (pWri != null) {
-				pWri.close();
+		if (pWri_trend != null) {
+
+			for (PrintWriter pWri : pWri_trend) {
+				if (pWri != null) {
+					pWri.close();
+				}
 			}
 		}
-		
-		System.out.printf("Export opt trend result completed at %s./n", basedir.getAbsolutePath());
+
+		System.out.printf("Export opt trend result completed at %s.\n", basedir.getAbsolutePath());
 
 	}
 
@@ -505,7 +508,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		double[][] time_range = (double[][]) args.get(OptTrendFittingFunction.ARGS_TAR_TRENDS_TIMERANGE);
 		Number[][] result_lookup = (Number[][]) args.get(ARGS_PREV_RESULTS);
 
-		// From properties
+		// Setting initial value from properties
 		int[] POP_COMPOSITION = new int[] { 500000, 500000, 20000, 20000 };
 		String popCompositionKey = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX
 				+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
@@ -538,8 +541,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		}
 
 		Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[bestResidue_by_runnable.length];
-		String[] res_disp_all = new String[runnable.length];
-
 		int[] bestMatchStart_by_runnable = new int[runnable.length];
 		Arrays.fill(bestMatchStart_by_runnable, -1);
 
@@ -568,7 +569,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 					int k = Arrays.binarySearch(result_lookup, val,
 							Optimisation_Factory.COMPARATOR_RESULT_LOOKUP_PARAM);
 					if (k >= 0) {
-						bestResidue_by_runnable[rId] = (double) val[val.length - 1];
+						Number[] found_res = result_lookup[k];
+						bestResidue_by_runnable[rId] = (double) found_res[found_res.length - 1];
 						runnable[rId] = null;
 					}
 				}
@@ -902,31 +904,12 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						e.printStackTrace(System.err);
 					}
 
-					StringBuilder res_disp = new StringBuilder();
-					res_disp.append(String.format("Fitting %s target trend(s):\n", num_target_trend));
-					for (String sKey : trend_target_key) {
-						res_disp.append(sKey);
-						res_disp.append('\n');
-					}
-					res_disp.append('\n');
-					res_disp.append(String.format("%s[%s]\n", OPT_TREND_OUTPUT_PREFIX_PARAM, param_str.toString()));
-					res_disp.append(
-							String.format("%s%f\n", OPT_TREND_OUTPUT_PREFIX_RESIDUE, bestResidue_by_runnable[r]));
-					res_disp.append(
-							String.format("%s%d\n", OPT_TREND_OUTPUT_PREFIX_OFFSET, bestMatchStart_by_runnable[r]));
-					for (StringBuilder s : str_disp) {
-						res_disp.append(s.toString());
-						res_disp.append('\n');
-					}
-					res_disp_all[r] = res_disp.toString();
-
 				} // if (simTime != null) {
 
 			} // if(runnable[r] != null) {
 
 		}
 		outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_RUNNABLE, runnable);
-		outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_RESULT_DISP, res_disp_all);
 		outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_BEST_RESIDUE, bestResidue_by_runnable);
 		outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_COUNT_BY_SITE, countMapBySite);
 		outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_COUNT_BY_PERSON, countMapByPerson);
