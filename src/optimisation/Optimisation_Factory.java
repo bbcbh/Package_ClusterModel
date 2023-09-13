@@ -275,7 +275,7 @@ public class Optimisation_Factory {
 
 		// Read input argument
 		File baseDir = new File(args[0]);
-		double[] init_param = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
+		double[] init_param_default = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
 		double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);
 
 		int minArgLength;
@@ -360,14 +360,28 @@ public class Optimisation_Factory {
 
 				// Loading of previous optTrend text output files
 
-				int num_param = init_param.length;
+				int num_param = init_param_default.length;
 				Number[][] results_lookup = extractPreviousOptTrend(baseDir, num_param);
 
 				prop.put(OptTrendFittingFunction.ARGS_PREV_RESULTS, results_lookup);
-
+				double[] init_param;
+				
 				switch (optMethod) {
 				case OPT_METHOD_SIMPLEX:
-				case OPT_METHOD_BAYESIAN:
+				case OPT_METHOD_BAYESIAN:					
+					init_param = Arrays.copyOf(init_param_default, init_param_default.length);
+					if(results_lookup != null && results_lookup.length > 0) {
+						Arrays.sort(results_lookup, new Comparator<Number[]>() {
+							@Override
+							public int compare(Number[] o1, Number[] o2) {								
+								return Double.compare((Double) o1[o1.length], (Double) o2[o2.length]);
+							}							
+						});
+						for(int i = 0; i < init_param.length; i++) {
+							init_param[i] = (double) results_lookup[0][i+2];
+						}												
+					}																	
+					
 					OptFittingFunction opt_trend_obj_func;
 					opt_trend_obj_func = new OptTrendFittingFunction(baseDir, prop, baseCMaps, baseCMapSeeds,
 							numSimPerMap, rng, target_trend_collection, targer_trend_time_range, numThreads);
@@ -418,7 +432,7 @@ public class Optimisation_Factory {
 							for (int mapId = 0; mapId < baseCMaps.length; mapId++) {
 								long cMap_seed = baseCMapSeeds[mapId];
 								for (int s = 0; s < numSimPerMap; s++) {
-									best_result_collection[cId] = new Number[3 + init_param.length];
+									best_result_collection[cId] = new Number[3 + init_param_default.length];
 									best_result_collection[cId][0] = cMap_seed;
 									best_result_collection[cId][1] = rng.nextLong();
 									best_result_collection[cId][best_result_collection[cId].length - 1] = Double.NaN;
@@ -474,13 +488,21 @@ public class Optimisation_Factory {
 						int cMap_index = Arrays.binarySearch(baseCMapSeeds, cMap_seed);
 						if (cMap_index >= 0) {
 							ContactMap cMap = baseCMaps[cMap_index];
-							long sim_seed = row[1].longValue();
+							long sim_seed = row[1].longValue();							
+							// Start optimisation from previous min value 
+							init_param = Arrays.copyOf(init_param_default, init_param_default.length);
+							for(int i = 0; i < init_param.length; i++) {
+								if(!((Double) row[i+2]).isNaN()){
+									init_param[i] = ((Double) row[i+2]).doubleValue();									
+								}
+							}														
 							HashMap<String, Object> arg = new HashMap<>();
 							arg.put(OptTrendFittingFunction.ARGS_CMAP, new ContactMap[] { cMap });
 							arg.put(OptTrendFittingFunction.ARGS_CMAP_SEED, new long[] { cMap_seed });
 							arg.put(OptTrendFittingFunction.ARGS_SIM_SEED, new long[] { sim_seed });
 							arg.put(OptTrendFittingFunction.ARGS_BASEDIR, baseDir);
-							arg.put(OptTrendFittingFunction.ARGS_NUM_EVAL, numEval);
+							arg.put(OptTrendFittingFunction.ARGS_NUM_EVAL, numEval);																										
+							
 							arg.put(OptTrendFittingFunction.ARGS_INIT_PARAM, init_param);
 							arg.put(OptTrendFittingFunction.ARGS_BOUNDARIES, boundaries);
 							arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS, target_trend_collection);
