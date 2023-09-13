@@ -269,7 +269,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static void extractBestOptrendResults(File basedir, Pattern subDirPattern) throws IOException {
 
 		final Pattern bestFileFile_pattern = Pattern
-				.compile(OPT_TREND_FILE_NAME_TREND_OUTPUT.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+				.compile(OPT_TREND_FILE_NAME_TREND_OUTPUT.replaceAll("%d", "(-{0,1}\\\\d+)"));
 		File[] subDirs = basedir.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
@@ -335,15 +335,19 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 						// TrendEntry
 						while ((line = reader.readLine()) != null) {
-							if (!line.isBlank()) {
+							if (line.trim().length() >0 ) {
 								trend_arr.add(line);
+							}else {
+								break;
 							}
 						}
 						String[] trends = trend_arr.toArray(new String[trend_arr.size()]);
 						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends };
 
 						int key = Collections.binarySearch(resultsTrendCollections, val, resultTrendCollectionsComp);
-						resultsTrendCollections.add(~key, val);
+						if(key < 0) {
+							resultsTrendCollections.add(~key, val);
+						}
 					}
 				}
 				reader.close();
