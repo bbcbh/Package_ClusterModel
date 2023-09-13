@@ -230,66 +230,47 @@ public class Optimisation_Factory {
 			.compile(OptTrendFittingFunction.OPT_TREND_FILE_NAME_TREND_OUTPUT.replaceAll("%d", "(-{0,1}\\\\d+)"));
 
 	public static void trend_fit_Simplex(String[] args) throws FileNotFoundException, IOException {
-		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  <optional: NUM_EVAL (int)>";
-		if (args.length < 3) {
-			System.out.println(USAGE_INFO);
-			System.exit(0);
-		} else {
-			trend_fit_general(args, OPT_METHOD_SIMPLEX);
-		}
+		trend_fit_general(args, OPT_METHOD_SIMPLEX);
 	}
 
 	public static void trend_fit_Bayesian(String[] args) throws FileNotFoundException, IOException {
-		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  <optional: NUM_EVAL (int)>";
-		if (args.length < 3) {
-			System.out.println(USAGE_INFO);
-			System.exit(0);
-		} else {
-			trend_fit_general(args, OPT_METHOD_BAYESIAN);
-		}
+		trend_fit_general(args, OPT_METHOD_BAYESIAN);
 	}
 
 	public static void trend_fit_Simplex_fs(String[] args) throws FileNotFoundException, IOException {
-		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) RESULT_LIST_FILENAME <optional: NUM_EVAL (int)>";
-		if (args.length < 3) {
-			System.out.println(USAGE_INFO);
-			System.exit(0);
-		} else {
-			trend_fit_general(args, OPT_METHOD_SIMPLEX_FS);
-		}
+		trend_fit_general(args, OPT_METHOD_SIMPLEX_FS);
 	}
 
 	public static void trend_fit_Bayesian_fs(String[] args) throws FileNotFoundException, IOException {
-		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) RESULT_LIST_FILENAME <optional: NUM_EVAL (int)>";
-		if (args.length < 3) {
-			System.out.println(USAGE_INFO);
-			System.exit(0);
-		} else {
-			trend_fit_general(args, OPT_METHOD_BAYESIAN_FS);
-		}
+		trend_fit_general(args, OPT_METHOD_BAYESIAN_FS);
 	}
 
 	private static void trend_fit_general(String[] args, int optMethod) throws FileNotFoundException, IOException {
 
+		int minArgLength = 4;
+		if (args.length < minArgLength) {
+			System.out.println(OptTrendFittingFunction.USAGE_INFO);
+			System.exit(0);
+		}
 		int numEval = 100;
+		boolean verbose = false;
 
 		// Read input argument
 		File baseDir = new File(args[0]);
 		double[] init_param_default = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
 		double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);
 
-		int minArgLength;
-		switch (optMethod) {
-		case OPT_METHOD_SIMPLEX_FS:
-		case OPT_METHOD_BAYESIAN_FS:
-			minArgLength = 4;
-			break;
-		default:
-			minArgLength = 3;
-		}
-
-		if (args.length > minArgLength) {
-			numEval = (int) Integer.parseInt(args[args.length - 1]);
+		// Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES
+		// (double[][]) RESULT_LIST_FILENAME
+		// <optional: -nEval=NUM_EVAL (int)> <optional: -verbose)>";
+		final String FLAG_nEval = "-nEval=";
+		final String FLAG_verbose = "-verbose";
+		for (int a = minArgLength; a < args.length; a++) {
+			if (args[a].startsWith(FLAG_nEval)) {
+				numEval = (int) Integer.parseInt(args[a].substring(FLAG_nEval.length()));
+			} else if (FLAG_verbose.equals(args[a])) {
+				verbose = true;
+			}
 		}
 
 		File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
@@ -364,7 +345,11 @@ public class Optimisation_Factory {
 				Number[][] results_lookup = extractPreviousOptTrend(baseDir, num_param);
 
 				prop.put(OptTrendFittingFunction.ARGS_PREV_RESULTS, results_lookup);
+				if (verbose) {
+					prop.put(OptTrendFittingFunction.ARGS_VERBOSE, true);
+				}
 				double[] init_param;
+				File resList = new File(baseDir, args[3]);
 
 				switch (optMethod) {
 				case OPT_METHOD_SIMPLEX:
@@ -383,8 +368,74 @@ public class Optimisation_Factory {
 					}
 
 					OptFittingFunction opt_trend_obj_func;
-					opt_trend_obj_func = new OptTrendFittingFunction(baseDir, prop, baseCMaps, baseCMapSeeds,
-							numSimPerMap, rng, target_trend_collection, targer_trend_time_range, numThreads);
+
+					if (resList.exists()) {
+						ArrayList<Long> sim_seeds = new ArrayList<>();
+						ArrayList<Long> cMap_seeds = new ArrayList<>();
+						HashMap<Long, ContactMap> cMap_lookup = new HashMap<>();
+						for (int i = 0; i < baseCMapSeeds.length; i++) {
+							cMap_lookup.put(baseCMapSeeds[i], baseCMaps[i]);
+						}
+
+						BufferedReader reader = new BufferedReader(new FileReader(resList));
+						reader.readLine(); // Header line
+
+						String line;
+						while ((line = reader.readLine()) != null) {
+							String[] ent = line.split(",");
+							if (ent.length > 2) {
+								if (ent[0].length() > 0) {
+									cMap_seeds.add(Long.parseLong(ent[0]));
+								}
+								if (ent[1].length() > 0) {
+									sim_seeds.add(Long.parseLong(ent[1]));
+								}
+							}
+						}
+						reader.close();
+
+						int cMapPt = 0;
+						long[] cMapSeeds_long = new long[cMap_seeds.size()];
+						ContactMap[] cMaps = new ContactMap[cMap_seeds.size()];
+
+						for (Long cMapSeed : cMap_seeds) {
+							if (cMap_lookup.containsKey(cMapSeed)) {
+								cMapSeeds_long[cMapPt] = cMapSeed;
+								cMaps[cMapPt] = cMap_lookup.get(cMapSeed);
+								cMapPt++;
+							}
+						}
+
+						long[] sim_seeds_long = new long[sim_seeds.size()];
+						int sSeedPt = 0;
+						for (Long ss : sim_seeds) {
+							sim_seeds_long[sSeedPt] = ss;
+							sSeedPt++;
+						}
+						opt_trend_obj_func = new OptTrendFittingFunction(baseDir, prop, Arrays.copyOf(cMaps, cMapPt),
+								Arrays.copyOf(cMapSeeds_long, cMapPt), sim_seeds_long, target_trend_collection,
+								targer_trend_time_range, numThreads);
+
+					} else {
+						opt_trend_obj_func = new OptTrendFittingFunction(baseDir, prop, baseCMaps, baseCMapSeeds,
+								numSimPerMap, rng, target_trend_collection, targer_trend_time_range, numThreads);
+						long[] gen_sim_seed = opt_trend_obj_func.getSim_seeds();
+
+						PrintWriter pWri = new PrintWriter(resList);
+						pWri.println("CMAP_SEED,SIM_SEED");
+
+						for (int i = 0; i < Integer.max(baseCMapSeeds.length, gen_sim_seed.length); i++) {
+							if (i < baseCMapSeeds.length) {
+								pWri.print(baseCMapSeeds[i]);
+							}
+							pWri.print(',');
+							if (i < gen_sim_seed.length) {
+								pWri.print(gen_sim_seed[i]);
+							}
+						}
+						pWri.close();
+					}
+
 					switch (optMethod) {
 					case OPT_METHOD_SIMPLEX:
 						runSimplex(opt_trend_obj_func, init_param, boundaries, numEval);
@@ -408,8 +459,6 @@ public class Optimisation_Factory {
 					int cId = 0;
 
 					// Import result if exist
-					File resList = new File(baseDir, args[3]);
-
 					if (resList.exists()) {
 						BufferedReader reader = new BufferedReader(new FileReader(resList));
 						reader.readLine(); // Header line
@@ -484,17 +533,17 @@ public class Optimisation_Factory {
 					// Export current result collection
 					exportResultCollection(best_result_collection, resList);
 					cId = 0;
-					
-					Arrays.sort( best_result_collection, new Comparator<Number[]>() {
+
+					Arrays.sort(best_result_collection, new Comparator<Number[]>() {
 						@Override
 						public int compare(Number[] o1, Number[] o2) {
-							int r = -Double.compare((Double) o1[o1.length-1], (Double) o2[o2.length-1]);														
+							int r = -Double.compare((Double) o1[o1.length - 1], (Double) o2[o2.length - 1]);
 							if (r == 0) {
 								return COMPARATOR_RESULT_LOOKUP_ALL.compare(o1, o2);
 							}
 							return r;
 						}
-					});					
+					});
 
 					for (Number[] row : best_result_collection) {
 						long cMap_seed = row[0].longValue();
@@ -524,6 +573,10 @@ public class Optimisation_Factory {
 							arg.put(OptTrendFittingFunction.ARGS_OPT_METHOD, optMethod);
 							arg.put(OptTrendFittingFunction.ARGS_PROGRESS_DISP, numThreads <= 1);
 							arg.put(OptTrendFittingFunction.ARGS_PREV_RESULTS, results_lookup);
+							if (verbose) {
+								arg.put(OptTrendFittingFunction.ARGS_VERBOSE, true);
+							}
+
 							opt_callable[cId] = new OptTrendFittingCallable_FS(arg);
 							cId++;
 						}

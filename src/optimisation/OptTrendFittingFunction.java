@@ -48,6 +48,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	private final double[][] target_trend_time_range;
 	private double[] bestResidue_by_runnable;
 
+	public static final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) "
+			+ "RESULT_LIST_FILENAME <optional: -nEval=NUM_EVAL (int)>  <optional: -verbose)>";
+
 	// Arguments for OptTrendFittingFunction.calculate_residue_opt_trend
 	public static final String ARGS_PROGRESS_DISP = "ARGS_PROGRESS_DISP";
 	public static final String ARGS_OPT_METHOD = "ARGS_OPT_METHOD";
@@ -62,6 +65,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String ARGS_CMAP_SEED = "ARGS_CMAP_SEED";
 	public static final String ARGS_CMAP = "ARGS_CMAP";
 	public static final String ARGS_PREV_RESULTS = "ARGS_PREV_RESULTS";
+	public static final String ARGS_VERBOSE = "ARGS_VERBOSE";
 
 	public static final String POP_PROP_OPT_PARAM_FIT_SETTING = "POP_PROP_OPT_PARAM_FIT_SETTING";
 	// POP_PROP_OPT_PARAM_FIT_SETTING
@@ -128,7 +132,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 	// Fields for output file
 	public static final String OPT_TREND_FILE_NAME_TREND_OUTPUT = "Opt_trend_%d_%d_%d.txt";
-	
 
 	public static final String OPT_TREND_INPUT_TYPE_NUMINF = "NumInf";
 	public static final String OPT_TREND_INPUT_TYPE_INCID = "CumulIncid";
@@ -216,8 +219,13 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		cal_resiude_arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS, target_trend_collection);
 		cal_resiude_arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_TIMERANGE, target_trend_time_range);
 
-		if (prop != null && prop.containsKey(ARGS_PREV_RESULTS)) {
-			cal_resiude_arg.put(ARGS_PREV_RESULTS, prop.get(ARGS_PREV_RESULTS));
+		if (prop != null) {
+			if (prop.containsKey(ARGS_PREV_RESULTS)) {
+				cal_resiude_arg.put(ARGS_PREV_RESULTS, prop.get(ARGS_PREV_RESULTS));
+			}
+			if(prop.containsKey(ARGS_VERBOSE)) {
+				cal_resiude_arg.put(ARGS_VERBOSE, prop.get(ARGS_VERBOSE));
+			}
 		}
 
 		bestResidue_by_runnable = OptTrendFittingFunction.calculate_residue_opt_trend(point, cal_resiude_arg,
@@ -302,7 +310,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		};
 
 		for (File subDir : subDirs) {
-				
+
 			File[] trendFiles = subDir.listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File pathname) {
@@ -335,9 +343,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 						// TrendEntry
 						while ((line = reader.readLine()) != null) {
-							if (line.trim().length() >0 ) {
+							if (line.trim().length() > 0) {
 								trend_arr.add(line);
-							}else {
+							} else {
 								break;
 							}
 						}
@@ -345,7 +353,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends };
 
 						int key = Collections.binarySearch(resultsTrendCollections, val, resultTrendCollectionsComp);
-						if(key < 0) {
+						if (key < 0) {
 							resultsTrendCollections.add(~key, val);
 						}
 					}
@@ -500,6 +508,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		long[] sim_seeds = (long[]) args.get(OptTrendFittingFunction.ARGS_SIM_SEED);
 		int NUM_SIM_PER_MAP = sim_seeds.length;
 
+		boolean verbose = args.containsKey(OptTrendFittingFunction.ARGS_VERBOSE) ? false : true;
+
 		double[] bestResidue_by_runnable;
 		bestResidue_by_runnable = new double[cMap.length * NUM_SIM_PER_MAP];
 		Arrays.fill(bestResidue_by_runnable, Double.NaN);
@@ -579,6 +589,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 					}
 				}
 				if (Double.isNaN(bestResidue_by_runnable[rId])) {
+
+					if (verbose) {
+						System.out.printf("[%d,%d]->%s: starting simulations.\n", cMap_seed[cMap_id], sim_seed,
+								Arrays.toString(point));
+					}
 					runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[cMap_id], sim_seed,
 							POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 					runnable[rId].setBaseDir(baseDir);
@@ -637,6 +652,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		for (int r = 0; r < rId; r++) {
 
 			if (runnable[r] != null) {
+
+				if (verbose) {
+					System.out.printf("[%d,%d]->%s: completed.\n", runnable[r].getcMap_seed(),
+							runnable[r].getSim_seed(), Arrays.toString(point));
+				}
 
 				countMapBySite[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_INFECTION_COUNT_BY_SITE] = (HashMap<Integer, int[][]>) runnable[r]
 						.getSim_output().get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
