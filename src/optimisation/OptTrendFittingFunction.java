@@ -223,7 +223,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			if (prop.containsKey(ARGS_PREV_RESULTS)) {
 				cal_resiude_arg.put(ARGS_PREV_RESULTS, prop.get(ARGS_PREV_RESULTS));
 			}
-			if(prop.containsKey(ARGS_VERBOSE)) {
+			if (prop.containsKey(ARGS_VERBOSE)) {
 				cal_resiude_arg.put(ARGS_VERBOSE, prop.get(ARGS_VERBOSE));
 			}
 		}
@@ -822,41 +822,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 					}
 					// Calculate best fit for all target
-					boolean hasCompleteRun = simTime[0] < simTime[simTime.length - 1]
-							- (time_range[0][1] - time_range[0][0]);
+					// TODO: to be check
+					double residue = 0;
 
-					if (hasCompleteRun) {
-						for (int match_start_time = simTime[0]; match_start_time < simTime[simTime.length - 1]
-								- (time_range[0][1] - time_range[0][0]); match_start_time++) {
-							double residue = 0;
-
-							for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
-								double offset = 0;
-								if (trend_target_key_split[trend_target_pt][OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE]
-										.startsWith("Cumul")) {
-									offset = interpolation[trend_target_pt].value(match_start_time);
-								}
-								for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
-									double model_adj_tar_t = match_start_time + tar_values[trend_target_pt][0][i];
-									double target_y = tar_values[trend_target_pt][1][i];
-									double model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
-
-									residue += weight[trend_target_pt] * Math.pow((model_y - offset) - target_y, 2);
-								}
-
-							}
-							// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
-							// residue);
-							if (Double.isNaN(bestResidue_by_runnable[r]) 
-									||  residue < bestResidue_by_runnable[r] ) {
-								bestResidue_by_runnable[r] = residue;
-								bestMatchStart_by_runnable[r] = match_start_time;
-							}
-						}
-					} else {
-						// Has no complete run - e.g. due to extinction
-						double residue = 0;
-						int match_start_time = simTime[0];
+					for (int match_start_time = simTime[0]; match_start_time <= simTime[simTime.length - 1]
+							- (time_range[0][1] - time_range[0][0]); match_start_time++) {
 						for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 							double offset = 0;
 							double no_match_val = 0;
@@ -883,12 +853,10 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						}
 						// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
 						// residue);
-						if (Double.isNaN( bestResidue_by_runnable[r])  
-								|| residue < bestResidue_by_runnable[r]) {
+						if (Double.isNaN(bestResidue_by_runnable[r]) || residue < bestResidue_by_runnable[r]) {
 							bestResidue_by_runnable[r] = residue;
 							bestMatchStart_by_runnable[r] = match_start_time;
 						}
-
 					}
 
 					// Display trends
