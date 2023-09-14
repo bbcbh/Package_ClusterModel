@@ -847,7 +847,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 							}
 							// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
 							// residue);
-							if (bestResidue_by_runnable[r] > residue) {
+							if (Double.isNaN(bestResidue_by_runnable[r]) 
+									||  residue < bestResidue_by_runnable[r] ) {
 								bestResidue_by_runnable[r] = residue;
 								bestMatchStart_by_runnable[r] = match_start_time;
 							}
@@ -882,7 +883,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						}
 						// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
 						// residue);
-						if (residue < bestResidue_by_runnable[r]) {
+						if (Double.isNaN( bestResidue_by_runnable[r])  
+								|| residue < bestResidue_by_runnable[r]) {
 							bestResidue_by_runnable[r] = residue;
 							bestMatchStart_by_runnable[r] = match_start_time;
 						}
