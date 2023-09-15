@@ -557,7 +557,7 @@ public class Optimisation_Factory {
 							// Start optimisation from previous min value
 							init_param = Arrays.copyOf(init_param_default, init_param_default.length);
 							for (int i = 0; i < init_param.length; i++) {
-								if (!((Double) row[i + 2]).isNaN()) {
+								if (row[i + 2] != null && !((Double) row[i + 2]).isNaN()) {
 									init_param[i] = ((Double) row[i + 2]).doubleValue();
 								}
 							}
