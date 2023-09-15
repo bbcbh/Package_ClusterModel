@@ -892,6 +892,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 						pWri.close();
 						fWri.close();
+						
+						if (verbose) {
+							System.out.printf("[%d,%d]->%s: result exported to %s.\n", runnable[r].getcMap_seed(),
+									runnable[r].getSim_seed(), Arrays.toString(point), opt_output_file.getName());
+						}
 
 					} catch (IOException e) {
 						e.printStackTrace(System.err);
