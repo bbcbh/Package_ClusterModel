@@ -821,12 +821,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						interpolation[trend_target_pt] = interpolator.interpolate(t_values, y_values);
 
 					}
-					// Calculate best fit for all target
-					// TODO: to be check
-					double residue = 0;
-
+					// Calculate best fit for all target										
 					for (int match_start_time = simTime[0]; match_start_time <= simTime[simTime.length - 1]
 							- (time_range[0][1] - time_range[0][0]); match_start_time++) {
+						double residue = 0;
+						
 						for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 							double offset = 0;
 							double no_match_val = 0;

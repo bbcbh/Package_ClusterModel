@@ -254,6 +254,7 @@ public class Optimisation_Factory {
 		}
 		int numEval = 100;
 		boolean verbose = false;
+		boolean forceInit = false;
 
 		// Read input argument
 		File baseDir = new File(args[0]);
@@ -265,12 +266,14 @@ public class Optimisation_Factory {
 		// <optional: -nEval=NUM_EVAL (int)> <optional: -verbose)>";
 		final String FLAG_nEval = "-nEval=";
 		final String FLAG_verbose = "-verbose";
+		final String FLAG_forceInit = "-forceInit";
 		for (int a = minArgLength; a < args.length; a++) {
 			if (args[a].startsWith(FLAG_nEval)) {
 				numEval = (int) Integer.parseInt(args[a].substring(FLAG_nEval.length()));
-			} else if (FLAG_verbose.equals(args[a])) {
-				verbose = true;
 			}
+			verbose |= FLAG_verbose.equals(args[a]);
+			forceInit |= FLAG_forceInit.equals(args[a]);
+
 		}
 
 		File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
@@ -355,7 +358,7 @@ public class Optimisation_Factory {
 				case OPT_METHOD_SIMPLEX:
 				case OPT_METHOD_BAYESIAN:
 					init_param = Arrays.copyOf(init_param_default, init_param_default.length);
-					if (results_lookup != null && results_lookup.length > 0) {
+					if (!forceInit || (results_lookup != null && results_lookup.length > 0) ) {
 						Arrays.sort(results_lookup, new Comparator<Number[]>() {
 							@Override
 							public int compare(Number[] o1, Number[] o2) {
