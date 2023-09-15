@@ -508,7 +508,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		long[] sim_seeds = (long[]) args.get(OptTrendFittingFunction.ARGS_SIM_SEED);
 		int NUM_SIM_PER_MAP = sim_seeds.length;
 
-		boolean verbose = args.containsKey(OptTrendFittingFunction.ARGS_VERBOSE) ? false : true;
+		boolean verbose = args.containsKey(OptTrendFittingFunction.ARGS_VERBOSE) ? true : false;
 
 		double[] bestResidue_by_runnable;
 		bestResidue_by_runnable = new double[cMap.length * NUM_SIM_PER_MAP];
