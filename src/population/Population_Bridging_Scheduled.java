@@ -268,7 +268,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				if (space_save) {
 					Pattern pattern_contactMap = Pattern
 							.compile(Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP.replaceFirst("%d",
-									Long.toString(getSeed()).replaceFirst("%d", "(-{0,1}(?!0)\\\\d+)")));
+									Long.toString(getSeed()).replaceFirst("%d", "(-{0,1}\\\\d+)")));
 					File[] oldContactMap = baseDir.listFiles(new FileFilter() {
 						@Override
 						public boolean accept(File pathname) {
