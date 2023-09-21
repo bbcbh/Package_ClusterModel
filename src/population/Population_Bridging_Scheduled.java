@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
@@ -41,7 +43,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 7076023161972931764L;
+	private static final long serialVersionUID = 7076023161972931765L;
 
 	protected HashMap<Integer, ArrayList<Integer[]>> schedule_partnership;
 
@@ -49,6 +51,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	protected transient boolean fitHighActFirst = false;
 
 	private final boolean schedule_debug = !true;
+	private boolean space_save = false;
 
 	protected long export_period_form_partnership_progress = 5 * 60 * 1000l;
 	public static final String FORMAT_FORM_PARTNERSHIP_PROGRESS_PREFIX = "FormPartnership_Progess_%d";
@@ -70,6 +73,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		Object[] newFields = Arrays.copyOf(super.getFields(), super.getFields().length + 1);
 		newFields[newFields.length - 1] = schedule_partnership;
 		super.setFields(newFields);
+	}
+
+	public void setSpace_save(boolean space_save) {
+		this.space_save = space_save;
 	}
 
 	@Override
@@ -257,6 +264,35 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					e.printStackTrace(System.err);
 					System.out.println(cMap.toFullString());
 				}
+
+				if (space_save) {
+					Pattern pattern_contactMap = Pattern
+							.compile(Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP.replaceFirst("%d",
+									Long.toString(getSeed()).replaceFirst("%d", "(-{0,1}(?!0)\\\\d+)")));
+					File[] oldContactMap = baseDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							boolean res;
+							Matcher m = pattern_contactMap.matcher(pathname.getName());
+							res = m.matches();
+							if (res) {
+								res = !pathname.getName().equals(allContactFile.getName());
+							}
+							return res;
+						}
+					});
+
+					for (File oldMap : oldContactMap) {
+						try {
+							FileUtils.delete(oldMap);
+						} catch (IOException ex) {
+							ex.printStackTrace(System.err);
+							oldMap.deleteOnExit();
+						}
+					}
+
+				}
+
 			}
 
 			if (printStatus != null) {
@@ -666,10 +702,14 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 								if (export_period_form_partnership_progress > 0 && System.currentTimeMillis()
 										- last_export_at > export_period_form_partnership_progress) {
-									exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type,
-											gender_end, addressed_demand_so_far, completed_src_pdIndex,
-											next_completed_src_pdIndex_pt, src_pdIndex, progressing_src_candidate_list,
-											src_candidate_counter);
+
+									if (!space_save) {
+										exportPartnerFormationProgress(progressFile,
+												candidates_array_by_partnership_type, gender_end,
+												addressed_demand_so_far, completed_src_pdIndex,
+												next_completed_src_pdIndex_pt, src_pdIndex,
+												progressing_src_candidate_list, src_candidate_counter);
+									}
 
 									last_export_at = System.currentTimeMillis();
 
@@ -705,8 +745,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			// Final export to complete the process
 
-			exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type, gender_end,
-					addressed_demand_so_far, completed_src_pdIndex, next_completed_src_pdIndex_pt, -1, null, 0);
+			if (!space_save) {
+				exportPartnerFormationProgress(progressFile, candidates_array_by_partnership_type, gender_end,
+						addressed_demand_so_far, completed_src_pdIndex, next_completed_src_pdIndex_pt, -1, null, 0);
+			}
 			last_export_at = System.currentTimeMillis();
 
 			final String oldProgressFile_prefix = String.format(FORMAT_FORM_PARTNERSHIP_PROGRESS_PREFIX, getSeed());
@@ -715,7 +757,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			// Delete old export file
 			File[] oldExportFile = baseDir.listFiles(new FileFilter() {
-
 				@Override
 				public boolean accept(File pathname) {
 
@@ -916,6 +957,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 			final int[] f_addressed_demand_so_far, final int[] f_completed_src_pdIndex,
 			final int f_next_completed_src_pdIndex_pt, final int f_progressing_src_pdIndex,
 			final ArrayList<int[]> f_src_candidate_list, final int f_completed_src_candidate_index) {
+
 		Runnable exportThread = new Runnable() {
 
 			@Override

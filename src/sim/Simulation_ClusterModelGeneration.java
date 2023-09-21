@@ -47,9 +47,14 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	protected transient Map<Long, Runnable_ClusterModel_ContactMap_Generation> runnablesMap = null;
 
 	protected boolean printOutput = false;
+	protected boolean space_save  = false;
 
 	public static final String FILENAME_FORMAT_ALL_CMAP = "All_ContactMap_%d_%d.csv";
 	public static final String FILENAME_FORMAT_OUTPUT = "Output_%d.txt";
+	
+	public void setSpaceSave(boolean space_save) {
+		this.space_save = space_save;
+	}
 
 	public void setPrintOutput(boolean printOutput) {
 		this.printOutput = printOutput;
@@ -216,6 +221,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				if (Population_Bridging_Scheduled.class.getName().equals(
 						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
 					population = new Population_Bridging_Scheduled(popSeed);
+					((Population_Bridging_Scheduled) population).setSpace_save(space_save);
 
 				} else {
 					population = new Population_Bridging(popSeed);
@@ -225,6 +231,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 						population.getFields()[f] = simFields[f];
 					}
 				}
+				
+				
 
 				Runnable_ClusterModel_ContactMap_Generation r = new Runnable_ClusterModel_ContactMap_Generation();
 
@@ -330,6 +338,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 		boolean printOut = false;
 		boolean useExistingPop = false;
+		boolean space_save = false;
 
 		if (args.length > 0) {
 			baseDir = new File(args[0]);
@@ -341,6 +350,10 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				if (args[i].equals("-useExistingPop")) {
 					useExistingPop = true;
 				}
+				if(args[i].equals("-space_save")) {
+					space_save = true;
+				}
+				
 			}
 
 		} else {
@@ -387,6 +400,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				sim.setSkipSeeds(preGenClusterSeed);
 				sim.loadProperties(prop);
 				sim.setPrintOutput(printOut);
+				sim.setSpaceSave(space_save);
 
 				if (useExistingPop) {
 					ArrayList<Long> useSeeds = new ArrayList<>();
