@@ -383,8 +383,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			if (pWri_trend == null) {
 				String[] firstLine = trends[0].split(",");
 				pWri_trend = new PrintWriter[firstLine.length];
-				for (int w = 1; w < pWri_trend.length; w++) {
+				for (int w = 1; w < pWri_trend.length; w++) {					
 					pWri_trend[w] = new PrintWriter(new File(basedir, String.format(OPT_SUMMARY_TREND_FILE, w)));
+					pWri_trend[w].println("Opt_trend time-value pairing");
 				}
 			}
 
@@ -400,15 +401,13 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			}
 
 			for (int v = 1; v < pWri_trend.length; v++) {
-				pWri_trend[v].println(timeline.toString());
+				pWri_trend[v].print(timeline.toString());
 			}
 
 			for (int t = 0; t < trends.length; t++) {
 				String[] ent = trends[t].split(",");
-				for (int v = 1; v < ent.length; v++) {
-					if (t != 0) {
-						pWri_trend[v].print(',');
-					}
+				for (int v = 1; v < ent.length; v++) {					
+					pWri_trend[v].print(',');					
 					pWri_trend[v].print(ent[v]);
 				}
 			}
