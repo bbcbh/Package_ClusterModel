@@ -94,7 +94,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				out.println("Parntership will be allocated to high activity groups first.");
 			}
 		}
-
 		super.initialise();
 	}
 
@@ -266,9 +265,11 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				}
 
 				if (space_save) {
-					Pattern pattern_contactMap = Pattern
-							.compile(Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP.replaceFirst("%d",
-									Long.toString(getSeed()).replaceFirst("%d", "(-{0,1}\\\\d+)")));
+					
+					String str_pattern_contactMap = 
+							Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP.replaceFirst("%d",Long.toString(getSeed()));					
+					str_pattern_contactMap = str_pattern_contactMap.replaceFirst("%d", "(-{0,1}\\\\d+)");
+					Pattern pattern_contactMap = Pattern.compile(str_pattern_contactMap);
 					File[] oldContactMap = baseDir.listFiles(new FileFilter() {
 						@Override
 						public boolean accept(File pathname) {
