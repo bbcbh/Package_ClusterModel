@@ -12,7 +12,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,6 +27,7 @@ import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
 
+import optimisation.OptTrendFittingFunction;
 import population.Population_Bridging;
 import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
@@ -45,18 +52,18 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP.replaceAll("%d",
 					"(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP.replaceAll("%d",
-					"(-{0,1}(?!0)\\\\d+)"),				
-	};
+					"(-{0,1}(?!0)\\\\d+)"), };
 
 	public static final String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
 			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History.csv",
 			"Summary_DX_Person_%s.csv", "Summary_DX_Sought_Person_%s.csv", "Summary_Vaccine_Person_%s.csv",
 			"Summary_Cumul_Antibiotic_Usage_%s.csv", "Summary_Cumul_Infection_%s.csv" };
 
-	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, false, false };
-
-	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false, false,
+	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, false,
 			false };
+
+	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false,
+			false, false };
 
 	public Util_Analyse_ClusterModel_Transmission_Output() {
 
@@ -209,17 +216,14 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 									new int[] { 2, 6, 10, 14 }, new int[] { 3, 7, 11, 15 }, });
 							csvTableExtra_filename.add("Summary_Vaccine_Person_BehavGrp_%s.csv");
 						}
-						
+
 						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP
 								.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
 							csvTableExtra.add(new Util_CSV_Table_Map("Time,Site_1,Site_2,Site_3"));
 							csvTableExtra_colSel.add(
-									new int[][] { new int[] { 10, 14 }, new int[] { 11, 15 }, new int[] {12, 16}, });
+									new int[][] { new int[] { 10, 14 }, new int[] { 11, 15 }, new int[] { 12, 16 }, });
 							csvTableExtra_filename.add("Summary_Prevalence_MSM_%s.csv");
 						}
-						
-						
-						
 
 						for (File f : zipFiles) {
 							SevenZFile resultZip = new SevenZFile(f);
@@ -308,31 +312,30 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		System.out.printf("Cleaning up outputs in %s\n", cleanupDir.getAbsolutePath());
 		Pattern outputZipsPattern = Pattern.compile("(.+_)(-{0,1}(?!0)\\d+)\\.csv\\.7z");
 		HashMap<Long, ArrayList<Long>> sim_listing = new HashMap<>();
-	
+
 		File[] archiveFiles = cleanupDir.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
 				return outputZipsPattern.matcher(pathname.getName()).matches();
 			}
 		});
-	
+
 		for (File archiveFile : archiveFiles) {
 			Matcher mArchive = outputZipsPattern.matcher(archiveFile.getName());
 			mArchive.matches();
-	
+
 			String filePrefix = mArchive.group(1);
 			long cMapSeed = Long.parseLong(mArchive.group(2));
-			Pattern ent_patten = Pattern
-					.compile(String.format("%s%d_(-{0,1}(?!0)\\d+)\\.csv", filePrefix, cMapSeed));
+			Pattern ent_patten = Pattern.compile(String.format("%s%d_(-{0,1}(?!0)\\d+)\\.csv", filePrefix, cMapSeed));
 			Pattern remove_pattern = Pattern
 					.compile(String.format("%s%d\\.csv\\.7z_(-{0,1}(?!0)\\d+)\\.7z", filePrefix, cMapSeed));
-	
+
 			ArrayList<Long> simSeedArr = sim_listing.get(cMapSeed);
 			if (simSeedArr == null) {
 				simSeedArr = new ArrayList<>();
 				sim_listing.put(cMapSeed, simSeedArr);
 			}
-	
+
 			try {
 				SevenZFile archive7Z = new SevenZFile(archiveFile);
 				SevenZArchiveEntry ent;
@@ -346,7 +349,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 					}
 				}
 				archive7Z.close();
-	
+
 				// Remove backup 7z files
 				File[] toBeRemoved = cleanupDir.listFiles(new FileFilter() {
 					@Override
@@ -354,35 +357,33 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						return remove_pattern.matcher(pathname.getName()).matches();
 					}
 				});
-	
+
 				for (File removed : toBeRemoved) {
 					FileUtils.delete(removed);
 				}
-	
+
 			} catch (IOException ex) {
-				System.err.printf("File clean up for %s failed. File not removed.\n",
-						archiveFile.getAbsolutePath());
+				System.err.printf("File clean up for %s failed. File not removed.\n", archiveFile.getAbsolutePath());
 				ex.printStackTrace(System.err);
-	
+
 			}
-		}						
-	
+		}
+
 		// Adding SeedIndexCases file if needed
 		for (Long cMapSeed : sim_listing.keySet()) {
-			
+
 			System.out.printf("\tCMap_Seed = %d, # sim = %d\n", cMapSeed, sim_listing.get(cMapSeed).size());
-			
-			
+
 			String seedFileName = String.format(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST_ZIP,
-					cMapSeed);				
-			File seedFile = new File(cleanupDir, seedFileName);				
+					cMapSeed);
+			File seedFile = new File(cleanupDir, seedFileName);
 			try {
 				if (!seedFile.exists()) {
 					ArrayList<Long> simSeedArr = sim_listing.get(cMapSeed);
 					SevenZOutputFile outputZip = new SevenZOutputFile(seedFile);
 					SevenZArchiveEntry entry;
 					FileInputStream fIn;
-	
+
 					for (Long simSeed : simSeedArr) {
 						String genSeedFileName = String.format(
 								Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST, cMapSeed, simSeed);
@@ -399,7 +400,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						FileUtils.delete(dummmyFile);
 					}
 					outputZip.close();
-	
+
 				} else {
 					// Remove backup seed archive
 					Pattern remove_pattern_seed = Pattern
@@ -418,22 +419,222 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				System.err.printf("File operation for %s failed.\n", seedFile.getAbsolutePath());
 				e.printStackTrace(System.err);
 			}
-	
+
 		}
 	}
 
+	public static void extractTrendResults(File basedir, File fittingTarDir) throws IOException {
+
+		final Pattern sEED_FILE_PATTERN = Pattern
+				.compile(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST_ZIP.replaceAll("%d",
+						"(-{0,1}(?!0)\\\\d+)"));
+		final int[] tIME_POINTS = new int[] { 3650, 4015, 4380, 4745, 5110, 5475, 5840, 6205, 6570, 6935, 7300 };
+		final int nUM_GROUP = 4;
+		final int nUM_SITE = 4;
+
+		File[] fittingTargets = fittingTarDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return pathname.getName().endsWith(".csv");
+			}
+		});
+
+		PrintWriter pri_seed_key = new PrintWriter(new File(basedir, "Trent_ExtractMapping.csv"));
+		PrintWriter[] pri_trend_output = new PrintWriter[fittingTargets.length];
+
+		// Load trend CSV
+		// Key: Path,type,tar_grp,weight
+		HashMap<String, double[][]> target_trend_collection = OptTrendFittingFunction.loadTrendCSV(fittingTargets);
+
+		target_trend_collection.remove(OptTrendFittingFunction.OPT_TREND_CSV_RANGE);
+		String[] trend_target_key = target_trend_collection.keySet()
+				.toArray(new String[target_trend_collection.size()]);
+
+		// Seed list
+
+		File[] seedFile = basedir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return sEED_FILE_PATTERN.matcher(pathname.getName()).matches();
+			}
+		});
+		String[] seedList = new String[seedFile.length];
+		for (int s = 0; s < seedList.length; s++) {
+			Matcher m = sEED_FILE_PATTERN.matcher(seedFile[s].getName());
+			m.matches();
+			seedList[s] = m.group(1);
+		}
+
+		ArrayList<String> csvFilePatternArr = new ArrayList<>();
+		ArrayList<int[]> entryPairArr = new ArrayList<>();
+
+		@SuppressWarnings("unchecked")
+		ArrayList<Integer>[] trend_incl = new ArrayList[pri_trend_output.length];
+
+		for (int i = 0; i < pri_trend_output.length; i++) {
+			String[] trend_keys = trend_target_key[i].split(",");
+			pri_trend_output[i] = new PrintWriter(new File(basedir, String.format("Trent_Extract_%s",
+					new File(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_PATH]).getName())));
+
+			String type_key = trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE];
+			int incl_grp = Integer.parseInt(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_TARGET_GRP]);
+			int site = -1;
+
+			Matcher m = OptTrendFittingFunction.OPT_TREND_TYPE_FORMAT_BY_SITE
+					.matcher(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE]);
+			if (m.find()) {
+				site = Integer.parseInt(m.group(2));
+				type_key = m.group(1);
+			}
+
+			String[] csv_file_pattern_str_arr = new String[0];
+
+			if (OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_NUMINF.equals(type_key)
+					|| OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_INCID.equals(type_key)) {
+				String csv_file_pattern_str;
+				if (site < 0) {
+					if (OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_NUMINF.equals(type_key)) {
+						csv_file_pattern_str = Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON;
+					} else {
+						csv_file_pattern_str = Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON;
+					}
+				} else {
+					if (OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_NUMINF.equals(type_key)) {
+						csv_file_pattern_str = Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE;
+					} else {
+						csv_file_pattern_str = Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE;
+					}
+				}
+
+				csv_file_pattern_str_arr = new String[] { csv_file_pattern_str };
+				int index = csvFilePatternArr.indexOf(csv_file_pattern_str);
+				if (index < 0) {
+					index = csvFilePatternArr.size();
+					csvFilePatternArr.add(csv_file_pattern_str);
+
+				}
+			} else if (OptTrendFittingFunction.OPT_TREND_INPUT_TYPE_DX.equals(type_key)) {
+				csv_file_pattern_str_arr = new String[] {
+						Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON,
+						Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON };
+			}
+
+			for (String csv_file_pattern_str : csv_file_pattern_str_arr) {
+				int index = csvFilePatternArr.indexOf(csv_file_pattern_str);
+				if (index < 0) {
+					index = csvFilePatternArr.size();
+					csvFilePatternArr.add(csv_file_pattern_str);
+				}
+				for (int g = 0; g < nUM_GROUP; g++) {
+					if ((incl_grp & 1 << g) != 0) {
+						int row_index = entryPairArr.size();
+						if (trend_incl[i] == null) {
+							trend_incl[i] = new ArrayList<>();
+						}
+						trend_incl[i].add(row_index);
+						if (site < 0) {
+							// Time,Gender_0,Gender_1,Gender_2,Gender_3
+							// Time,Total_Positive_DX_Gender_0,...
+							entryPairArr.add(new int[] { index, g + 1 });
+						} else {
+							// Time,Gender_0_Site_0,Gender_0_Site_1,Gender_0_Site_2,Gender_0_Site_3,...Gender_1_Site_0
+							entryPairArr.add(new int[] { index, 1 + g * nUM_SITE + site });
+						}
+					}
+				}
+			}
+
+			pri_trend_output[i].println("Time-value pairing");
+
+		}
+
+		// Extract values
+		pri_seed_key.println("CMap_Seed,Sim_Seed");
+		String[] csv_Filenames_Pattern = csvFilePatternArr.toArray(new String[csvFilePatternArr.size()]);
+		int[][] entry_Pairs = entryPairArr.toArray(new int[entryPairArr.size()][]);
+
+		int numProcess = Runtime.getRuntime().availableProcessors();
+		ExecutorService exec = Executors.newFixedThreadPool(numProcess);
+		HashMap<String, Future<Map<String, long[]>>> res_collection = new HashMap<>();
+
+		for (String mapSeed : seedList) {
+			Util_7Z_CSV_Entry_Extract_Callable callable = new Util_7Z_CSV_Entry_Extract_Callable(basedir, mapSeed,
+					csv_Filenames_Pattern, entry_Pairs, tIME_POINTS);
+			res_collection.put(mapSeed, exec.submit(callable));
+		}
+
+		exec.shutdown();
+		try {
+			if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+				System.err.println("Thread time-out!");
+			}
+			for (String mapSeed : seedList) {				
+				Future<Map<String, long[]>> resultFuture = res_collection.get(mapSeed);	
+				Map<String, long[]> result = resultFuture.get();				
+				String[] keySet = result.keySet().toArray(new String[result.size()]);																			
+				HashMap<String, long[][]> keyPrintMap = new HashMap<>();				
+				for (String key : keySet) {		
+					String[] key_s = key.split("_");
+					String key_print = String.format("%s,%s", key_s[0], key_s[1]);					
+					long[][] entry = keyPrintMap.get(key_print);										
+					if(entry == null) {
+						entry = new long[tIME_POINTS.length][];
+						keyPrintMap.put(key_print, entry);																	
+					}							
+					
+					int time = Integer.parseInt(key_s[2]);
+					long[] ent = result.get(key);
+					
+					int index = Arrays.binarySearch(tIME_POINTS, time);
+					if(index >=0) {
+						entry[index] = ent;						
+					}								
+				}				
+				for(String keyPrint : keyPrintMap.keySet()) {
+					pri_seed_key.println(keyPrint);					
+					long[][] val_all = keyPrintMap.get(keyPrint);
+					
+					for(int i = 0; i < pri_trend_output.length; i++) {						
+						long[] val = new long[tIME_POINTS.length];
+						for(int t = 0; t < val.length; t++) {							
+							for(int c : trend_incl[i]) {
+								val[t] += val_all[t][c];
+							}							
+							if(t > 0) {
+								pri_trend_output[i].print(',');
+							
+							}
+							pri_trend_output[i].print(tIME_POINTS[t]);							
+						}
+						for(int t = 0; t < val.length; t++) {
+							pri_trend_output[i].print(',');
+							pri_trend_output[i].print(val[t]);		
+						}																										
+						pri_trend_output[i].println();
+					}										
+					
+				}															
+			}
+
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace(System.err);
+		}
+
+		pri_seed_key.close();
+		for (PrintWriter pWri : pri_trend_output) {
+			pWri.close();
+		}
+
+	}
+
 	/*
-	 * public static void main(String[] args) throws IOException {
-	 * 
-	 * Util_Analyse_ClusterModel_Transmission_Output analysis = new
-	 * Util_Analyse_ClusterModel_Transmission_Output();
-	 * 
-	 * if (args.length == 0) {
-	 * System.out.printf("Usage: java %s PROP_FILE_DIRECTORY\n",
-	 * analysis.getClass().toString()); System.exit(0); } else {
-	 * analysis.setBaseDir(new File(args[0])); analysis.analyse_outputs(); }
-	 * 
-	 * }
-	 */
+	public static void main(String[] args) throws IOException {
+
+		Util_Analyse_ClusterModel_Transmission_Output.extractTrendResults(new File(
+				"C:\\Users\\bhui\\OneDrive - UNSW\\Bridging_model\\SimClusterModel_Transmission\\Current\\SimClusterModel_Transmission_V000_B000_Uptake_BAS_00_D00"),
+				new File("C:\\Users\\bhui\\OneDrive - UNSW\\Bridging_model\\SimClusterModel_Opt_Trend\\FittingTarget"));
+
+	}
+	*/
 
 }

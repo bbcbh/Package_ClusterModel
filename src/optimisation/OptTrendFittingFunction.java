@@ -36,7 +36,7 @@ import util.PropValUtils;
 
 public class OptTrendFittingFunction extends OptFittingFunction {
 
-	private static Pattern OPT_TREND_TYPE_FORMAT_BY_SITE = Pattern.compile("(.*)_(\\d+)");
+	public static Pattern OPT_TREND_TYPE_FORMAT_BY_SITE = Pattern.compile("(.*)_(\\d+)");
 
 	private final ContactMap[] baseCMaps;
 	private final long[] baseCMapSeeds;
@@ -124,11 +124,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String OPT_TREND_INPUT_TARGET_GRP = "Target_Grp";
 
 	public static final String OPT_TREND_CSV_RANGE = "CSV_RANGE";
-	private static final int OPT_TREND_MAP_KEY_PATH = 0;
-	private static final int OPT_TREND_MAP_KEY_TYPE = OPT_TREND_MAP_KEY_PATH + 1;
-	private static final int OPT_TREND_MAP_KEY_TARGET_GRP = OPT_TREND_MAP_KEY_TYPE + 1;
-	private static final int OPT_TREND_MAP_KEY_WEIGHT = OPT_TREND_MAP_KEY_TARGET_GRP + 1;
-	private static final int OPT_TREND_MAP_KEY_FITFROM = OPT_TREND_MAP_KEY_WEIGHT + 1;
+	public static final int OPT_TREND_MAP_KEY_PATH = 0;
+	public static final int OPT_TREND_MAP_KEY_TYPE = OPT_TREND_MAP_KEY_PATH + 1;
+	public static final int OPT_TREND_MAP_KEY_TARGET_GRP = OPT_TREND_MAP_KEY_TYPE + 1;
+	public static final int OPT_TREND_MAP_KEY_WEIGHT = OPT_TREND_MAP_KEY_TARGET_GRP + 1;
+	public static final int OPT_TREND_MAP_KEY_FITFROM = OPT_TREND_MAP_KEY_WEIGHT + 1;
 
 	// Fields for output file
 	public static final String OPT_TREND_FILE_NAME_TREND_OUTPUT = "Opt_trend_%d_%d_%d.txt";
@@ -433,67 +433,81 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	}
 
 	public static HashMap<String, double[][]> loadTrendCSV(Properties prop) throws FileNotFoundException, IOException {
+		
+		if (prop.getProperty(Optimisation_Factory.POP_PROP_OPT_TARGET) != null) {		
+			String[] target_trend_csv_path = prop.getProperty(Optimisation_Factory.POP_PROP_OPT_TARGET).replaceAll("\n", "")
+					.split(",");			
+			int pt = 0;
+			File[] target_trend_csv = new File[target_trend_csv_path.length];
+			for (String csv_path : target_trend_csv_path) {
+				target_trend_csv[pt] = new File(csv_path);
+				pt++;
+			}
+			return loadTrendCSV(target_trend_csv);
+		}else {
+			System.err.printf("%s not found in Properties.\n", Optimisation_Factory.POP_PROP_OPT_TARGET);
+			return null;
+		}
+		
+	}
+
+	public static HashMap<String, double[][]> loadTrendCSV(File[] target_trent_csv_path)
+			throws FileNotFoundException, IOException {
 		HashMap<String, double[][]> target_trend_collection = new HashMap<>();
-		if (prop.getProperty(Optimisation_Factory.POP_PROP_OPT_TARGET) != null) {
-			double[] time_range = new double[] { Double.NaN, Double.NaN };
+		
+		double[] time_range = new double[] { Double.NaN, Double.NaN };
+		for (File csv_file : target_trent_csv_path) {			
+			ArrayList<Double> fit_t = new ArrayList<>();
+			ArrayList<Double> fit_y = new ArrayList<>();
+			String line, type = null;
+			int tar_grp = -1;
+			int fitFrom = -1;
+			double weight = -1;
+			BufferedReader csv_reader = new BufferedReader(new FileReader(csv_file));
+			while ((line = csv_reader.readLine()) != null) {
+				String[] ent = line.split(",");
+				if (OPT_TREND_INPUT_KEY_TYPE.equals(ent[0])) {
+					type = ent[1];
+				} else if (OPT_TREND_INPUT_KEY_FITFROM.equals(ent[0])) {
+					fitFrom = Integer.parseInt(ent[1]);
+				} else if (OPT_TREND_INPUT_TARGET_GRP.equals(ent[0])) {
+					tar_grp = Integer.parseInt(ent[1]);
+				} else if (OPT_TREND_INPUT_KEY_WEIGHT.equals(ent[0])) {
+					weight = Double.parseDouble(ent[1]);
+				} else {
+					double t = Double.parseDouble(ent[0]);
+					double y = Double.parseDouble(ent[1]);
+					int key = Collections.binarySearch(fit_t, t);
+					if (key < 0) {
+						fit_t.add(~key, t);
+						fit_y.add(~key, y);
+					}
+					if (Double.isNaN(time_range[0])) {
+						time_range[0] = t;
+						time_range[1] = t;
 
-			String[] target_trent_csv = prop.getProperty(Optimisation_Factory.POP_PROP_OPT_TARGET).replaceAll("\n", "")
-					.split(",");
-			for (String csv_path : target_trent_csv) {
-				File csv_file = new File(csv_path);
-				ArrayList<Double> fit_t = new ArrayList<>();
-				ArrayList<Double> fit_y = new ArrayList<>();
-				String line, type = null;
-				int tar_grp = -1;
-				int fitFrom = -1;
-				double weight = -1;
-				BufferedReader csv_reader = new BufferedReader(new FileReader(csv_file));
-				while ((line = csv_reader.readLine()) != null) {
-					String[] ent = line.split(",");
-					if (OPT_TREND_INPUT_KEY_TYPE.equals(ent[0])) {
-						type = ent[1];
-					} else if (OPT_TREND_INPUT_KEY_FITFROM.equals(ent[0])) {
-						fitFrom = Integer.parseInt(ent[1]);
-					} else if (OPT_TREND_INPUT_TARGET_GRP.equals(ent[0])) {
-						tar_grp = Integer.parseInt(ent[1]);
-					} else if (OPT_TREND_INPUT_KEY_WEIGHT.equals(ent[0])) {
-						weight = Double.parseDouble(ent[1]);
 					} else {
-						double t = Double.parseDouble(ent[0]);
-						double y = Double.parseDouble(ent[1]);
-						int key = Collections.binarySearch(fit_t, t);
-						if (key < 0) {
-							fit_t.add(~key, t);
-							fit_y.add(~key, y);
-						}
-						if (Double.isNaN(time_range[0])) {
-							time_range[0] = t;
-							time_range[1] = t;
-
-						} else {
-							time_range[0] = Math.min(time_range[0], t);
-							time_range[1] = Math.max(time_range[1], t);
-						}
+						time_range[0] = Math.min(time_range[0], t);
+						time_range[1] = Math.max(time_range[1], t);
 					}
 				}
-				csv_reader.close();
+			}
+			csv_reader.close();
 
-				if (fit_t.size() > 0 && fit_y.size() == fit_t.size()) {
-					String mapKey = String.format(OPT_TREND_MAP_KEY_FORMAT, csv_path, type, tar_grp,
-							Double.toString(weight), fitFrom);
-					double[][] mapEntry = new double[2][fit_t.size()];
-					for (int i = 0; i < fit_t.size(); i++) {
-						mapEntry[0][i] = fit_t.get(i);
-						mapEntry[1][i] = fit_y.get(i);
-					}
-					target_trend_collection.put(mapKey, mapEntry);
+			if (fit_t.size() > 0 && fit_y.size() == fit_t.size()) {
+				String mapKey = String.format(OPT_TREND_MAP_KEY_FORMAT, csv_file.getAbsolutePath(), type, tar_grp,
+						Double.toString(weight), fitFrom);
+				double[][] mapEntry = new double[2][fit_t.size()];
+				for (int i = 0; i < fit_t.size(); i++) {
+					mapEntry[0][i] = fit_t.get(i);
+					mapEntry[1][i] = fit_y.get(i);
 				}
-
-			}
-			if (target_trend_collection.size() > 0) {
-				target_trend_collection.put(OPT_TREND_CSV_RANGE, new double[][] { time_range });
+				target_trend_collection.put(mapKey, mapEntry);
 			}
 
+		}
+		if (target_trend_collection.size() > 0) {
+			target_trend_collection.put(OPT_TREND_CSV_RANGE, new double[][] { time_range });
 		}
 		return target_trend_collection;
 	}

@@ -20,7 +20,7 @@ public class Launcher_ClusterModel {
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans, -opt, -opt_trend, -optGA, -analyse, -analyse_map, -combine_map, -compare> PROP_FILE_DIRECTORY <...>\n"
+				"Usage: java %s <-gen, -trans, -opt, -opt_trend, -optGA, -analyse, -analyse_trend, -analyse_map, -combine_map, -compare> PROP_FILE_DIRECTORY <...>\n"
 						+ " or\tjava %s <-analyse_rx,  -clean_up_rx> FILE_DIRECTORY PATTERN <...>"
 						+ " or\tjava %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName(),
@@ -82,6 +82,14 @@ public class Launcher_ClusterModel {
 						analysis.analyse_outputs();						
 					}
 					System.out.printf("%d directories analysed.\n", candidateDir.length);
+				}
+			} else if ("-analyse_trend".equals(flag)) {
+				if(args.length < 2) {
+					System.out.printf(
+							"Usage: java %s -analyse_trend RESULT_DIRECTORY TREND_DIRECTORY\n");
+					System.exit(0);
+				}else {				
+					Util_Analyse_ClusterModel_Transmission_Output.extractTrendResults(new File(args[1]), new File(args[2]));
 				}
 
 			} else if ("-analyse_map".equals(flag)) {
