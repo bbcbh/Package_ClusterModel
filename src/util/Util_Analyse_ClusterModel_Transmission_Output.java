@@ -26,6 +26,10 @@ import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.math3.analysis.UnivariateFunction;
+import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
+import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
+import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 
 import optimisation.OptTrendFittingFunction;
 import population.Population_Bridging;
@@ -423,12 +427,17 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	public static void extractTrendResults(File basedir, File fittingTarDir) throws IOException {
 
 		final Pattern sEED_FILE_PATTERN = Pattern
 				.compile(Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST_ZIP.replaceAll("%d",
 						"(-{0,1}(?!0)\\\\d+)"));
-		final int[] tIME_POINTS = new int[] { 3650, 4015, 4380, 4745, 5110, 5475, 5840, 6205, 6570, 6935, 7300 };
+
+		final int[] tIME_POINTS = new int[] { 1095, 1460, 1825, 2190, 2555, 2920, 3285, 3650, 4015, 4380, 4745, 5110,
+				5475, 5840, 6205, 6570, 6935, 7300 };
+
+		final int tIME_POINTS_FITTING_PT = 7;
 		final int nUM_GROUP = 4;
 		final int nUM_SITE = 4;
 
@@ -449,6 +458,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		target_trend_collection.remove(OptTrendFittingFunction.OPT_TREND_CSV_RANGE);
 		String[] trend_target_key = target_trend_collection.keySet()
 				.toArray(new String[target_trend_collection.size()]);
+
+		String[][] trend_target_key_split = new String[trend_target_key.length][];
 
 		// Seed list
 
@@ -473,6 +484,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 		for (int i = 0; i < pri_trend_output.length; i++) {
 			String[] trend_keys = trend_target_key[i].split(",");
+			trend_target_key_split[i] = trend_keys;
+
 			pri_trend_output[i] = new PrintWriter(new File(basedir, String.format("Trent_Extract_%s",
 					new File(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_PATH]).getName())));
 
@@ -549,7 +562,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		}
 
 		// Extract values
-		pri_seed_key.println("CMap_Seed,Sim_Seed");
+		pri_seed_key.println("Residue,CMap_Seed,Sim_Seed");
 		String[] csv_Filenames_Pattern = csvFilePatternArr.toArray(new String[csvFilePatternArr.size()]);
 		int[][] entry_Pairs = entryPairArr.toArray(new int[entryPairArr.size()][]);
 
@@ -568,52 +581,117 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
 				System.err.println("Thread time-out!");
 			}
-			for (String mapSeed : seedList) {				
-				Future<Map<String, long[]>> resultFuture = res_collection.get(mapSeed);	
-				Map<String, long[]> result = resultFuture.get();				
-				String[] keySet = result.keySet().toArray(new String[result.size()]);																			
-				HashMap<String, long[][]> keyPrintMap = new HashMap<>();				
-				for (String key : keySet) {		
+
+			ArrayList<Comparable[]> resKeyPrintMapArr = new ArrayList<>();
+			HashMap<String, long[][]> keyPrintMap = new HashMap<>();
+
+			for (String mapSeed : seedList) {
+				Future<Map<String, long[]>> resultFuture = res_collection.get(mapSeed);
+				Map<String, long[]> result = resultFuture.get();
+				String[] keySet = result.keySet().toArray(new String[result.size()]);
+
+				for (String key : keySet) {
 					String[] key_s = key.split("_");
-					String key_print = String.format("%s,%s", key_s[0], key_s[1]);					
-					long[][] entry = keyPrintMap.get(key_print);										
-					if(entry == null) {
+					String key_print = String.format("%s,%s", key_s[0], key_s[1]);
+					long[][] entry = keyPrintMap.get(key_print);
+					if (entry == null) {
 						entry = new long[tIME_POINTS.length][];
-						keyPrintMap.put(key_print, entry);																	
-					}							
-					
+						keyPrintMap.put(key_print, entry);
+					}
+
 					int time = Integer.parseInt(key_s[2]);
 					long[] ent = result.get(key);
-					
+
 					int index = Arrays.binarySearch(tIME_POINTS, time);
-					if(index >=0) {
-						entry[index] = ent;						
-					}								
-				}				
-				for(String keyPrint : keyPrintMap.keySet()) {
-					pri_seed_key.println(keyPrint);					
-					long[][] val_all = keyPrintMap.get(keyPrint);
-					
-					for(int i = 0; i < pri_trend_output.length; i++) {						
-						long[] val = new long[tIME_POINTS.length];
-						for(int t = 0; t < val.length; t++) {							
-							for(int c : trend_incl[i]) {
-								val[t] += val_all[t][c];
-							}							
-							if(t > 0) {
-								pri_trend_output[i].print(',');
-							
-							}
-							pri_trend_output[i].print(tIME_POINTS[t]);							
+					if (index >= 0) {
+						entry[index] = ent;
+					}
+				}
+			}
+
+			// Calculate residue
+			for (String keyPrint : keyPrintMap.keySet()) {
+				long[][] val_all = keyPrintMap.get(keyPrint);
+
+				Comparable[] resKeyPrintMap = new Comparable[2]; // Residue, keyPrint
+
+				UnivariateFunction[] interpolation = new PolynomialSplineFunction[fittingTargets.length];
+				UnivariateInterpolator interpolator = new LinearInterpolator();
+
+				for (int i = 0; i < pri_trend_output.length; i++) {
+					double[] t_val = new double[tIME_POINTS_FITTING_PT];
+					double[] y_val = new double[tIME_POINTS_FITTING_PT];
+					for (int t = 0; t < t_val.length; t++) {
+						t_val[t] = tIME_POINTS[t];
+						for (int c : trend_incl[i]) {
+							y_val[t] += val_all[t][c];
 						}
-						for(int t = 0; t < val.length; t++) {
+					}
+					interpolation[i] = interpolator.interpolate(t_val, y_val);
+				}
+				double residue = 0;
+				for (int i = 0; i < pri_trend_output.length; i++) {
+					double[][] target_val = target_trend_collection.get(trend_target_key[i]);
+					double offset = 0;
+
+					if (trend_target_key_split[i][OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE].startsWith("Cumul")) {
+						offset = interpolation[i].value(tIME_POINTS[0]);
+					}
+
+					double weight = Double
+							.parseDouble(trend_target_key_split[i][OptTrendFittingFunction.OPT_TREND_MAP_KEY_WEIGHT]);
+
+					for (int t = 0; t < target_val[0].length; t++) {
+						double tar2modelTime = target_val[0][t] + tIME_POINTS[0];
+						double target_y = target_val[1][t];
+						double model_y = interpolation[i].value(tar2modelTime);
+						residue += weight * Math.pow((model_y - offset) - target_y, 2);
+					}
+				}
+
+				resKeyPrintMap[0] = residue;
+				resKeyPrintMap[1] = keyPrint;
+				resKeyPrintMapArr.add(resKeyPrintMap);
+
+			}			
+
+			Comparable[][] resKeyPrintMap = resKeyPrintMapArr.toArray(new Comparable[resKeyPrintMapArr.size()][]);
+
+			Arrays.sort(resKeyPrintMap, (o1, o2) -> {
+				int res = Double.compare((Double) o1[0], (Double) o2[0]);
+
+				if (res == 0) {
+					res = ((String) o1[1]).compareTo((String) o2[1]);
+				}
+				return res;
+			});
+
+			for (Comparable[] resKeyPrint : resKeyPrintMap) {
+				Double res = (Double) resKeyPrint[0];
+				String keyPrint = (String) resKeyPrint[1];
+				pri_seed_key.printf("%s,%s\n", res.toString(), keyPrint);
+
+				long[][] val_all = keyPrintMap.get(keyPrint);
+
+				for (int i = 0; i < pri_trend_output.length; i++) {
+					long[] val = new long[tIME_POINTS.length];
+					for (int t = 0; t < val.length; t++) {
+						for (int c : trend_incl[i]) {
+							val[t] += val_all[t][c];
+						}
+						if (t > 0) {
 							pri_trend_output[i].print(',');
-							pri_trend_output[i].print(val[t]);		
-						}																										
-						pri_trend_output[i].println();
-					}										
-					
-				}															
+
+						}
+						pri_trend_output[i].print(tIME_POINTS[t]);
+					}
+					for (int t = 0; t < val.length; t++) {
+						pri_trend_output[i].print(',');
+						pri_trend_output[i].print(val[t]);
+					}
+					pri_trend_output[i].println();
+				}
+
 			}
 
 		} catch (InterruptedException | ExecutionException e) {
@@ -627,14 +705,6 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	}
 
-	/*
-	public static void main(String[] args) throws IOException {
 
-		Util_Analyse_ClusterModel_Transmission_Output.extractTrendResults(new File(
-				"C:\\Users\\bhui\\OneDrive - UNSW\\Bridging_model\\SimClusterModel_Transmission\\Current\\SimClusterModel_Transmission_V000_B000_Uptake_BAS_00_D00"),
-				new File("C:\\Users\\bhui\\OneDrive - UNSW\\Bridging_model\\SimClusterModel_Opt_Trend\\FittingTarget"));
-
-	}
-	*/
 
 }
