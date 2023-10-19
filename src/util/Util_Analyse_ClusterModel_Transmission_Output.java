@@ -40,6 +40,7 @@ import sim.Simulation_ClusterModelTransmission;
 public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	private File baseDir;
+	private int[] incl_range = new int[] { 2920, 4745 }; // 5 years
 
 	public static final String[] ZIP_FILES_LIST = new String[] {
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP.replaceAll("%d",
@@ -56,18 +57,21 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP.replaceAll("%d",
 					"(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP.replaceAll("%d",
-					"(-{0,1}(?!0)\\\\d+)"), };
+					"(-{0,1}(?!0)\\\\d+)"),
+			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE_ZIP.replaceAll("%d",
+					"(-{0,1}(?!0)\\\\d+)"),
+			};
 
 	public static final String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
-			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History.csv",
+			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History_%s.csv",
 			"Summary_DX_Person_%s.csv", "Summary_DX_Sought_Person_%s.csv", "Summary_Vaccine_Person_%s.csv",
-			"Summary_Cumul_Antibiotic_Usage_%s.csv", "Summary_Cumul_Infection_%s.csv" };
+			"Summary_Cumul_Antibiotic_Usage_%s.csv", "Summary_Incidence_Person_%s.csv" ,"Summary_Incidence_Site_%s.csv" };
 
 	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, false,
-			false };
+			true, true };
 
 	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false,
-			false, false };
+			false, false, false};
 
 	public Util_Analyse_ClusterModel_Transmission_Output() {
 
@@ -78,7 +82,9 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		for (int i = 0; i < SKIP_ANALYSIS.length; i++) {
 			SKIP_ANALYSIS[i] = (key & (1 << i)) != 0;
 		}
-
+	}
+	public void setIncl_range(int[] ent) {
+		incl_range = ent;
 	}
 
 	public void setBaseDir(File baseDir) {
@@ -89,6 +95,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		final int BUFFER = 2048;
 		final byte[] buf = new byte[BUFFER];
 		File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
+
+		
 
 		if (propFile.isFile()) {
 			for (int z = 0; z < ZIP_FILES_LIST.length; z++) {
@@ -114,7 +122,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 					if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP
 							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
-						// Special case for infection history
+						// Special case for infection history												
 
 						Properties prop = new Properties();
 						FileInputStream fIS = new FileInputStream(propFile);
@@ -125,7 +133,6 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 								+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
 						int[] gender_dist = (int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),
 								int[].class);
-						int[] incl_range = new int[] { 2920, 4745 }; // 5 years
 
 						int[] cuml_gender_dist = Arrays.copyOf(gender_dist, gender_dist.length);
 						// Cumul. gender dist
@@ -162,7 +169,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 							resultZip.close();
 						}
 
-						File summaryFile = new File(baseDir, stat_filename_format);
+						File summaryFile = new File(baseDir,
+								String.format(stat_filename_format, Arrays.toString(incl_range)));
 						PrintWriter pWri = new PrintWriter(summaryFile);
 						pWri.println("Gender, Site, # Incident");
 						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
@@ -653,7 +661,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				resKeyPrintMap[1] = keyPrint;
 				resKeyPrintMapArr.add(resKeyPrintMap);
 
-			}			
+			}
 
 			Comparable[][] resKeyPrintMap = resKeyPrintMapArr.toArray(new Comparable[resKeyPrintMapArr.size()][]);
 
@@ -704,7 +712,5 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		}
 
 	}
-
-
 
 }

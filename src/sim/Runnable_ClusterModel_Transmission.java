@@ -621,6 +621,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	private int getRiskCategories(Integer personId, int genderType) {
+		
+		//TODO: Pre_allocate risk categories (mainly form MSM)
+		
+		
 
 		if (risk_cat_map.containsKey(personId)) {
 			return risk_cat_map.get(personId);

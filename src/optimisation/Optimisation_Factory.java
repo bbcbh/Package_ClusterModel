@@ -358,7 +358,7 @@ public class Optimisation_Factory {
 				case OPT_METHOD_SIMPLEX:
 				case OPT_METHOD_BAYESIAN:
 					init_param = Arrays.copyOf(init_param_default, init_param_default.length);
-					if (!forceInit || (results_lookup != null && results_lookup.length > 0) ) {
+					if (!forceInit && (results_lookup != null && results_lookup.length > 0)) {
 						Arrays.sort(results_lookup, new Comparator<Number[]>() {
 							@Override
 							public int compare(Number[] o1, Number[] o2) {
@@ -2387,6 +2387,108 @@ public class Optimisation_Factory {
 			}
 
 		}
+	}
+
+	public static void extractParamToOpt(Properties prop, String optParmaStr) {
+		String[] parameter_settings = optParmaStr.split(",");
+		String[] parameter_disp = new String[parameter_settings.length];
+		
+
+		for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
+			String param_setting = parameter_settings[param_arr_index];
+			param_setting = param_setting.replaceAll("\\s", "");
+			String[] param_setting_arr = param_setting.split("_");
+			int param_name_index = Integer.parseInt(param_setting_arr[0]);
+
+			String propName = String.format("%s%d", POP_PROP_INIT_PREFIX, param_name_index);
+			String propType = String.format("%s%d", Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX_CLASS,
+					param_name_index);
+
+			String dispVal = null;
+			try {
+				Object paraObj;
+
+				paraObj = PropValUtils.propStrToObject(prop.getProperty(propName),
+						Class.forName(prop.getProperty(propType)));
+
+				for (int i = 1; i < param_setting_arr.length - 1; i++) {
+					// Search for the first one
+					int arraySel = Integer.parseInt(param_setting_arr[i]); 
+					Object[] testArr = ((Object[]) paraObj);
+					paraObj = null;
+					for(int j = 0; j < testArr.length && paraObj == null; j++) {
+						if ((arraySel & 1 << j) != 0) {
+							paraObj = testArr[j];
+						}						
+					}																	
+				}
+
+				// Last entry - group indices
+				if (paraObj instanceof int[] || paraObj instanceof float[] || paraObj instanceof double[]) {
+
+					int arraySel = Integer.parseInt(param_setting_arr[param_setting_arr.length - 1]);
+
+					if (paraObj instanceof int[]) {
+						int[] val_int_array = (int[]) paraObj;
+						for (int i = 0; i < val_int_array.length; i++) {
+							if ((arraySel & 1 << i) != 0) {
+								String val = Integer.toString(val_int_array[i]);
+								if (dispVal == null) {
+									dispVal = val;
+								} else {
+									if (!dispVal.equals(val)) {
+										System.err.printf("Warning - Mistmatch param values between %s and %s\n",
+												dispVal, val);
+									}
+								}
+							}
+						}
+					}else if(paraObj instanceof float[]) {
+						float[] val_float_array = (float[]) paraObj;
+						for (int i = 0; i < val_float_array.length; i++) {
+							if ((arraySel & 1 << i) != 0) {
+								String val = Float.toString(val_float_array[i]);
+								if (dispVal == null) {
+									dispVal = val;
+								} else {
+									if (!dispVal.equals(val)) {
+										System.err.printf("Warning - Mistmatch param values between %s and %s\n",
+												dispVal, val);
+									}
+								}
+							}
+						}						
+					}else {
+						double[] val_double_array = (double[]) paraObj;
+						for (int i = 0; i < val_double_array.length; i++) {
+							if ((arraySel & 1 << i) != 0) {
+								String val = Double.toString(val_double_array[i]);
+								if (dispVal == null) {
+									dispVal = val;
+								} else {
+									if (!dispVal.equals(val)) {
+										System.err.printf("Warning - Mistmatch param values between %s and %s\n",
+												dispVal, val);
+									}
+								}
+							}
+						}			
+					}						
+				} else {
+					dispVal = paraObj.toString();
+				}
+			} catch (ClassNotFoundException ex) {
+				dispVal = String.format("Not defined due to %s", ex.toString());
+			}
+			
+			parameter_disp[param_arr_index] = dispVal;
+			
+		}
+		
+		
+		System.out.printf("Param_Setting: %s\n", Arrays.toString(parameter_settings).replaceAll("\\s", ""));
+		System.out.printf("Param_Display: %s\n", Arrays.toString(parameter_disp).replaceAll("\\s", ""));					
+
 	}
 
 	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable, Properties prop,

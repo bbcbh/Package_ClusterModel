@@ -54,7 +54,13 @@ public class Launcher_ClusterModel {
 				analysis.setBaseDir(dir);
 				System.out.printf("=== %s ===\n", dir.getName());
 				if (args.length > 2) {
-					analysis.setSkipAnalysis(Integer.parseInt(args[2]));
+					analysis.setSkipAnalysis(Integer.parseInt(args[2]));					
+					if(args.length > 4) {
+						analysis.setIncl_range(
+								new int[] {Integer.parseInt(args[3]), Integer.parseInt(args[4])});
+					}
+					
+					
 				}
 				analysis.analyse_outputs();
 			} else if ("-analyse_rx".equals(flag)) {
