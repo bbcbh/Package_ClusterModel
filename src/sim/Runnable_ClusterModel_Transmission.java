@@ -1,6 +1,8 @@
 package sim;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -621,17 +623,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	private int getRiskCategories(Integer personId, int genderType) {
-		
-		//TODO: Pre_allocate risk categories (mainly form MSM)
-		
-		
 
 		if (risk_cat_map.containsKey(personId)) {
 			return risk_cat_map.get(personId);
 		} else {
 			int riskCat = -1;
 			float[] riskCatList = ((float[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS])[genderType];
+
 			if (riskCatList != null) {
+				// TODO: Total instead of just first year?
 				int numCasual = 0;
 				Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
 				for (Integer[] e : edges) {
@@ -888,6 +888,28 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				edges_array_pt++;
 			}
 
+			// Pre allocate risk categories (mainly form MSM)
+			File pre_allocate_risk_file = new File(baseDir,
+					String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMap_seed));
+
+			if (pre_allocate_risk_file.isFile()) {
+				try {
+					BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));
+					String line;
+					while((line = reader.readLine()) != null) {
+						String[] lineSp = line.split(",");						
+						risk_cat_map.put(Integer.parseInt(lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]),
+								Integer.parseInt(lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));						
+					}										
+
+					reader.close();
+				} catch (Exception e) {
+					e.printStackTrace(System.err);
+				}
+			}
+
+			
+
 			// Schedule testing and vaccination limit
 			for (Integer personId : BASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
@@ -1003,10 +1025,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 								int partner = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1].equals(infectious)
 										? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
 										: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
-								
-								
+
 								Integer immune_until = currently_immune.get(partner);
-								
+
 								boolean tar_immune = immune_until != null && immune_until > currentTime;
 
 								int g_s = getGenderType(infectious);

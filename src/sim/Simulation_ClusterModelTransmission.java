@@ -29,6 +29,7 @@ import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
 
+import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
@@ -94,6 +95,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			+ ".7z";
 	public static final String FILENAME_VACCINE_COVERAGE_PERSON_ZIP = FILENAME_VACCINE_COVERAGE_PERSON
 			.replaceFirst("_%d", "") + ".7z";
+
+	public static final String FILENAME_PRE_ALLOCATE_RISK_GRP = "RiskGrp_Map_%d.csv";
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_PID = 0;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP = PRE_ALLOCATE_RISK_GRP_INDEX_PID + 1;
 
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
@@ -403,11 +408,94 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD;
 
-		float[][] seedInfectParam = (float[][]) simFields[sim_offset + SIM_FIELD_SEED_INFECTION];
-		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
+		final int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+
+		float[][] riskCatListAll = ((float[][]) simFields[ent_offset
+				+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS]);
 
 		int[] contactMapTimeRange = (int[]) simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
+
+		int[] cumulative_pop_composition = new int[pop_composition.length];
+		int pop_offset = 0;
+
+		for (int g = 0; g < cumulative_pop_composition.length; g++) {
+			cumulative_pop_composition[g] = pop_offset + pop_composition[g];
+			pop_offset += pop_composition[g];
+		}
+
+		try {
+			for (float[] riskCatList : riskCatListAll) {
+				if (riskCatList[0] < 0) {
+					// { -NUM_RISKGRP, GENDER_INDEX_INCLUDE, grp0_casual_range_0,
+					// grp0_casual_range_1 ... , grp0_casual_prob_1,...grp2_casual_range_0...}
+					int numRiskGrp = -(int) riskCatList[0];
+					int genderIncl = (int) riskCatList[1];
+					int firstSeedTime = contactMapTimeRange[0];
+
+					File pre_allocate_risk_file = new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+					PrintWriter pWri_riskGrp = new PrintWriter(pre_allocate_risk_file);					
+					
+					// Extract all casual partner for all individuals included
+					HashMap<Integer, Float> pid_partner_map = new HashMap<>();
+
+					for (int g = 0; g < cumulative_pop_composition.length; g++) {
+						if ((genderIncl & 1 << g) > 0) {
+							int g_start = 0;
+							if (g > 1) {
+								g_start = cumulative_pop_composition[g - 1];
+							}
+							for (int pid = g_start; pid <= cumulative_pop_composition[g]; pid++) {
+								if (baseContactMap.containsVertex(pid)) {
+									int numCasual = 0;
+									int numCasual1Yr = 0;
+									int firstPartnerTime = Integer.MAX_VALUE;
+									int lastPartnerTime = 0;
+									Set<Integer[]> edges = baseContactMap.edgesOf(pid);
+									for (Integer[] e : edges) {
+										if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
+												&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
+											firstPartnerTime = Math.min(firstPartnerTime,
+													e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+											lastPartnerTime = Math.max(lastPartnerTime,
+													e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+											numCasual++;
+											if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < firstSeedTime
+													+ num_time_steps_per_snap) {
+												numCasual1Yr++;
+
+											}
+										}
+									}
+									float numCasualPerYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT)
+											* numCasual) / (lastPartnerTime - firstPartnerTime);
+									float numCasualPerYear_1stSnap = (((float) AbstractIndividualInterface.ONE_YEAR_INT)
+											* numCasual1Yr) / (lastPartnerTime - firstPartnerTime);
+
+									pid_partner_map.put(pid, numCasualPerYear);
+
+									// TODO: Pre allocated risk preset - debug
+									pWri_riskGrp.printf("%d,%d,%f,%f\n", pid, numRiskGrp, numCasualPerYear, numCasualPerYear_1stSnap);
+
+								}
+
+							}
+
+						}
+					}										
+					pWri_riskGrp.close();
+					System.out.println("Risk group allocate generated.");
+					System.exit(-1);
+									
+				}
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace(System.err);
+		}
+
+		float[][] seedInfectParam = (float[][]) simFields[sim_offset + SIM_FIELD_SEED_INFECTION];
+		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
 		for (int g = 0; g < seedInfectParam.length; g++) {
 			for (int s = 0; s < seedInfectParam[g].length; s++) {
@@ -477,7 +565,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
-					int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 					if (simFields[ent_offset + f] != null) {
 						runnable[s].getRunnable_fields()[f] = simFields[ent_offset + f];
 					}
@@ -812,4 +899,5 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 	}
+
 }
