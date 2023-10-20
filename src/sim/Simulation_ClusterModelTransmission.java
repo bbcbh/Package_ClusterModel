@@ -45,6 +45,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected File baseDir = null;
 	protected ContactMap baseContactMap;
 	protected long baseContactMapSeed = -1;
+	protected ArrayList<Number[]> prealloactedRiskGrpArr = null;
 	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
 	protected boolean exportSkipBackup = false;
 	protected boolean printProgress = false;
@@ -99,6 +100,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_PRE_ALLOCATE_RISK_GRP = "RiskGrp_Map_%d.csv";
 	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_PID = 0;
 	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP = PRE_ALLOCATE_RISK_GRP_INDEX_PID + 1;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL = PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP + 1;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL
+			+ 1;
 
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
@@ -158,6 +162,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void setBaseContactMapSeed(long baseContactMapSeed) {
 		this.baseContactMapSeed = baseContactMapSeed;
+		try {
+			loadPreallocateRiskGrp(baseContactMapSeed);
+		} catch (Exception ex) {
+			ex.printStackTrace(System.err);
+		}
 	}
 
 	public void setExportSkipBackup(boolean exportSkipBackup) {
@@ -310,6 +319,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 
+		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD;
+
+		final int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+
 		// Check error in zipped output
 		File[] zipFiles = baseDir.listFiles(new FileFilter() {
 			@Override
@@ -404,12 +419,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 		System.out.println(String.format("Number of indivduals in contact map = %s", Arrays.toString(personCount)));
 
-		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
-				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD;
-
-		final int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
-
 		float[][] riskCatListAll = ((float[][]) simFields[ent_offset
 				+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS]);
 
@@ -424,27 +433,19 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			pop_offset += pop_composition[g];
 		}
 
-		try {
+		if (prealloactedRiskGrpArr == null) {
+			// Generated preallocated list
+			// TODO: Check and/or simplify
 			for (float[] riskCatList : riskCatListAll) {
 				if (riskCatList[0] < 0) {
-					// { -NUM_RISKGRP, GENDER_INDEX_INCLUDE, grp0_casual_range_0,
-					// grp0_casual_range_1 ... , grp0_casual_prob_1,...grp2_casual_range_0...}
-					int numRiskGrp = -(int) riskCatList[0];
-					int genderIncl = (int) riskCatList[1];
+					int genderIncl = -(int) riskCatList[0];
 					int firstSeedTime = contactMapTimeRange[0];
-
-					File pre_allocate_risk_file = new File(baseDir, String.format(
-							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
-					PrintWriter pWri_riskGrp = new PrintWriter(pre_allocate_risk_file);					
-					
-					// Extract all casual partner for all individuals included
-					HashMap<Integer, Float> pid_partner_map = new HashMap<>();
 
 					for (int g = 0; g < cumulative_pop_composition.length; g++) {
 						if ((genderIncl & 1 << g) > 0) {
-							int g_start = 0;
+							int g_start = 1;
 							if (g > 1) {
-								g_start = cumulative_pop_composition[g - 1];
+								g_start = cumulative_pop_composition[g - 1] + 1;
 							}
 							for (int pid = g_start; pid <= cumulative_pop_composition[g]; pid++) {
 								if (baseContactMap.containsVertex(pid)) {
@@ -472,26 +473,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 											* numCasual) / (lastPartnerTime - firstPartnerTime);
 									float numCasualPerYear_1stSnap = (((float) AbstractIndividualInterface.ONE_YEAR_INT)
 											* numCasual1Yr) / (lastPartnerTime - firstPartnerTime);
-
-									pid_partner_map.put(pid, numCasualPerYear);
-
-									// TODO: Pre allocated risk preset - debug
-									pWri_riskGrp.printf("%d,%d,%f,%f\n", pid, numRiskGrp, numCasualPerYear, numCasualPerYear_1stSnap);
+									prealloactedRiskGrpArr
+											.add(new Number[] { pid, -1, numCasualPerYear, numCasualPerYear_1stSnap });
 
 								}
-
 							}
-
 						}
-					}										
-					pWri_riskGrp.close();
-					System.out.println("Risk group allocate generated.");
-					System.exit(-1);
-									
+					}
 				}
 			}
-		} catch (Exception ex) {
-			ex.printStackTrace(System.err);
+
+			reallocateRiskGrp(baseContactMapSeed);
 		}
 
 		float[][] seedInfectParam = (float[][]) simFields[sim_offset + SIM_FIELD_SEED_INFECTION];
@@ -579,6 +571,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				runnable[s].initialse();
+				runnable[s].fillRiskCatMap(prealloactedRiskGrpArr);
 
 				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0) {
 					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
@@ -663,7 +656,186 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				zipOutputFiles();
 			}
 		}
+	}
 
+	private void loadPreallocateRiskGrp(long baseContactMapSeed) throws NumberFormatException, IOException {
+		prealloactedRiskGrpArr = new ArrayList<>();
+		File pre_allocate_risk_file = new File(baseDir,
+				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+		boolean reallocate = false;
+
+		if (pre_allocate_risk_file.exists()) {
+			BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));
+			String rLine;
+			while ((rLine = reader.readLine()) != null) {
+				String[] ent = rLine.split(",");
+				Number[] map_ent = new Number[ent.length];
+				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_PID] = Integer.parseInt(ent[PRE_ALLOCATE_RISK_GRP_INDEX_PID]);
+				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = Integer
+						.parseInt(ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
+				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL] = Float
+						.parseFloat(ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL]);
+				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP] = Float
+						.parseFloat(ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP]);
+
+				reallocate |= map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP].intValue() < 0;
+
+				if (Float.isFinite(map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL].floatValue())) {
+					prealloactedRiskGrpArr.add(map_ent);
+				}
+
+			}
+			reader.close();
+		}
+		if (reallocate) {
+			reallocateRiskGrp(baseContactMapSeed);
+		}
+
+	}
+
+	private void reallocateRiskGrp(long baseContactMapSeed) {
+		File pre_allocate_risk_file = new File(baseDir,
+				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+		final int ent_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+		float[][] riskCatListAll = ((float[][]) simFields[ent_offset
+				+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS]);
+
+		String popCompositionKey = POP_PROP_INIT_PREFIX + Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+
+		int[] pop_composition = (int[]) PropValUtils.propStrToObject(loadedProperties.getProperty(popCompositionKey),
+				int[].class);
+		int[] cumulative_pop_composition = new int[pop_composition.length];
+		int pop_offset = 0;
+		for (int g = 0; g < cumulative_pop_composition.length; g++) {
+			cumulative_pop_composition[g] = pop_offset + pop_composition[g];
+			pop_offset += pop_composition[g];
+		}
+
+		long seed = System.currentTimeMillis();
+		if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
+			seed = Long.parseLong(
+					loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
+		}
+
+		RandomGenerator rngBase = new MersenneTwisterRandomGenerator(seed);
+
+		// Reset risk group for everyone
+		for (Number[] ent : prealloactedRiskGrpArr) {
+			ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = -1;
+		}
+
+		for (float[] riskCatList : riskCatListAll) {
+			if (riskCatList != null && riskCatList[0] < 0) {
+				// riskCatList: Number[]
+				// {-genderIncl_Index, numRiskGrp, numCasualPartnerCat
+				// numCasualPartCatUpperRange_0, numCasualPartCatUpperRange_1 ...
+				// riskGrp0_Cat0, riskGrp0_Cat1, ...
+				// riskGrp1_Cat0, riskGrp1_Cat1, ...}
+
+				int genderIncl = -(int) riskCatList[0];
+				int numRiskGrp = (int) riskCatList[1];
+				int numCPartCat = (int) riskCatList[2];
+				float[] cPartCatUpper = Arrays.copyOfRange(riskCatList, 3, 3 + numCPartCat - 1);
+				int unitDistTotal = 0;
+
+				for (int i = 0; i < numRiskGrp * numCPartCat; i++) {
+					unitDistTotal += (int) riskCatList[i + 3 + (numCPartCat - 1)];
+				}
+
+				int[] riskGrpIndex = new int[unitDistTotal];
+				int[] catGrpIndex = new int[unitDistTotal];
+				int rPt = 0;
+				for (int rG = 0; rG < numRiskGrp; rG++) {
+					for (int catG = 0; catG < numCPartCat; catG++) {
+						int rep = (int) riskCatList[3 + (numCPartCat - 1) + rG * numCPartCat + catG];
+						while (rep > 0) {
+							riskGrpIndex[rPt] = rG;
+							catGrpIndex[rPt] = catG;
+							rPt++;
+							rep--;
+						}
+					}
+				}
+
+				ArrayList<Number[]> risk_grp_prealloc_subGrp = new ArrayList<>();
+				for (Number[] ent : prealloactedRiskGrpArr) {
+					int g = Arrays.binarySearch(cumulative_pop_composition,
+							(Integer) ent[PRE_ALLOCATE_RISK_GRP_INDEX_PID]);
+					if (g < 0) {
+						g = ~g;
+					}
+					if ((genderIncl & 1 << g) > 0) {
+						risk_grp_prealloc_subGrp.add(ent);
+					}
+				}
+
+				HashMap<Integer, ArrayList<Number[]>> bins = new HashMap<>();
+
+				for (Number[] ent : risk_grp_prealloc_subGrp) {
+					float numCasual12Months = (Float) ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL];
+					if (numCasual12Months > 0) { // Only those with casual partners
+						int rGrp = Arrays.binarySearch(cPartCatUpper, numCasual12Months);
+						if (rGrp < 0) {
+							rGrp = ~rGrp;
+						}
+						ArrayList<Number[]> bin_ent = bins.get(rGrp);
+						if (bin_ent == null) {
+							bin_ent = new ArrayList<>();
+							bins.put(rGrp, bin_ent);
+						}
+						bin_ent.add(ent);
+					}
+				}
+
+				boolean endSelection = false;
+				Number[][] pickedEntry = new Number[unitDistTotal][];
+				int numberAllocated = 0;
+
+				while (!endSelection) {
+					Arrays.fill(pickedEntry, null);
+					rPt = 0;
+					while (rPt < pickedEntry.length && !endSelection) {
+						int binSize = bins.get((catGrpIndex[rPt])).size();
+						if (binSize > 0) {
+							pickedEntry[rPt] = bins.get(catGrpIndex[rPt]).remove(rngBase.nextInt(binSize));
+						} else {
+							endSelection = true;
+						}
+						rPt++;
+					}
+
+					if (!endSelection) {
+						for (int r = 0; r < pickedEntry.length; r++) {
+							pickedEntry[r][PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = riskGrpIndex[r];
+						}
+						numberAllocated += pickedEntry.length;
+					}
+
+				}
+
+				System.out.printf("CMap_Seed %d:  Risk group allocated for %.1f%% of the population\n",
+						baseContactMapSeed,	(100.0f * numberAllocated) / prealloactedRiskGrpArr.size());
+
+				// Set the remainder group
+				for (Number[] ent : risk_grp_prealloc_subGrp) {
+					if (ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP].intValue() < 0) {
+						ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = numRiskGrp;
+					}
+				}
+
+			}
+		}
+		try {
+			PrintWriter pWri_riskGrp = new PrintWriter(pre_allocate_risk_file);
+			for (Number[] ent : prealloactedRiskGrpArr) {
+				pWri_riskGrp.printf("%d,%d,%f,%f\n", ent[0], ent[1], ent[2], ent[3]);
+			}
+			pWri_riskGrp.close();
+		} catch (IOException ex) {
+			ex.printStackTrace(System.err);
+		}
 	}
 
 	private void zipOutputFiles() throws IOException, FileNotFoundException {
@@ -871,8 +1043,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					sim.loadProperties(prop);
 					Matcher m = Pattern.compile(REGEX_STR).matcher(preGenClusterMap[i].getName());
 					if (m.matches()) {
-						sim.setBaseContactMapSeed(Long.parseLong(m.group(1)));
+						long cMap_seed = Long.parseLong(m.group(1));
+						sim.setBaseContactMapSeed(cMap_seed);
 					}
+
 					sim.setBaseContactMap(ContactMap.ContactMapFromFullString(cMap_str.toString()));
 
 					if (args.length > 1) {

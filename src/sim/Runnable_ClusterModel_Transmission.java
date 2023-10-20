@@ -508,7 +508,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		sim_output = new HashMap<>();
 		schedule_testing = new HashMap<>();
 		mapping_infection_schedule = new HashMap<>();
-		risk_cat_map = new HashMap<>();
+		if (risk_cat_map == null) {
+			risk_cat_map = new HashMap<>();
+		}
 
 		// For infection tracking
 		// Key = pid, V = [infection_start_time_1, infection_end_time_1...];
@@ -622,6 +624,20 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
+	public void fillRiskCatMap(ArrayList<Number[]> prealloactedRiskGrpArr) {
+		if (prealloactedRiskGrpArr != null) {
+			for (Number[] preAllocRisk : prealloactedRiskGrpArr) {
+				if (risk_cat_map == null) {
+					risk_cat_map = new HashMap<>();
+				}
+
+				risk_cat_map.put(
+						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID],
+						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
+			}
+		}
+	}
+
 	private int getRiskCategories(Integer personId, int genderType) {
 
 		if (risk_cat_map.containsKey(personId)) {
@@ -630,22 +646,25 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			int riskCat = -1;
 			float[] riskCatList = ((float[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS])[genderType];
 
-			if (riskCatList != null) {
-				// TODO: Total instead of just first year?
+			if (riskCatList != null) {				
 				int numCasual = 0;
+				int firstPartnerTime = Integer.MAX_VALUE;
+				int lastPartnerTime = 0;
 				Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
 				for (Integer[] e : edges) {
-					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
-							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < firstSeedTime
-									+ NUM_TIME_STEPS_PER_SNAP
-							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
+					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime							
+							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {						
+						firstPartnerTime = Math.min(firstPartnerTime,
+								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+						lastPartnerTime = Math.max(lastPartnerTime,
+								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
 						numCasual++;
 					}
 				}
 
-				float numCasual1Year = ((float) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual
-						/ NUM_TIME_STEPS_PER_SNAP;
-				riskCat = Arrays.binarySearch(riskCatList, numCasual1Year);
+				float numCasualPerYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT)
+						* numCasual) / (lastPartnerTime - firstPartnerTime);				
+				riskCat = Arrays.binarySearch(riskCatList, numCasualPerYear);
 				if (riskCat < 0) {
 					riskCat = ~riskCat;
 				}
@@ -896,19 +915,20 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				try {
 					BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));
 					String line;
-					while((line = reader.readLine()) != null) {
-						String[] lineSp = line.split(",");						
-						risk_cat_map.put(Integer.parseInt(lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]),
-								Integer.parseInt(lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));						
-					}										
+					while ((line = reader.readLine()) != null) {
+						String[] lineSp = line.split(",");
+						risk_cat_map.put(
+								Integer.parseInt(
+										lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]),
+								Integer.parseInt(
+										lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));
+					}
 
 					reader.close();
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
 				}
 			}
-
-			
 
 			// Schedule testing and vaccination limit
 			for (Integer personId : BASE_CONTACT_MAP.vertexSet()) {
