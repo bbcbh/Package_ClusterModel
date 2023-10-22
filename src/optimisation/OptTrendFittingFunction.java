@@ -32,6 +32,7 @@ import sim.Runnable_ClusterModel_ContactMap_Generation;
 import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
+import sim.Simulation_ClusterModelTransmission;
 import util.PropValUtils;
 
 public class OptTrendFittingFunction extends OptFittingFunction {
@@ -625,6 +626,20 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 					runnable[rId].setSimSetting(1); // No output
 					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, c == null);
 					runnable[rId].initialse();
+					
+					File pre_allocate_risk_file = new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMap_seed[cMap_id]));
+					
+					if(pre_allocate_risk_file.exists()) {
+						ArrayList<Number[]> riskGrpArr = new ArrayList<>();
+						try {
+							Simulation_ClusterModelTransmission.loadPreallocateRiskGrp(riskGrpArr, baseDir, cMap_seed[cMap_id]);
+						} catch (NumberFormatException | IOException e) {
+							e.printStackTrace(System.err);						
+						}												
+						runnable[rId].fillRiskCatMap(riskGrpArr);
+					}														
+					
 					runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
 				}
 				rId++;

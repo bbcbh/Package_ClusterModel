@@ -334,13 +334,58 @@ public class Optimisation_Factory {
 				ContactMap[] baseCMaps = new ContactMap[preGenClusterFiles.length];
 				long[] baseCMapSeeds = new long[baseCMaps.length];
 				RandomGenerator rng = new MersenneTwisterRandomGenerator(seed);
-				double[][] targer_trend_time_range = target_trend_collection
+				double[][] target_trend_time_range = target_trend_collection
 						.remove(OptTrendFittingFunction.OPT_TREND_CSV_RANGE);
 
 				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, numThreads);
 
 				System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
 						contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+
+				// Generate pre_allocated prealloactedRiskGrpArr
+
+				final String popCompositionKey = POP_PROP_INIT_PREFIX
+						+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+				int[] pop_composition = (int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),
+						int[].class);
+				int[] cumulative_pop_composition = new int[pop_composition.length];
+				int pop_offset = 0;
+				for (int g = 0; g < cumulative_pop_composition.length; g++) {
+					cumulative_pop_composition[g] = pop_offset + pop_composition[g];
+					pop_offset += pop_composition[g];
+				}
+
+				final String riskCatListAllKey = POP_PROP_INIT_PREFIX
+						+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+								+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+								+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+								+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD
+								+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
+				float[][] riskCatListAll = (float[][]) PropValUtils.propStrToObject(prop.getProperty(riskCatListAllKey),
+						float[][].class);
+
+				final String time_rangeKey = POP_PROP_INIT_PREFIX
+						+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+								+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+								+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
+
+				int[] map_time_range = (int[]) PropValUtils.propStrToObject(prop.getProperty(time_rangeKey),
+						int[].class);
+
+				for (int c = 0; c < baseCMaps.length; c++) {
+					ArrayList<Number[]> riskGrpArr = new ArrayList<>();
+					File pre_allocate_risk_file = new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseCMapSeeds[c]));
+					if (!pre_allocate_risk_file.exists()) {
+						Simulation_ClusterModelTransmission.fillRiskGrpArrByCasualPartnership(riskGrpArr, baseCMaps[c],
+								cumulative_pop_composition, riskCatListAll, map_time_range[0]);
+
+						Simulation_ClusterModelTransmission.reallocateRiskGrp(riskGrpArr, baseCMapSeeds[c],
+								cumulative_pop_composition, riskCatListAll, baseDir, seed);
+
+					}
+
+				}
 
 				// Loading of previous optTrend text output files
 
@@ -417,11 +462,11 @@ public class Optimisation_Factory {
 						}
 						opt_trend_obj_func = new OptTrendFittingFunction(baseDir, prop, Arrays.copyOf(cMaps, cMapPt),
 								Arrays.copyOf(cMapSeeds_long, cMapPt), sim_seeds_long, target_trend_collection,
-								targer_trend_time_range, numThreads);
+								target_trend_time_range, numThreads);
 
 					} else {
 						opt_trend_obj_func = new OptTrendFittingFunction(baseDir, prop, baseCMaps, baseCMapSeeds,
-								numSimPerMap, rng, target_trend_collection, targer_trend_time_range, numThreads);
+								numSimPerMap, rng, target_trend_collection, target_trend_time_range, numThreads);
 						long[] gen_sim_seed = opt_trend_obj_func.getSim_seeds();
 
 						PrintWriter pWri = new PrintWriter(resList);
@@ -571,7 +616,7 @@ public class Optimisation_Factory {
 							arg.put(OptTrendFittingFunction.ARGS_INIT_PARAM, init_param);
 							arg.put(OptTrendFittingFunction.ARGS_BOUNDARIES, boundaries);
 							arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS, target_trend_collection);
-							arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_TIMERANGE, targer_trend_time_range);
+							arg.put(OptTrendFittingFunction.ARGS_TAR_TRENDS_TIMERANGE, target_trend_time_range);
 							arg.put(OptTrendFittingFunction.ARGS_PROP, prop);
 							arg.put(OptTrendFittingFunction.ARGS_OPT_METHOD, optMethod);
 							arg.put(OptTrendFittingFunction.ARGS_PROGRESS_DISP, numThreads <= 1);
@@ -1496,8 +1541,65 @@ public class Optimisation_Factory {
 												}
 											}
 
-											if (cmap != null) {
+											if (cmap != null) {																																																							
+												
 												// Setting up runnable
+												final String popCompositionKey = POP_PROP_INIT_PREFIX
+														+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+												int[] pop_composition = (int[]) PropValUtils
+														.propStrToObject(prop.getProperty(popCompositionKey), int[].class);
+												int[] cumulative_pop_composition = new int[pop_composition.length];
+												int pop_offset = 0;
+												for (int g = 0; g < cumulative_pop_composition.length; g++) {
+													cumulative_pop_composition[g] = pop_offset + pop_composition[g];
+													pop_offset += pop_composition[g];
+												}
+
+												final String riskCatListAllKey = POP_PROP_INIT_PREFIX
+														+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+																+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+																+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+																+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD
+																+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
+												float[][] riskCatListAll = (float[][]) PropValUtils
+														.propStrToObject(prop.getProperty(riskCatListAllKey), float[][].class);
+
+												File pre_allocate_risk_file = new File(baseDir, String.format(
+														Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, (long) ga_ent[GA_ENT_CMAP_SEED]));
+												ArrayList<Number[]> riskGrpArr = new ArrayList<>();
+
+												
+												long seed = Long.parseLong(
+														prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
+												
+												boolean reallocate = true;
+												
+												if (!pre_allocate_risk_file.exists()) {
+
+													final String time_rangeKey = POP_PROP_INIT_PREFIX
+															+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+																	+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+																	+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
+
+													int[] map_time_range = (int[]) PropValUtils.propStrToObject(prop.getProperty(time_rangeKey),
+															int[].class);
+
+													Simulation_ClusterModelTransmission.fillRiskGrpArrByCasualPartnership(riskGrpArr, cmap,
+															cumulative_pop_composition, riskCatListAll, map_time_range[0]);
+
+												} else {
+													try {
+														reallocate = Simulation_ClusterModelTransmission.loadPreallocateRiskGrp(riskGrpArr,
+																baseDir, (long) ga_ent[GA_ENT_CMAP_SEED]);
+													} catch (Exception e) {
+														e.printStackTrace(System.err);
+													}
+												}
+
+												if (reallocate) {
+													Simulation_ClusterModelTransmission.reallocateRiskGrp(riskGrpArr, (long) ga_ent[GA_ENT_CMAP_SEED],
+															cumulative_pop_composition, riskCatListAll, baseDir, seed);
+												}																																		
 
 												Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
 														(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
@@ -1550,6 +1652,7 @@ public class Optimisation_Factory {
 
 												setOptParamInRunnable(runnable, PROP, param_double, false);
 												runnable.initialse();
+												runnable.fillRiskCatMap(riskGrpArr);
 												runnable.allocateSeedInfection(SEED_INFECTION, START_TIME);
 
 												// Run simulation
@@ -1879,6 +1982,63 @@ public class Optimisation_Factory {
 					long tic = System.currentTimeMillis();
 
 					for (ContactMap c : cMap) {
+
+						final String popCompositionKey = POP_PROP_INIT_PREFIX
+								+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+						int[] pop_composition = (int[]) PropValUtils
+								.propStrToObject(prop.getProperty(popCompositionKey), int[].class);
+						int[] cumulative_pop_composition = new int[pop_composition.length];
+						int pop_offset = 0;
+						for (int g = 0; g < cumulative_pop_composition.length; g++) {
+							cumulative_pop_composition[g] = pop_offset + pop_composition[g];
+							pop_offset += pop_composition[g];
+						}
+
+						final String riskCatListAllKey = POP_PROP_INIT_PREFIX
+								+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+										+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+										+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+										+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD
+										+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
+						float[][] riskCatListAll = (float[][]) PropValUtils
+								.propStrToObject(prop.getProperty(riskCatListAllKey), float[][].class);
+
+						File pre_allocate_risk_file = new File(baseDir, String.format(
+								Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMap_seed[rId]));
+						ArrayList<Number[]> riskGrpArr = new ArrayList<>();						
+
+						long seed = Long.parseLong(
+								prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
+						
+						boolean reallocate = true;
+
+						if (!pre_allocate_risk_file.exists()) {
+
+							final String time_rangeKey = POP_PROP_INIT_PREFIX
+									+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+											+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+											+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
+
+							int[] map_time_range = (int[]) PropValUtils.propStrToObject(prop.getProperty(time_rangeKey),
+									int[].class);
+
+							Simulation_ClusterModelTransmission.fillRiskGrpArrByCasualPartnership(riskGrpArr, c,
+									cumulative_pop_composition, riskCatListAll, map_time_range[0]);
+
+						} else {
+							try {
+								reallocate = Simulation_ClusterModelTransmission.loadPreallocateRiskGrp(riskGrpArr,
+										baseDir, cMap_seed[rId]);
+							} catch (Exception e) {
+								e.printStackTrace(System.err);
+							}
+						}
+
+						if (reallocate) {
+							Simulation_ClusterModelTransmission.reallocateRiskGrp(riskGrpArr, cMap_seed[rId],
+									cumulative_pop_composition, riskCatListAll, baseDir, seed);
+						}
+
 						runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[rId], sim_seed,
 								POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 						runnable[rId].setBaseDir(baseDir);
@@ -1898,8 +2058,8 @@ public class Optimisation_Factory {
 						runnable[rId].setSimSetting(1); // No output
 						setOptParamInRunnable(runnable[rId], PROP, point, c == null);
 						runnable[rId].initialse();
+						runnable[rId].fillRiskCatMap(riskGrpArr);
 						runnable[rId].allocateSeedInfection(SEED_INFECTION, START_TIME);
-
 						rId++;
 					}
 
@@ -2392,7 +2552,6 @@ public class Optimisation_Factory {
 	public static void extractParamToOpt(Properties prop, String optParmaStr) {
 		String[] parameter_settings = optParmaStr.split(",");
 		String[] parameter_disp = new String[parameter_settings.length];
-		
 
 		for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 			String param_setting = parameter_settings[param_arr_index];
@@ -2413,14 +2572,14 @@ public class Optimisation_Factory {
 
 				for (int i = 1; i < param_setting_arr.length - 1; i++) {
 					// Search for the first one
-					int arraySel = Integer.parseInt(param_setting_arr[i]); 
+					int arraySel = Integer.parseInt(param_setting_arr[i]);
 					Object[] testArr = ((Object[]) paraObj);
 					paraObj = null;
-					for(int j = 0; j < testArr.length && paraObj == null; j++) {
+					for (int j = 0; j < testArr.length && paraObj == null; j++) {
 						if ((arraySel & 1 << j) != 0) {
 							paraObj = testArr[j];
-						}						
-					}																	
+						}
+					}
 				}
 
 				// Last entry - group indices
@@ -2443,7 +2602,7 @@ public class Optimisation_Factory {
 								}
 							}
 						}
-					}else if(paraObj instanceof float[]) {
+					} else if (paraObj instanceof float[]) {
 						float[] val_float_array = (float[]) paraObj;
 						for (int i = 0; i < val_float_array.length; i++) {
 							if ((arraySel & 1 << i) != 0) {
@@ -2457,8 +2616,8 @@ public class Optimisation_Factory {
 									}
 								}
 							}
-						}						
-					}else {
+						}
+					} else {
 						double[] val_double_array = (double[]) paraObj;
 						for (int i = 0; i < val_double_array.length; i++) {
 							if ((arraySel & 1 << i) != 0) {
@@ -2472,22 +2631,21 @@ public class Optimisation_Factory {
 									}
 								}
 							}
-						}			
-					}						
+						}
+					}
 				} else {
 					dispVal = paraObj.toString();
 				}
 			} catch (ClassNotFoundException ex) {
 				dispVal = String.format("Not defined due to %s", ex.toString());
 			}
-			
+
 			parameter_disp[param_arr_index] = dispVal;
-			
+
 		}
-		
-		
+
 		System.out.printf("Param_Setting: %s\n", Arrays.toString(parameter_settings).replaceAll("\\s", ""));
-		System.out.printf("Param_Display: %s\n", Arrays.toString(parameter_disp).replaceAll("\\s", ""));					
+		System.out.printf("Param_Display: %s\n", Arrays.toString(parameter_disp).replaceAll("\\s", ""));
 
 	}
 
