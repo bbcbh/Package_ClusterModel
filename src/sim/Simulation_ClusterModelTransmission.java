@@ -30,8 +30,6 @@ import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
 
 import person.AbstractIndividualInterface;
-import population.AbstractFieldsArrayPopulation;
-import population.AbstractPopulation;
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
