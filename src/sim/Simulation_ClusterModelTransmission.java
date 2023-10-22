@@ -617,7 +617,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		// Generated preallocated list
 		// TODO: Check and/or simplify
 		for (float[] riskCatList : riskCatListAll) {
-			if (riskCatList[0] < 0) {
+			if (riskCatList != null &&  riskCatList[0] < 0) {
 				int genderIncl = -(int) riskCatList[0];
 				for (int g = 0; g < cumulative_pop_composition.length; g++) {
 					if ((genderIncl & 1 << g) > 0) {

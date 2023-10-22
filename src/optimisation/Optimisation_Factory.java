@@ -336,13 +336,9 @@ public class Optimisation_Factory {
 				RandomGenerator rng = new MersenneTwisterRandomGenerator(seed);
 				double[][] target_trend_time_range = target_trend_collection
 						.remove(OptTrendFittingFunction.OPT_TREND_CSV_RANGE);
-
-				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, numThreads);
-
-				System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
-						contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
-
-				// Generate pre_allocated prealloactedRiskGrpArr
+				
+				
+				
 
 				final String popCompositionKey = POP_PROP_INIT_PREFIX
 						+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
@@ -371,9 +367,17 @@ public class Optimisation_Factory {
 
 				int[] map_time_range = (int[]) PropValUtils.propStrToObject(prop.getProperty(time_rangeKey),
 						int[].class);
+				
 
-				for (int c = 0; c < baseCMaps.length; c++) {
-					ArrayList<Number[]> riskGrpArr = new ArrayList<>();
+				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, numThreads);
+
+				System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
+						contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+
+				// Generate pre_allocated prealloactedRiskGrpArr
+
+				for (int c = 0; c < baseCMaps.length; c++) {					
+					ArrayList<Number[]> riskGrpArr = new ArrayList<>();					
 					File pre_allocate_risk_file = new File(baseDir, String.format(
 							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseCMapSeeds[c]));
 					if (!pre_allocate_risk_file.exists()) {
@@ -384,11 +388,9 @@ public class Optimisation_Factory {
 								cumulative_pop_composition, riskCatListAll, baseDir, seed);
 
 					}
-
 				}
-
+				
 				// Loading of previous optTrend text output files
-
 				int num_param = init_param_default.length;
 				Number[][] results_lookup = extractPreviousOptTrend(baseDir, num_param);
 
