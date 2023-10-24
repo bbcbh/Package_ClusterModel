@@ -434,8 +434,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		if (prealloactedRiskGrpArr == null) {
+			prealloactedRiskGrpArr = new ArrayList<>();
 			fillRiskGrpArrByCasualPartnership(prealloactedRiskGrpArr, baseContactMap, cumulative_pop_composition,
-					riskCatListAll, contactMapTimeRange[0]);
+					riskCatListAll, contactMapTimeRange);
 
 			reallocateRiskGrp(baseContactMapSeed);
 		}
@@ -613,11 +614,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	}
 
 	public static void fillRiskGrpArrByCasualPartnership(ArrayList<Number[]> riskGrpArr, ContactMap cMap,
-			int[] cumulative_pop_composition, float[][] riskCatListAll, int timeStartFrom) {
+			int[] cumulative_pop_composition, float[][] riskCatListAll, int[] timeStartFrom) {
 		// Generated preallocated list
-		// TODO: Check and/or simplify
 		for (float[] riskCatList : riskCatListAll) {
-			if (riskCatList != null &&  riskCatList[0] < 0) {
+			if (riskCatList != null && riskCatList[0] < 0) {
 				int genderIncl = -(int) riskCatList[0];
 				for (int g = 0; g < cumulative_pop_composition.length; g++) {
 					if ((genderIncl & 1 << g) > 0) {
@@ -629,28 +629,43 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							if (cMap.containsVertex(pid)) {
 								int numCasual = 0;
 								int numCasual1Yr = 0;
+								int firstCasualPartnerTime = Integer.MAX_VALUE;
+								int lastCasualPartnerTime = 0;
 								int firstPartnerTime = Integer.MAX_VALUE;
 								int lastPartnerTime = 0;
 								Set<Integer[]> edges = cMap.edgesOf(pid);
 								for (Integer[] e : edges) {
-									if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= timeStartFrom
+									firstPartnerTime = Math.min(firstPartnerTime,
+											e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+									lastPartnerTime = Math.max(lastPartnerTime,
+											e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+
+									if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= timeStartFrom[0]
 											&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
-										firstPartnerTime = Math.min(firstPartnerTime,
+										firstCasualPartnerTime = Math.min(firstCasualPartnerTime,
 												e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
-										lastPartnerTime = Math.max(lastPartnerTime,
+										lastCasualPartnerTime = Math.max(lastCasualPartnerTime,
 												e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
 										numCasual++;
-										if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < timeStartFrom
+										if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < timeStartFrom[0]
 												+ AbstractIndividualInterface.ONE_YEAR_INT) {
 											numCasual1Yr++;
-
 										}
 									}
 								}
+
+								float denom = lastCasualPartnerTime - firstCasualPartnerTime;
+								if (denom <= 0) {									
+									denom = lastPartnerTime - firstPartnerTime;
+									if (denom <= 0) {
+										denom = timeStartFrom[1] - timeStartFrom[0];
+									}
+								}
+
 								float numCasualPerYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT)
-										* numCasual) / (lastPartnerTime - firstPartnerTime);
+										* numCasual) / denom;
 								float numCasualPerYear_1stYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT)
-										* numCasual1Yr) / (lastPartnerTime - firstPartnerTime);
+										* numCasual1Yr) / denom;
 								riskGrpArr.add(new Number[] { pid, -1, numCasualPerYear, numCasualPerYear_1stYear });
 
 							}

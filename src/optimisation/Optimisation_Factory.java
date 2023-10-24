@@ -382,7 +382,7 @@ public class Optimisation_Factory {
 							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseCMapSeeds[c]));
 					if (!pre_allocate_risk_file.exists()) {
 						Simulation_ClusterModelTransmission.fillRiskGrpArrByCasualPartnership(riskGrpArr, baseCMaps[c],
-								cumulative_pop_composition, riskCatListAll, map_time_range[0]);
+								cumulative_pop_composition, riskCatListAll, map_time_range);
 
 						Simulation_ClusterModelTransmission.reallocateRiskGrp(riskGrpArr, baseCMapSeeds[c],
 								cumulative_pop_composition, riskCatListAll, baseDir, seed);
@@ -1587,7 +1587,7 @@ public class Optimisation_Factory {
 															int[].class);
 
 													Simulation_ClusterModelTransmission.fillRiskGrpArrByCasualPartnership(riskGrpArr, cmap,
-															cumulative_pop_composition, riskCatListAll, map_time_range[0]);
+															cumulative_pop_composition, riskCatListAll, map_time_range);
 
 												} else {
 													try {
@@ -2025,7 +2025,7 @@ public class Optimisation_Factory {
 									int[].class);
 
 							Simulation_ClusterModelTransmission.fillRiskGrpArrByCasualPartnership(riskGrpArr, c,
-									cumulative_pop_composition, riskCatListAll, map_time_range[0]);
+									cumulative_pop_composition, riskCatListAll, map_time_range);
 
 						} else {
 							try {
