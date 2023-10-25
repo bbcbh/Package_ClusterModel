@@ -34,14 +34,14 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 	public void setCumulative(boolean isCumulative) {
 		this.isCumulative = isCumulative;
 	}
-	
+
 	public void addRow(Integer time, double[] values) {
 		int time_index = Collections.binarySearch(time_pt, time);
 		if (time_index < 0) {
 			time_pt.add(~time_index, time);
 		}
-		for (int s =0; s < values.length; s++) {
-			String key = String.format("%d,%d", time, s+1);
+		for (int s = 0; s < values.length; s++) {
+			String key = String.format("%d,%d", time, s + 1);
 			double value = values[s];
 			ArrayList<Double> map_ent = this.get(key);
 			if (map_ent == null) {
@@ -50,7 +50,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 			}
 			map_ent.add(value);
 		}
-		
+
 	}
 
 	public void addRow(String csv_line) {
@@ -83,9 +83,9 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 			ArrayList<Double> map_values = this.get(map_key);
 			if (map_values != null) {
 				double[] val = new double[map_values.size()];
-				int p = 0;				
+				int p = 0;
 				for (Double d : map_values) {
-					val[p] = d.doubleValue();					
+					val[p] = d.doubleValue();
 					p++;
 				}
 				if (!isCumulative) {
@@ -105,9 +105,9 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 				}
 				if (val != null) {
 					double sum = 0;
-					for(double singleVal : val) {
+					for (double singleVal : val) {
 						sum += singleVal;
-					}													
+					}
 					str.append(time);
 					str.append(',');
 					str.append(map_values.size());
@@ -128,9 +128,10 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 		return str.toString();
 	}
 
-	public static void updateInfectionHistoryMap(HashMap<String, ArrayList<Integer>> infection_history_map,
-			int[] cumulative_gender_distribution, int[] incl_time_range, int[][] total_no_incident_reported_so_far,
-			String src_file_name, String src_file_lines) throws IOException {
+	public static void updateInfectionHistoryMap(HashMap<String, ArrayList<Integer>> infection_history_count_map,
+			HashMap<String, ArrayList<Long>> infection_history_duration_map, int[] cumulative_gender_distribution,
+			int[] incl_time_range, int[][] total_no_incident_reported_so_far, String src_file_name,
+			String src_file_lines) throws IOException {
 		BufferedReader lines = new BufferedReader(new StringReader(src_file_lines));
 		String line;
 		while ((line = lines.readLine()) != null) {
@@ -138,32 +139,47 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 				try {
 					String[] entries = line.split(",");
 					int id = Integer.parseInt(entries[0]);
-					int gender = Runnable_ClusterModel_Transmission.getGenderType(id,
-							cumulative_gender_distribution);
+					int gender = Runnable_ClusterModel_Transmission.getGenderType(id, cumulative_gender_distribution);
 					int site = Integer.parseInt(entries[1]);
-	
+
+					String key = String.format("%d,%d", gender, site);
+
+					ArrayList<Integer> history_map_count_ent = infection_history_count_map.get(key);
+					if (history_map_count_ent == null) {
+						history_map_count_ent = new ArrayList<>();
+						infection_history_count_map.put(key, history_map_count_ent);
+					}
+
+					ArrayList<Long> history_map_dur_map_ent = infection_history_duration_map.get(key);
+					if (history_map_dur_map_ent == null) {
+						history_map_dur_map_ent = new ArrayList<>();
+						infection_history_duration_map.put(key, history_map_dur_map_ent);
+						
+						history_map_dur_map_ent.add(0l);
+						history_map_dur_map_ent.add(0l);
+					}
+
 					int numInfections = 0;
 					for (int i = 2; i < entries.length; i += 2) {
 						int inf_start = Integer.parseInt(entries[i]);
 						if (inf_start >= incl_time_range[0] && inf_start < incl_time_range[1]) {
 							numInfections++;
+							if (i + 1 < entries.length) {
+								int inf_end = Integer.parseInt(entries[i + 1]);
+								int dur = inf_end - inf_start;																
+								history_map_dur_map_ent.set(0, history_map_dur_map_ent.get(0) + 1);
+								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);	
+								history_map_dur_map_ent.add((long) dur);		
+							}
+
 						}
+
 					}
-	
-					ArrayList<Integer> history_map_ent = infection_history_map
-							.get(String.format("%d,%d", gender, site));
-					if (history_map_ent == null) {
-						history_map_ent = new ArrayList<>();
-						infection_history_map.put(String.format("%d,%d", gender, site),
-								history_map_ent);
-					}
-					history_map_ent.add(numInfections);
-	
+					history_map_count_ent.add(numInfections);
 					total_no_incident_reported_so_far[gender][site]--;
-	
+
 				} catch (Exception ex) {
-					System.err.printf("Error in adding line from %s (%s)\n", src_file_name,
-							line);
+					System.err.printf("Error in adding line from %s (%s)\n", src_file_name, line);
 				}
 			}
 		}

@@ -30,6 +30,8 @@ import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
 import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 
 import optimisation.OptTrendFittingFunction;
 import population.Population_Bridging;
@@ -59,19 +61,19 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP.replaceAll("%d",
 					"(-{0,1}(?!0)\\\\d+)"),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE_ZIP.replaceAll("%d",
-					"(-{0,1}(?!0)\\\\d+)"),
-			};
+					"(-{0,1}(?!0)\\\\d+)"), };
 
 	public static final String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
 			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History_%s.csv",
 			"Summary_DX_Person_%s.csv", "Summary_DX_Sought_Person_%s.csv", "Summary_Vaccine_Person_%s.csv",
-			"Summary_Cumul_Antibiotic_Usage_%s.csv", "Summary_Incidence_Person_%s.csv" ,"Summary_Incidence_Site_%s.csv" };
+			"Summary_Cumul_Antibiotic_Usage_%s.csv", "Summary_Incidence_Person_%s.csv",
+			"Summary_Incidence_Site_%s.csv" };
 
 	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, false,
 			true, true };
 
 	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false,
-			false, false, false};
+			false, false, false };
 
 	public Util_Analyse_ClusterModel_Transmission_Output() {
 
@@ -83,6 +85,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			SKIP_ANALYSIS[i] = (key & (1 << i)) != 0;
 		}
 	}
+
 	public void setIncl_range(int[] ent) {
 		incl_range = ent;
 	}
@@ -95,8 +98,6 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		final int BUFFER = 2048;
 		final byte[] buf = new byte[BUFFER];
 		File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
-
-		
 
 		if (propFile.isFile()) {
 			for (int z = 0; z < ZIP_FILES_LIST.length; z++) {
@@ -122,7 +123,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 					if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP
 							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
-						// Special case for infection history												
+						// Special case for infection history
 
 						Properties prop = new Properties();
 						FileInputStream fIS = new FileInputStream(propFile);
@@ -142,7 +143,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 						int[][] total_no_incident_reported = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
-						HashMap<String, ArrayList<Integer>> inf_history_map = new HashMap<>();
+						HashMap<String, ArrayList<Integer>> inf_history_count_map = new HashMap<>();
+						HashMap<String, ArrayList<Long>> inf_history_dur_map = new HashMap<>();
 
 						for (File f : zipFiles) {
 							SevenZFile resultZip = new SevenZFile(f);
@@ -162,32 +164,35 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 									txt_entries.append(new String(Arrays.copyOf(buf, count)));
 								}
 
-								Util_CSV_Table_Map.updateInfectionHistoryMap(inf_history_map, cuml_gender_dist,
-										incl_range, total_no_incident_reported, ent.getName(), txt_entries.toString());
+								Util_CSV_Table_Map.updateInfectionHistoryMap(inf_history_count_map, inf_history_dur_map,
+										cuml_gender_dist, incl_range, total_no_incident_reported, ent.getName(),
+										txt_entries.toString());
 
 							}
 							resultZip.close();
 						}
 
-						File summaryFile = new File(baseDir,
+						File summary_file = new File(baseDir,
 								String.format(stat_filename_format, Arrays.toString(incl_range)));
-						PrintWriter pWri = new PrintWriter(summaryFile);
-						pWri.println("Gender, Site, # Incident");
+						PrintWriter pWri = new PrintWriter(summary_file);
+						// Incident count
+						pWri.println("Gender, Site, # Incidence (bin-size of 1)");
 						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
 								pWri.print(s);
 
-								ArrayList<Integer> history_map_ent = inf_history_map.get(String.format("%d,%d", g, s));
+								ArrayList<Integer> history_count_map_ent = inf_history_count_map
+										.get(String.format("%d,%d", g, s));
 								int[] incident_count;
 
-								if (history_map_ent != null) {
-									Collections.sort(history_map_ent);
-									Integer maxIncident = history_map_ent.get(history_map_ent.size() - 1);
+								if (history_count_map_ent != null) {
+									Collections.sort(history_count_map_ent);
+									Integer maxIncident = history_count_map_ent.get(history_count_map_ent.size() - 1);
 									incident_count = new int[maxIncident + 1];
 									incident_count[0] = total_no_incident_reported[g][s];
-									for (Integer n : history_map_ent) {
+									for (Integer n : history_count_map_ent) {
 										incident_count[n]++;
 									}
 
@@ -202,8 +207,55 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 								pWri.println();
 							}
-
 						}
+						pWri.println("Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
+						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+								pWri.print(g);
+								pWri.print(',');
+								pWri.print(s);
+								ArrayList<Long> history_dur_map_ent = inf_history_dur_map
+										.get(String.format("%d,%d", g, s));			
+								
+								pWri.print(',');
+								pWri.print(1f* history_dur_map_ent.get(1) / history_dur_map_ent.get(0));	
+								
+								pWri.print(',');
+								pWri.print(history_dur_map_ent.get(0));
+								
+								pWri.print(',');
+								pWri.print(history_dur_map_ent.get(1));
+								
+								Long[] all_data = history_dur_map_ent.subList(2, history_dur_map_ent.size()).toArray(new Long[0]);
+								
+								
+								double[] all_data_double = new double[all_data.length];
+								for(int i = 0; i < all_data.length; i++) {
+									all_data_double[i] = all_data[i];
+								}
+								
+								//Arrays.sort(all_data_double);
+								
+								Percentile data = new Percentile();
+								data.setData(all_data_double);
+								
+								pWri.print(',');
+								pWri.print(data.evaluate(50));
+								
+								pWri.print(',');
+								pWri.print(data.evaluate(25));
+								
+								pWri.print(',');
+								pWri.print(data.evaluate(75));
+								
+								
+								
+								
+								
+								pWri.println();
+							}
+						}
+
 						pWri.close();
 
 					} else {
