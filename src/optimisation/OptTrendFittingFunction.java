@@ -49,8 +49,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	private final double[][] target_trend_time_range;
 	private double[] bestResidue_by_runnable;
 
-	public static final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) "
-			+ "RESULT_LIST_FILENAME <optional: -nEval=NUM_EVAL (int)>  <optional: -verbose)>";
+	//public static final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) "
+	//		+ "RESULT_LIST_FILENAME <optional: -nEval=NUM_EVAL (int)>  <optional: -verbose)>";
 
 	// Arguments for OptTrendFittingFunction.calculate_residue_opt_trend
 	public static final String ARGS_PROGRESS_DISP = "ARGS_PROGRESS_DISP";

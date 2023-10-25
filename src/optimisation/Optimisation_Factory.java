@@ -248,8 +248,15 @@ public class Optimisation_Factory {
 	private static void trend_fit_general(String[] args, int optMethod) throws FileNotFoundException, IOException {
 
 		int minArgLength = 4;
+		final String FLAG_nEval = "-nEval=";
+		final String FLAG_verbose = "-verbose";
+		final String FLAG_forceInit = "-forceInit";
+		
+		final String USAGE_INFO = String.format( "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) "
+				+ "RESULT_LIST_FILENAME <optional: %sNUM_EVAL (int)>  <optional: %s)> <optional %s>",FLAG_nEval,FLAG_verbose,FLAG_forceInit);
+		
 		if (args.length < minArgLength) {
-			System.out.println(OptTrendFittingFunction.USAGE_INFO);
+			System.out.println(USAGE_INFO);
 			System.exit(0);
 		}
 		int numEval = 100;
@@ -264,9 +271,7 @@ public class Optimisation_Factory {
 		// Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES
 		// (double[][]) RESULT_LIST_FILENAME
 		// <optional: -nEval=NUM_EVAL (int)> <optional: -verbose)>";
-		final String FLAG_nEval = "-nEval=";
-		final String FLAG_verbose = "-verbose";
-		final String FLAG_forceInit = "-forceInit";
+		
 		for (int a = minArgLength; a < args.length; a++) {
 			if (args[a].startsWith(FLAG_nEval)) {
 				numEval = (int) Integer.parseInt(args[a].substring(FLAG_nEval.length()));
@@ -1824,29 +1829,42 @@ public class Optimisation_Factory {
 
 	public static void stable_prevalence_by_tranmission_fit_Simplex(String[] args)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
-
-		final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  <optional: NUM_EVAL (int)>";
+		
+		final String FLAG_nEval = "-nEval=";
+		final String FLAG_resList = "-resList=";
+		final String USAGE_INFO = String.format("Usage: PROP_FILE_DIRECTORY INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][])  "
+				+ "<optional: %sRESULT_LIST_FILENAME> <optional: %sNUM_EVAL (int)>", FLAG_resList,FLAG_nEval);
 
 		int numEval = 100;
-		if (args.length < 3) {
+		int minArgLength = 3;
+		
+		if (args.length < minArgLength) {
 			System.out.println(USAGE_INFO);
 			System.exit(0);
 		} else {
 			File baseDir = new File(args[0]);
 			double[] init_transmissionProb = (double[]) PropValUtils.propStrToObject(args[1], double[].class);
-			double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);
-			if (args.length > 3) {
-				numEval = (int) Integer.parseInt(args[3]);
-			}
-
-			stable_prevalence_by_tranmission_fit_Simplex(baseDir, init_transmissionProb, boundaries, numEval);
+			double[][] boundaries = (double[][]) PropValUtils.propStrToObject(args[2], double[][].class);	
+			File resultList = null;
+			
+			for (int a = minArgLength; a < args.length; a++) {
+				if(args[a].startsWith(FLAG_nEval)) {
+					numEval = (int) Integer.parseInt(args[a].substring(FLAG_nEval.length()));
+				}		
+				if(args[a].startsWith(FLAG_resList)) {
+					resultList = new File(baseDir, (args[a].substring(FLAG_resList.length())));
+				}	
+			}			
+			stable_prevalence_by_tranmission_fit_Simplex(baseDir, init_transmissionProb, boundaries, numEval, resultList);
 		}
 
 	}
 
 	public static void stable_prevalence_by_tranmission_fit_Simplex(File baseDir, final double[] init_transmissionProb,
-			final double[][] boundaries, int numEval)
+			final double[][] boundaries, int numEval, File resultList)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
+		
+		// TODO: Implement usage of results list
 
 		final File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
 
