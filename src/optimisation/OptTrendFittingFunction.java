@@ -137,11 +137,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String OPT_TREND_INPUT_TYPE_NUMINF = "NumInf";
 	public static final String OPT_TREND_INPUT_TYPE_INCID = "CumulIncid";
 	public static final String OPT_TREND_INPUT_TYPE_DX = "CumulDX";
-
-	public static final String OPT_TREND_OUTPUT_PREFIX_CMAP = "CMAP    = ";
-	public static final String OPT_TREND_OUTPUT_PREFIX_SIMSEED = "SimSeed = ";
-	public static final String OPT_TREND_OUTPUT_PREFIX_PARAM = "Param   = ";
-	public static final String OPT_TREND_OUTPUT_PREFIX_RESIDUE = "Residue = ";
+	
 	public static final String OPT_TREND_OUTPUT_PREFIX_OFFSET = "Offset  = ";
 
 	public static final String OPT_SUMMARY_FILE = "Opt_Summary.csv";
@@ -330,12 +326,12 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 				long simSeed = Long.parseLong(m.group(2));
 
 				while ((line = reader.readLine()) != null) {
-					if (line.startsWith(OPT_TREND_OUTPUT_PREFIX_PARAM)) {
+					if (line.startsWith(Optimisation_Factory.OPT_OUTPUT_PREFIX_PARAM)) {
 						String[] param_str = line
-								.substring(OPT_TREND_OUTPUT_PREFIX_PARAM.length() + 1, line.length() - 1).split(",");
+								.substring(Optimisation_Factory.OPT_OUTPUT_PREFIX_PARAM.length() + 1, line.length() - 1).split(",");
 
 						line = reader.readLine();
-						double residue = Double.parseDouble(line.substring(OPT_TREND_OUTPUT_PREFIX_RESIDUE.length()));
+						double residue = Double.parseDouble(line.substring(Optimisation_Factory.OPT_OUTPUT_PREFIX_RESIDUE.length()));
 
 						line = reader.readLine();
 						long offset = Integer.parseInt(line.substring(OPT_TREND_OUTPUT_PREFIX_OFFSET.length()));
@@ -906,10 +902,10 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 							pWri.println();
 						}
 
-						pWri.printf("%s%d\n", OPT_TREND_OUTPUT_PREFIX_CMAP, runnable[r].getcMap_seed());
-						pWri.printf("%s%d\n", OPT_TREND_OUTPUT_PREFIX_SIMSEED, runnable[r].getSim_seed());
-						pWri.printf("%s[%s]\n", OPT_TREND_OUTPUT_PREFIX_PARAM, param_str.toString());
-						pWri.printf("%s%f\n", OPT_TREND_OUTPUT_PREFIX_RESIDUE, bestResidue_by_runnable[r]);
+						pWri.printf("%s%d\n", Optimisation_Factory.OPT_OUTPUT_PREFIX_CMAP, runnable[r].getcMap_seed());
+						pWri.printf("%s%d\n", Optimisation_Factory.OPT_OUTPUT_PREFIX_SIMSEED, runnable[r].getSim_seed());
+						pWri.printf("%s[%s]\n", Optimisation_Factory.OPT_OUTPUT_PREFIX_PARAM, param_str.toString());
+						pWri.printf("%s%f\n", Optimisation_Factory.OPT_OUTPUT_PREFIX_RESIDUE, bestResidue_by_runnable[r]);
 						pWri.printf("%s%d\n", OPT_TREND_OUTPUT_PREFIX_OFFSET, bestMatchStart_by_runnable[r]);
 
 						for (StringBuilder s : str_disp) {
