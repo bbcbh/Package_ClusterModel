@@ -2047,7 +2047,7 @@ public class Optimisation_Factory {
 										Optimisation_Factory.OPT_OUTPUT_PREFIX_PARAM.length() + 1, line.length() - 1))
 										.split(",");
 								line = reader.readLine();
-								double residue = Long.parseLong(line.substring(OPT_OUTPUT_PREFIX_RESIDUE.length()));
+								double residue = Double.parseDouble(line.substring(OPT_OUTPUT_PREFIX_RESIDUE.length()));
 
 								Number[] ent = resultMap.get(String.format(rESULT_KEY_FORMAT, cMap_seed, sim_seed));
 
