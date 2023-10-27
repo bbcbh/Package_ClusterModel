@@ -684,8 +684,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	}
 
 	public static boolean loadPreallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, File baseDir,
-			long baseContactMapSeed) throws NumberFormatException, IOException {
-		prealloactedRiskGrpArr = new ArrayList<>();
+			long baseContactMapSeed) throws NumberFormatException, IOException {		
 		File pre_allocate_risk_file = new File(baseDir,
 				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 		boolean reallocate = false;
