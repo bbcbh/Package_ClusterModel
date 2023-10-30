@@ -1028,7 +1028,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					if (recoveredToday != null) {
 						for (Integer toRecoveredId : recoveredToday) {
 							removeInfected(toRecoveredId, site_src, currentTime);
-
 						}
 					}
 
@@ -1598,7 +1597,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			for (int site = 0; site < LENGTH_SITE; site++) {
 				if (infectious_key_index[site] >= 0) {
 					// Remove from infectious
-					currently_infectious[site].remove(infectious_key_index[site]);
+					currently_infectious[site].remove(infectious_key_index[site]);				
+										
+					updateScheduleMap(test_pid, LENGTH_SITE + site, null);
+					if ((simSetting
+							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
+						ArrayList<Integer>[] hist = infection_history.get(test_pid);
+						hist[site].add(-currentTime); // -ive = treatment
+					}
+					
 					// Treatment induced non-viability
 					if (non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB] > 0) {
 						if (RNG.nextFloat() < non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB]) {

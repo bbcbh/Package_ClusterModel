@@ -154,7 +154,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 					if (history_map_dur_map_ent == null) {
 						history_map_dur_map_ent = new ArrayList<>();
 						infection_history_duration_map.put(key, history_map_dur_map_ent);
-						
+
 						history_map_dur_map_ent.add(0l);
 						history_map_dur_map_ent.add(0l);
 					}
@@ -163,13 +163,14 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 					for (int i = 2; i < entries.length; i += 2) {
 						int inf_start = Integer.parseInt(entries[i]);
 						if (inf_start >= incl_time_range[0] && inf_start < incl_time_range[1]) {
+
 							numInfections++;
 							if (i + 1 < entries.length) {
 								int inf_end = Integer.parseInt(entries[i + 1]);
-								int dur = inf_end - inf_start;																
+								int dur = inf_end - inf_start;
 								history_map_dur_map_ent.set(0, history_map_dur_map_ent.get(0) + 1);
-								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);	
-								history_map_dur_map_ent.add((long) dur);		
+								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);
+								history_map_dur_map_ent.add((long) dur);
 							}
 
 						}
