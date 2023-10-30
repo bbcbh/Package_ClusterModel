@@ -646,14 +646,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			int riskCat = -1;
 			float[] riskCatList = ((float[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS])[genderType];
 
-			if (riskCatList != null) {				
+			if (riskCatList != null) {
 				int numCasual = 0;
 				int firstPartnerTime = Integer.MAX_VALUE;
 				int lastPartnerTime = 0;
 				Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
 				for (Integer[] e : edges) {
-					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime							
-							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {						
+					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
+							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
 						firstPartnerTime = Math.min(firstPartnerTime,
 								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
 						lastPartnerTime = Math.max(lastPartnerTime,
@@ -662,8 +662,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 				}
 
-				float numCasualPerYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT)
-						* numCasual) / (lastPartnerTime - firstPartnerTime);				
+				float numCasualPerYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual)
+						/ (lastPartnerTime - firstPartnerTime);
 				riskCat = Arrays.binarySearch(riskCatList, numCasualPerYear);
 				if (riskCat < 0) {
 					riskCat = ~riskCat;
@@ -1597,15 +1597,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			for (int site = 0; site < LENGTH_SITE; site++) {
 				if (infectious_key_index[site] >= 0) {
 					// Remove from infectious
-					currently_infectious[site].remove(infectious_key_index[site]);				
-										
+					currently_infectious[site].remove(infectious_key_index[site]);
+
 					updateScheduleMap(test_pid, LENGTH_SITE + site, null);
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
 						ArrayList<Integer>[] hist = infection_history.get(test_pid);
 						hist[site].add(-currentTime); // -ive = treatment
 					}
-					
+
 					// Treatment induced non-viability
 					if (non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB] > 0) {
 						if (RNG.nextFloat() < non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB]) {
@@ -1636,19 +1636,22 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							schArr = schedule_recovery[site].get(dateEnt);
 
 						}
-						int key = Collections.binarySearch(schArr, test_pid);
-						if (key >= 0) {
-							if (i < LENGTH_SITE) {
-								if ((simSetting
-										& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY) == 0) {
-									applyTreatment_on_incubation |= true;
+
+						if(schArr != null) {
+							int key = Collections.binarySearch(schArr, test_pid);
+							if (key >= 0) {
+								if (i < LENGTH_SITE) {
+									if ((simSetting
+											& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY) == 0) {
+										applyTreatment_on_incubation |= true;
+										schArr.remove(key);
+									}
+								} else {
+									applyTreatment_on_recovery |= true;
 									schArr.remove(key);
 								}
-							} else {
-								applyTreatment_on_recovery |= true;
-								schArr.remove(key);
-							}
 
+							}
 						}
 
 					}

@@ -676,7 +676,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 	}
 
-	private void loadPreallocateRiskGrp(long baseContactMapSeed) throws NumberFormatException, IOException {
+	private void loadPreallocateRiskGrp(long baseContactMapSeed) throws NumberFormatException, IOException {		
+		if(prealloactedRiskGrpArr == null) {
+			prealloactedRiskGrpArr = new ArrayList<>();
+		}
 		boolean reallocate = loadPreallocateRiskGrp(prealloactedRiskGrpArr, baseDir, baseContactMapSeed);
 		if (reallocate) {
 			reallocateRiskGrp(baseContactMapSeed);
