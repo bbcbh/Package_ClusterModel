@@ -1947,6 +1947,27 @@ public class Optimisation_Factory {
 						int[].class))[0];
 			}
 
+			if (opt_target == null || opt_target.length == 0) {
+				System.out.println("OPT_TARGET missing. Printing out runnable fields instead.");
+
+				Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(-1, -1,
+						pop_composition, null, num_time_steps_per_snap, numSnap);
+				runnable.setBaseDir(baseDir);
+
+				// Set fields based on prop file
+				for (int i = RUNNABLE_OFFSET; i < RUNNABLE_OFFSET
+						+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+					String key = POP_PROP_INIT_PREFIX + Integer.toString(i);
+					if (prop.containsKey(key)) {
+						runnable.getRunnable_fields()[i - RUNNABLE_OFFSET] = PropValUtils.propStrToObject(
+								prop.getProperty(key), runnable.getRunnable_fields()[i - RUNNABLE_OFFSET].getClass());
+					}
+				}
+
+				runnable.setSimSetting(1); // No output
+				setOptParamInRunnable(runnable, prop, init_param, true);
+			}
+
 			// Check for contact cluster generated
 
 			File[] pregen_cMap_files = contactMapDir.listFiles(new FileFilter() {
@@ -2050,23 +2071,22 @@ public class Optimisation_Factory {
 										.split(",");
 								line = reader.readLine();
 								double residue = Double.parseDouble(line.substring(OPT_OUTPUT_PREFIX_RESIDUE.length()));
-								
-								
+
 								String key = String.format(rESULT_KEY_FORMAT, cMap_seed, sim_seed);
-								
+
 								ArrayList<Number[]> res_store = all_result_map.get(key);
 								if (res_store == null) {
 									res_store = new ArrayList<>();
 									all_result_map.put(key, res_store);
 								}
-								Number[] readEnt = new Number[2 +paramString.length+1];
+								Number[] readEnt = new Number[2 + paramString.length + 1];
 								readEnt[0] = cMap_seed;
 								readEnt[1] = sim_seed;
-								readEnt[readEnt.length-1] = residue;
+								readEnt[readEnt.length - 1] = residue;
 								for (int i = 0; i < paramString.length; i++) {
 									readEnt[i + 2] = Double.parseDouble(paramString[i]);
 								}
-								res_store.add(readEnt);																							
+								res_store.add(readEnt);
 
 								Number[] ent = bestResultMap.get(key);
 								if (ent != null) {
@@ -2103,14 +2123,13 @@ public class Optimisation_Factory {
 					ArrayList<Number[]> all_result = all_result_map
 							.get(String.format(rESULT_KEY_FORMAT, cMap_seed, sim_seed));
 					Number[][] all_result_arr;
-					
-					if(all_result != null) {
+
+					if (all_result != null) {
 						all_result_arr = all_result.toArray(new Number[all_result.size()][]);
 						Arrays.sort(all_result_arr, COMPARATOR_RESULT_LOOKUP_ALL);
-					}else {
+					} else {
 						all_result_arr = new Number[0][];
 					}
-					
 
 					MultivariateFunction func = new MultivariateFunction() {
 						@Override
@@ -2127,7 +2146,7 @@ public class Optimisation_Factory {
 
 							if (all_res_k >= 0) {
 								Number[] found_res = all_result_arr[all_res_k];
-								return found_res[found_res.length - 1].doubleValue();								
+								return found_res[found_res.length - 1].doubleValue();
 							} else {
 
 								Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
@@ -2165,89 +2184,67 @@ public class Optimisation_Factory {
 								}
 								runnable.allocateSeedInfection(sEED_INFECTION, sTART_TIME);
 
-								if (oPT_TARGET == null || oPT_TARGET.length == 0) {
-									System.out.println("OPT_TARGET missing. Printing out runnable fields instead.");
-									for (int i = 0; i < runnable.getRunnable_fields().length; i++) {
-										System.out.printf("Runnable field #%d:\n", i + RUNNABLE_OFFSET);
-										Object obj = runnable.runnable_fields[i];
-										System.out.println("Entry:");
-										if (obj == null) {
-											System.out.println("null");
-										} else if (obj instanceof Object[]) {
-											System.out.println(Arrays.deepToString((Object[]) obj));
-										} else if (obj instanceof float[]) {
-											System.out.println(Arrays.toString((float[]) obj));
-										} else if (obj instanceof double[]) {
-											System.out.println(Arrays.toString((double[]) obj));
-										} else {
-											System.out.println(obj.toString());
-										}
-									}
-									System.exit(1);
-									return Double.NaN;
-								} else {
-									runnable.run();
-									int start_k = 2;
+								runnable.run();
+								int start_k = 2;
 
-									Integer[] keys = new Integer[nUM_SNAP];
-									keys[0] = nUM_TIME_STEPS_PER_SNAP;
-									for (int k = 1; k < keys.length; k++) {
-										keys[k] = keys[k - 1] + nUM_TIME_STEPS_PER_SNAP;
-									}
-
-									@SuppressWarnings("unchecked")
-									HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable
-											.getSim_output()
-											.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
-
-									@SuppressWarnings("unchecked")
-									HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable
-											.getSim_output()
-											.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-
-									StringBuilder str_disp = new StringBuilder();
-
-									double sqSum = calculateOptFitness(point, oPT_TARGET, pOP_COMPOSITION,
-											infectious_count_map, cumul_treatment_map, keys, start_k,
-											String.format("CM_Seed = %d, sim_seed = %d", cMap_seed, sim_seed),
-											str_disp);
-
-									// Print simulation result
-									try {
-										File opt_output_file = new File(baseDir,
-												String.format(oPT_RESULT_FILENAME_FORMAT, cMap_seed, sim_seed));
-										boolean newFile = !opt_output_file.exists();
-										PrintWriter pWri = new PrintWriter(new FileWriter(opt_output_file, true));
-
-										if (newFile) {
-											pWri.printf("Opt target (%s in total):\n", oPT_TARGET.length);
-											for (float[] opt_target_ent : oPT_TARGET) {
-												pWri.println(Arrays.toString(opt_target_ent));
-											}
-											pWri.println();
-										}
-
-										// Param value
-										StringBuilder param_str = new StringBuilder();
-										for (double pt : point) {
-											if (param_str.length() != 0) {
-												param_str.append(',');
-											}
-											param_str.append(String.format("%f", pt));
-										}
-										pWri.printf("%s%d\n", OPT_OUTPUT_PREFIX_CMAP, cMap_seed);
-										pWri.printf("%s%d\n", OPT_OUTPUT_PREFIX_SIMSEED, sim_seed);
-										pWri.printf("%s[%s]\n", OPT_OUTPUT_PREFIX_PARAM, param_str);
-										pWri.printf("%s%f\n", OPT_OUTPUT_PREFIX_RESIDUE, sqSum);
-										pWri.println(str_disp.toString());
-										pWri.close();
-
-									} catch (IOException e) {
-										e.printStackTrace(System.err);
-										System.out.println(str_disp.toString());
-									}
-									return sqSum;
+								Integer[] keys = new Integer[nUM_SNAP];
+								keys[0] = nUM_TIME_STEPS_PER_SNAP;
+								for (int k = 1; k < keys.length; k++) {
+									keys[k] = keys[k - 1] + nUM_TIME_STEPS_PER_SNAP;
 								}
+
+								@SuppressWarnings("unchecked")
+								HashMap<Integer, int[][]> infectious_count_map = (HashMap<Integer, int[][]>) runnable
+										.getSim_output()
+										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_INFECTIOUS_COUNT);
+
+								@SuppressWarnings("unchecked")
+								HashMap<Integer, int[]> cumul_treatment_map = (HashMap<Integer, int[]>) runnable
+										.getSim_output()
+										.get(Runnable_ClusterModel_Transmission.SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
+
+								StringBuilder str_disp = new StringBuilder();
+
+								double sqSum = calculateOptFitness(point, oPT_TARGET, pOP_COMPOSITION,
+										infectious_count_map, cumul_treatment_map, keys, start_k,
+										String.format("CM_Seed = %d, sim_seed = %d", cMap_seed, sim_seed), str_disp);
+
+								// Print simulation result
+								try {
+									File opt_output_file = new File(baseDir,
+											String.format(oPT_RESULT_FILENAME_FORMAT, cMap_seed, sim_seed));
+									boolean newFile = !opt_output_file.exists();
+									PrintWriter pWri = new PrintWriter(new FileWriter(opt_output_file, true));
+
+									if (newFile) {
+										pWri.printf("Opt target (%s in total):\n", oPT_TARGET.length);
+										for (float[] opt_target_ent : oPT_TARGET) {
+											pWri.println(Arrays.toString(opt_target_ent));
+										}
+										pWri.println();
+									}
+
+									// Param value
+									StringBuilder param_str = new StringBuilder();
+									for (double pt : point) {
+										if (param_str.length() != 0) {
+											param_str.append(',');
+										}
+										param_str.append(String.format("%f", pt));
+									}
+									pWri.printf("%s%d\n", OPT_OUTPUT_PREFIX_CMAP, cMap_seed);
+									pWri.printf("%s%d\n", OPT_OUTPUT_PREFIX_SIMSEED, sim_seed);
+									pWri.printf("%s[%s]\n", OPT_OUTPUT_PREFIX_PARAM, param_str);
+									pWri.printf("%s%f\n", OPT_OUTPUT_PREFIX_RESIDUE, sqSum);
+									pWri.println(str_disp.toString());
+									pWri.close();
+
+								} catch (IOException e) {
+									e.printStackTrace(System.err);
+									System.out.println(str_disp.toString());
+								}
+								return sqSum;
+
 							}
 						}
 					};
