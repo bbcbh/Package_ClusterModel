@@ -166,7 +166,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 
 							numInfections++;
 							if (i + 1 < entries.length) {
-								int inf_end = Integer.parseInt(entries[i + 1]);
+								int inf_end = Math.abs(Integer.parseInt(entries[i + 1]));
 								int dur = inf_end - inf_start;
 								history_map_dur_map_ent.set(0, history_map_dur_map_ent.get(0) + 1);
 								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);

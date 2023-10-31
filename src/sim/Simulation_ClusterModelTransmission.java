@@ -162,10 +162,21 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void setBaseContactMapSeed(long baseContactMapSeed) {
 		this.baseContactMapSeed = baseContactMapSeed;
-		try {
-			loadPreallocateRiskGrp(baseContactMapSeed);
-		} catch (Exception ex) {
-			ex.printStackTrace(System.err);
+
+		File pre_allocate_risk_file = new File(baseDir,
+				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+
+		if (pre_allocate_risk_file.exists()) {
+			try {
+				prealloactedRiskGrpArr = new ArrayList<>();
+				boolean reallocate = loadPreallocateRiskGrp(prealloactedRiskGrpArr, baseDir, baseContactMapSeed);
+				if (reallocate) {
+					reallocateRiskGrp(baseContactMapSeed);
+				}
+
+			} catch (Exception ex) {
+				ex.printStackTrace(System.err);
+			}
 		}
 	}
 
@@ -655,7 +666,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 								}
 
 								float denom = lastCasualPartnerTime - firstCasualPartnerTime;
-								if (denom <= 0) {									
+								if (denom <= 0) {
 									denom = lastPartnerTime - firstPartnerTime;
 									if (denom <= 0) {
 										denom = timeStartFrom[1] - timeStartFrom[0];
@@ -676,18 +687,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 	}
 
-	private void loadPreallocateRiskGrp(long baseContactMapSeed) throws NumberFormatException, IOException {		
-		if(prealloactedRiskGrpArr == null) {
-			prealloactedRiskGrpArr = new ArrayList<>();
-		}
-		boolean reallocate = loadPreallocateRiskGrp(prealloactedRiskGrpArr, baseDir, baseContactMapSeed);
-		if (reallocate) {
-			reallocateRiskGrp(baseContactMapSeed);
-		}
-	}
+	
 
 	public static boolean loadPreallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, File baseDir,
-			long baseContactMapSeed) throws NumberFormatException, IOException {		
+			long baseContactMapSeed) throws NumberFormatException, IOException {
 		File pre_allocate_risk_file = new File(baseDir,
 				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 		boolean reallocate = false;
