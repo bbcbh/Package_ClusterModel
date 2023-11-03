@@ -8,6 +8,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -142,8 +144,10 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 						int[][] total_no_incident_reported = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
+						// Key = String.format("%d,%d", g, s)
 						HashMap<String, ArrayList<Integer>> inf_history_count_map = new HashMap<>();
 						HashMap<String, ArrayList<Long>> inf_history_dur_map = new HashMap<>();
+						HashMap<String, ArrayList<Integer>> inf_history_interval_map = new HashMap<>();
 
 						for (File f : zipFiles) {
 							SevenZFile resultZip = new SevenZFile(f);
@@ -164,8 +168,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 								}
 
 								Util_CSV_Table_Map.updateInfectionHistoryMap(inf_history_count_map, inf_history_dur_map,
-										cuml_gender_dist, incl_range, total_no_incident_reported, ent.getName(),
-										txt_entries.toString());
+										inf_history_interval_map, cuml_gender_dist, incl_range,
+										total_no_incident_reported, ent.getName(), txt_entries.toString());
 
 							}
 							resultZip.close();
@@ -207,52 +211,143 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 								pWri.println();
 							}
 						}
-						pWri.println("Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
+
+						Number[] keys, all_data;
+						File histo_data_file;
+						PrintWriter pWri_hist_data;
+						double[] all_data_double;
+						Percentile percent_data;
+
+						// Infection duration
+						pWri.println("Duration of infection");
+						pWri.println(
+								"Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
 						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
 								pWri.print(s);
+
 								ArrayList<Long> history_dur_map_ent = inf_history_dur_map
-										.get(String.format("%d,%d", g, s));			
-								
+										.get(String.format("%d,%d", g, s));
 								pWri.print(',');
-								pWri.print(1f* history_dur_map_ent.get(1) / history_dur_map_ent.get(0));	
-								
+								pWri.print(1f * history_dur_map_ent.get(1) / history_dur_map_ent.get(0));
+
 								pWri.print(',');
 								pWri.print(history_dur_map_ent.get(0));
-								
+
 								pWri.print(',');
 								pWri.print(history_dur_map_ent.get(1));
-								
-								Long[] all_data = history_dur_map_ent.subList(2, history_dur_map_ent.size()).toArray(new Long[0]);
-								
-								
-								double[] all_data_double = new double[all_data.length];
-								for(int i = 0; i < all_data.length; i++) {
-									all_data_double[i] = all_data[i];
+
+								all_data = history_dur_map_ent.subList(2, history_dur_map_ent.size())
+										.toArray(new Long[0]);
+
+								all_data_double = new double[all_data.length];
+								for (int i = 0; i < all_data.length; i++) {
+									all_data_double[i] = all_data[i].longValue();
 								}
-								
-								//Arrays.sort(all_data_double);
-								
-								Percentile data = new Percentile();
-								data.setData(all_data_double);
-								
+
+								percent_data = new Percentile();
+								percent_data.setData(all_data_double);
+
 								pWri.print(',');
-								pWri.print(data.evaluate(50));
-								
+								pWri.print(percent_data.evaluate(50));
+
 								pWri.print(',');
-								pWri.print(data.evaluate(25));
-								
+								pWri.print(percent_data.evaluate(25));
+
 								pWri.print(',');
-								pWri.print(data.evaluate(75));
-								
-								
-								
-								
-								
+								pWri.print(percent_data.evaluate(75));
+
 								pWri.println();
+
+								HashMap<Long, Long> hist_dur_col = new HashMap<>();
+								for (int i = 0; i < all_data.length; i++) {
+									Long ent = hist_dur_col.get(all_data[i].longValue());
+									if (ent == null) {
+										ent = 0l;
+
+									}
+									hist_dur_col.put(all_data[i].longValue(), ent + 1);
+								}
+
+								keys = hist_dur_col.keySet().toArray(new Long[hist_dur_col.size()]);
+								Arrays.sort(keys);
+
+								histo_data_file = new File(baseDir,
+										String.format("Duration_all_gender_%d_site_%d.csv", g, s));
+								pWri_hist_data = new PrintWriter(histo_data_file);
+								for (Number key : keys) {
+									pWri_hist_data.printf("%d,%d\n", key.longValue(), hist_dur_col.get(key));
+								}
+								pWri_hist_data.close();
+
 							}
+						}
+						pWri.println("Interval between infections ");
+						pWri.println("Gender, Site, Mean, Median, 25th Quartile, 75th Quartile");
+
+						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+
+								pWri.print(g);
+								pWri.print(',');
+								pWri.print(s);
+
+								// Infection interval
+								ArrayList<Integer> history_interval_map_ent = inf_history_interval_map
+										.get(String.format("%d,%d", g, s));
+
+								all_data = history_interval_map_ent.toArray(new Integer[0]);
+								all_data_double = new double[all_data.length];
+
+								double interval_sum = 0;
+								int interval_count = 0;
+								for (int i = 0; i < all_data.length; i++) {
+									all_data_double[i] = all_data[i].intValue();
+									interval_count++;
+									interval_sum += all_data_double[i];
+								}
+
+								pWri.print(',');
+								pWri.print(interval_sum / interval_count);
+
+								percent_data = new Percentile();
+								percent_data.setData(all_data_double);
+
+								pWri.print(',');
+								pWri.print(percent_data.evaluate(50));
+
+								pWri.print(',');
+								pWri.print(percent_data.evaluate(25));
+
+								pWri.print(',');
+								pWri.print(percent_data.evaluate(75));
+
+								pWri.println();
+
+								HashMap<Integer, Integer> hist_interval_col = new HashMap<>();
+								for (Integer interval : history_interval_map_ent) {
+									Integer ent = hist_interval_col.get(interval);
+									if (ent == null) {
+										ent = 0;
+
+									}
+									hist_interval_col.put(interval, ent + 1);
+								}
+
+								keys = hist_interval_col.keySet().toArray(new Integer[hist_interval_col.size()]);
+								Arrays.sort(keys);
+								histo_data_file = new File(baseDir,
+										String.format("Infection_interval_all_gender_%d_site_%d.csv", g, s));
+								pWri_hist_data = new PrintWriter(histo_data_file);
+								for (Number key : keys) {
+									pWri_hist_data.printf("%d,%d\n", key.intValue(), hist_interval_col.get(key));
+								}
+								pWri_hist_data.close();
+
+							}
+
 						}
 
 						pWri.close();
@@ -402,6 +497,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			try {
 				SevenZFile archive7Z = new SevenZFile(archiveFile);
 				SevenZArchiveEntry ent;
+
 				while ((ent = archive7Z.getNextEntry()) != null) {
 					Matcher mEnt = ent_patten.matcher(ent.getName());
 					mEnt.matches();
@@ -423,6 +519,62 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 				for (File removed : toBeRemoved) {
 					FileUtils.delete(removed);
+				}
+
+				// Unzipped CSV files
+				File[] extra_CSVs = cleanupDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return ent_patten.matcher(pathname.getName()).matches();
+					}
+				});
+
+				if (extra_CSVs.length > 0) {
+					if (archiveFile.length() > 100 * 1024) {
+						System.out.printf(
+								"%d unzipped CSV found by the archive file %s is too large (%d bytes) to rezip automatically.\n",
+								extra_CSVs.length, archiveFile.getName(), archiveFile.length());
+
+					} else {
+
+						SevenZArchiveEntry entry, inputEnt;
+						FileInputStream fIn;
+
+						File preZip = new File(cleanupDir,
+								archiveFile.getName() + "_" + Long.toString(System.currentTimeMillis()) + ".7z");
+						Files.copy(archiveFile.toPath(), preZip.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+
+						SevenZOutputFile outputZip = new SevenZOutputFile(archiveFile);
+						SevenZFile inputZip = new SevenZFile(preZip);
+
+						final int BUFFER = 2048000;
+						byte[] buf = new byte[BUFFER];
+						while ((inputEnt = inputZip.getNextEntry()) != null) {
+							outputZip.putArchiveEntry(inputEnt);
+							int count;
+							while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
+								outputZip.write(Arrays.copyOf(buf, count));
+							}
+							outputZip.closeArchiveEntry();
+						}
+						inputZip.close();
+
+						for (int fI = 0; fI < extra_CSVs.length; fI++) {
+							entry = outputZip.createArchiveEntry(extra_CSVs[fI], extra_CSVs[fI].getName());
+							outputZip.putArchiveEntry(entry);
+							fIn = new FileInputStream(extra_CSVs[fI]);
+							outputZip.write(fIn);
+							outputZip.closeArchiveEntry();
+							fIn.close();
+						}
+						outputZip.close();
+
+						preZip.delete();
+						for (File f : extra_CSVs) {
+							f.delete();
+						}
+
+					}
 				}
 
 			} catch (IOException ex) {

@@ -129,7 +129,8 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 	}
 
 	public static void updateInfectionHistoryMap(HashMap<String, ArrayList<Integer>> infection_history_count_map,
-			HashMap<String, ArrayList<Long>> infection_history_duration_map, int[] cumulative_gender_distribution,
+			HashMap<String, ArrayList<Long>> infection_history_duration_map,
+			HashMap<String, ArrayList<Integer>> inf_history_interval_map, int[] cumulative_gender_distribution,
 			int[] incl_time_range, int[][] total_no_incident_reported_so_far, String src_file_name,
 			String src_file_lines) throws IOException {
 		BufferedReader lines = new BufferedReader(new StringReader(src_file_lines));
@@ -159,11 +160,18 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 						history_map_dur_map_ent.add(0l);
 					}
 
+					ArrayList<Integer> history_map_interval_map_ent = inf_history_interval_map.get(key);
+					if (history_map_interval_map_ent == null) {
+						history_map_interval_map_ent = new ArrayList<>();
+						inf_history_interval_map.put(key, history_map_interval_map_ent);
+					}
+
 					int numInfections = 0;
+					int lastInfectionTimeStamp = -1;
+
 					for (int i = 2; i < entries.length; i += 2) {
 						int inf_start = Integer.parseInt(entries[i]);
 						if (inf_start >= incl_time_range[0] && inf_start < incl_time_range[1]) {
-
 							numInfections++;
 							if (i + 1 < entries.length) {
 								int inf_end = Math.abs(Integer.parseInt(entries[i + 1]));
@@ -172,9 +180,11 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);
 								history_map_dur_map_ent.add((long) dur);
 							}
-
+							if (lastInfectionTimeStamp < 0) {
+								history_map_interval_map_ent.add(inf_start - lastInfectionTimeStamp);
+								lastInfectionTimeStamp = inf_start;
+							}
 						}
-
 					}
 					history_map_count_ent.add(numInfections);
 					total_no_incident_reported_so_far[gender][site]--;
