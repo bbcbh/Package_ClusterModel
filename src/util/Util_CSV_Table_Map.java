@@ -180,10 +180,10 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);
 								history_map_dur_map_ent.add((long) dur);
 							}
-							if (lastInfectionTimeStamp < 0) {
-								history_map_interval_map_ent.add(inf_start - lastInfectionTimeStamp);
-								lastInfectionTimeStamp = inf_start;
+							if (lastInfectionTimeStamp > 0) {
+								history_map_interval_map_ent.add(inf_start - lastInfectionTimeStamp);								
 							}
+							lastInfectionTimeStamp = inf_start;
 						}
 					}
 					history_map_count_ent.add(numInfections);

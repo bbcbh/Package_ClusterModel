@@ -271,6 +271,142 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		return best_fitting_sq_sum;
 	}
 
+	public static void combineOptTrendResults(ArrayList<File> baseDirsArr, File combinedBaseDir)
+			throws FileNotFoundException, IOException {
+	
+		File combinedSummary = new File(combinedBaseDir, OPT_SUMMARY_FILE);
+		File[] combinedTrend = new File[0];
+	
+		ArrayList<Number[]> summary_store = new ArrayList<>();
+		HashMap<String, String> trend_mapping = new HashMap<>();
+		String trend_mapping_key_pattern = "%d_%d"; // Id, trend number
+	
+		int mapping_key = 0;
+		Pattern pattern_trend_file = Pattern
+				.compile(OPT_SUMMARY_TREND_FILE.replaceAll("%d", "(\\\\d+)"));
+	
+		for (File baseDir : baseDirsArr) {
+			File summaryFile = new File(baseDir, OPT_SUMMARY_FILE);
+			File[] trendFiles = baseDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pattern_trend_file.matcher(pathname.getName()).matches();
+				}
+			});
+			Arrays.sort(trendFiles, new Comparator<File>() {
+				@Override
+				public int compare(File o1, File o2) {
+					Matcher m1 = pattern_trend_file.matcher(o1.getName());
+					Matcher m2 = pattern_trend_file.matcher(o2.getName());
+					m1.matches();
+					m2.matches();
+					return Integer.compare(Integer.parseInt(m1.group(1)), Integer.parseInt(m2.group(1)));
+				}
+	
+			});
+	
+			if (combinedTrend.length == 0) {
+				combinedTrend = new File[trendFiles.length];
+				for (int i = 0; i < combinedTrend.length; i++) {
+					combinedTrend[i] = new File(combinedBaseDir, trendFiles[i].getName());
+				}
+			}
+	
+			String line;
+			BufferedReader reader_summary = new BufferedReader(new FileReader(summaryFile));
+			BufferedReader[] reader_trends = new BufferedReader[trendFiles.length];
+	
+			// Skip first line
+			for (int t = 0; t < reader_trends.length; t++) {
+				reader_trends[t] = new BufferedReader(new FileReader(trendFiles[t]));
+				reader_trends[t].readLine();
+			}
+			reader_summary.readLine();
+	
+			while ((line = reader_summary.readLine()) != null) {
+				String[] ent = line.split(",");
+				Number[] summary_store_ent = new Number[ent.length + 1];
+				for (int i = 0; i < ent.length; i++) {
+					switch (i) {
+					case 0:
+						summary_store_ent[i] = Double.parseDouble(ent[i]);
+						break;
+					case 1:
+					case 2:
+						summary_store_ent[i] = Long.parseLong(ent[i]);
+						break;
+					default:
+						summary_store_ent[i] = Float.parseFloat(ent[i]);
+					}
+				}
+				summary_store_ent[ent.length] = mapping_key;
+	
+				for (int t = 0; t < reader_trends.length; t++) {
+					String trend_mapping_key = String.format(trend_mapping_key_pattern, mapping_key, t);
+					trend_mapping.put(trend_mapping_key, reader_trends[t].readLine());
+				}
+				summary_store.add(summary_store_ent);
+				mapping_key++;
+	
+			}
+	
+			reader_summary.close();
+			for (int t = 0; t < reader_trends.length; t++) {
+				reader_trends[t].close();
+			}
+		}
+	
+		// Sort results based on residue
+	
+		Collections.sort(summary_store, new Comparator<Number[]>() {
+			@Override
+			public int compare(Number[] o1, Number[] o2) {
+				int res = 0;
+				int pt = 0;
+				while (res == 0 && pt < o1.length) {
+					if (o1[pt] instanceof Long) {
+						res = Long.compare(o1[pt].longValue(), o2[pt].longValue());						
+					}else{
+						res = Double.compare(o1[pt].doubleValue(), o2[pt].doubleValue());
+					}
+					pt++;
+				}
+				return res;
+			}
+		});
+	
+		PrintWriter pri_summary = new PrintWriter(combinedSummary);
+		PrintWriter[] pri_trends = new PrintWriter[combinedTrend.length];
+	
+		// Print heading
+		pri_summary.println("Residue,CMapSeed,SimSeed,Param,...Key_id");
+		for (int p = 0; p < pri_trends.length; p++) {
+			pri_trends[p] = new PrintWriter(combinedTrend[p]);
+			pri_trends[p].println("Opt_trend time-value pairing");
+		}
+	
+		for (Number[] ent : summary_store) {
+			for (int i = 0; i < ent.length; i++) {
+				if (i > 0) {
+					pri_summary.print(',');
+				}
+				pri_summary.print(ent[i].toString());
+			}
+			pri_summary.println();
+			for (int p = 0; p < pri_trends.length; p++) {
+				String trend_mapping_key = String.format(trend_mapping_key_pattern, ent[ent.length - 1], p);
+				pri_trends[p].println(trend_mapping.get(trend_mapping_key));
+			}
+		}
+	
+		pri_summary.close();
+		for (PrintWriter p : pri_trends) {
+			p.close();
+		}
+		
+		
+	}
+
 	public static void extractBestOptrendResults(File basedir, Pattern subDirPattern) throws IOException {
 
 		final Pattern bestFileFile_pattern = Pattern
