@@ -1128,7 +1128,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							if (args[ai].startsWith(LAUNCH_ARGS_SEED_MAP)) {
 								File seed_map = new File(baseDir, args[ai].substring(LAUNCH_ARGS_SEED_MAP.length()));
 								if (seed_map.isFile()) {
-
+									sim.loadPreGenSimSeed(seed_map);
 								}
 
 							}
