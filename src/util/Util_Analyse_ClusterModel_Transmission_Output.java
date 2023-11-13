@@ -115,6 +115,78 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 					}
 				});
 
+				if (zipFiles.length == 0) {
+					// Try to zip existing file
+					Pattern possible_csv = Pattern
+							.compile(zipFileName.replaceAll("\\.csv\\.7z", "_(-{0,1}\\\\d+)\\.csv"));
+
+					File[] raw_csvs = baseDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return possible_csv.matcher(pathname.getName()).matches();
+						}
+					});
+
+					if (raw_csvs.length > 0) {
+						ArrayList<Long> cMapSeedArr = new ArrayList<>();
+
+						for (int fI = 0; fI < raw_csvs.length; fI++) {
+							// Get cMap_seed
+							Matcher m = possible_csv.matcher(raw_csvs[0].getName());
+							m.matches();
+							long cMap_seed = Long.parseLong(m.group(1));
+							int k = Collections.binarySearch(cMapSeedArr, cMap_seed);
+							if (k < 0) {
+								cMapSeedArr.add(cMap_seed);
+							}
+						}
+
+						zipFiles = new File[cMapSeedArr.size()];
+						int pt = 0;
+
+						for (long cMap_seed : cMapSeedArr) {
+
+							String newZipFilename = zipFileName.replaceFirst("\\(.*\\)", Long.toString(cMap_seed));
+							Pattern possible_csv_cMap_seed = Pattern
+									.compile(newZipFilename.replaceAll("\\.csv\\.7z", "_(-{0,1}\\\\d+)\\.csv"));
+
+							File[] raw_csvs_cMap_seed = baseDir.listFiles(new FileFilter() {
+								@Override
+								public boolean accept(File pathname) {
+									return possible_csv_cMap_seed.matcher(pathname.getName()).matches();
+								}
+							});
+
+							zipFiles[pt] = new File(baseDir, newZipFilename);
+							SevenZOutputFile outputZip = new SevenZOutputFile(zipFiles[pt]);
+
+							SevenZArchiveEntry entry;
+							FileInputStream fIn;
+
+							for (int fI = 0; fI < raw_csvs_cMap_seed.length; fI++) {
+								entry = outputZip.createArchiveEntry(raw_csvs_cMap_seed[fI],
+										raw_csvs_cMap_seed[fI].getName());
+								outputZip.putArchiveEntry(entry);
+								fIn = new FileInputStream(raw_csvs_cMap_seed[fI]);
+								outputZip.write(fIn);
+								outputZip.closeArchiveEntry();
+								fIn.close();
+							}
+
+							outputZip.close();
+
+							for (File f : raw_csvs_cMap_seed) {
+								f.delete();
+							}
+
+							pt++;
+
+						}
+
+					}
+
+				}
+
 				if (SKIP_ANALYSIS[z]) {
 					zipFiles = new File[0];
 				}
