@@ -49,6 +49,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
 	protected boolean exportSkipBackup = false;
 	protected boolean printProgress = false;
+	protected HashMap<Long, ArrayList<Long>> preGenSimSeed = null;
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
@@ -56,6 +57,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public static final String LAUNCH_ARGS_SKIP_BACKUP = "-export_skip_backup";
 	public static final String LAUNCH_ARGS_PRINT_PROGRESS = "-printProgress";
+	public static final String LAUNCH_ARGS_SEED_MAP = "-seedMap=";
 
 	public static final String FILENAME_INDEX_CASE_LIST = "Seed_IndexCases_%d_%d.txt";
 	public static final String FILENAME_PREVALENCE_SITE = "Prevalence_Site_%d_%d.csv";
@@ -186,6 +188,29 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void setPrintProgress(boolean printProgress) {
 		this.printProgress = printProgress;
+	}
+
+	public void loadPreGenSimSeed(File seedFile) {
+		try {
+			preGenSimSeed = new HashMap<>();
+			BufferedReader reader = new BufferedReader(new FileReader(seedFile));
+			String line = reader.readLine(); // Header
+			while ((line = reader.readLine()) != null) {
+				String[] ent = line.split(",");
+				ArrayList<Long> mapEnt = preGenSimSeed.get(Long.parseLong(ent[0]));
+				if (mapEnt == null) {
+					mapEnt = new ArrayList<>();
+					preGenSimSeed.put(Long.parseLong(ent[0]), mapEnt);
+				}
+				mapEnt.add(Long.parseLong(ent[1]));
+			}
+
+			reader.close();
+		} catch (IOException e) {
+			e.printStackTrace(System.err);
+			preGenSimSeed = null;
+		}
+
 	}
 
 	@Override
@@ -508,6 +533,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				System.out.println(String.format("Simulation under seed # %d already generated.", simSeed));
 				runSim = false;
 			}
+			if (preGenSimSeed != null) {
+				ArrayList<Long> seedList = preGenSimSeed.get(baseContactMapSeed);
+				if (seedList != null && !seedList.isEmpty()) {
+					simSeed = seedList.remove(0);
+					System.out.println(String.format("Simulation using cMap_seed=%d and sim_seed=%d from file.",
+							baseContactMapSeed, simSeed));
+				}
+			}
 
 			if (runSim) {
 				runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed, pop_composition,
@@ -686,8 +719,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 	}
-
-	
 
 	public static boolean loadPreallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, File baseDir,
 			long baseContactMapSeed) throws NumberFormatException, IOException {
@@ -1094,7 +1125,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {
 								sim.setPrintProgress(true);
 							}
+							if (args[ai].startsWith(LAUNCH_ARGS_SEED_MAP)) {
+								File seed_map = new File(baseDir, args[ai].substring(LAUNCH_ARGS_SEED_MAP.length()));
+								if (seed_map.isFile()) {
 
+								}
+
+							}
 						}
 
 					}
