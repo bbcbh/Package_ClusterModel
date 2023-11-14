@@ -144,6 +144,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 					int site = Integer.parseInt(entries[1]);
 
 					String key = String.format("%d,%d", gender, site);
+					String key_treatment = String.format("T_%d,%d", gender, site);
 
 					ArrayList<Integer> history_map_count_ent = infection_history_count_map.get(key);
 					if (history_map_count_ent == null) {
@@ -151,7 +152,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 						infection_history_count_map.put(key, history_map_count_ent);
 					}
 
-					ArrayList<Long> history_map_dur_map_ent = infection_history_duration_map.get(key);
+					ArrayList<Long> history_map_dur_map_ent = infection_history_duration_map.get(key);					
 					if (history_map_dur_map_ent == null) {
 						history_map_dur_map_ent = new ArrayList<>();
 						infection_history_duration_map.put(key, history_map_dur_map_ent);
@@ -159,6 +160,14 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 						history_map_dur_map_ent.add(0l);
 						history_map_dur_map_ent.add(0l);
 					}
+					
+					ArrayList<Long> history_map_dur_map_treatment_ent = infection_history_duration_map.get(key_treatment);					
+					if (history_map_dur_map_treatment_ent == null) {
+						history_map_dur_map_treatment_ent = new ArrayList<>();
+						infection_history_duration_map.put(key_treatment, history_map_dur_map_treatment_ent);
+						history_map_dur_map_treatment_ent.add(0l);
+						history_map_dur_map_treatment_ent.add(0l);
+					}									
 
 					ArrayList<Integer> history_map_interval_map_ent = inf_history_interval_map.get(key);
 					if (history_map_interval_map_ent == null) {
@@ -179,6 +188,13 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 								history_map_dur_map_ent.set(0, history_map_dur_map_ent.get(0) + 1);
 								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);
 								history_map_dur_map_ent.add((long) dur);
+								
+								if(Integer.parseInt(entries[i + 1]) < 0) {
+									history_map_dur_map_treatment_ent.set(0, history_map_dur_map_treatment_ent.get(0) + 1);
+									history_map_dur_map_treatment_ent.set(1, history_map_dur_map_treatment_ent.get(1) + dur);
+									history_map_dur_map_treatment_ent.add((long) dur);
+								}
+								
 							}
 							if (lastInfectionTimeStamp > 0) {
 								history_map_interval_map_ent.add(inf_start - lastInfectionTimeStamp);								

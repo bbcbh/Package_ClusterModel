@@ -43,7 +43,7 @@ import sim.Simulation_ClusterModelTransmission;
 public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	private File baseDir;
-	private int[] incl_range = new int[] { 2920, 4745 }; // 5 years
+	private int[] incl_range =  new int[] { 2920, 4745 }; // 5 years
 
 	public static final String[] ZIP_FILES_LIST = new String[] {
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP.replaceAll("%d",
@@ -289,8 +289,12 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						PrintWriter pWri_hist_data;
 						double[] all_data_double;
 						Percentile percent_data;
+						File histBaseDir;
 
 						// Infection duration
+						histBaseDir = new File(baseDir, String.format("Durations_%s", Arrays.toString(incl_range)));
+						histBaseDir.mkdirs();
+						
 						pWri.println("Duration of infection");
 						pWri.println(
 								"Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
@@ -298,40 +302,10 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
-								pWri.print(s);
-
-								ArrayList<Long> history_dur_map_ent = inf_history_dur_map
-										.get(String.format("%d,%d", g, s));
-								pWri.print(',');
-								pWri.print(1f * history_dur_map_ent.get(1) / history_dur_map_ent.get(0));
-
-								pWri.print(',');
-								pWri.print(history_dur_map_ent.get(0));
-
-								pWri.print(',');
-								pWri.print(history_dur_map_ent.get(1));
-
-								all_data = history_dur_map_ent.subList(2, history_dur_map_ent.size())
-										.toArray(new Long[0]);
-
-								all_data_double = new double[all_data.length];
-								for (int i = 0; i < all_data.length; i++) {
-									all_data_double[i] = all_data[i].longValue();
-								}
-
-								percent_data = new Percentile();
-								percent_data.setData(all_data_double);
-
-								pWri.print(',');
-								pWri.print(percent_data.evaluate(50));
-
-								pWri.print(',');
-								pWri.print(percent_data.evaluate(25));
-
-								pWri.print(',');
-								pWri.print(percent_data.evaluate(75));
-
-								pWri.println();
+								pWri.print(s);								
+								
+								// Total duration 																
+								all_data = printDuration(pWri, inf_history_dur_map.get(String.format("%d,%d", g, s)));
 
 								HashMap<Long, Long> hist_dur_col = new HashMap<>();
 								for (int i = 0; i < all_data.length; i++) {
@@ -346,7 +320,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 								keys = hist_dur_col.keySet().toArray(new Long[hist_dur_col.size()]);
 								Arrays.sort(keys);
 
-								histo_data_file = new File(baseDir,
+								histo_data_file = new File(histBaseDir,
 										String.format("Duration_all_gender_%d_site_%d.csv", g, s));
 								pWri_hist_data = new PrintWriter(histo_data_file);
 								for (Number key : keys) {
@@ -356,6 +330,23 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 							}
 						}
+						
+						
+						pWri.println("Duration of treated infection");
+						pWri.println(
+								"Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
+						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {								
+								pWri.print(g);
+								pWri.print(',');
+								pWri.print(s);
+								printDuration(pWri, inf_history_dur_map.get(String.format("T_%d,%d", g, s)));													
+							}
+						}														
+						
+						histBaseDir = new File(baseDir, String.format("Infection_intervals_%s", Arrays.toString(incl_range)));
+						histBaseDir.mkdirs();
+						
 						pWri.println("Interval between infections ");
 						pWri.println("Gender, Site, Mean, Median, 25th Quartile, 75th Quartile");
 
@@ -410,7 +401,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 								keys = hist_interval_col.keySet().toArray(new Integer[hist_interval_col.size()]);
 								Arrays.sort(keys);
-								histo_data_file = new File(baseDir,
+								histo_data_file = new File(histBaseDir,
 										String.format("Infection_interval_all_gender_%d_site_%d.csv", g, s));
 								pWri_hist_data = new PrintWriter(histo_data_file);
 								for (Number key : keys) {
@@ -524,6 +515,43 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			System.exit(-1);
 		}
 
+	}
+
+	private Number[] printDuration(PrintWriter pWri, ArrayList<Long> history_dur_map_ent) {
+		Number[] all_data;
+		double[] all_data_double;
+		Percentile percent_data;
+		pWri.print(',');
+		pWri.print(1f * history_dur_map_ent.get(1) / history_dur_map_ent.get(0));
+
+		pWri.print(',');
+		pWri.print(history_dur_map_ent.get(0));
+
+		pWri.print(',');
+		pWri.print(history_dur_map_ent.get(1));
+
+		all_data = history_dur_map_ent.subList(2, history_dur_map_ent.size())
+				.toArray(new Long[0]);		
+
+		all_data_double = new double[all_data.length];
+		for (int i = 0; i < all_data.length; i++) {
+			all_data_double[i] = all_data[i].longValue();
+		}
+
+		percent_data = new Percentile();
+		percent_data.setData(all_data_double);
+
+		pWri.print(',');
+		pWri.print(percent_data.evaluate(50));
+
+		pWri.print(',');
+		pWri.print(percent_data.evaluate(25));
+
+		pWri.print(',');
+		pWri.print(percent_data.evaluate(75));
+
+		pWri.println();
+		return all_data;
 	}
 
 	private void printSummaryFile(Util_CSV_Table_Map csvTableMapping, String summaryFileFormat)
