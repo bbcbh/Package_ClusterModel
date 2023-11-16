@@ -377,10 +377,12 @@ public class Optimisation_Factory {
 				int[] map_time_range = (int[]) PropValUtils.propStrToObject(prop.getProperty(time_rangeKey),
 						int[].class);
 
-				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, numThreads);
-
-				System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
-						contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, Math.min(numThreads, preGenClusterFiles.length));
+				
+				if(cMap_count > 0) {
+					System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
+							contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+				}
 
 				// Generate pre_allocated prealloactedRiskGrpArr
 

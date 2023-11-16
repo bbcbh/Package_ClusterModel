@@ -66,7 +66,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 				pWri.close();
 				reader.close();
 				ContactMap map = ContactMap.ContactMapFromFullString(cMap_str.toString());				
-				System.out.printf("Contact map generated from %s. Time required = %.3fs\n", cMap_file.getName(), 
+				System.out.printf("Contact map read from %s. Time required = %.3fs\n", cMap_file.getName(), 
 						(System.currentTimeMillis() - tic) / 1000f);								
 				
 				return map;
