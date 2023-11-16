@@ -1174,7 +1174,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 															cumul_incidence[g_t][site_target]++;
 															int k = Collections.binarySearch(infected_today, partner);
 															if (k < 0) {
-																cumul_incidence_by_person[g_t]++;
+																boolean newIncidence = true;
+																// Only included as incidence if not already infected
+																for (int s = 0; s < LENGTH_SITE; s++) {
+																	newIncidence &= (Collections.binarySearch(currently_infectious[s], partner) < 0);
+																}
+																if (newIncidence) {
+																	cumul_incidence_by_person[g_t]++;
+																}
 																infected_today.add(~k, partner);
 															}
 															transmission_success(currentTime, infectious, partner,
@@ -1637,7 +1644,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 						}
 
-						if(schArr != null) {
+						if (schArr != null) {
 							int key = Collections.binarySearch(schArr, test_pid);
 							if (key >= 0) {
 								if (i < LENGTH_SITE) {
