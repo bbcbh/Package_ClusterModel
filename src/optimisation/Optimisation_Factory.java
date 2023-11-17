@@ -379,7 +379,7 @@ public class Optimisation_Factory {
 
 				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, Math.min(numThreads, preGenClusterFiles.length));
 				
-				if(cMap_count > 0) {
+				if(cMap_count > 1) {
 					System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
 							contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
 				}
