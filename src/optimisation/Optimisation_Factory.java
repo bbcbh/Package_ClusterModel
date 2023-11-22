@@ -382,6 +382,27 @@ public class Optimisation_Factory {
 				if(cMap_count > 1) {
 					System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
 							contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
+				}else {					
+					System.out.println("No contact map defined. Printing out runnable fields only;");	
+					Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission
+							(0,0,pop_composition, null, 0, 0);
+					
+					for (int i = Optimisation_Factory.RUNNABLE_OFFSET; i < Optimisation_Factory.RUNNABLE_OFFSET
+							+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
+
+						String key = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX + Integer.toString(i);
+						if (prop.containsKey(key)) {
+							runnable.getRunnable_fields()[i - Optimisation_Factory.RUNNABLE_OFFSET] = PropValUtils
+									.propStrToObject(prop.getProperty(key),
+											runnable.getRunnable_fields()[i - Optimisation_Factory.RUNNABLE_OFFSET]
+													.getClass());
+						}
+					}
+					
+					
+					setOptParamInRunnable(runnable, prop, init_param_default, true);
+					System.exit(1);
+					
 				}
 
 				// Generate pre_allocated prealloactedRiskGrpArr
