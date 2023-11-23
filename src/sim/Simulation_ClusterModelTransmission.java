@@ -105,6 +105,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL = PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP + 1;
 	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL
 			+ 1;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_ANAL_CONDOM_USAGE_RATE = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP+1;
 
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
@@ -781,6 +782,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		reallocateRiskGrp(prealloactedRiskGrpArr, baseContactMapSeed, cumulative_pop_composition, riskCatListAll,
 				baseDir, seed);
 	}
+	
 
 	public static void reallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, long baseContactMapSeed,
 			int[] cumulative_pop_composition, float[][] riskCatListAll, File baseDir, long rng_seed) {

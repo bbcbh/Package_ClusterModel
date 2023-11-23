@@ -201,6 +201,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public Object[] runnable_fields = {
 			// RUNNABLE_FIELD_TRANSMISSION_MAP_ACT_FREQ
 			// double[ACT_TYPE][GENDER_FROM][GENDER_TO]
+			// Alt Format:
+			// double[ACT_TYPE][GENDER_FROM][GENDER_TO],CONDOM_EFFICACY, USAGE_REG,
+			// USAGE_CAS
 			new float[][][] {
 					// ACT_INDEX_GENITAL
 					new float[][] { new float[] { 0, DEFAULT_ACT_GENITAL_FREQ, 0, DEFAULT_ACT_GENITAL_FREQ },
@@ -381,6 +384,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+
+	private static final int ACT_SPECIFIC_CONDOM_EFFICACY_INDEX = Population_Bridging.LENGTH_GENDER + 1;
+	private static final int ACT_SPECIFIC_USAGE_REG_INDEX = ACT_SPECIFIC_CONDOM_EFFICACY_INDEX + 1;
+	private static final int ACT_SPECIFIC_USAGE_CAS_INDEX = ACT_SPECIFIC_USAGE_REG_INDEX + 1;
 
 	public Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] POP_COMPOSITION,
 			ContactMap BASE_CONTACT_MAP, int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
@@ -741,6 +748,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						}
 					}
 				}
+
 				trans_prob.put(infectedId, trans);
 			}
 
@@ -1120,9 +1128,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 												transmission_possible &= actProb > 0;
 
 												if (transmission_possible) {
+
 													transmission_possible &= RNG.nextFloat() < actProb;
 
 													if (transmission_possible) {
+														if (ACT_SPECIFIC_USAGE_CAS_INDEX < ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s].length) {
+															float[] act_specific_ent = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ])[actType][g_s];
+															float condom_eff = act_specific_ent[ACT_SPECIFIC_CONDOM_EFFICACY_INDEX];
+															float usage = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] > 1
+																	? act_specific_ent[ACT_SPECIFIC_USAGE_REG_INDEX]
+																	: act_specific_ent[ACT_SPECIFIC_USAGE_CAS_INDEX];
+															transProb *= (1 - condom_eff * usage);
+															
+														}
 
 														// Reduction of transProb due to vaccine
 														if (vaccine_expiry_src != null) {
@@ -1177,7 +1195,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 																boolean newIncidence = true;
 																// Only included as incidence if not already infected
 																for (int s = 0; s < LENGTH_SITE; s++) {
-																	newIncidence &= (Collections.binarySearch(currently_infectious[s], partner) < 0);
+																	newIncidence &= (Collections.binarySearch(
+																			currently_infectious[s], partner) < 0);
 																}
 																if (newIncidence) {
 																	cumul_incidence_by_person[g_t]++;
