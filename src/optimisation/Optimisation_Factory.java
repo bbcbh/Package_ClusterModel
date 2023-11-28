@@ -377,16 +377,17 @@ public class Optimisation_Factory {
 				int[] map_time_range = (int[]) PropValUtils.propStrToObject(prop.getProperty(time_rangeKey),
 						int[].class);
 
-				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles, Math.min(numThreads, preGenClusterFiles.length));
-				
-				if(cMap_count > 0) {
+				int cMap_count = extractContactMap(baseCMaps, baseCMapSeeds, preGenClusterFiles,
+						Math.min(numThreads, preGenClusterFiles.length));
+
+				if (cMap_count > 0) {
 					System.out.printf("%d ContactMap(s) from %s loaded. Time req. = %.3fs\n", cMap_count,
 							contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
-				}else {					
-					System.out.println("No contact map defined. Printing out runnable fields only;");	
-					Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission
-							(0,0,pop_composition, null, 0, 0);
-					
+				} else {
+					System.out.println("No contact map defined. Printing out runnable fields only;");
+					Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(0, 0,
+							pop_composition, null, 0, 0);
+
 					for (int i = Optimisation_Factory.RUNNABLE_OFFSET; i < Optimisation_Factory.RUNNABLE_OFFSET
 							+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; i++) {
 
@@ -398,11 +399,10 @@ public class Optimisation_Factory {
 													.getClass());
 						}
 					}
-					
-					
+
 					setOptParamInRunnable(runnable, prop, init_param_default, true);
 					System.exit(1);
-					
+
 				}
 
 				// Generate pre_allocated prealloactedRiskGrpArr
@@ -634,10 +634,16 @@ public class Optimisation_Factory {
 							long sim_seed = row[1].longValue();
 							// Start optimisation from previous min value
 							init_param = Arrays.copyOf(init_param_default, init_param_default.length);
-							for (int i = 0; i < init_param.length; i++) {
-								if (row[i + 2] != null && !((Double) row[i + 2]).isNaN()) {
-									init_param[i] = ((Double) row[i + 2]).doubleValue();
+
+							if (row.length == init_param.length) {
+								for (int i = 0; i < init_param.length; i++) {
+									if (row[i + 2] != null && !((Double) row[i + 2]).isNaN()) {
+										init_param[i] = ((Double) row[i + 2]).doubleValue();
+									}
 								}
+							}else {
+								System.out.printf("Previous parameter set of length %d != %d required. Previous parameter set not loaded.\n",
+										row.length, init_param.length);								
 							}
 							HashMap<String, Object> arg = new HashMap<>();
 							arg.put(OptTrendFittingFunction.ARGS_CMAP, new ContactMap[] { cMap });
