@@ -385,7 +385,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
-	private static final int ACT_SPECIFIC_CONDOM_EFFICACY_INDEX = Population_Bridging.LENGTH_GENDER + 1;
+	private static final int ACT_SPECIFIC_CONDOM_EFFICACY_INDEX = Population_Bridging.LENGTH_GENDER;
 	private static final int ACT_SPECIFIC_USAGE_REG_INDEX = ACT_SPECIFIC_CONDOM_EFFICACY_INDEX + 1;
 	private static final int ACT_SPECIFIC_USAGE_CAS_INDEX = ACT_SPECIFIC_USAGE_REG_INDEX + 1;
 
