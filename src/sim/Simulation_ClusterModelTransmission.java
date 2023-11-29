@@ -105,7 +105,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL = PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP + 1;
 	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL
 			+ 1;
-	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_ANAL_CONDOM_USAGE_RATE = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP+1;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_ANAL_CONDOM_USAGE_RATE = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP
+			+ 1;
 
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
@@ -782,7 +783,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		reallocateRiskGrp(prealloactedRiskGrpArr, baseContactMapSeed, cumulative_pop_composition, riskCatListAll,
 				baseDir, seed);
 	}
-	
 
 	public static void reallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, long baseContactMapSeed,
 			int[] cumulative_pop_composition, float[][] riskCatListAll, File baseDir, long rng_seed) {
@@ -1056,6 +1056,27 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		if (baseDir != null) {
+
+			boolean flag_exportSkipBackup = false;
+			boolean flag_setPrintProgress = false;
+			File seed_map = null;
+
+			if (args.length > 1) {
+				for (int ai = 1; ai < args.length; ai++) {
+					if (LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
+						flag_exportSkipBackup = true;
+					}
+					if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {
+						flag_setPrintProgress = true;
+					}
+					if (args[ai].startsWith(LAUNCH_ARGS_SEED_MAP)) {
+						seed_map = new File(baseDir, args[ai].substring(LAUNCH_ARGS_SEED_MAP.length()));
+
+					}
+				}
+
+			}
+
 			if (baseDir.isDirectory()) {
 				// Reading of PROP file
 				propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
@@ -1085,6 +1106,41 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 					}
 				});
+
+				if (seed_map != null) {
+					try {
+						BufferedReader reader = new BufferedReader(new FileReader(seed_map));
+						ArrayList<Long> cMapSeeds = new ArrayList<>();
+						String ent;
+						reader.readLine(); // Skip first line
+						while ((ent = reader.readLine()) != null) {
+							long val = Long.parseLong(ent.split(",")[0]);
+							int k = Collections.binarySearch(cMapSeeds, val);
+							if (k < 0) {
+								cMapSeeds.add(~k, val);
+							}
+						}						
+						reader.close();
+
+						ArrayList<File> preGenClusterMapArr = new ArrayList<>();
+						Pattern p = Pattern.compile(REGEX_STR);
+						for (File f : preGenClusterMap) {
+							Matcher m = p.matcher(f.getName());
+							m.matches();
+							Long mSeed = Long.parseLong(m.group(1));
+							int k = Collections.binarySearch(cMapSeeds, mSeed);
+							if (k >= 0) {
+								preGenClusterMapArr.add(f);
+								cMapSeeds.remove(k);
+							}
+						}						
+						preGenClusterMap = preGenClusterMapArr.toArray(new File[preGenClusterMapArr.size()]);
+						
+					} catch (IOException e) {
+						e.printStackTrace(System.err);
+					}
+
+				}
 
 				Arrays.sort(preGenClusterMap);
 
@@ -1119,23 +1175,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 					sim.setBaseContactMap(ContactMap.ContactMapFromFullString(cMap_str.toString()));
 
-					if (args.length > 1) {
-						for (int ai = 1; ai < args.length; ai++) {
-							if (LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
-								sim.setExportSkipBackup(true);
-							}
-							if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {
-								sim.setPrintProgress(true);
-							}
-							if (args[ai].startsWith(LAUNCH_ARGS_SEED_MAP)) {
-								File seed_map = new File(baseDir, args[ai].substring(LAUNCH_ARGS_SEED_MAP.length()));
-								if (seed_map.isFile()) {
-									sim.loadPreGenSimSeed(seed_map);
-								}
-
-							}
-						}
-
+					if (flag_exportSkipBackup) {
+						sim.setExportSkipBackup(true);
+					}
+					if (flag_setPrintProgress) {
+						sim.setPrintProgress(true);
+					}
+					if (seed_map != null && seed_map.isFile()) {
+						sim.loadPreGenSimSeed(seed_map);
 					}
 
 					sim.generateOneResultSet();
