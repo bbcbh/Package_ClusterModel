@@ -577,7 +577,6 @@ public class Optimisation_Factory {
 					// Fill results with result lookup (if needed)
 					if (results_lookup != null) {
 						for (Number[] best_res : best_result_collection) {
-
 							Number[] searchkey_min = new Number[best_res.length];
 							Number[] searchkey_max = new Number[best_res.length];
 							Arrays.fill(searchkey_min, Double.NEGATIVE_INFINITY);
@@ -641,9 +640,10 @@ public class Optimisation_Factory {
 										init_param[i] = ((Double) row[i + 2]).doubleValue();
 									}
 								}
-							}else {
-								System.out.printf("Previous parameter set of length %d != %d required. Previous parameter set not loaded.\n",
-										row.length, init_param.length);								
+							} else {
+								System.out.printf(
+										"Previous parameter set of length %d != %d required. Previous parameter set not loaded.\n",
+										row.length, init_param.length);
 							}
 							HashMap<String, Object> arg = new HashMap<>();
 							arg.put(OptTrendFittingFunction.ARGS_CMAP, new ContactMap[] { cMap });
@@ -3033,13 +3033,17 @@ public class Optimisation_Factory {
 
 	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable, Properties prop,
 			double[] point, boolean display_only) {
-
 		String[] parameter_settings = null;
-		HashMap<Integer, Object> modified_param = new HashMap<>();
-
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING)) {
 			parameter_settings = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
-		}
+		}		
+		setOptParamInRunnable(target_runnable,parameter_settings,point,display_only);
+	}
+
+	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable,
+			String[] parameter_settings, double[] point, boolean display_only) {
+
+		HashMap<Integer, Object> modified_param = new HashMap<>();
 
 		if (parameter_settings == null || parameter_settings.length != point.length) {
 			// Backward compatibility.

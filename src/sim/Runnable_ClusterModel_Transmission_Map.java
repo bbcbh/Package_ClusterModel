@@ -122,7 +122,7 @@ public class Runnable_ClusterModel_Transmission_Map extends Runnable_ClusterMode
 				for (int cI = 0; cI < clusters.length; cI++) {
 					TransmissionMap c = clusters[cI];
 
-					printFile = new File(clusterExport,
+					printFile = new File(clusterExport, this.getRunnableId() == null? "": this.getRunnableId() +
 							String.format(Simulation_ClusterModelTransmission.FILENAME_ALL_TRANSMISSION_CMAP,
 									this.cMap_seed, this.sim_seed));
 

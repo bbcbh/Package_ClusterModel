@@ -29,6 +29,7 @@ import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
 
+import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
@@ -50,6 +51,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected boolean exportSkipBackup = false;
 	protected boolean printProgress = false;
 	protected HashMap<Long, ArrayList<Long>> preGenSimSeed = null;
+	protected HashMap<String, ArrayList<double[]>> preGenParam = null;
+	protected String[] preGenParamKey = null;
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
@@ -196,7 +199,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		try {
 			preGenSimSeed = new HashMap<>();
 			BufferedReader reader = new BufferedReader(new FileReader(seedFile));
-			String line = reader.readLine(); // Header
+			String headerline = reader.readLine(); // Header
+			String line;
 			while ((line = reader.readLine()) != null) {
 				String[] ent = line.split(",");
 				ArrayList<Long> mapEnt = preGenSimSeed.get(Long.parseLong(ent[0]));
@@ -205,6 +209,27 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					preGenSimSeed.put(Long.parseLong(ent[0]), mapEnt);
 				}
 				mapEnt.add(Long.parseLong(ent[1]));
+
+				if (ent.length > 2) {
+					if (preGenParamKey == null) {
+						preGenParamKey = Arrays.copyOfRange(headerline.split(","), 2, ent.length);
+						preGenParam = new HashMap<>();
+					}
+					String preGenMapKey = String.format("%d_%d", Long.parseLong(ent[0]), Long.parseLong(ent[1]));
+					ArrayList<double[]> preGenMapEnt = preGenParam.get(preGenMapKey);
+					if (preGenMapEnt == null) {
+						preGenMapEnt = new ArrayList<>();
+						preGenParam.put(preGenMapKey, preGenMapEnt);
+					}
+
+					double[] param = new double[preGenParamKey.length];
+					for (int i = 0; i < param.length; i++) {
+						param[i] = Double.parseDouble(ent[i + 2]);
+					}
+					preGenMapEnt.add(param);
+
+				}
+
 			}
 
 			reader.close();
@@ -573,6 +598,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				runnable[s].initialse();
 				runnable[s].fillRiskCatMap(prealloactedRiskGrpArr);
+
+				if (preGenParam != null) {					
+					String preGenParamMapKey = String.format("%d_%d", baseContactMapSeed, simSeed);
+					ArrayList<double[]> paramSet = preGenParam.get(preGenParamMapKey);
+					if (paramSet != null) {								
+						double[] pt = paramSet.remove(0);																	
+						runnable[s].setRunnableId(Arrays.toString(pt));
+						Optimisation_Factory.setOptParamInRunnable(runnable[s], preGenParamKey, pt, false);
+					}
+				}
 
 				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0) {
 					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
@@ -965,7 +1000,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	protected void zipSelectedOutputs(String file_name, String zip_file_name)
 			throws IOException, FileNotFoundException {
-		final Pattern pattern_include_file = Pattern.compile(file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+		final Pattern pattern_include_file = Pattern.compile( "(\\[.*\\])?" + file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
 
 		File[] files_list = baseDir.listFiles(new FileFilter() {
 			@Override
@@ -1119,7 +1154,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							if (k < 0) {
 								cMapSeeds.add(~k, val);
 							}
-						}						
+						}
 						reader.close();
 
 						ArrayList<File> preGenClusterMapArr = new ArrayList<>();
@@ -1133,9 +1168,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 								preGenClusterMapArr.add(f);
 								cMapSeeds.remove(k);
 							}
-						}						
+						}
 						preGenClusterMap = preGenClusterMapArr.toArray(new File[preGenClusterMapArr.size()]);
-						
+
 					} catch (IOException e) {
 						e.printStackTrace(System.err);
 					}
