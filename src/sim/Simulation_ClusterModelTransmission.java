@@ -537,14 +537,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			if (seedIndexExport7z.exists()) {
 				SevenZFile inputZip = new SevenZFile(seedIndexExport7z);
 				Pattern p_seedIndexList = Pattern
-						.compile(FILENAME_INDEX_CASE_LIST.replaceFirst("%d", Long.toString(baseContactMapSeed))
+						.compile("(\\[.*\\]){0,1}"+FILENAME_INDEX_CASE_LIST.replaceFirst("%d", Long.toString(baseContactMapSeed))
 								.replaceFirst("%d", "(-{0,1}(?!0)\\\\d+)"));
 				SevenZArchiveEntry inputEnt;
 				while ((inputEnt = inputZip.getNextEntry()) != null) {
 					String entName = inputEnt.getName();
 					Matcher m = p_seedIndexList.matcher(entName);
 					if (m.matches()) {
-						completedSeed.add(Long.parseLong(m.group(1)));
+						completedSeed.add(Long.parseLong(m.group(2)));
 					}
 				}
 				inputZip.close();
@@ -602,7 +602,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 			
 			execReadMap = null;
-			System.gc();
+			//System.gc();
 
 		}
 
@@ -635,15 +635,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			long simSeed = rngBase.nextLong();
 			boolean runSim = true;
 			if (Collections.binarySearch(completedSeedMap.get(baseContactMapSeed), simSeed) >= 0) {
-				System.out.println(String.format("Simulation under seed # %d already generated.", simSeed));
+				System.out.printf("Simulation with cMap_seed=%d and sim_seed=%d skipped as it is already generated.\n", 
+						baseContactMapSeed, simSeed);
 				runSim = false;
 			}
 			if (preGenSimSeedMap != null) {
 				ArrayList<Long> seedList = preGenSimSeedMap.get(baseContactMapSeed);
 				if (seedList != null && !seedList.isEmpty()) {
 					simSeed = seedList.remove(0);
-					System.out.println(String.format("Simulation using cMap_seed=%d and sim_seed=%d from file.",
-							baseContactMapSeed, simSeed));
+					System.out.printf("Simulation using cMap_seed=%d and sim_seed=%d from file.\n",
+							baseContactMapSeed, simSeed);
 				}
 			}
 
@@ -1093,7 +1094,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected void zipSelectedOutputs(String file_name, String zip_file_name)
 			throws IOException, FileNotFoundException {
 		final Pattern pattern_include_file = Pattern
-				.compile("(\\[.*\\])?" + file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+				.compile("(\\[.*\\]){0,1}" + file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
 
 		File[] files_list = baseDir.listFiles(new FileFilter() {
 			@Override
@@ -1332,10 +1333,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					
 					
 					exec = null;
-					System.gc();
+					//System.gc();
 				}
 				
-				System.out.printf("Loading of %d ContactMap completed. Time required = %.3fs\n", cMap_Map.size(), 
+				System.out.printf("%d ContactMap loaded. Time required = %.3fs\n", cMap_Map.size(), 
 						(System.currentTimeMillis() - tic)/1000.0f);
 
 				Simulation_ClusterModelTransmission sim = new Simulation_ClusterModelTransmission();
