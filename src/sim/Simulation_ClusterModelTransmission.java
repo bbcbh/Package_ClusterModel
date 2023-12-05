@@ -600,6 +600,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				edge_list_map.put(baseContactMapSeed, edge_list);
 
 			}
+			
+			execReadMap = null;
+			System.gc();
 
 		}
 
@@ -749,6 +752,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						}
 						inExec = 0;
 						exec = null;
+						System.gc();
 						if (numSim > 1) {
 							zipOutputFiles();
 						}
@@ -769,6 +773,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 			inExec = 0;
 			exec = null;
+			System.gc();
 			if (numSim > 1) {
 				zipOutputFiles();
 			}
@@ -1275,8 +1280,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					for (int i = 0; i < preGenClusterMap.length; i++) {
 						System.out.printf("Loading (in series) on ContactMap located at %s.\n",
 								preGenClusterMap[i].getAbsolutePath());
-
 						Matcher m = Pattern.compile(REGEX_STR).matcher(preGenClusterMap[i].getName());
+						m.matches();
 						long cMap_seed = Long.parseLong(m.group(1));
 						ContactMap cMap = extractedCMapfromFile(preGenClusterMap[i]);
 						cMap_Map.put(cMap_seed, cMap);
@@ -1324,7 +1329,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						}
 						cMap_Map.put(cMap_seeds[i], cMap);
 					}
+					
+					
+					exec = null;
+					System.gc();
 				}
+				
+				System.out.printf("Loading of %d ContactMap completed. Time required = %.3fs\n", cMap_Map.size(), 
+						(System.currentTimeMillis() - tic)/1000.0f);
 
 				Simulation_ClusterModelTransmission sim = new Simulation_ClusterModelTransmission();
 				sim.setBaseDir(baseDir);
