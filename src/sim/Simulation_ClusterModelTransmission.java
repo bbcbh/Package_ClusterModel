@@ -1277,7 +1277,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				HashMap<Long, ContactMap> cMap_Map = new HashMap<>();
 
-				if (preGenClusterMap.length == 1 || Runtime.getRuntime().availableProcessors() == 1) {
+				if (preGenClusterMap.length == 1 || Runtime.getRuntime().availableProcessors() ==1) {
 					for (int i = 0; i < preGenClusterMap.length; i++) {
 						System.out.printf("Loading (in series) on ContactMap located at %s.\n",
 								preGenClusterMap[i].getAbsolutePath());
@@ -1289,7 +1289,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 
 				} else {
-					// In parallel
+					// In parallel (not used due to out of memory error)
 					ExecutorService exec = Executors.newFixedThreadPool(
 							Math.min(preGenClusterMap.length, Runtime.getRuntime().availableProcessors()));
 
