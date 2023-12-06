@@ -118,7 +118,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				if (zipFiles.length == 0) {
 					// Try to zip existing file
 					Pattern possible_csv = Pattern
-							.compile(zipFileName.replaceAll("\\.csv\\.7z", "_(-{0,1}\\\\d+)\\.csv"));
+							.compile("(?:.*){0,1}" +zipFileName.replaceAll("\\.csv\\.7z", "_(-{0,1}\\\\d+)\\.csv"));
 
 					File[] raw_csvs = baseDir.listFiles(new FileFilter() {
 						@Override

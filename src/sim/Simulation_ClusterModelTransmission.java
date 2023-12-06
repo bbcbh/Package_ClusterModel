@@ -1090,12 +1090,18 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 	}
-
-	protected void zipSelectedOutputs(String file_name, String zip_file_name)
-			throws IOException, FileNotFoundException {
+	
+	protected void zipSelectedOutputs(String file_name, String zip_file_name) 
+			throws IOException, FileNotFoundException{
 		final Pattern pattern_include_file = Pattern
 				.compile("(\\[.*\\]){0,1}" + file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+		zipSelectedOutputs(baseDir, zip_file_name, 	pattern_include_file, exportSkipBackup);
+	}	
 
+	public static void zipSelectedOutputs(File baseDir, String zip_file_name,			
+			 final Pattern pattern_include_file, boolean exportSkipBackup)
+			throws IOException, FileNotFoundException {		
+		
 		File[] files_list = baseDir.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
