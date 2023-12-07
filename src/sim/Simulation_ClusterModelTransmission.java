@@ -658,7 +658,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				if (printProgress) {
 					runnable[s].setPrint_progress(System.out);
-					runnable[s].setRunnableId(String.format("%d,%d", baseContactMapSeed, simSeed));
+					runnable[s].setRunnableId(String.format("[Seeds=%d,%d]", baseContactMapSeed, simSeed));
 				}
 
 				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {

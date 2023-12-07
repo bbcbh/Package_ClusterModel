@@ -43,7 +43,7 @@ import sim.Simulation_ClusterModelTransmission;
 public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	private File baseDir;
-	private int[] incl_range =  new int[] { 2920, 4745 }; // 5 years
+	private int[] incl_range = new int[] { 2920, 4745 }; // 5 years
 
 	public static final String[] ZIP_FILES_LIST = new String[] {
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP.replaceAll("%d",
@@ -118,7 +118,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				if (zipFiles.length == 0) {
 					// Try to zip existing file
 					Pattern possible_csv = Pattern
-							.compile("(?:.*){0,1}" +zipFileName.replaceAll("\\.csv\\.7z", "_(-{0,1}\\\\d+)\\.csv"));
+							.compile("(?:.*){0,1}" + zipFileName.replaceAll("\\.csv\\.7z", "_(-{0,1}\\\\d+)\\.csv"));
 
 					File[] raw_csvs = baseDir.listFiles(new FileFilter() {
 						@Override
@@ -294,7 +294,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						// Infection duration
 						histBaseDir = new File(baseDir, String.format("Durations_%s", Arrays.toString(incl_range)));
 						histBaseDir.mkdirs();
-						
+
 						pWri.println("Duration of infection");
 						pWri.println(
 								"Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
@@ -302,9 +302,9 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
-								pWri.print(s);								
-								
-								// Total duration 																
+								pWri.print(s);
+
+								// Total duration
 								all_data = printDuration(pWri, inf_history_dur_map.get(String.format("%d,%d", g, s)));
 
 								HashMap<Long, Long> hist_dur_col = new HashMap<>();
@@ -330,23 +330,23 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 							}
 						}
-						
-						
+
 						pWri.println("Duration of treated infection");
 						pWri.println(
 								"Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
 						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {								
+							for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
 								pWri.print(s);
-								printDuration(pWri, inf_history_dur_map.get(String.format("T_%d,%d", g, s)));													
+								printDuration(pWri, inf_history_dur_map.get(String.format("T_%d,%d", g, s)));
 							}
-						}														
-						
-						histBaseDir = new File(baseDir, String.format("Infection_intervals_%s", Arrays.toString(incl_range)));
+						}
+
+						histBaseDir = new File(baseDir,
+								String.format("Infection_intervals_%s", Arrays.toString(incl_range)));
 						histBaseDir.mkdirs();
-						
+
 						pWri.println("Interval between infections ");
 						pWri.println("Gender, Site, Mean, Median, 25th Quartile, 75th Quartile");
 
@@ -530,8 +530,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		pWri.print(',');
 		pWri.print(history_dur_map_ent.get(1));
 
-		all_data = history_dur_map_ent.subList(2, history_dur_map_ent.size())
-				.toArray(new Long[0]);		
+		all_data = history_dur_map_ent.subList(2, history_dur_map_ent.size()).toArray(new Long[0]);
 
 		all_data_double = new double[all_data.length];
 		for (int i = 0; i < all_data.length; i++) {
@@ -556,10 +555,18 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	private void printSummaryFile(Util_CSV_Table_Map csvTableMapping, String summaryFileFormat)
 			throws FileNotFoundException {
+		String dirName = summaryFileFormat;
+		int subIndex = summaryFileFormat.indexOf("_%s");
+		if (subIndex > 0) {
+			dirName = summaryFileFormat.substring(0, subIndex);
+		}
+		File resultsDir = new File(baseDir, dirName);
+		resultsDir.mkdirs();
+
 		String[] headers = csvTableMapping.getHeader();
 		for (int s = 1; s < headers.length; s++) {
 			String summary = csvTableMapping.displayStat(s);
-			File summaryFile = new File(baseDir, String.format(summaryFileFormat, headers[s]));
+			File summaryFile = new File(resultsDir, String.format(summaryFileFormat, headers[s]));
 			PrintWriter pWri = new PrintWriter(summaryFile);
 			pWri.println(summary);
 			pWri.close();
