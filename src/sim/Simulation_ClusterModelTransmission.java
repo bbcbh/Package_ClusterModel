@@ -536,8 +536,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 			if (seedIndexExport7z.exists()) {
 				SevenZFile inputZip = new SevenZFile(seedIndexExport7z);
-				Pattern p_seedIndexList = Pattern
-						.compile("(\\[.*\\]){0,1}"+FILENAME_INDEX_CASE_LIST.replaceFirst("%d", Long.toString(baseContactMapSeed))
+				Pattern p_seedIndexList = Pattern.compile("(\\[.*\\]){0,1}"
+						+ FILENAME_INDEX_CASE_LIST.replaceFirst("%d", Long.toString(baseContactMapSeed))
 								.replaceFirst("%d", "(-{0,1}(?!0)\\\\d+)"));
 				SevenZArchiveEntry inputEnt;
 				while ((inputEnt = inputZip.getNextEntry()) != null) {
@@ -600,9 +600,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				edge_list_map.put(baseContactMapSeed, edge_list);
 
 			}
-			
+
 			execReadMap = null;
-			//System.gc();
+			// System.gc();
 
 		}
 
@@ -635,7 +635,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			long simSeed = rngBase.nextLong();
 			boolean runSim = true;
 			if (Collections.binarySearch(completedSeedMap.get(baseContactMapSeed), simSeed) >= 0) {
-				System.out.printf("Simulation with cMap_seed=%d and sim_seed=%d skipped as it is already generated.\n", 
+				System.out.printf("Simulation with cMap_seed=%d and sim_seed=%d skipped as it is already generated.\n",
 						baseContactMapSeed, simSeed);
 				runSim = false;
 			}
@@ -643,8 +643,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				ArrayList<Long> seedList = preGenSimSeedMap.get(baseContactMapSeed);
 				if (seedList != null && !seedList.isEmpty()) {
 					simSeed = seedList.remove(0);
-					System.out.printf("Simulation using cMap_seed=%d and sim_seed=%d from file.\n",
-							baseContactMapSeed, simSeed);
+					System.out.printf("Simulation using cMap_seed=%d and sim_seed=%d from file.\n", baseContactMapSeed,
+							simSeed);
 				}
 			}
 
@@ -658,7 +658,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				if (printProgress) {
 					runnable[s].setPrint_progress(System.out);
-					runnable[s].setRunnableId(String.format("[Seeds=%d,%d]", baseContactMapSeed, simSeed));
+					if (runnable.length != 1) {
+						runnable[s].setRunnableId(String.format("[Seeds=%d,%d]", baseContactMapSeed, simSeed));
+					}else {
+						runnable[s].setRunnableId(String.format("[%d]", s));
+					}
 				}
 
 				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
@@ -732,7 +736,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 								System.out.printf("Seeding %s of gender #%d at site #%d at t = %s\n",
 										Arrays.toString(seedInf), gender, site, Arrays.toString(seedTime));
 							} else {
-								System.err.printf("Warning: seedInfectNum[gender][site] < 0 not support in this version of %s.\n", 
+								System.err.printf(
+										"Warning: seedInfectNum[gender][site] < 0 not support in this version of %s.\n",
 										this.getClass().getName());
 
 							}
@@ -1090,18 +1095,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 	}
-	
-	protected void zipSelectedOutputs(String file_name, String zip_file_name) 
-			throws IOException, FileNotFoundException{
+
+	protected void zipSelectedOutputs(String file_name, String zip_file_name)
+			throws IOException, FileNotFoundException {
 		final Pattern pattern_include_file = Pattern
 				.compile("(\\[.*\\]){0,1}" + file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
-		zipSelectedOutputs(baseDir, zip_file_name, 	pattern_include_file, exportSkipBackup);
-	}	
+		zipSelectedOutputs(baseDir, zip_file_name, pattern_include_file, exportSkipBackup);
+	}
 
-	public static void zipSelectedOutputs(File baseDir, String zip_file_name,			
-			 final Pattern pattern_include_file, boolean exportSkipBackup)
-			throws IOException, FileNotFoundException {		
-		
+	public static void zipSelectedOutputs(File baseDir, String zip_file_name, final Pattern pattern_include_file,
+			boolean exportSkipBackup) throws IOException, FileNotFoundException {
+
 		File[] files_list = baseDir.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
@@ -1283,7 +1287,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				HashMap<Long, ContactMap> cMap_Map = new HashMap<>();
 
-				if (preGenClusterMap.length == 1 || Runtime.getRuntime().availableProcessors() ==1) {
+				if (preGenClusterMap.length == 1 || Runtime.getRuntime().availableProcessors() == 1) {
 					for (int i = 0; i < preGenClusterMap.length; i++) {
 						System.out.printf("Loading (in series) on ContactMap located at %s.\n",
 								preGenClusterMap[i].getAbsolutePath());
@@ -1336,14 +1340,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						}
 						cMap_Map.put(cMap_seeds[i], cMap);
 					}
-					
-					
+
 					exec = null;
-					//System.gc();
+					// System.gc();
 				}
-				
-				System.out.printf("%d ContactMap loaded. Time required = %.3fs\n", cMap_Map.size(), 
-						(System.currentTimeMillis() - tic)/1000.0f);
+
+				System.out.printf("%d ContactMap loaded. Time required = %.3fs\n", cMap_Map.size(),
+						(System.currentTimeMillis() - tic) / 1000.0f);
 
 				Simulation_ClusterModelTransmission sim = new Simulation_ClusterModelTransmission();
 				sim.setBaseDir(baseDir);
