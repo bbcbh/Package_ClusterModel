@@ -285,8 +285,9 @@ public class Optimisation_Factory {
 			}
 			verbose |= FLAG_verbose.equals(args[a]);
 			forceInit |= FLAG_forceInit.equals(args[a]);
-
 		}
+
+		File resList = new File(baseDir, args[3]);
 
 		File propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
 
@@ -333,13 +334,58 @@ public class Optimisation_Factory {
 							prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SIM_PER_SET]));
 				}
 
-				File[] preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
-					@Override
-					public boolean accept(File pathname) {
-						return pathname.isFile() && Pattern.matches(CMAP_REGEX_STR, pathname.getName());
+				File[] preGenClusterFiles;
+				ArrayList<Long> sim_seeds = new ArrayList<>();
+				ArrayList<Long> cMap_seeds = new ArrayList<>();
 
+				if (resList.exists()) {
+					BufferedReader reader = new BufferedReader(new FileReader(resList));
+					reader.readLine(); // Header line
+
+					String line;
+					while ((line = reader.readLine()) != null) {
+						String[] ent = line.split(",");
+						if (ent.length > 2) {
+							if (ent[0].length() > 0) {
+								cMap_seeds.add(Long.parseLong(ent[0]));
+							}
+							if (ent[1].length() > 0) {
+								sim_seeds.add(Long.parseLong(ent[1]));
+							}
+						}
 					}
-				});
+					reader.close();
+					
+					
+					Long[] cMap_seeds_arr = cMap_seeds.toArray(new Long[cMap_seeds.size()]);					
+					Arrays.sort(cMap_seeds_arr);
+					
+					preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							Matcher m = Pattern.compile(CMAP_REGEX_STR).matcher(pathname.getName());																				
+							int inList = -1;
+							if(m.matches()) {
+								Long ent = Long.parseLong(m.group(1));
+								inList = Arrays.binarySearch(cMap_seeds_arr, ent); 							
+							}							
+							
+							return pathname.isFile() && inList >= 0;
+
+						}
+					});
+					
+					
+
+				} else {
+					preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return pathname.isFile() && Pattern.matches(CMAP_REGEX_STR, pathname.getName());
+
+						}
+					});
+				}
 
 				long tic = System.currentTimeMillis();
 
@@ -430,7 +476,6 @@ public class Optimisation_Factory {
 					prop.put(OptTrendFittingFunction.ARGS_VERBOSE, true);
 				}
 				double[] init_param;
-				File resList = new File(baseDir, args[3]);
 
 				switch (optMethod) {
 				case OPT_METHOD_SIMPLEX:
@@ -451,29 +496,10 @@ public class Optimisation_Factory {
 					OptFittingFunction opt_trend_obj_func;
 
 					if (resList.exists()) {
-						ArrayList<Long> sim_seeds = new ArrayList<>();
-						ArrayList<Long> cMap_seeds = new ArrayList<>();
 						HashMap<Long, ContactMap> cMap_lookup = new HashMap<>();
 						for (int i = 0; i < baseCMapSeeds.length; i++) {
 							cMap_lookup.put(baseCMapSeeds[i], baseCMaps[i]);
 						}
-
-						BufferedReader reader = new BufferedReader(new FileReader(resList));
-						reader.readLine(); // Header line
-
-						String line;
-						while ((line = reader.readLine()) != null) {
-							String[] ent = line.split(",");
-							if (ent.length > 2) {
-								if (ent[0].length() > 0) {
-									cMap_seeds.add(Long.parseLong(ent[0]));
-								}
-								if (ent[1].length() > 0) {
-									sim_seeds.add(Long.parseLong(ent[1]));
-								}
-							}
-						}
-						reader.close();
 
 						int cMapPt = 0;
 						long[] cMapSeeds_long = new long[cMap_seeds.size()];
@@ -3036,8 +3062,8 @@ public class Optimisation_Factory {
 		String[] parameter_settings = null;
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING)) {
 			parameter_settings = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
-		}		
-		setOptParamInRunnable(target_runnable,parameter_settings,point,display_only);
+		}
+		setOptParamInRunnable(target_runnable, parameter_settings, point, display_only);
 	}
 
 	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable,
