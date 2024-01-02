@@ -416,9 +416,13 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						ArrayList<Util_CSV_Table_Map> csvTableExtra = new ArrayList<>();
 						ArrayList<int[][]> csvTableExtra_colSel = new ArrayList<>();
 						ArrayList<String> csvTableExtra_filename = new ArrayList<>();
+						
+						String replace_str = "(-{0,1}\\\\d+(?:_\\\\d+){0,1})";
 
+						String test = Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP
+								.replaceAll("%d", replace_str);
 						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP
-								.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
+								.replaceAll("%d", replace_str))) {
 							csvTableExtra.add(new Util_CSV_Table_Map("Time,Heterosexual,MSM,All"));
 							csvTableExtra_colSel.add(
 									new int[][] { new int[] { 1, 2 }, new int[] { 3, 4 }, new int[] { 1, 2, 3, 4 }, });
@@ -426,7 +430,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						}
 
 						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP
-								.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
+								.replaceAll("%d", replace_str))) {
 							csvTableExtra.add(new Util_CSV_Table_Map("Time,All_Active,All_Partial,All_Expired"));
 							csvTableExtra_colSel.add(new int[][] { new int[] { 1, 5, 9, 13 },
 									new int[] { 2, 6, 10, 14 }, new int[] { 3, 7, 11, 15 }, });
@@ -434,7 +438,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						}
 
 						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP
-								.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
+								.replaceAll("%d", replace_str))) {
 							csvTableExtra.add(new Util_CSV_Table_Map("Time,Site_1,Site_2,Site_3"));
 							csvTableExtra_colSel.add(
 									new int[][] { new int[] { 10, 14 }, new int[] { 11, 15 }, new int[] { 12, 16 }, });
