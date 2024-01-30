@@ -418,9 +418,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						ArrayList<String> csvTableExtra_filename = new ArrayList<>();
 						
 						String replace_str = "(-{0,1}\\\\d+(?:_\\\\d+){0,1})";
-
-						String test = Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP
-								.replaceAll("%d", replace_str);
+					
 						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP
 								.replaceAll("%d", replace_str))) {
 							csvTableExtra.add(new Util_CSV_Table_Map("Time,Heterosexual,MSM,All"));
