@@ -52,6 +52,12 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public static final String FILENAME_FORMAT_ALL_CMAP = "All_ContactMap_%d_%d.csv";
 	public static final String FILENAME_FORMAT_OUTPUT = "Output_%d.txt";
 	
+	public static final String ARG_PRINTOUTPUT = "-printOutput";
+	public static final String ARG_USE_EXIST_POP = "-useExistingPop";
+	public static final String ARG_SPACE_SAVE = "-space_save";
+	public static final String ARG_PRE_SEED = "-preSeed=";
+	
+	
 	public void setSpaceSave(boolean space_save) {
 		this.space_save = space_save;
 	}
@@ -339,19 +345,26 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		boolean printOut = false;
 		boolean useExistingPop = false;
 		boolean space_save = false;
+		ArrayList<Long> preSeedList = new ArrayList<>();
 
 		if (args.length > 0) {
 			baseDir = new File(args[0]);
 
 			for (int i = 1; i < args.length; i++) {
-				if (args[i].equals("-printOutput")) {
+				if (args[i].equals(ARG_PRINTOUTPUT)) {
 					printOut = true;
 				}
-				if (args[i].equals("-useExistingPop")) {
+				if (args[i].equals(ARG_USE_EXIST_POP)) {
 					useExistingPop = true;
 				}
-				if(args[i].equals("-space_save")) {
+				if(args[i].equals(ARG_SPACE_SAVE)) {
 					space_save = true;
+				}
+				if(args[i].startsWith(ARG_PRE_SEED)) {
+					String[] arg_seeds = args[i].substring(ARG_PRE_SEED.length()).split(",");
+					for(String arg_s : arg_seeds) {
+						preSeedList.add(Long.parseLong(arg_s));						
+					}												
 				}
 				
 			}
@@ -427,7 +440,11 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					}
 					sim.setUseSeeds(useSeeds);
 				}
-
+				
+				if(!preSeedList.isEmpty()) {
+					sim.setUseSeeds(preSeedList);
+				}
+				
 				sim.generateOneResultSet();
 
 			}
