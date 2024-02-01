@@ -19,6 +19,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 
 	protected String runnableId = null;
 	protected File baseDir = null;
+	
 
 	// Edge format in contact map: {p1, p2, start time_1, duration_1, ...}
 	// CONTACT_MAP_EDGE_DURATION = -1 -> Removal

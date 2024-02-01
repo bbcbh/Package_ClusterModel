@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,19 +26,7 @@ import random.RandomGenerator;
 import relationship.ContactMap;
 import util.PropValUtils;
 
-public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_ClusterModel {
-
-	public static final int ACT_INDEX_GENITAL = 0;
-	public static final int ACT_INDEX_ANAL = ACT_INDEX_GENITAL + 1;
-	public static final int ACT_INDEX_FELLATIO = ACT_INDEX_ANAL + 1;
-	public static final int ACT_INDEX_RIMMING = ACT_INDEX_FELLATIO + 1;
-	public static final int ACT_INDEX_KISSING = ACT_INDEX_RIMMING + 1;
-
-	public static final int SITE_VAGINA = 0;
-	public static final int SITE_PENIS = SITE_VAGINA + 1;
-	public static final int SITE_RECTUM = SITE_PENIS + 1;
-	public static final int SITE_OROPHARYNX = SITE_RECTUM + 1;
-	public static final int LENGTH_SITE = SITE_OROPHARYNX + 1;
+public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_ClusterModel_Transmission {
 
 	protected static final int TEST_OUTCOME_TREATMENT_APPLIED = 0;
 	protected static final int TEST_OUTCOME_TREATMENT_APPLIED_ON_TRUE_INFECTION = TEST_OUTCOME_TREATMENT_APPLIED + 1;
@@ -49,8 +36,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			+ 1;
 	protected static final int TEST_OUTCOME_TREATMENT_APPLIED_ON_RECOVERY = TEST_OUTCOME_TREATMENT_APPLIED_ON_INCUBATON
 			+ 1;
-
-	protected int simSetting = 1;
 
 	// Transmission
 	private double[] DEFAULT_TRANS_V2P = new double[] { 0.4, 0.10 };
@@ -87,7 +72,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// ASHR2: oral sex was reported in only approximately one in four encounters
 	private float DEFAULT_ACT_FELLATIO_FREQ_HETRO = 0.25f;
 	// From Qibin's paper
-	// 10.1371/journal.pcbi.1009385
+	// 10.1371/journal.pcbi.1009385	
 	private float DEFAULT_ACT_ANAL_FREQ_MSM = ((1.6f + 2.4f)) / 2 / 7;
 	private float DEFAULT_ACT_FELLATIO_FREQ_MSM = ((1.6f + 2.4f) / 2) / 7;
 	private float DEFAULT_ACT_RIMMING_FREQ_MSM = ((1.2f + 1.8f) / 2) / 7;
@@ -172,30 +157,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			+ 1;
 	public static final int LENGTH_VACCINATION_SETTING = VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP + 1;
 
-	public static final int RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ = 0;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE = RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ + 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD = RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE
-			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_INCUBATION_PERIOD = RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD
-			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_SYM_RATE = RUNNABLE_FIELD_TRANSMISSION_INCUBATION_PERIOD + 1;
-
-	public static final int RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS = RUNNABLE_FIELD_TRANSMISSION_SYM_RATE
-			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES = RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS
-			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM = RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES
-			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
-			+ 1;
+	
+	// Runnable field for viability testing
 	public static final int RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING = RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION = RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING
 			+ 1;
+	
+	// Runnable field for vaccination
 	public static final int RUNNABLE_FIELD_TRANSMISSION_VACCINE_PROPERTIES = RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING = RUNNABLE_FIELD_TRANSMISSION_VACCINE_PROPERTIES
 			+ 1;
+	
 	public static final int LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD = RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING + 1;
 
 	public Object[] runnable_fields = {
@@ -281,16 +255,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			DEFAULT_VACCINE_PROPERTIES,
 			// RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING
 			DEFAULT_VACCINATION_SETTING, };
-
-	// FIELD_POP_COMPOSITION
-	// int[] {NUM_FEMALE, NUM_MALE, NUM_MSMO, NUM_MSMW}
-	final int[] cumulative_pop_composition;
-	final ContactMap BASE_CONTACT_MAP;
-	final int NUM_TIME_STEPS_PER_SNAP;
-	final int NUM_SNAP;
-	protected final long sim_seed;
-	protected final long cMap_seed;
-	protected PrintStream print_progress = null;
 
 	protected RandomGenerator RNG;
 
@@ -391,46 +355,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	public Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] POP_COMPOSITION,
 			ContactMap BASE_CONTACT_MAP, int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
-		super();
+		super(cMap_seed, sim_seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);		
 
-		this.cumulative_pop_composition = new int[POP_COMPOSITION.length];
-		int offset = 0;
-
-		for (int g = 0; g < this.cumulative_pop_composition.length; g++) {
-			this.cumulative_pop_composition[g] = offset + POP_COMPOSITION[g];
-			offset += POP_COMPOSITION[g];
-		}
-
-		this.BASE_CONTACT_MAP = BASE_CONTACT_MAP;
-		this.NUM_TIME_STEPS_PER_SNAP = NUM_TIME_STEPS_PER_SNAP;
-		this.NUM_SNAP = NUM_SNAP;
-		this.cMap_seed = cMap_seed;
-		this.sim_seed = sim_seed;
-
-	}
-
-	public long getSim_seed() {
-		return sim_seed;
-	}
-
-	public long getcMap_seed() {
-		return cMap_seed;
-	}
-
-	public void setPrint_progress(PrintStream print_progess) {
-		this.print_progress = print_progess;
 	}
 
 	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
 		this.propSwitch_map = propSwitch_map;
-	}
-
-	public int getSimSetting() {
-		return simSetting;
-	}
-
-	public void setSimSetting(int simSetting) {
-		this.simSetting = simSetting;
 	}
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
@@ -444,7 +374,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	@SuppressWarnings("unchecked")
 	public void initialse() {
-		RNG = new MersenneTwisterRandomGenerator(sim_seed);
+		RNG = new MersenneTwisterRandomGenerator(sIM_SEED);
 
 		// Transmission
 		double[][][] tranParm = (double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
@@ -617,11 +547,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	private int getNumPartnerPerSnap(Integer personId, int currentTime) {
 		int count = 0;
-		if (currentTime > NUM_TIME_STEPS_PER_SNAP) {
-			Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
+		if (currentTime > nUM_TIME_STEPS_PER_SNAP) {
+			Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
 			for (Integer[] e : edges) {
 				if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= currentTime
-						- NUM_TIME_STEPS_PER_SNAP
+						- nUM_TIME_STEPS_PER_SNAP
 						&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < currentTime) {
 					count++;
 				}
@@ -657,7 +587,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				int numCasual = 0;
 				int firstPartnerTime = Integer.MAX_VALUE;
 				int lastPartnerTime = 0;
-				Set<Integer[]> edges = BASE_CONTACT_MAP.edgesOf(personId);
+				Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
 				for (Integer[] e : edges) {
 					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
 							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
@@ -693,7 +623,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			pid_collection[g] = new ArrayList<>();
 		}
 
-		for (Integer v : BASE_CONTACT_MAP.vertexSet()) {
+		for (Integer v : bASE_CONTACT_MAP.vertexSet()) {
 			pid_collection[getGenderType(v)].add(v);
 		}
 
@@ -839,7 +769,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	public int getGenderType(Integer personId) {
-		return getGenderType(personId, cumulative_pop_composition);
+		return getGenderType(personId, cUMULATIVE_POP_COMPOSITION);
 	}
 
 	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
@@ -872,7 +802,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if (edges_list == null) {
 
 				try {
-					edges_list = generateMapEdgeArray(BASE_CONTACT_MAP).call();
+					edges_list = generateMapEdgeArray(bASE_CONTACT_MAP).call();
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
 					System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
@@ -917,7 +847,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			// Pre allocate risk categories (mainly form MSM)
 			File pre_allocate_risk_file = new File(baseDir,
-					String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMap_seed));
+					String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));
 
 			if (pre_allocate_risk_file.isFile()) {
 				try {
@@ -939,7 +869,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 
 			// Schedule testing and vaccination limit
-			for (Integer personId : BASE_CONTACT_MAP.vertexSet()) {
+			for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
 			vaccineAllocLimitReset();
@@ -957,7 +887,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			int[] cumul_positive_dx_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
 			int[] cumul_positive_dx_sought_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
 
-			for (int currentTime = startTime; currentTime < startTime + NUM_TIME_STEPS_PER_SNAP * NUM_SNAP
+			for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
 					&& hasInfected; currentTime++) {
 
 				infected_today.clear();
@@ -1304,8 +1234,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						sim_output.put(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON, infectious_count_map_by_person);
 					}
 
-					int[][] infectious_count = new int[cumulative_pop_composition.length][LENGTH_SITE];
-					int[] infectious_count_by_person = new int[cumulative_pop_composition.length];
+					int[][] infectious_count = new int[cUMULATIVE_POP_COMPOSITION.length][LENGTH_SITE];
+					int[] infectious_count_by_person = new int[cUMULATIVE_POP_COMPOSITION.length];
 
 					ArrayList<Integer> infected_person = new ArrayList<>();
 					for (int site = 0; site < LENGTH_SITE; site++) {
@@ -1484,7 +1414,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				}
 
-				snap_index = (snap_index + 1) % NUM_TIME_STEPS_PER_SNAP;
+				snap_index = (snap_index + 1) % nUM_TIME_STEPS_PER_SNAP;
 
 				hasInfected = hasInfectedInPop();
 
@@ -1822,7 +1752,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		float vacc_by_contact_rate = vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RATE];
 		if (vacc_by_contact_rate != 0) {
 			int vacc_by_contact_scope = (int) vacc_setting[VACCINATION_SETTING_CONTACT_VACCINE_RANGE_IN_DAYS];
-			Set<Integer[]> all_contact = BASE_CONTACT_MAP.edgesOf(vaccinate_pid);
+			Set<Integer[]> all_contact = bASE_CONTACT_MAP.edgesOf(vaccinate_pid);
 			ArrayList<Integer> vacc_candidate_list = new ArrayList<>();
 			ArrayList<Integer> vacc_date = new ArrayList<>();
 			for (Integer[] e : all_contact) {
@@ -1920,7 +1850,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				
 
 				printFile = new File(baseDir, String.format(filePrefix+
-						Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST, this.cMap_seed, this.sim_seed));
+						Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST, this.cMAP_SEED, this.sIM_SEED));
 
 				try {
 					expWri = new PrintWriter(printFile);
@@ -1937,7 +1867,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
 					str = printCountMap(count_map, "Gender_%d_Site_%d");
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 
@@ -1945,7 +1875,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
 					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON, cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 
@@ -1954,7 +1884,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
 					str = printCountMap(count_map, "Gender_%d_Site_%d");
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE, cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 
@@ -1962,7 +1892,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
 					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON, cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 				}
@@ -1973,7 +1903,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							new String[] { "Total_Positive_DX_Gender_%d", "True_Positive_DX_Gender_%d" });
 					pWri = new PrintWriter(new File(baseDir,filePrefix+
 							String.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON,
-									cMap_seed, sim_seed)));
+									cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 
@@ -1983,7 +1913,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							new String[] { "Total_Positive_DX_SOUGHT_Gender_%d", "True_Positive_DX_SOUGHT_Gender_%d" });
 					pWri = new PrintWriter(new File(baseDir,filePrefix+
 							String.format(Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON,
-									cMap_seed, sim_seed)));
+									cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 
@@ -1992,7 +1922,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
 							new String[] { "Total_Treatment_Gender_%d", "True_Treatment_Gender_%d" });
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON, cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 
@@ -2003,7 +1933,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					Integer[] pids = infection_history.keySet().toArray(new Integer[infection_history.size()]);
 					Arrays.sort(pids);
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY, cMAP_SEED, sIM_SEED)));
 					for (Integer pid : pids) {
 						ArrayList<Integer>[] hist = infection_history.get(pid);
 						for (int site = 0; site < hist.length; site++) {
@@ -2028,7 +1958,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 },
 							"Gender_%d_Usage_%d"); // Proper, Over treatment
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE, cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
 				}
@@ -2038,7 +1968,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					HashMap<Integer, int[][][]> count_map_vacc = (HashMap<Integer, int[][][]>) sim_output
 							.get(SIM_OUTPUT_VACCINE_COVERAGE);
 					pWri = new PrintWriter(new File(baseDir, String.format(filePrefix+
-							Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE, cMap_seed, sim_seed)));
+							Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE, cMAP_SEED, sIM_SEED)));
 					Integer[] time_array = count_map_vacc.keySet().toArray(new Integer[count_map_vacc.size()]);
 					Arrays.sort(time_array);
 					str = new StringBuilder();
@@ -2077,7 +2007,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							.get(SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON);
 					pWri = new PrintWriter(new File(baseDir,filePrefix+
 							String.format(Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON,
-									cMap_seed, sim_seed)));
+									cMAP_SEED, sIM_SEED)));
 
 					time_array = count_map_vacc_person.keySet().toArray(new Integer[count_map_vacc.size()]);
 					Arrays.sort(time_array);

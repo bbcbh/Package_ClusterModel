@@ -45,6 +45,7 @@ import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
 import sim.Abstract_Runnable_ClusterModel;
+import sim.Abstract_Runnable_ClusterModel_Transmission;
 import sim.Runnable_ClusterModel_ContactMap_Generation;
 import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
@@ -411,7 +412,7 @@ public class Optimisation_Factory {
 								+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 								+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 								+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD
-								+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
+								+ Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
 				float[][] riskCatListAll = (float[][]) PropValUtils.propStrToObject(prop.getProperty(riskCatListAllKey),
 						float[][].class);
 
@@ -1622,7 +1623,7 @@ public class Optimisation_Factory {
 																+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 																+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 																+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD
-																+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
+																+ Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
 												float[][] riskCatListAll = (float[][]) PropValUtils.propStrToObject(
 														prop.getProperty(riskCatListAllKey), float[][].class);
 
@@ -1708,7 +1709,7 @@ public class Optimisation_Factory {
 													}
 												}
 
-												runnable.setSimSetting(1); // No output
+												runnable.setSimSetting(1, runnable); // No output
 												Number[] param_number = Arrays.copyOfRange(ga_ent, GA_ENT_PARM_START,
 														ga_ent.length);
 												double[] param_double = new double[param_number.length];
@@ -2019,7 +2020,7 @@ public class Optimisation_Factory {
 					}
 				}
 
-				runnable.setSimSetting(1); // No output
+				runnable.setSimSetting(1, runnable); // No output
 				setOptParamInRunnable(runnable, prop, init_param, true);
 			}
 
@@ -2220,7 +2221,7 @@ public class Optimisation_Factory {
 									}
 								}
 
-								runnable.setSimSetting(1); // No output
+								runnable.setSimSetting(1, runnable); // No output
 								setOptParamInRunnable(runnable, prop, point, false);
 								runnable.initialse();
 
@@ -2404,7 +2405,7 @@ public class Optimisation_Factory {
 											+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 											+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 											+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD
-											+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
+											+ Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS);
 							float[][] riskCatListAll = (float[][]) PropValUtils
 									.propStrToObject(prop.getProperty(riskCatListAllKey), float[][].class);
 
@@ -2461,7 +2462,7 @@ public class Optimisation_Factory {
 
 							}
 
-							runnable[rId].setSimSetting(1); // No output
+							runnable[rId].setSimSetting(1, runnable[rId]); // No output
 							setOptParamInRunnable(runnable[rId], PROP, point, c == null);
 							runnable[rId].initialse();
 							runnable[rId].fillRiskCatMap(riskGrpArr);
@@ -3085,7 +3086,7 @@ public class Optimisation_Factory {
 				if (val != null) {
 					int setting_level = 1;
 					switch (param_name_index - RUNNABLE_OFFSET) {
-					case Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
+					case Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
 						double[][] inf_dur = (double[][]) val;
 						int site_key = Integer.parseInt(param_setting_arr[1]);
 						for (int s = 0; s < inf_dur.length; s++) {
@@ -3097,7 +3098,7 @@ public class Optimisation_Factory {
 							}
 						}
 						break;
-					case Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
+					case Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
 						double[] sought_test_param = (double[]) val;
 						int index_key = Integer.parseInt(param_setting_arr[1]);
 						for (int s = 0; s < sought_test_param.length; s++) {
@@ -3201,33 +3202,33 @@ public class Optimisation_Factory {
 	private static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable, double[] point,
 			boolean display_only) {
 		double[][][] transmission_rate = (double[][][]) target_runnable
-				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
 
 		double[] sym_test_rate = (double[]) target_runnable
-				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 
 		double[][] inf_dur = (double[][]) target_runnable
-				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
 
 		float[][] sym_rate = (float[][]) target_runnable
-				.getRunnable_fields()[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
 
 		switch (point.length) {
 		case 8:
 			// TRANS_P2R, TRANS_R2P
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
 			// TRANS_P2O, TRANS_O2P
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
 			// TRANS_R2O, TRANS_O2R
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
 			// TRANS_O2O
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
 
 			// SYM_TEST_PERIOD
 			sym_test_rate[0] = point[7];
@@ -3241,24 +3242,24 @@ public class Optimisation_Factory {
 		case 16:
 			double org_mean;
 			// TRANS_P2V, TRANS_V2P
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_VAGINA][1] = 0;
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_VAGINA][Runnable_ClusterModel_Transmission.SITE_PENIS][1] = 0;
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][1] = 0;
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][1] = 0;
 			// TRANS_P2R, TRANS_R2P
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
 			// TRANS_P2O, TRANS_O2P
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_PENIS][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[5];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[5];
 			// TRANS_R2O, TRANS_O2R
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_RECTUM][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[7];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[7];
 			// TRANS_O2O
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
-			transmission_rate[Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[8];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[8];
 			// SYM_TEST_PERIOD
 			org_mean = sym_test_rate[0];
 			sym_test_rate[0] = point[9];
@@ -3267,7 +3268,7 @@ public class Optimisation_Factory {
 
 			if (point.length >= 14) {
 				// Duration by site
-				for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+				for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 					org_mean = inf_dur[s][0];
 					inf_dur[s][0] = point[s + 10];
 					// Adjust SD based on ratio from mean
@@ -3280,7 +3281,7 @@ public class Optimisation_Factory {
 					if (sym_test_rate.length < 2 * Population_Bridging.LENGTH_GENDER) {
 						sym_test_rate = Arrays.copyOf(sym_test_rate,
 								sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
-						target_runnable.runnable_fields[Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
+						target_runnable.runnable_fields[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
 						for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
 							sym_test_rate[2 * g] = sym_test_rate[0];
 							sym_test_rate[2 * g + 1] = sym_test_rate[1];
@@ -3296,7 +3297,7 @@ public class Optimisation_Factory {
 				// Sym rate for urethral infection for male
 				if (point.length >= 16) {
 					for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
-						sym_rate[g][Runnable_ClusterModel_Transmission.SITE_PENIS] = (float) point[15];
+						sym_rate[g][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS] = (float) point[15];
 					}
 				}
 			}
@@ -3374,15 +3375,15 @@ public class Optimisation_Factory {
 				switch ((int) opt_target_ent[OPT_TARGET_STABLE_DATA_FITTING_TYPE]) {
 				case OPT_TARGET_STABLE_FITTING_TYPE_NUM_INFECTED_BY_SITE:
 					if (inf_count != null) {
-						float[] inf_count_total_by_site = new float[Runnable_ClusterModel_Transmission.LENGTH_SITE];
+						float[] inf_count_total_by_site = new float[Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE];
 						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 							if ((1 << g & (int) opt_target_ent[OPT_TARGET_STABLE_GROUPS_TO_INCLUDE]) > 0) {
-								for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+								for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 									inf_count_total_by_site[s] += inf_count[g][s];
 								}
 							}
 						}
-						for (int s = 0; s < Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+						for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 							float numInfected = inf_count_total_by_site[s];
 							sqSum += opt_target_ent[OPT_TARGET_STABLE_OPT_WEIGHTING]
 									* Math.pow(numInfected - opt_target_ent[OPT_TARGET_STABLE_TARGET_VALUES + s], 2);

@@ -755,7 +755,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 													.getClass());
 						}
 					}
-					runnable[rId].setSimSetting(1); // No output
+					runnable[rId].setSimSetting(1, runnable[rId]); // No output
 					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, c == null);
 					runnable[rId].initialse();
 					

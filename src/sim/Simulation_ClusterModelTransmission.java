@@ -470,7 +470,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		// Map stat
 
 		float[][] riskCatListAll = ((float[][]) simFields[ent_offset
-				+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS]);
+				+ Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS]);
 
 		int[] contactMapTimeRange = (int[]) simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
@@ -501,7 +501,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		float[][] seedInfectParam = (float[][]) simFields[sim_offset + SIM_FIELD_SEED_INFECTION];
-		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Runnable_ClusterModel_Transmission.LENGTH_SITE];
+		int[][] seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
 		for (int g = 0; g < seedInfectParam.length; g++) {
 			for (int s = 0; s < seedInfectParam[g].length; s++) {
@@ -653,7 +653,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setEdges_list(edge_list_map.get(baseContactMapSeed));
-				runnable[s].setSimSetting(simSetting);
+				runnable[s].setSimSetting(simSetting, runnable[s]);
 				runnable[s].setPropSwitch_map(propSwitch_map);
 
 				if (printProgress) {
@@ -697,7 +697,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				} else {
 					// Add infected
 					for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
-						for (int site = 0; site < Runnable_ClusterModel_Transmission.LENGTH_SITE; site++) {
+						for (int site = 0; site < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; site++) {
 							if (seedInfectNum[gender][site] > 0) {
 								ArrayList<Integer>[] personStat = personStatMap.get(baseContactMapSeed);
 								Integer[] seedInf = util.ArrayUtilsRandomGenerator.randomSelect(
@@ -899,7 +899,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		float[][] riskCatListAll = ((float[][]) simFields[ent_offset
-				+ Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS]);
+				+ Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS]);
 
 		long seed = System.currentTimeMillis();
 		if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
