@@ -2,6 +2,7 @@ package util;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -142,6 +143,18 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 
 		}
 		return res;
+	}
+
+	public static StringBuilder extractCSVStringFromZip(SevenZFile inputZip) throws IOException {
+		StringBuilder str = new StringBuilder();
+		int count;
+		final int BUFFER = 2048;
+		byte[] buf = new byte[BUFFER];
+	
+		while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
+			str.append(new String(Arrays.copyOf(buf, count)));
+		}
+		return str;
 	}
 
 }

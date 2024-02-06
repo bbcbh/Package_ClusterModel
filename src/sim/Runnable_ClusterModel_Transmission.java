@@ -388,7 +388,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		// Duration & incubation
 		double[][] durParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
-		double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_INCUBATION_PERIOD];
+		double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD];
 		for (int s = 0; s < infectious_period.length; s++) {
 			if (durParam[s] != null) {
 				infectious_period[s] = generateGammaDistribution(durParam[s]);
@@ -719,7 +719,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				ArrayList<Integer>[] hist = infection_history.get(infectedId);
 				if (hist == null) {
 					hist = new ArrayList[LENGTH_SITE + 1]; // Last entry - any site
-					for (int s = 0; s < LENGTH_SITE; s++) {
+					for (int s = 0; s < hist.length; s++) {
 						hist[s] = new ArrayList<>();
 					}
 					infection_history.put(infectedId, hist);
@@ -727,7 +727,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				hist[site].add(infectious_time);
 
 				boolean newInfection = true;
-				for (int s = 0; s < LENGTH_SITE && newInfection ; s++) {
+				for (int s = 0; s < LENGTH_SITE && newInfection; s++) {
 					if (s != site) {
 						newInfection &= Collections.binarySearch(currently_infectious[s], infectedId) < 0;
 					}
@@ -1559,19 +1559,21 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				has_non_viable_bacteria_until.put(test_pid, currentTime);
 			}
 
+			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
+				ArrayList<Integer>[] hist = infection_history.get(test_pid);
+				hist[hist.length - 1].add(-currentTime); // -ive = treatment
+			}					
+
 			for (int site = 0; site < LENGTH_SITE; site++) {
 				if (infectious_key_index[site] >= 0) {
 					// Remove from infectious
 					currently_infectious[site].remove(infectious_key_index[site]);
-
 					updateScheduleMap(test_pid, LENGTH_SITE + site, null);
 					if ((simSetting
 							& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
 						ArrayList<Integer>[] hist = infection_history.get(test_pid);
-						hist[site].add(-currentTime); // -ive = treatment						
-						hist[hist.length-1].add(-currentTime);
+						hist[site].add(-currentTime); // -ive = treatment
 					}
-
 					// Treatment induced non-viability
 					if (non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB] > 0) {
 						if (RNG.nextFloat() < non_viable_infection_setting_by_gender[site][NON_VIABILITY_TREATMENT_INDUCED_PROB]) {

@@ -44,18 +44,22 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	private File baseDir;
 	private int[] incl_range = new int[] { 2920, 4745 }; // 5 years
+
 	private static final String replace_string = "(-{0,1}\\\\d+(?:_\\\\d+){0,1})";
 
 	public static final String[] ZIP_FILES_LIST = new String[] {
+			// 0-3
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP.replaceAll("%d", replace_string),
-			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP.replaceAll("%d", replace_string),
+			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP.replaceAll("%d", replace_string),			
 			Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP.replaceAll("%d", replace_string),
+			// 4-7
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON_ZIP.replaceAll("%d",
 					replace_string),
-			Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP.replaceAll("%d", replace_string),
+			Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP.replaceAll("%d", replace_string),			
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP.replaceAll("%d", replace_string),
+			// 8-9
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE_ZIP.replaceAll("%d", replace_string), };
 
@@ -70,7 +74,13 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false,
 			false, false, false };
-
+	
+	public final static int rISK_GRP_MAP_INDEX_PID = 0;		
+	public final static int rISK_GRP_MAP_INDEX_NUM_TIME_SPAN = rISK_GRP_MAP_INDEX_PID + 1;	
+	public final static int rISK_GRP_MAP_INDEX_NUM_INC = rISK_GRP_MAP_INDEX_NUM_TIME_SPAN + 1;
+	public final static int rISK_GRP_MAP_INDEX_NUM_NOTIF = rISK_GRP_MAP_INDEX_NUM_INC + 1;
+	public final static int rISK_GRP_MAP_LENGTH = rISK_GRP_MAP_INDEX_NUM_NOTIF + 1;
+	
 	public Util_Analyse_ClusterModel_Transmission_Output() {
 
 	}
@@ -568,6 +578,100 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			pWri.println(summary);
 			pWri.close();
 		}
+	}
+
+	public static int[] calculateIncNoticationFromHistory(Integer pid, ArrayList<String[]> ent, int[] time_range, int incNotifRow) {
+	
+		int numInc = 0;
+		int numNotif = 0;
+		int[] time_span = new int[] { -1, -1 };
+	
+		if (incNotifRow < ent.size()) {		
+			String[] inc_notif_row = ent.get(incNotifRow);					
+			for(int s = 2; s < inc_notif_row.length; s++) { // Offset: pid, site...
+				String time_str = inc_notif_row[s];
+				Integer nextTime = Integer.parseInt(time_str);				
+				time_range[0] = Math.min(time_range[0], Math.abs(nextTime));
+				time_range[1] = Math.max(time_range[1], Math.abs(nextTime));
+				if (nextTime < 0) {
+					numNotif++;
+				}else {
+					numInc++;
+				}								
+			}				
+		} else {
+			// Backward compatibly for result prior to 20240206
+	
+			int[] timing_pt = new int[ent.size()];
+			Arrays.fill(timing_pt, 2);
+			int inf_stat = 0;
+			int nextTimeRow;
+	
+			while ((nextTimeRow = getNextTimeRowFromHistory(ent, timing_pt)) >= 0) {
+				int nextTime = Integer.parseInt(ent.get(nextTimeRow)[timing_pt[nextTimeRow] - 1]);
+	
+				time_range[0] = Math.min(time_range[0], Math.abs(nextTime));
+				time_range[1] = Math.max(time_range[1], Math.abs(nextTime));
+	
+				if (time_span[0] < 0) {
+					time_span[0] = nextTime;
+				}
+				if (time_span[1] < nextTime) {
+					time_span[1] = nextTime;
+				}
+	
+				if (nextTime < 0) {
+					numNotif++;
+					inf_stat = 0; // Treatment for all
+				} else {
+					if ((inf_stat & 1 << nextTimeRow) == 0) { // New infection at site
+	
+						if (inf_stat == 0) { // new infection at any site
+							numInc++;
+						}
+	
+						inf_stat |= 1 << nextTimeRow;
+					} else {
+						if ((inf_stat & 1 << nextTimeRow) != 0) {
+							inf_stat -= 1 << nextTimeRow;
+						}
+					}
+				}
+			}
+		}
+	
+		int[] mappingEnt = new int[rISK_GRP_MAP_LENGTH];
+		mappingEnt[rISK_GRP_MAP_INDEX_PID] = pid;
+		mappingEnt[rISK_GRP_MAP_INDEX_NUM_INC] = numInc;
+		mappingEnt[rISK_GRP_MAP_INDEX_NUM_NOTIF] = numNotif;
+		mappingEnt[rISK_GRP_MAP_INDEX_NUM_TIME_SPAN] = time_span[1] - time_span[0];
+		return mappingEnt;
+	}
+
+	private static int getNextTimeRowFromHistory(ArrayList<String[]> ent, int[] timing_pt) {
+		int nextTimeRow = -1;
+		int nextTime = Integer.MAX_VALUE;
+		int nextTime_ent = Integer.MAX_VALUE;
+		for (int i = 0; i < timing_pt.length; i++) {
+			String[] ent_s = ent.get(i);
+			if (timing_pt[i] < ent_s.length && Math.abs(Integer.parseInt(ent_s[timing_pt[i]])) < nextTime) {
+				nextTime = Math.abs(Integer.parseInt(ent_s[timing_pt[i]]));
+				nextTime_ent = Integer.parseInt(ent_s[timing_pt[i]]);
+				nextTimeRow = i;
+	
+			}
+		}
+		if (nextTimeRow != -1) {
+			for (int i = 0; i < timing_pt.length; i++) {
+				String[] ent_s = ent.get(i);
+				if (timing_pt[i] < ent_s.length && nextTime_ent == Integer.parseInt(ent_s[timing_pt[i]])) {
+					timing_pt[i]++;
+				}
+	
+			}
+		}
+	
+		return nextTimeRow;
 	}
 
 	public static void cleanUpOutputDir(File cleanupDir) {
