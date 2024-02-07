@@ -11,10 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Set;
 
-import org.apache.commons.math3.distribution.AbstractRealDistribution;
-import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
-import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
@@ -22,7 +19,6 @@ import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import population.person.Person_Bridging_Pop;
 import random.MersenneTwisterRandomGenerator;
-import random.RandomGenerator;
 import relationship.ContactMap;
 import util.PropValUtils;
 
@@ -255,8 +251,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING
 			DEFAULT_VACCINATION_SETTING, };
 
-	protected RandomGenerator RNG;
-
 	protected transient RealDistribution[][] tranmissionMatrix = new RealDistribution[LENGTH_SITE][LENGTH_SITE];
 	protected transient RealDistribution[] infectious_period = new RealDistribution[LENGTH_SITE];
 	protected transient RealDistribution[] incubation_period = new RealDistribution[LENGTH_SITE];
@@ -276,14 +270,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<Integer, Integer[]> mapping_infection_schedule;
 	protected transient HashMap<Integer, double[][]> trans_prob;
 
-	protected transient HashMap<Integer, Integer> risk_cat_map;
-	protected transient int firstSeedTime = Integer.MAX_VALUE;
-	protected transient HashMap<String, Object> sim_output = null;
-
 	protected transient HashMap<Integer, Integer> has_non_viable_bacteria_until;
-	// Key = time, V = Map(K = run_parameter_id, V = PropVal_Str
-	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
-
 	// For infection tracking
 	// Key = pid, V = [site][infection_start_time_1,
 	// infection_end_time_1...];
@@ -342,7 +329,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// with K = time, V= int[gender]{valid, partial, expired, unused}
 	public static final String SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON = "SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON";
 
-	private ArrayList<Integer[]> edges_list;
 	private static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
@@ -356,14 +342,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			ContactMap BASE_CONTACT_MAP, int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
 		super(cMap_seed, sim_seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 
-	}
-
-	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
-		this.propSwitch_map = propSwitch_map;
-	}
-
-	public void setEdges_list(ArrayList<Integer[]> edges_list) {
-		this.edges_list = edges_list;
 	}
 
 	@Override
@@ -560,20 +538,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	public void fillRiskCatMap(ArrayList<Number[]> prealloactedRiskGrpArr) {
-		if (prealloactedRiskGrpArr != null) {
-			for (Number[] preAllocRisk : prealloactedRiskGrpArr) {
-				if (risk_cat_map == null) {
-					risk_cat_map = new HashMap<>();
-				}
-
-				risk_cat_map.put(
-						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID],
-						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
-			}
-		}
-	}
-
 	private int getRiskCategories(Integer personId, int genderType) {
 
 		if (risk_cat_map.containsKey(personId)) {
@@ -639,7 +603,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 		}
 	}
-
+	
+	
+	@Override
+	public int addInfectious(Integer infectedId, int intId, int site, int infectious_time, int recoveredAt) {
+		// Single Infection
+		return addInfectious(infectedId, site, infectious_time, recoveredAt);
+	}
+	
 	@SuppressWarnings("unchecked")
 	public int addInfectious(Integer infectedId, int site, int infectious_time, int recoveredAt) {
 		int key = Collections.binarySearch(currently_infectious[site], infectedId);
@@ -2172,103 +2143,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			mapping_infection_schedule.put(personId, schMap);
 		}
 		schMap[schMap_index] = schMap_ent;
-	}
-
-	protected final AbstractRealDistribution generateNonDistribution(double[] input) {
-		return new AbstractRealDistribution(RNG) {
-			private static final long serialVersionUID = -4946118496555960005L;
-
-			@Override
-			public boolean isSupportUpperBoundInclusive() {
-				return true;
-			}
-
-			@Override
-			public boolean isSupportLowerBoundInclusive() {
-				return true;
-			}
-
-			@Override
-			public boolean isSupportConnected() {
-				return true;
-			}
-
-			@Override
-			public double getSupportUpperBound() {
-				return input[0];
-			}
-
-			@Override
-			public double getSupportLowerBound() {
-				return input[0];
-			}
-
-			@Override
-			public double getNumericalVariance() {
-				return 0;
-			}
-
-			@Override
-			public double getNumericalMean() {
-				return input[0];
-			}
-
-			@Override
-			public double density(double x) {
-				return x == input[0] ? 1 : 0;
-			}
-
-			@Override
-			public double cumulativeProbability(double x) {
-				return x < input[0] ? 0 : 1;
-			}
-
-			@Override
-			public double sample() {
-				return input[0];
-			}
-
-		};
-
-	}
-
-	protected AbstractRealDistribution generateGammaDistribution(double[] input) {
-
-		if (input[1] != 0) {
-			// For Gamma distribution
-			// GammaDistribution(RandomGenerator rng, double shape, double scale)
-			// shape = mean / scale i.e. mean / (var / mean)
-			// scale = var / mean
-			double[] res = new double[2];
-			double var = input[1] * input[1];
-			// scale
-			res[1] = var / input[0];
-			// shape
-			res[0] = input[0] / res[1];
-			return new GammaDistribution(RNG, res[0], res[1]);
-		} else {
-			return generateNonDistribution(input);
-
-		}
-	}
-
-	protected AbstractRealDistribution generateBetaDistribution(double[] input) {
-		if (input[1] != 0) {
-
-			// For Beta distribution,
-			// alpha = mean*(mean*(1-mean)/variance - 1)
-			// beta = (1-mean)*(mean*(1-mean)/variance - 1)
-			double[] res = new double[2];
-			double var = input[1] * input[1];
-			double rP = input[0] * (1 - input[0]) / var - 1;
-			// alpha
-			res[0] = rP * input[0];
-			// beta
-			res[1] = rP * (1 - input[0]);
-			return new BetaDistribution(RNG, res[0], res[1]);
-		} else {
-			return generateNonDistribution(input);
-		}
 	}
 
 }

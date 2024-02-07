@@ -356,27 +356,24 @@ public class Optimisation_Factory {
 						}
 					}
 					reader.close();
-					
-					
-					Long[] cMap_seeds_arr = cMap_seeds.toArray(new Long[cMap_seeds.size()]);					
+
+					Long[] cMap_seeds_arr = cMap_seeds.toArray(new Long[cMap_seeds.size()]);
 					Arrays.sort(cMap_seeds_arr);
-					
+
 					preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
 						@Override
 						public boolean accept(File pathname) {
-							Matcher m = Pattern.compile(CMAP_REGEX_STR).matcher(pathname.getName());																				
+							Matcher m = Pattern.compile(CMAP_REGEX_STR).matcher(pathname.getName());
 							int inList = -1;
-							if(m.matches()) {
+							if (m.matches()) {
 								Long ent = Long.parseLong(m.group(1));
-								inList = Arrays.binarySearch(cMap_seeds_arr, ent); 							
-							}							
-							
+								inList = Arrays.binarySearch(cMap_seeds_arr, ent);
+							}
+
 							return pathname.isFile() && inList >= 0;
 
 						}
 					});
-					
-					
 
 				} else {
 					preGenClusterFiles = contactMapDir.listFiles(new FileFilter() {
@@ -1709,7 +1706,7 @@ public class Optimisation_Factory {
 													}
 												}
 
-												runnable.setSimSetting(1, runnable); // No output
+												runnable.setSimSetting(1); // No output
 												Number[] param_number = Arrays.copyOfRange(ga_ent, GA_ENT_PARM_START,
 														ga_ent.length);
 												double[] param_double = new double[param_number.length];
@@ -2020,7 +2017,7 @@ public class Optimisation_Factory {
 					}
 				}
 
-				runnable.setSimSetting(1, runnable); // No output
+				runnable.setSimSetting(1); // No output
 				setOptParamInRunnable(runnable, prop, init_param, true);
 			}
 
@@ -2221,7 +2218,7 @@ public class Optimisation_Factory {
 									}
 								}
 
-								runnable.setSimSetting(1, runnable); // No output
+								runnable.setSimSetting(1); // No output
 								setOptParamInRunnable(runnable, prop, point, false);
 								runnable.initialse();
 
@@ -2462,7 +2459,7 @@ public class Optimisation_Factory {
 
 							}
 
-							runnable[rId].setSimSetting(1, runnable[rId]); // No output
+							runnable[rId].setSimSetting(1); // No output
 							setOptParamInRunnable(runnable[rId], PROP, point, c == null);
 							runnable[rId].initialse();
 							runnable[rId].fillRiskCatMap(riskGrpArr);
@@ -3058,13 +3055,24 @@ public class Optimisation_Factory {
 
 	}
 
-	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable, Properties prop,
+	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable, Properties prop,
 			double[] point, boolean display_only) {
 		String[] parameter_settings = null;
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING)) {
 			parameter_settings = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
 		}
 		setOptParamInRunnable(target_runnable, parameter_settings, point, display_only);
+	}
+
+	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
+			String[] parameter_settings, double[] point, boolean display_only) {
+		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
+			setOptParamInRunnable(target_runnable, parameter_settings, point, display_only);
+		} else {
+			System.err.printf("setOptParamInRunnable for %s not supported yet. Exiting...\n",
+					target_runnable.getClass().getName());
+			System.exit(1);
+		}
 	}
 
 	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable,
@@ -3199,8 +3207,8 @@ public class Optimisation_Factory {
 		}
 	}
 
-	private static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable, double[] point,
-			boolean display_only) {
+	private static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
+			double[] point, boolean display_only) {
 		double[][][] transmission_rate = (double[][][]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
 
@@ -3281,7 +3289,8 @@ public class Optimisation_Factory {
 					if (sym_test_rate.length < 2 * Population_Bridging.LENGTH_GENDER) {
 						sym_test_rate = Arrays.copyOf(sym_test_rate,
 								sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
-						target_runnable.runnable_fields[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
+						target_runnable
+								.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
 						for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
 							sym_test_rate[2 * g] = sym_test_rate[0];
 							sym_test_rate[2 * g + 1] = sym_test_rate[1];
