@@ -78,6 +78,10 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	public void setSpace_save(boolean space_save) {
 		this.space_save = space_save;
 	}
+	
+	public boolean isSpace_save() {
+		return this.space_save;
+	}
 
 	@Override
 	public void initialise() {

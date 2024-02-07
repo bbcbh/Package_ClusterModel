@@ -255,8 +255,15 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 
 					}
 					population.advanceTimeStep(1);
-
-					if (exportFreq > 0) {
+					
+										
+					boolean exportPop = true;
+					
+					if(population instanceof  population.Population_Bridging_Scheduled) {
+						exportPop &= !((Population_Bridging_Scheduled) population).isSpace_save();
+					}																		
+					
+					if (exportFreq > 0 && exportPop) {																							
 						long snapTime = System.currentTimeMillis();
 						if (snapTime - lastExportTime > exportFreq) {
 							exportPopSnap(snapTime);
