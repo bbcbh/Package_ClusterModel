@@ -199,12 +199,13 @@ public class Util_Modify_SimDirs {
 
 	/**
 	 * Combine simulation outputs directory 
-	 * @param tarDirPath  Directry where simulation output is stored.
+	 * @param tarDirPath  Directory where simulation output is stored.
+	 * @param extraDir Directory where extra directories are stored
 	 * @throws IOException
 	 * @throws FileNotFoundException
 	 */
-	public static void combineSimOutput(File tarDirPath) throws IOException, FileNotFoundException {
-		File splittedScDirPath = new File(tarDirPath, "Extra");
+	public static void combineSimOutput(File tarDirPath, File extraDir) throws IOException, FileNotFoundException {
+		
 		String[] ignoreAttr = new String[] { "PROP_CONTACT_MAP_LOC", "PROP_NUM_SIM_PER_SET", "PROP_USE_PARALLEL" };
 		String[][] zip_patterns = new String[][] { new String[] {
 				Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP.replaceAll("_%d", "") + ".7z",
@@ -217,12 +218,12 @@ public class Util_Modify_SimDirs {
 		File[] targetDirs = tarDirPath.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
-				return pathname.isDirectory() && !pathname.equals(splittedScDirPath);
+				return pathname.isDirectory() && !pathname.equals(extraDir);
 			}
 		});
 	
 		for (File tarDir : targetDirs) {
-			File[] srcDirs = splittedScDirPath.listFiles(new FileFilter() {
+			File[] srcDirs = extraDir.listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File pathname) {
 					return pathname.isDirectory() && pathname.getName().startsWith(tarDir.getName());
@@ -353,12 +354,7 @@ public class Util_Modify_SimDirs {
 					}
 					System.out.printf("%d files zipped to %s.\n", zip_candidates.length, zip_tar_file.getName());
 				}														
-			}
-			
-			
-			
-			
-	
+			}	
 		}
 	}
 
