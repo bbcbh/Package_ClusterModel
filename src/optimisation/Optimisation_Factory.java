@@ -429,7 +429,7 @@ public class Optimisation_Factory {
 							contactMapDir.getAbsolutePath(), (System.currentTimeMillis() - tic) / 1000f);
 				} else {
 					System.out.println("No contact map defined. Printing out runnable fields only;");
-					Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(0, 0,
+					Abstract_Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(0, 0,
 							pop_composition, null, 0, 0);
 
 					for (int i = Optimisation_Factory.RUNNABLE_OFFSET; i < Optimisation_Factory.RUNNABLE_OFFSET
@@ -2003,7 +2003,7 @@ public class Optimisation_Factory {
 			if (opt_target == null || opt_target.length == 0) {
 				System.out.println("OPT_TARGET missing. Printing out runnable fields instead.");
 
-				Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(-1, -1,
+				Abstract_Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(-1, -1,
 						pop_composition, null, num_time_steps_per_snap, numSnap);
 				runnable.setBaseDir(baseDir);
 

@@ -748,20 +748,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		return key;
 	}
 
-	public int getGenderType(Integer personId) {
-		return getGenderType(personId, cUMULATIVE_POP_COMPOSITION);
-	}
-
-	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
-		int index = Arrays.binarySearch(cumul_pop_comp, personId);
-
-		if (index < 0) {
-			return ~index;
-		} else {
-			return index;
-		}
-	}
-
 	@Override
 	public void run() {
 		int startTime = firstSeedTime;

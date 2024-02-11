@@ -2,11 +2,13 @@ package sim;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
+import org.apache.commons.math3.distribution.UniformRealDistribution;
 
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
@@ -42,6 +44,17 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
 			+ 1;
+
+	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
+		int index = Arrays.binarySearch(cumul_pop_comp, personId);
+	
+		if (index < 0) {
+			return ~index;
+		} else {
+			return index;
+		}
+	}
+
 
 	protected final int[] cUMULATIVE_POP_COMPOSITION;
 	protected final ContactMap bASE_CONTACT_MAP;
@@ -200,6 +213,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			return generateNonDistribution(input);
 		}
 	}
+	
+	protected AbstractRealDistribution generateUniformDistribution(double[] input) {
+		if(input[1] != 0) {
+			return new UniformRealDistribution(RNG, input[0], input[1]);						
+		}else {
+			return generateNonDistribution(input);
+		}	
+	}
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
 		this.edges_list = edges_list;
@@ -207,6 +228,11 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
 		this.propSwitch_map = propSwitch_map;
+	}
+
+
+	public int getGenderType(Integer personId) {
+		return getGenderType(personId, cUMULATIVE_POP_COMPOSITION);
 	}
 
 

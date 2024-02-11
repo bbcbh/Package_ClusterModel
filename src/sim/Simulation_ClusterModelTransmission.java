@@ -720,7 +720,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
-					((Runnable_ClusterModel_Transmission_Map) runnable[s]).setTransmissionMap(new TransmissionMap());
+					try {
+						((Runnable_ClusterModel_Transmission_Map) runnable[s]).setTransmissionMap(new TransmissionMap());
+					}catch (ClassCastException ex) {
+						System.err.printf("Warning: Transmission cluster tracking for non-%s class not suppport yet.\n", 
+								Runnable_ClusterModel_Transmission.class.getName());						
+						
+					}
 				}
 
 				if ((simSetting & 1 << SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY) != 0) {

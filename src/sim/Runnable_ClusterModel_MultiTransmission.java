@@ -20,7 +20,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			// ACT_PER_DAY, CONDOM_EFFICACY, USAGE_REG, USAGE_CASUAL},...}
 			new double[][] {},
 			// 1: RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE
-			// double{{INF_ID, SITE_FROM, SITE_TO, TRANSMISSION_PARAM_0,
+			// double{{INF_ID, STATE_INCLUDE_INDEX, SITE_FROM, SITE_TO,
+			// TRANSMISSION_PARAM_0,
 			// TRANSMISSION_PARAM_1...},... }
 			new double[][] {},
 			// 2: RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD
@@ -64,7 +65,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public static final int FIELD_ACT_FREQ_USAGE_CASUAL = FIELD_ACT_FREQ_USAGE_REG + 1;
 	// For RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE
 	public static final int FIELD_TRANSMISSION_RATE_INF_ID = 0;
-	public static final int FIELD_TRANSMISSION_RATE_SITE_FROM = FIELD_TRANSMISSION_RATE_INF_ID + 1;
+	public static final int FIELD_TRANSMISSION_RATE_STATE_INCLUDE_INDEX = FIELD_TRANSMISSION_RATE_INF_ID + 1;
+	public static final int FIELD_TRANSMISSION_RATE_SITE_FROM = FIELD_TRANSMISSION_RATE_STATE_INCLUDE_INDEX + 1;
 	public static final int FIELD_TRANSMISSION_RATE_SITE_TO = FIELD_TRANSMISSION_RATE_SITE_FROM + 1;
 	public static final int FIELD_TRANSMISSION_RATE_TRANS_PARAM_START = FIELD_TRANSMISSION_RATE_SITE_TO + 1;
 	// RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD
@@ -115,10 +117,16 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient HashMap<Integer, double[][][]> map_trans_prob; // Key=PID, V=double[INF_ID][SITE_FROM][SITE_TO]
 	protected transient HashMap<Integer, int[][]> map_currrent_infectState; // Key=PID,
 																			// V=int[INF_ID][SITE]{infection_state}
+
+	protected transient HashMap<Integer, ArrayList<Integer>> map_infection_cycle; // Key = PID, V =
+																					// arr[state_switch_at_0,
+																					// state_switch_at_1...]
+
 	protected transient ArrayList<Integer>[][] list_currently_infectious; // ArrayList<Integer>[INF_ID][SITE]
 
 	// For schedule, key are day and entries are list of person id, ordered
 	protected transient HashMap<Integer, ArrayList<Integer>> schedule_testing;
+	protected transient HashMap<Integer, ArrayList<Integer>> schedule_state_change;
 
 	// Helper objects set by fields
 
@@ -128,13 +136,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient double[][][][] table_act_frequency; // double[ACT_ID][G_TO][G_FROM]{fieldEntry}
 
 	protected transient RealDistribution[][][] dist_sym_rate; // RealDistribution[INF_ID][SITE][STAGE_ID]
-	protected transient RealDistribution[][][] dist_tranmissionMatrix; // RealDistribution[INF_ID][SITE_FROM][SITE_TO]
+	protected transient RealDistribution[][][][] dist_tranmissionMatrix; // RealDistribution[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
 	protected transient RealDistribution[][] dist_infectious_period; // RealDistribution[INF_ID][SITE]
 	protected transient RealDistribution[][][] dist_stages_period; // ReadDistribution[INF_ID][SITE][STAGE_ID]
 
-	
-	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("MultiTransmission_(\\d+)_(\\d+)_(\\d+)");	
-	
+	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("MultiTransmission_(\\d+)_(\\d+)_(\\d+)");
+
 	public Runnable_ClusterModel_MultiTransmission(long cMap_seed, long sim_seed, int[] pop_composition,
 			ContactMap base_cMap, int numTimeStepsPerSnap, int numSnap, int num_inf, int num_site, int num_act) {
 		super(cMap_seed, sim_seed, pop_composition, base_cMap, numTimeStepsPerSnap, numSnap);
@@ -146,19 +153,20 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Initiate transient field, lookup table etc
 		map_trans_prob = new HashMap<>();
 		map_currrent_infectState = new HashMap<>();
+		map_infection_stage_path = new HashMap<>();
+		map_infection_cycle = new HashMap<>();
+
 		schedule_testing = new HashMap<>();
+		schedule_state_change = new HashMap<>();
 
 		table_act_frequency = new double[NUM_ACT][NUM_GENDER][NUM_GENDER][];
-		map_infection_stage_path = new HashMap<>();
 
-		dist_tranmissionMatrix = new RealDistribution[NUM_INF][NUM_SITE][NUM_SITE];
+		dist_tranmissionMatrix = new RealDistribution[NUM_INF][NUM_SITE][NUM_SITE][];
 		dist_infectious_period = new RealDistribution[NUM_INF][NUM_SITE];
 		dist_stages_period = new RealDistribution[NUM_INF][NUM_SITE][];
 		dist_sym_rate = new RealDistribution[NUM_INF][NUM_SITE][];
 
 	}
-
-	
 
 	public void refreshField(int fieldId, boolean clearAll) {
 		double[][] field = null;
@@ -176,9 +184,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			if (clearAll) {
 				for (double[][][] actType : table_act_frequency) {
 					for (double[][] actType_gIf : actType) {
-						for (double[] actType_gIf_gIt : actType_gIf) {
-							Arrays.fill(actType_gIf_gIt, 0);
-						}
+						Arrays.fill(actType_gIf, null);
 					}
 				}
 			}
@@ -201,8 +207,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			break;
 		case RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE:
 			if (clearAll) {
-				for (RealDistribution[][] inf : dist_tranmissionMatrix) {
-					for (RealDistribution[] inf_sf : inf) {
+				for (RealDistribution[][][] inf : dist_tranmissionMatrix) {
+					for (RealDistribution[][] inf_sf : inf) {
 						Arrays.fill(inf_sf, null);
 					}
 				}
@@ -210,15 +216,35 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 			for (double[] ent : field) {
 				int inf_id = (int) ent[FIELD_TRANSMISSION_RATE_INF_ID];
+				int state_include = (int) ent[FIELD_TRANSMISSION_RATE_STATE_INCLUDE_INDEX];
 				int site_from = (int) ent[FIELD_TRANSMISSION_RATE_SITE_FROM];
 				int site_to = (int) ent[FIELD_TRANSMISSION_RATE_SITE_TO];
 				double[] param = Arrays.copyOfRange(ent, FIELD_TRANSMISSION_RATE_TRANS_PARAM_START, ent.length);
-				if (param.length == 1) {
-					dist_tranmissionMatrix[inf_id][site_from][site_to] = generateNonDistribution(param);
-				} else {
-					// Beta distribution
-					dist_tranmissionMatrix[inf_id][site_from][site_to] = generateBetaDistribution(param);
+
+				int comparator = state_include;
+				int statePt = 0;
+
+				while (comparator > 0) {
+					if (comparator % 1 > 0) {
+						if (dist_tranmissionMatrix[inf_id][site_from][site_to] == null) {
+							dist_tranmissionMatrix[inf_id][site_from][site_to] = new RealDistribution[statePt + 1];
+						} else if (!(statePt < dist_tranmissionMatrix[inf_id][site_from][site_to].length)) {
+							dist_tranmissionMatrix[inf_id][site_from][site_to] = Arrays
+									.copyOf(dist_tranmissionMatrix[inf_id][site_from][site_to], statePt + 1);
+						}
+						if (param.length == 1) {
+							dist_tranmissionMatrix[inf_id][site_from][site_to][statePt] = generateNonDistribution(
+									param);
+						} else {
+							// Beta distribution
+							dist_tranmissionMatrix[inf_id][site_from][site_to][statePt] = generateBetaDistribution(
+									param);
+						}
+					}
+					comparator = comparator / 2;
+					statePt++;
 				}
+
 			}
 			break;
 		case RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
@@ -231,20 +257,27 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int inf_id = (int) ent[FIELD_INFECTIOUS_PERIOD_INF_ID];
 				int site = (int) ent[FIELD_INFECTIOUS_PERIOD_SITE];
 				double[] param = Arrays.copyOfRange(ent, FIELD_INFECTIOUS_PERIOD_PARAM_START, ent.length);
-				if (param.length == 1) {
-					dist_infectious_period[inf_id][site] = generateNonDistribution(param);
-				} else {
-					// Gamma distribution
-					dist_infectious_period[inf_id][site] = generateGammaDistribution(param);
+				if (param.length > 0) { // If param.length == 0, duration of infectious is determined elsewhere.
+					if (param.length == 1) {
+						dist_infectious_period[inf_id][site] = generateNonDistribution(param);
+					} else {
+						if (param[1] < 0) {
+							// Uniform distribution
+							double[] param_u = Arrays.copyOf(param, param.length);
+							param_u[1] = Math.abs(param_u[1]);
+							dist_infectious_period[inf_id][site] = generateUniformDistribution(param_u);
+						} else {
+							dist_infectious_period[inf_id][site] = generateGammaDistribution(param);
+						}
+					}
 				}
 			}
 			break;
 		case RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD:
 			if (clearAll) {
 				for (RealDistribution[][] inf : dist_stages_period) {
-					for (RealDistribution[] inf_site : inf) {
-						Arrays.fill(inf_site, null);
-					}
+					Arrays.fill(inf, null);
+
 				}
 				map_infection_stage_path.clear();
 			}
@@ -268,14 +301,21 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				map_target_stage.put(stage_id_to, switch_prob);
 				if (dist_stages_period[inf_id][site] == null) {
 					dist_stages_period[inf_id][site] = new RealDistribution[stage_id_to + 1];
-				} else if (dist_stages_period[inf_id][site].length < stage_id_to) {
+				} else if (!(stage_id_to < dist_stages_period[inf_id][site].length)) {
 					dist_stages_period[inf_id][site] = Arrays.copyOf(dist_stages_period[inf_id][site], stage_id_to + 1);
 				}
 				if (param.length == 1) {
 					dist_stages_period[inf_id][site][stage_id_to] = generateNonDistribution(param);
 				} else {
-					// Gamma distribution
-					dist_stages_period[inf_id][site][stage_id_to] = generateGammaDistribution(param);
+					if (param[1] < 0) {
+						// Uniform distribution
+						double[] param_u = Arrays.copyOf(param, param.length);
+						param_u[1] = Math.abs(param_u[1]);
+						dist_stages_period[inf_id][site][stage_id_to] = generateUniformDistribution(param_u);
+					} else {
+						// Gamma Distribution
+						dist_stages_period[inf_id][site][stage_id_to] = generateGammaDistribution(param);
+					}
 				}
 			}
 			for (String key : map_infection_stage_switch.keySet()) {
@@ -297,13 +337,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 			break;
 		case RUNNABLE_FIELD_TRANSMISSION_SYM_RATE:
-			if(clearAll) {
-				for(RealDistribution[][] inf : dist_sym_rate) {
-					for (RealDistribution[] inf_site : inf) {
-						Arrays.fill(inf_site, null);
-					}
+			if (clearAll) {
+				for (RealDistribution[][] inf : dist_sym_rate) {
+					Arrays.fill(inf, null);
 				}
-			}			
+			}
 			for (double[] ent : field) {
 				int inf_Id = (int) ent[FIELD_SYM_RATE_INF_ID];
 				int site = (int) ent[FIELD_SYM_RATE_SITE];
@@ -341,12 +379,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 
 	}
-	
+
 	@Override
 	public Object[] getRunnable_fields() {
 		return runnable_fields;
 	}
-	
+
 	@Override
 	public void initialse() {
 		map_trans_prob.clear();
@@ -362,24 +400,52 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public void run() {
 		// TODO Auto-generated method stub
 
-	}	
+	}
 
 	@Override
 	public void allocateSeedInfection(int[][] num_infected, int time) {
-		// num_infected = int[infection_id]{GENDER_INC_INDEX_0, SITE_INDEX_0, Number_INF_0,...}		
-		
-		
-		// TODO Auto-generated method stub
-		
+		// num_infected = int[infection_id]{GENDER_INC_INDEX_0, SITE_INDEX_0,
+		// Number_INF_0,...}
+		int lastPid = cUMULATIVE_POP_COMPOSITION[cUMULATIVE_POP_COMPOSITION.length - 1];
+
+		int inf_id = 0;
+		ArrayList<Integer> candidate = new ArrayList<>();
+		for (int[] inf_setting : num_infected) {
+			int pt = 0;
+			while (pt < inf_setting.length) {
+				int genderInclude = inf_setting[pt];
+				pt++;
+				int site_index = inf_setting[pt];
+				pt++;
+				int num_inf = inf_setting[pt];
+				pt++;
+				// List out all valid candidate
+				candidate.clear();
+				for (int pid = 1; pid <= lastPid; pid++) {
+					if ((genderInclude & 1 << getGenderType(pid)) > 0) {
+						candidate.add(pid);
+					}
+				}
+				int counter = 0;
+				for (Integer pid : candidate) {
+					if (RNG.nextInt(candidate.size() - counter) < num_inf) {
+						addInfectious(pid, inf_id, site_index, time, -1);
+						num_inf--;
+					}
+					counter++;
+				}
+			}
+			inf_id++;
+		}		
 	}
 
 	@Override
 	public int addInfectious(Integer infectedId, int infId, int site, int infectious_time, int recoveredAt) {
 		
 		
+
 		// TODO Auto-generated method stub
 		return 0;
 	}
 
-	
 }
