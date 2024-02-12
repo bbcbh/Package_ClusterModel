@@ -606,7 +606,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	
 	
 	@Override
-	public int addInfectious(Integer infectedId, int intId, int site, int infectious_time, int recoveredAt) {
+	public int addInfectious(Integer infectedId, int intId_not_used, int site, int state_not_used, int infectious_time, int recoveredAt) {
 		// Single Infection
 		return addInfectious(infectedId, site, infectious_time, recoveredAt);
 	}

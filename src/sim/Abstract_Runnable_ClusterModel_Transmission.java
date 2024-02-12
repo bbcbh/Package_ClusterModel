@@ -95,7 +95,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	
 	public abstract void initialse();	
 	public abstract void allocateSeedInfection(int[][] num_infected_count, int time);
-	public abstract int addInfectious(Integer infectedId, int infId, int site, int infectious_time, int recoveredAt);
+	public abstract int addInfectious(Integer infectedId, int infId, int site, int state_id, int infectious_time, int recoveredAt);
 
 	public long getSim_seed() {
 		return sIM_SEED;
