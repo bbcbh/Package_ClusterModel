@@ -1,8 +1,6 @@
 package sim;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -765,74 +763,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// Current contact map
 			ContactMap cMap = new ContactMap();
 
-			if (edges_list == null) {
-
-				try {
-					edges_list = generateMapEdgeArray(bASE_CONTACT_MAP).call();
-				} catch (Exception e) {
-					e.printStackTrace(System.err);
-					System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
-					edges_list = new ArrayList<>();
-					System.exit(-1);
-
-				}
-			}
-			Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
+			Integer[][] edges_array = getEdgesArrayFromBaseConctactMap();
 			int edges_array_pt = 0;
-
-			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
-			ArrayList<Integer[]> toRemove;
-
-			// Skip invalid edges
-			while (edges_array_pt < edges_array.length
-					&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < startTime) {
-				Integer[] edge = edges_array[edges_array_pt];
-				int edge_start_time = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
-				int expireAt = edge_start_time + edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
-
-				if (expireAt > startTime) {
-					toRemove = removeEdges.get(expireAt);
-					if (toRemove == null) {
-						toRemove = new ArrayList<>();
-						removeEdges.put(expireAt, toRemove);
-					}
-					toRemove.add(edge);
-
-					for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
-							Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
-						if (!cMap.containsVertex(edge[index])) {
-							cMap.addVertex(edge[index]);
-						}
-					}
-					cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
-							edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
-				}
-
-				edges_array_pt++;
-			}
+			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();			
+			edges_array_pt = initaliseCMap(cMap, edges_array, edges_array_pt, startTime, removeEdges);
 
 			// Pre allocate risk categories (mainly form MSM)
-			File pre_allocate_risk_file = new File(baseDir,
-					String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));
-
-			if (pre_allocate_risk_file.isFile()) {
-				try {
-					BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));
-					String line;
-					while ((line = reader.readLine()) != null) {
-						String[] lineSp = line.split(",");
-						risk_cat_map.put(
-								Integer.parseInt(
-										lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]),
-								Integer.parseInt(
-										lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));
-					}
-
-					reader.close();
-				} catch (Exception e) {
-					e.printStackTrace(System.err);
-				}
-			}
+			setPreAllocatedRiskFromFile();
 
 			// Schedule testing and vaccination limit
 			for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
@@ -845,6 +782,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			boolean hasInfected = hasInfectedInPop();
 
 			ArrayList<Integer> infected_today = new ArrayList<>();
+			ArrayList<Integer[]> toRemove;
 
 			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];

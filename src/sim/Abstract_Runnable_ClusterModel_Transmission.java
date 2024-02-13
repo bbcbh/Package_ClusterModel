@@ -1,5 +1,8 @@
 package sim;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -246,6 +249,83 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				risk_cat_map.put(
 						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID],
 						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
+			}
+		}
+	}
+
+
+	protected Integer[][] getEdgesArrayFromBaseConctactMap() {
+		if (edges_list == null) {
+	
+			try {
+				edges_list = generateMapEdgeArray(bASE_CONTACT_MAP).call();
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
+				System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
+				edges_list = new ArrayList<>();
+				System.exit(-1);
+	
+			}
+		}
+		Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
+		return edges_array;
+	}
+
+
+	protected int initaliseCMap(ContactMap cMap, Integer[][] edges_array, int edges_array_pt, int startTime, HashMap<Integer, ArrayList<Integer[]>> removeEdges) {
+		ArrayList<Integer[]> toRemove;
+	
+		// Skip invalid edges
+		while (edges_array_pt < edges_array.length
+				&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < startTime) {
+			Integer[] edge = edges_array[edges_array_pt];
+			int edge_start_time = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
+			int expireAt = edge_start_time + edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
+	
+			if (expireAt > startTime) {
+				toRemove = removeEdges.get(expireAt);
+				if (toRemove == null) {
+					toRemove = new ArrayList<>();
+					removeEdges.put(expireAt, toRemove);
+				}
+				toRemove.add(edge);
+	
+				for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+						Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
+					if (!cMap.containsVertex(edge[index])) {
+						cMap.addVertex(edge[index]);
+					}
+				}
+				cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+						edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
+			}
+	
+			edges_array_pt++;
+		}
+		return edges_array_pt;
+	}
+
+
+	protected void setPreAllocatedRiskFromFile() {
+		File pre_allocate_risk_file = new File(baseDir,
+				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));
+	
+		if (pre_allocate_risk_file.isFile()) {
+			try {
+				BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));
+				String line;
+				while ((line = reader.readLine()) != null) {
+					String[] lineSp = line.split(",");
+					risk_cat_map.put(
+							Integer.parseInt(
+									lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]),
+							Integer.parseInt(
+									lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));
+				}
+	
+				reader.close();
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
 			}
 		}
 	}

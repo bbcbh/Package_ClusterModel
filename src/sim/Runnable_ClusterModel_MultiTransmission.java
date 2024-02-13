@@ -3,11 +3,14 @@ package sim;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.math3.distribution.RealDistribution;
 
+import person.AbstractIndividualInterface;
 import relationship.ContactMap;
 
 public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_ClusterModel_Transmission {
@@ -122,7 +125,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 																						// pid with infectious
 
 	// For schedule, key are day and entries are list of person id, ordered
-	protected transient HashMap<Integer, ArrayList<Integer>> schedule_testing;
+	protected transient HashMap<Integer, ArrayList<int[]>> schedule_testing; // V=PID,INF_INCLUDE_INDEX
 	protected transient HashMap<Integer, ArrayList<ArrayList<ArrayList<Integer>>>> schedule_stage_change;
 	// V=ArrayList<Inf><SITE>{PIds of those need to change}
 
@@ -389,7 +392,129 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	@Override
 	public void run() {
-		// TODO Auto-generated method stub
+
+		// Check if there is a switch in prop
+		Integer[] switchTime = propSwitch_map.keySet().toArray(new Integer[propSwitch_map.size()]);
+		Arrays.sort(switchTime);
+		int switchTimeIndex = 0;
+
+		// Current contact map
+		ContactMap cMap = new ContactMap();
+		Integer[][] edges_array = getEdgesArrayFromBaseConctactMap();
+		int edges_array_pt = 0;
+		HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
+		edges_array_pt = initaliseCMap(cMap, edges_array, edges_array_pt, firstSeedTime, removeEdges);
+
+		// Pre allocate risk categories (mainly form MSM)
+		setPreAllocatedRiskFromFile();
+
+		int currentTime = firstSeedTime;
+		// Schedule testing
+		for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
+
+			int genderType = getGenderType(personId);
+			int riskCat;
+			if (risk_cat_map.containsKey(personId)) {
+				riskCat = risk_cat_map.get(personId);
+			} else {
+				riskCat = -1;
+				// Based on number of casual partners
+				Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
+				int numCasual = 0;
+				int firstPartnerTime = Integer.MAX_VALUE;
+				int lastPartnerTime = 0;
+				for (Integer[] e : edges) {
+					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
+							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
+						firstPartnerTime = Math.min(firstPartnerTime,
+								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+						lastPartnerTime = Math.max(lastPartnerTime,
+								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+						numCasual++;
+					}
+				}
+				double numCasualPerYear = (((double) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual)
+						/ (lastPartnerTime - firstPartnerTime);
+
+				double[][] riskCatDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS];
+
+				for (int i = 0; i < riskCatDefs.length && riskCat == -1; i++) {
+					int gIncl = (int) riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_GENDER_INCLUDE_INDEX];
+					if ((gIncl & 1 << genderType) != 0) {
+						if (riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_NUM_CASUAL_PARTNER_LOWER] < numCasualPerYear
+								&& numCasualPerYear < riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_NUM_CASUAL_PARTNER_UPPER]) {
+							riskCat = (int) riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_RISK_GRP_DEF_ID];
+						}
+					}
+
+				}
+				risk_cat_map.put(personId, riskCat);
+			}
+
+			if (riskCat != -1) {
+				double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+				for (int i = 0; i < testRateDefs.length; i++) {
+					double[] testRateDef = testRateDefs[i];
+					int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
+					int iIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
+					int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+					if (((gIncl & (1 << genderType)) & (rIncl & (1 << riskCat))) != 0) {
+						// FORMAT: {Cumul_Prob_0, Cummul_Prob_1, .... test_gap_time_0, test_gap_time_1,
+						// test_gap_time_2..}
+						int cumul_end_index = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START
+								+ ((testRateDef.length - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START)
+										- 1) / 2;
+						int pt = Arrays.binarySearch(testRateDef, RNG.nextInt(),
+								FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START, cumul_end_index);
+						if (pt < 0) {
+							pt = ~pt;
+						}
+						int nextTestAfter = (int) (testRateDef[cumul_end_index
+								- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + pt + 1]
+								+ RNG.nextInt((int) testRateDef[cumul_end_index
+										- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + pt]
+										- (int) testRateDef[cumul_end_index
+												- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + pt
+												+ 1]));
+
+						int nextTestDate = currentTime + nextTestAfter;
+
+						ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
+
+						if (day_sch == null) {
+							day_sch = new ArrayList<>();
+							schedule_testing.put(nextTestDate, day_sch);
+						}
+
+						int[] test_pair = new int[] { personId, iIncl };
+
+						int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
+							@Override
+							public int compare(int[] o1, int[] o2) {
+								int res = 0;
+								int pt = 0;
+								while (res == 0 && pt < o1.length) {
+									res = Integer.compare(o1[pt], o2[pt]);
+									pt++;
+								}
+								return res;
+							}
+						});
+
+						if (pt_t < 0) {
+							day_sch.add(~pt_t, test_pair);
+						} else {
+							int[] org_pair = day_sch.get(pt_t);
+							org_pair[1] |= iIncl;
+						}
+					}
+				}
+			}
+		}// End of schedule test
+
+		// TODO: To be implement/Check
+
+		System.out.println("Debug: Run completed.");
 
 	}
 
@@ -397,7 +522,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public void allocateSeedInfection(int[][] num_infected, int time) {
 		// num_infected = int[infection_id]{GENDER_INC_INDEX_0, SITE_INDEX_0,
 		// Number_INF_0,...}
+
 		int lastPid = cUMULATIVE_POP_COMPOSITION[cUMULATIVE_POP_COMPOSITION.length - 1];
+		firstSeedTime = Math.min(firstSeedTime, time);
 
 		int inf_id = 0;
 		ArrayList<Integer> candidate = new ArrayList<>();
