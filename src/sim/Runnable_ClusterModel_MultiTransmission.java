@@ -20,10 +20,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public Object[] runnable_fields = {
 			// 0: RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ
 			// double{{ACT_TYPE, GENDER_INCLUDE_INDEX_FROM, GENDER_INCLUDE_INDEX_TO,
-			// ACT_PER_DAY},...}
+			// SITE_P1, SITE_P2, SITE_1_RISK_GRP_INCLUDE_INDEX, ACT_PER_DAY},...}
 			// or
 			// double{{ACT_TYPE, GENDER_INCLUDE_INDEX_FROM, GENDER_INCLUDE_INDEX_TO,
-			// ACT_PER_DAY, CONDOM_EFFICACY, USAGE_REG, USAGE_CASUAL},...}
+			// SITE_P1, SITE_P2, SITE_1_RISK_GRP_INCLUDE_INDEX, ACT_PER_DAY,
+			// CONDOM_EFFICACY, USAGE_REG, USAGE_CASUAL},...}
 			new double[][] {},
 			// 1: RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE
 			// double{{INF_ID, STATE_INCLUDE_INDEX, SITE_FROM, SITE_TO,
@@ -65,7 +66,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public static final int FIELD_ACT_FREQ_ACT_TYPE = 0;
 	public static final int FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_FROM = FIELD_ACT_FREQ_ACT_TYPE + 1;
 	public static final int FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_TO = FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_FROM + 1;
-	public static final int FIELD_ACT_FREQ_ACT_PER_DAY = FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_TO + 1;
+	public static final int FIELD_ACT_FREQ_SITE_P1 = FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_TO + 1;
+	public static final int FIELD_ACT_FREQ_SITE_P2 = FIELD_ACT_FREQ_SITE_P1 + 1;
+	public static final int FIELD_ACT_FREQ_SITE_1_RISK_GRP_INCLUDE_INDEX = FIELD_ACT_FREQ_SITE_P2 + 1;
+	public static final int FIELD_ACT_FREQ_ACT_PER_DAY = FIELD_ACT_FREQ_SITE_1_RISK_GRP_INCLUDE_INDEX + 1;
 	public static final int FIELD_ACT_FREQ_CONDOM_EFFICACY = FIELD_ACT_FREQ_ACT_PER_DAY + 1;
 	public static final int FIELD_ACT_FREQ_USAGE_REG = FIELD_ACT_FREQ_CONDOM_EFFICACY + 1;
 	public static final int FIELD_ACT_FREQ_USAGE_CASUAL = FIELD_ACT_FREQ_USAGE_REG + 1;
@@ -120,7 +124,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public static final int FIELD_TEST_ACCURACY = FIELD_DX_TEST_ACCURACY_SITE + 1;
 
 	// Transient field
-	protected transient HashMap<Integer, double[][][][]> map_trans_prob; // Key=PID,V=double[INF_ID][SITE_FROM][SITE_TO]
+	protected transient HashMap<Integer, double[][][][]> map_trans_prob; // Key=PID,V=double[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
 	protected transient HashMap<Integer, int[][]> map_currrent_infection_stage; // Key=PID,V=int[INF_ID][SITE]{infection_stage}
 	protected transient HashMap<Integer, int[][]> map_infection_stage_switch; // Key=PID,V=int[inf_id]{switch_time_at_site_0};
 	protected transient HashMap<String, ArrayList<Integer>> map_currently_infectious; // Key=Inf_ID_Site,V=ArrayList of
@@ -522,7 +526,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		int[][] cumul_treatment_by_person = new int[NUM_INF][NUM_GENDER];
 		int[][] cumul_positive_dx_test_by_person = new int[NUM_INF][NUM_GENDER];
 		int[][] cumul_positive_dx_sought_by_person = new int[NUM_INF][NUM_GENDER];
-		HashMap<String, boolean[]> acted_today = new HashMap<>(); // K="PID,PID", V=boolean[] = has_acted
+		HashMap<String, int[]> acted_today = new HashMap<>();
+		// K="PID,PID", V=int[act] =
+		// if SITE_P1 != SITE_P2
+		// = 0 if no acts
+		// = 1 if p1s1 -> p2s2, e.g. p1 insertive
+		// = 2 if p2s1 -> p1s2 e.g. p2 insertive
 
 		for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
 				&& hasInfectious; currentTime++) {
@@ -570,6 +579,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						.toArray(new String[map_currently_infectious.size()]);
 				Arrays.sort(currently_infectious_keys);
 
+				acted_today.clear();
+
 				for (String key : currently_infectious_keys) {
 					ArrayList<Integer> currenty_infectious_ent = map_currently_infectious.get(key);
 					ArrayList<Integer> infectious_next_step = new ArrayList<>();
@@ -578,9 +589,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					int inf_id = Integer.parseInt(key_s[0]);
 					int site_id = Integer.parseInt(key_s[1]);
 
-					acted_today.clear();
-
-					for (Integer pid_inf_src : currenty_infectious_ent) {
+					for (Integer pid_inf_src : currenty_infectious_ent) {						
 
 						if (cMap.containsVertex(pid_inf_src)) {
 							int g_s = getGenderType(pid_inf_src);
@@ -596,41 +605,106 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								int[] partners = new int[] { pid_inf_src, pid_inf_tar };
 								Arrays.sort(partners);
 
-								boolean[] hasActed = acted_today.get(Arrays.toString(partners));
+								int inf_src_pt = partners[0] == pid_inf_src ? 0 : 1;
+
+								int[] hasActed = acted_today.get(Arrays.toString(partners));
 
 								if (hasActed == null) {
-									hasActed = new boolean[NUM_ACT];
+									hasActed = new int[NUM_ACT];
 									for (int a = 0; a < NUM_ACT; a++) {
 										double[] fieldEntry = table_act_frequency[a][g_s][g_t];
-										hasActed[a] = RNG.nextDouble() < fieldEntry[0];
-										if (hasActed[a] && fieldEntry.length > 1) {
-											// Partnership specific condom usage											
-											hasActed[a] = RNG.nextDouble() >= (
-													e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] > 1 ? 
-														fieldEntry[FIELD_ACT_FREQ_USAGE_REG] : fieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL]);
+										if (fieldEntry[FIELD_ACT_FREQ_SITE_P1] == fieldEntry[FIELD_ACT_FREQ_SITE_P2]) {
+											if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
+												if (!((FIELD_ACT_FREQ_CONDOM_EFFICACY < fieldEntry.length) && (RNG
+														.nextDouble() < fieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]
+																* (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] > 1
+																		? fieldEntry[FIELD_ACT_FREQ_USAGE_REG]
+																		: fieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL])))) {
+													hasActed[a] = 1;
+												}
+											}
+										} else {
+											// TODO: Check for receptiveness
+											int site_1_risk_grp_inc = (int) fieldEntry[FIELD_ACT_FREQ_SITE_1_RISK_GRP_INCLUDE_INDEX];
+
+											// e.g. the risk group of the insertive partner
+											int valid_p1 = 0;
+											for (int p = 0; p < partners.length; p++) {
+												int risk_p = risk_cat_map.get(partners[p]);
+												if ((site_1_risk_grp_inc & 1 << risk_p) != 0) {
+													valid_p1 |= 1 << p;
+												}
+											}
+											if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
+												if (!((FIELD_ACT_FREQ_CONDOM_EFFICACY < fieldEntry.length) && (RNG
+														.nextDouble() < fieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]
+																* (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] > 1
+																		? fieldEntry[FIELD_ACT_FREQ_USAGE_REG]
+																		: fieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL])))) {
+													switch (valid_p1) {
+													case 1:
+														hasActed[a] = 1;
+														break;
+													case 2:
+														hasActed[a] = 2;
+														break;
+													default:
+														hasActed[a] = RNG.nextInt(1) + 1;
+													}
+
+												}
+											}
+
 										}
 									}
 									acted_today.put(Arrays.toString(partners), hasActed);
 								}
 
-								// TODO: Determine if acts has occurred.
 								
-								
-								
-								
+								for (int a = 0; a < NUM_ACT; a++) {
+									double[] fieldEntry = table_act_frequency[a][g_s][g_t];
+									if (hasActed[a] > 0) {
+										for (int s = 0; s < 2; s++) {
+											if ((hasActed[a] & 1 << s) != 0) {												
+												int match_site, tar_site;
+												if (inf_src_pt == 0) {
+													match_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P2]
+															: fieldEntry[FIELD_ACT_FREQ_SITE_P1]);
+													tar_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P1]
+															: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
+												} else {
+													match_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P1]
+															: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
+													tar_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P2]
+															: fieldEntry[FIELD_ACT_FREQ_SITE_P1]);
+												}												
+												if(match_site == site_id) {													
+													int[][] tar_infection_stage = map_currrent_infection_stage.get(pid_inf_tar);													
+													if(tar_infection_stage == null || tar_infection_stage[inf_id][tar_site] == -1) {
+														// TODO: Determine if acts has occurred, and src site matched one of the option														
+													}																										
+													
+												}
 
+											}
+
+										}
+										
+										// dist_tranmissionMatrix[inf_id][]
+									}
+								}
 							}
 
 						}
 
 					}
-
 					for (Integer pid_inf_next : infectious_next_step) {
 						int pt = Collections.binarySearch(currenty_infectious_ent, pid_inf_next);
 						if (pt < 0) {
 							currenty_infectious_ent.add(~pt, pid_inf_next);
 						}
 					}
+
 				}
 
 			}
