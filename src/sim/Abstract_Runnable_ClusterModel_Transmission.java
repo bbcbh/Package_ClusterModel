@@ -13,6 +13,7 @@ import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
+import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
@@ -47,6 +48,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
 			+ 1;
+	protected static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+				+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+				+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
 		int index = Arrays.binarySearch(cumul_pop_comp, personId);
@@ -328,6 +333,48 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				e.printStackTrace(System.err);
 			}
 		}
+	}
+
+
+	protected int updateCMap(ContactMap cMap, int currentTime, 
+			Integer[][] edges_array, int edges_array_pt, HashMap<Integer, ArrayList<Integer[]>> edgesToRemove) {
+		ArrayList<Integer[]> toRemove;
+		// Remove expired edges
+		toRemove = edgesToRemove.get(currentTime);
+		if (toRemove != null) {
+			for (Integer[] edge : toRemove) {
+				cMap.removeEdge(edge);
+			}
+		}
+	
+		// Add new edges and update removal schedule
+		while (edges_array_pt < edges_array.length
+				&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
+	
+			Integer[] edge = edges_array[edges_array_pt];
+			Integer expireAt = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
+					+ Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1);
+	
+			toRemove = edgesToRemove.get(expireAt);
+			if (toRemove == null) {
+				toRemove = new ArrayList<>();
+				edgesToRemove.put(expireAt, toRemove);
+			}
+			toRemove.add(edge);
+	
+			for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+					Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
+				if (!cMap.containsVertex(edge[index])) {
+					cMap.addVertex(edge[index]);
+				}
+			}
+	
+			cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+					edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
+	
+			edges_array_pt++;
+		}
+		return edges_array_pt;
 	}
 
 }

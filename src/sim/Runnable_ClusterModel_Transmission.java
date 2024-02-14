@@ -327,11 +327,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// with K = time, V= int[gender]{valid, partial, expired, unused}
 	public static final String SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON = "SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON";
 
-	private static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
-			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
-
 	private static final int ACT_SPECIFIC_CONDOM_EFFICACY_INDEX = Population_Bridging.LENGTH_GENDER;
 	private static final int ACT_SPECIFIC_USAGE_REG_INDEX = ACT_SPECIFIC_CONDOM_EFFICACY_INDEX + 1;
 	private static final int ACT_SPECIFIC_USAGE_CAS_INDEX = ACT_SPECIFIC_USAGE_REG_INDEX + 1;
@@ -781,8 +776,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			boolean hasInfected = hasInfectedInPop();
 
-			ArrayList<Integer> infected_today = new ArrayList<>();
-			ArrayList<Integer[]> toRemove;
+			ArrayList<Integer> infected_today = new ArrayList<>();			
 
 			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];
@@ -806,41 +800,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					switchTimeIndex++;
 				}
 
-				// Remove expired edges
-				toRemove = removeEdges.get(currentTime);
-				if (toRemove != null) {
-					for (Integer[] edge : toRemove) {
-						cMap.removeEdge(edge);
-					}
-				}
-
-				// Add new edges and update removal schedule
-				while (edges_array_pt < edges_array.length
-						&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-
-					Integer[] edge = edges_array[edges_array_pt];
-					Integer expireAt = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
-							+ Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1);
-
-					toRemove = removeEdges.get(expireAt);
-					if (toRemove == null) {
-						toRemove = new ArrayList<>();
-						removeEdges.put(expireAt, toRemove);
-					}
-					toRemove.add(edge);
-
-					for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
-							Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
-						if (!cMap.containsVertex(edge[index])) {
-							cMap.addVertex(edge[index]);
-						}
-					}
-
-					cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
-							edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
-
-					edges_array_pt++;
-				}
+				edges_array_pt = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges);
 
 				for (int site_src = 0; site_src < LENGTH_SITE; site_src++) {
 					// Update infectious

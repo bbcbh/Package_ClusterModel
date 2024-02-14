@@ -3067,7 +3067,8 @@ public class Optimisation_Factory {
 	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
 			String[] parameter_settings, double[] point, boolean display_only) {
 		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
-			setOptParamInRunnable(target_runnable, parameter_settings, point, display_only);
+			setOptParamInRunnableSingleTransmission((Runnable_ClusterModel_Transmission) target_runnable,
+					parameter_settings, point, display_only);
 		} else {
 			System.err.printf("setOptParamInRunnable for %s not supported yet. Exiting...\n",
 					target_runnable.getClass().getName());
@@ -3075,7 +3076,7 @@ public class Optimisation_Factory {
 		}
 	}
 
-	public static void setOptParamInRunnable(Runnable_ClusterModel_Transmission target_runnable,
+	public static void setOptParamInRunnableSingleTransmission(Runnable_ClusterModel_Transmission target_runnable,
 			String[] parameter_settings, double[] point, boolean display_only) {
 
 		HashMap<Integer, Object> modified_param = new HashMap<>();
