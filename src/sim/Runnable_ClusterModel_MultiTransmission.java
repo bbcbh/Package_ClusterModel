@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
 import org.apache.commons.math3.distribution.RealDistribution;
 
 import person.AbstractIndividualInterface;
-import population.Population_Bridging;
 import relationship.ContactMap;
 import util.PropValUtils;
 

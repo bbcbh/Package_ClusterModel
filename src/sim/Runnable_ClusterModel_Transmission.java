@@ -229,6 +229,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			new float[][] { null, null, DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM,
 					DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM },
 			// RUNNABLE_FIELD_TESTING_RATE_BY_RISK_CATEGORIES
+			// Alt format: Number[] 
+			//{-genderIncl_Index, numRiskGrp, numCasualPartnerCat
+			// numCasualPartCatUpperRange_0, numCasualPartCatUpperRange_1 ...
+			// riskGrp0_Cat0, riskGrp0_Cat1, ...
+			// riskGrp1_Cat0, riskGrp1_Cat1, ...}
+			
 			new float[][][] { null, null, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM,
 					DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM },
 			// RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM

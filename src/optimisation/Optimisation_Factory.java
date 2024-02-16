@@ -3069,10 +3069,22 @@ public class Optimisation_Factory {
 		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
 			setOptParamInRunnableSingleTransmission((Runnable_ClusterModel_Transmission) target_runnable,
 					parameter_settings, point, display_only);
-		} else {
-			System.err.printf("setOptParamInRunnable for %s not supported yet. Exiting...\n",
-					target_runnable.getClass().getName());
-			System.exit(1);
+		} else {			
+			
+			// TODO: To be tested
+			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
+				String param_setting = parameter_settings[param_arr_index];
+				param_setting = param_setting.replaceAll("\\s", "");
+				String[] param_setting_arr = param_setting.split("_");
+				int param_name_index = Integer.parseInt(param_setting_arr[0]);
+				Object val = target_runnable.getRunnable_fields()[param_name_index - RUNNABLE_OFFSET];
+				if (val != null) {
+					int setting_level = 1;
+					recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
+				}
+				
+			}
+			
 		}
 	}
 
