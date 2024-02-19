@@ -285,7 +285,14 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 
 		if (baseDir != null) {
 			
-			exportPopSnap(System.currentTimeMillis());
+			boolean exportPop = true;
+			
+			if(population instanceof  population.Population_Bridging_Scheduled) {
+				exportPop &= !((Population_Bridging_Scheduled) population).isSpace_save();
+			}	
+			if(exportPop) {
+				exportPopSnap(System.currentTimeMillis());
+			}
 
 			if (printStatus != null) {
 				for (PrintStream out : printStatus) {
