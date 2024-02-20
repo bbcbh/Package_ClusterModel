@@ -721,11 +721,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				if ((simSetting & 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER) != 0) {
 					try {
-						((Runnable_ClusterModel_Transmission_Map) runnable[s]).setTransmissionMap(new TransmissionMap());
-					}catch (ClassCastException ex) {
-						System.err.printf("Warning: Transmission cluster tracking for non-%s class not suppport yet.\n", 
-								Runnable_ClusterModel_Transmission.class.getName());						
-						
+						((Runnable_ClusterModel_Transmission_Map) runnable[s])
+								.setTransmissionMap(new TransmissionMap());
+					} catch (ClassCastException ex) {
+						System.err.printf("Warning: Transmission cluster tracking for non-%s class not suppport yet.\n",
+								Runnable_ClusterModel_Transmission.class.getName());
+
 					}
 				}
 
@@ -741,14 +742,18 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					ArrayList<double[]> paramSet = preGenParam.get(preGenParamMapKey);
 					if (paramSet != null) {
 						double[] pt = paramSet.remove(0);
-						runnable[s].setRunnableId(Arrays.toString(pt));
+						if (runnable.length > 1) {
+							runnable[s].setRunnableId(Arrays.toString(pt));
+						} else {
+							runnable[s].setRunnableId(String.format("[%d]", s));
+						}
 						Optimisation_Factory.setOptParamInRunnable(runnable[s], preGenParamKey, pt, false);
 					}
 				}
 
-				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0 
+				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0
 						|| !(runnable[s] instanceof Runnable_ClusterModel_Transmission)) {
-					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);					
+					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
 				} else {
 					// Add infected (only support Runnable_ClusterModel_Transmission atm)
 					for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
@@ -789,10 +794,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 									if (runnable[s] instanceof Runnable_ClusterModel_Transmission) {
 										((Runnable_ClusterModel_Transmission) runnable[s]).addInfectious(infected, site,
 												firstContactTime, firstContactTime + 180);
-									}else {
+									} else {
 										System.err.printf(
 												"Warning: seedInfectNum[gender][site] for %s not support in this version of %s.\n",
-												Runnable_ClusterModel_Transmission.class.getName(), this.getClass().getName());
+												Runnable_ClusterModel_Transmission.class.getName(),
+												this.getClass().getName());
 									}
 								}
 								System.out.printf("Seeding %s of gender #%d at site #%d at t = %s\n",

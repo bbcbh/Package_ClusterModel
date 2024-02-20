@@ -67,8 +67,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public static final int FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_TO = FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_FROM + 1;
 	public static final int FIELD_ACT_FREQ_SITE_P1 = FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_TO + 1;
 	public static final int FIELD_ACT_FREQ_SITE_P2 = FIELD_ACT_FREQ_SITE_P1 + 1;
-	public static final int FIELD_ACT_FREQ_SITE_1_RISK_GRP_INCLUDE_INDEX = FIELD_ACT_FREQ_SITE_P2 + 1;
-	public static final int FIELD_ACT_FREQ_ACT_PER_DAY = FIELD_ACT_FREQ_SITE_1_RISK_GRP_INCLUDE_INDEX + 1;
+	public static final int FIELD_ACT_FREQ_P1_RISK_GRP_INCLUDE_INDEX = FIELD_ACT_FREQ_SITE_P2 + 1;
+	public static final int FIELD_ACT_FREQ_ACT_PER_DAY = FIELD_ACT_FREQ_P1_RISK_GRP_INCLUDE_INDEX + 1;
 	public static final int FIELD_ACT_FREQ_CONDOM_EFFICACY = FIELD_ACT_FREQ_ACT_PER_DAY + 1;
 	public static final int FIELD_ACT_FREQ_USAGE_REG = FIELD_ACT_FREQ_CONDOM_EFFICACY + 1;
 	public static final int FIELD_ACT_FREQ_USAGE_CASUAL = FIELD_ACT_FREQ_USAGE_REG + 1;
@@ -146,6 +146,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient RealDistribution[][][][] dist_tranmissionMatrix; // RealDistribution[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
 	protected transient RealDistribution[][][] dist_stage_period; // ReadDistribution[INF_ID][SITE][STAGE_ID]
 
+	protected static final int STAGE_ID_JUST_INFECTED = Integer.MAX_VALUE;
 	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("MultiTransmission_(\\d+)_(\\d+)_(\\d+)");
 
 	public Runnable_ClusterModel_MultiTransmission(long cMap_seed, long sim_seed, int[] pop_composition,
@@ -531,7 +532,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// K="PID,PID", V=int[act] =
 		// if SITE_P1 != SITE_P2
 		// = 0 if no acts
-		// = 1 if p1s1 -> p2s2, e.g. p1 insertive
+		// = 1 if p1s1 -> p2s2, e.g. p1 insertive, or if the site is the same
 		// = 2 if p2s1 -> p1s2 e.g. p2 insertive
 
 		for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
@@ -574,48 +575,50 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						}
 					}
 				}
+			}
 
-				// Transmission
-				String[] currently_infectious_keys = map_currently_infectious.keySet()
-						.toArray(new String[map_currently_infectious.size()]);
-				Arrays.sort(currently_infectious_keys);
+			// Transmission
+			String[] currently_infectious_keys = map_currently_infectious.keySet()
+					.toArray(new String[map_currently_infectious.size()]);
+			Arrays.sort(currently_infectious_keys);
 
-				acted_today.clear();
+			acted_today.clear();
 
-				for (String key : currently_infectious_keys) {
-					ArrayList<Integer> currenty_infectious_ent = map_currently_infectious.get(key);
-					ArrayList<Integer> infectious_next_step = new ArrayList<>();
+			for (String key : currently_infectious_keys) {
+				ArrayList<Integer> currenty_infectious_ent = map_currently_infectious.get(key);
 
-					String[] key_s = key.split(",");
-					int inf_id = Integer.parseInt(key_s[0]);
-					int site_id = Integer.parseInt(key_s[1]);
+				String[] key_s = key.split(",");
+				int inf_id = Integer.parseInt(key_s[0]);
+				int infected_site_id = Integer.parseInt(key_s[1]);
 
-					for (Integer pid_inf_src : currenty_infectious_ent) {
+				for (Integer pid_inf_src : currenty_infectious_ent) {
 
-						if (cMap.containsVertex(pid_inf_src)) {
-							int g_s = getGenderType(pid_inf_src);
-							Integer[][] edges = cMap.edgesOf(pid_inf_src).toArray(new Integer[0][]);
+					if (cMap.containsVertex(pid_inf_src)) {
+						int g_s = getGenderType(pid_inf_src);
+						Integer[][] edges = cMap.edgesOf(pid_inf_src).toArray(new Integer[0][]);
 
-							for (Integer[] e : edges) {
-								int pid_inf_tar = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]
-										.equals(pid_inf_src) ? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
-												: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
+						for (Integer[] e : edges) {
+							int pid_inf_tar = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1].equals(pid_inf_src)
+									? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
+									: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
 
-								int g_t = getGenderType(pid_inf_tar);
+							int g_t = getGenderType(pid_inf_tar);
 
-								int[] partners = new int[] { pid_inf_src, pid_inf_tar };
-								Arrays.sort(partners);
+							int[] partners = new int[] { pid_inf_src, pid_inf_tar };
+							Arrays.sort(partners);
 
-								int inf_src_pt = partners[0] == pid_inf_src ? 0 : 1;
+							int inf_src_pt = partners[0] == pid_inf_src ? 0 : 1;
 
-								int[] hasActed = acted_today.get(Arrays.toString(partners));
+							int[] hasActed = acted_today.get(Arrays.toString(partners));
 
-								if (hasActed == null) {
-									hasActed = new int[NUM_ACT];
-									for (int a = 0; a < NUM_ACT; a++) {
-										double[] fieldEntry = table_act_frequency[a][g_s][g_t];
-										if (fieldEntry[FIELD_ACT_FREQ_SITE_P1] == fieldEntry[FIELD_ACT_FREQ_SITE_P2]) {
-											if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
+							if (hasActed == null) {
+								hasActed = new int[NUM_ACT];
+								int anyAct = 0;
+								for (int a = 0; a < NUM_ACT; a++) {
+									double[] fieldEntry = table_act_frequency[a][g_s][g_t];
+									if (fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY] >= 0) {
+										if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
+											if (fieldEntry[FIELD_ACT_FREQ_SITE_P1] == fieldEntry[FIELD_ACT_FREQ_SITE_P2]) {
 												if (!((FIELD_ACT_FREQ_CONDOM_EFFICACY < fieldEntry.length) && (RNG
 														.nextDouble() < fieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]
 																* (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] > 1
@@ -623,20 +626,18 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 																		: fieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL])))) {
 													hasActed[a] = 1;
 												}
-											}
-										} else {
-											// TODO: Check for receptiveness
-											int site_1_risk_grp_inc = (int) fieldEntry[FIELD_ACT_FREQ_SITE_1_RISK_GRP_INCLUDE_INDEX];
+											} else {
+												// Check for receptiveness
+												int p_1_risk_grp_inc = (int) fieldEntry[FIELD_ACT_FREQ_P1_RISK_GRP_INCLUDE_INDEX];
 
-											// e.g. the risk group of the insertive partner
-											int valid_p1 = 0;
-											for (int p = 0; p < partners.length; p++) {
-												int risk_p = risk_cat_map.get(partners[p]);
-												if ((site_1_risk_grp_inc & 1 << risk_p) != 0) {
-													valid_p1 |= 1 << p;
+												// Valid risk group of the insertive partner
+												int valid_p1 = 0;
+												for (int p = 0; p < partners.length; p++) {
+													int risk_p = risk_cat_map.get(partners[p]);
+													if ((p_1_risk_grp_inc & 1 << risk_p) != 0) {
+														valid_p1 |= 1 << p;
+													}
 												}
-											}
-											if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
 												if (!((FIELD_ACT_FREQ_CONDOM_EFFICACY < fieldEntry.length) && (RNG
 														.nextDouble() < fieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]
 																* (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] > 1
@@ -650,68 +651,95 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 														hasActed[a] = 2;
 														break;
 													default:
-														hasActed[a] = RNG.nextInt(1) + 1;
+														hasActed[a] = RNG.nextInt(2) + 1;
 													}
-
 												}
 											}
-
 										}
 									}
-									acted_today.put(Arrays.toString(partners), hasActed);
+									anyAct += hasActed[a];
 								}
 
 								for (int a = 0; a < NUM_ACT; a++) {
 									double[] fieldEntry = table_act_frequency[a][g_s][g_t];
-									if (hasActed[a] > 0) {
-										for (int s = 0; s < 2; s++) {
-											if ((hasActed[a] & 1 << s) != 0) {
-												int match_site, tar_site;
-												if (inf_src_pt == 0) {
-													match_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P2]
-															: fieldEntry[FIELD_ACT_FREQ_SITE_P1]);
-													tar_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P1]
-															: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
-												} else {
-													match_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P1]
-															: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
-													tar_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P2]
-															: fieldEntry[FIELD_ACT_FREQ_SITE_P1]);
-												}
-												if (match_site == site_id) {
-													int[][] tar_infection_stage = map_currrent_infection_stage
-															.get(pid_inf_tar);
-													if (tar_infection_stage == null
-															|| tar_infection_stage[inf_id][tar_site] == -1) {
-														// TODO: Determine if acts has occurred, and src site matched
-														// one of the option
-													}
-
-												}
-
-											}
-
-										}
-
-										// dist_tranmissionMatrix[inf_id][]
+									if (fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY] < 0) {
+										hasActed[a] = (anyAct > 0) ? 1 : 0;
 									}
 								}
+								acted_today.put(Arrays.toString(partners), hasActed);
 							}
 
-						}
+							for (int a = 0; a < NUM_ACT; a++) {
+								double[] fieldEntry = table_act_frequency[a][g_s][g_t];
+								for (int s = 0; s < 2; s++) { // if s==0 p_1=site_1, else p_1=site_2
+									if ((hasActed[a] & 1 << s) != 0) {
+										int p1_site, p2_site;
+										p1_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P1]
+												: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
+										p2_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P2]
+												: fieldEntry[FIELD_ACT_FREQ_SITE_P1]);
+										int src_site = inf_src_pt == 0 ? p1_site : p2_site;
+										if (src_site == infected_site_id) {
+											int tar_site = inf_src_pt == 0 ? p2_site : p1_site;
+											int[][] tar_infection_stages = map_currrent_infection_stage
+													.get(pid_inf_tar);
 
-					}
-					for (Integer pid_inf_next : infectious_next_step) {
-						int pt = Collections.binarySearch(currenty_infectious_ent, pid_inf_next);
-						if (pt < 0) {
-							currenty_infectious_ent.add(~pt, pid_inf_next);
-						}
-					}
+											if (tar_infection_stages == null
+													|| tar_infection_stages[inf_id][tar_site] == AbstractIndividualInterface.INFECT_S) {
 
-				}
+												int[][] src_infection_stages = map_currrent_infection_stage
+														.get(pid_inf_src);
+												int src_stage = src_infection_stages[inf_id][src_site];
+												double[][][][] trans_prob = map_trans_prob.get(pid_inf_src);
 
-			}
+												if (trans_prob[inf_id][src_site][tar_site][src_stage] > 0) {
+													if (RNG.nextDouble() < trans_prob[inf_id][src_site][tar_site][src_stage]) {
+														// Transmission successful
+														cumul_incidence_by_site[inf_id][g_t][tar_site]++;
 
+														boolean newInfection = true;
+														if (tar_infection_stages == null) {
+															tar_infection_stages = new int[NUM_INF][NUM_SITE];
+															for (int[] stage_by_infection : tar_infection_stages) {
+																Arrays.fill(stage_by_infection,
+																		AbstractIndividualInterface.INFECT_S);
+															}
+															map_currrent_infection_stage.put(pid_inf_tar,
+																	tar_infection_stages);
+														} else {
+															for (int siteId = 0; siteId < NUM_SITE
+																	&& newInfection; siteId++) {
+																newInfection &= tar_infection_stages[inf_id][siteId] == AbstractIndividualInterface.INFECT_S;
+															}
+														}
+														if (newInfection) {
+															cumul_incidence_by_person[inf_id][g_t]++;
+														}
+
+														tar_infection_stages[inf_id][tar_site] = STAGE_ID_JUST_INFECTED;
+														int[][] tar_infection_state_switch = map_infection_stage_switch
+																.get(pid_inf_tar);
+														if (tar_infection_state_switch == null) {
+															tar_infection_state_switch = new int[NUM_INF][NUM_SITE];
+															map_infection_stage_switch.put(pid_inf_tar,
+																	tar_infection_state_switch);
+														}
+
+														updateInfectStageChangeSchedule(pid_inf_tar, inf_id, tar_site,
+																currentTime + 1);
+
+													} // End of successful transmission
+												} // End of possible transmission check
+											} // End of checking target site as susceptible
+										} // End of infectious src site
+									} // End of specifying site for p1 and p2
+								} // End of determining site of p1 and p2 through act
+
+							} // End of checking all acts
+						} // End of checking all edge of infectious
+					} // End of checking infectious in cMap
+				} // End of checking one infectious
+			} // End loop for all infectious infection-site combinations
 		} // End of time step
 
 		// TODO: To be implement/Check
@@ -840,6 +868,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		int[][] current_stage_arr = map_currrent_infection_stage.get(infectedPId);
 		if (current_stage_arr == null) {
 			current_stage_arr = new int[NUM_INF][NUM_SITE];
+			for (int[] stage_by_infection : current_stage_arr) {
+				Arrays.fill(stage_by_infection, AbstractIndividualInterface.INFECT_S);
+			}
 			map_currrent_infection_stage.put(infectedPId, current_stage_arr);
 		}
 		int[][] infection_state_switch = map_infection_stage_switch.get(infectedPId);
@@ -881,31 +912,37 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		return current_infect_switch_time;
 	}
 
+	// If state_duration_adj > 0, simple duration update, otherwise switch to next stage and resample	
 	private int updateInfectionStage(Integer pid, int infection_id, int site_id, int current_state, int current_time,
 			int[][] current_stage_arr, int[][] infection_state_switch, int state_duration_adj) {
-		ArrayList<ArrayList<ArrayList<Integer>>> schedule_inf;
-		ArrayList<ArrayList<Integer>> schedule_inf_site;
-		ArrayList<Integer> schedule_inf_site_arr;
 		int pt;
 		double state_duration;
 		int infect_switch_time = current_time;
-		while (infect_switch_time == current_time) {
-			String key = String.format("%d,%d,%d", infection_id, site_id, current_state);
-			double[] nextProb = lookupTable_infection_stage_path.get(key);
-			if (nextProb == null) {
-				break;
+
+		if (current_state == STAGE_ID_JUST_INFECTED) {
+			// Always to first stage
+			current_state = 0;			
+			infect_switch_time = addInfectious(pid, infection_id, site_id, current_state, current_time, 
+					(int) dist_stage_period[infection_id][site_id][current_state].sample());
+		} else {
+			if (state_duration_adj <= 0) {
+				while (infect_switch_time == current_time) {
+					String key = String.format("%d,%d,%d", infection_id, site_id, current_state);
+					double[] nextProb = lookupTable_infection_stage_path.get(key);
+					if (nextProb == null) {
+						break;
+					} else {
+						int state_pt = Arrays.binarySearch(nextProb, 0, nextProb.length / 2, RNG.nextDouble());
+						if (state_pt <= 0) {
+							state_pt = ~state_pt;
+						}
+						current_state = (int) nextProb[nextProb.length / 2 + state_pt];
+						state_duration = dist_stage_period[infection_id][site_id][current_state].sample();
+						infect_switch_time = (int) Math.round(current_time + state_duration);
+					}
+				}
 			} else {
-				int state_pt = Arrays.binarySearch(nextProb, 0, nextProb.length / 2, RNG.nextDouble());
-				if (state_pt <= 0) {
-					state_pt = ~state_pt;
-				}
-				current_state = (int) nextProb[nextProb.length / 2 + state_pt];
-				if (state_duration_adj <= 0) {
-					state_duration = dist_stage_period[infection_id][site_id][current_state].sample();
-				} else {
-					state_duration = state_duration_adj;
-				}
-				infect_switch_time = (int) Math.round(current_time + state_duration);
+				infect_switch_time = current_time + state_duration_adj;
 			}
 		}
 
@@ -915,26 +952,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		if (infect_switch_time > current_time) {
 			// Update schedule
-			schedule_inf = schedule_stage_change.get(infect_switch_time);
-			if (schedule_inf == null) {
-				schedule_inf = new ArrayList<>(NUM_INF);
-				for (int i = 0; i < NUM_INF; i++) {
-					schedule_inf_site = new ArrayList<>(NUM_SITE);
-					for (int s = 0; s < NUM_SITE; s++) {
-						schedule_inf_site.add(new ArrayList<>());
-					}
-					schedule_inf.add(schedule_inf_site);
-				}
-				schedule_stage_change.put(infect_switch_time, schedule_inf);
-			}
-
-			schedule_inf_site_arr = schedule_inf.get(infection_id).get(site_id);
-			pt = Collections.binarySearch(schedule_inf_site_arr, pid);
-			if (pt < 0) {
-				schedule_inf_site_arr.add(~pt, pid);
-			}
+			updateInfectStageChangeSchedule(pid, infection_id, site_id, infect_switch_time);
 		}
-		
+
 		// Update infectious status
 		String key = String.format("%d,%d", infection_id, site_id);
 		ArrayList<Integer> currenty_infectious_ent = map_currently_infectious.get(key);
@@ -959,6 +979,31 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 		}
 		return infect_switch_time;
+	}
+
+	private void updateInfectStageChangeSchedule(Integer pid, int infection_id, int site_id, int infect_switch_time) {
+		ArrayList<ArrayList<ArrayList<Integer>>> schedule_inf;
+		ArrayList<ArrayList<Integer>> schedule_inf_site;
+		ArrayList<Integer> schedule_inf_site_arr;
+		int pt;
+		schedule_inf = schedule_stage_change.get(infect_switch_time);
+		if (schedule_inf == null) {
+			schedule_inf = new ArrayList<>(NUM_INF);
+			for (int i = 0; i < NUM_INF; i++) {
+				schedule_inf_site = new ArrayList<>(NUM_SITE);
+				for (int s = 0; s < NUM_SITE; s++) {
+					schedule_inf_site.add(new ArrayList<>());
+				}
+				schedule_inf.add(schedule_inf_site);
+			}
+			schedule_stage_change.put(infect_switch_time, schedule_inf);
+		}
+
+		schedule_inf_site_arr = schedule_inf.get(infection_id).get(site_id);
+		pt = Collections.binarySearch(schedule_inf_site_arr, pid);
+		if (pt < 0) {
+			schedule_inf_site_arr.add(~pt, pid);
+		}
 	}
 
 }
