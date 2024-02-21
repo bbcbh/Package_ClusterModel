@@ -49,7 +49,8 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		this.baseDir = baseDir;
 	}
 
-	public abstract Object[] getRunnable_fields();
+	public abstract Object[] getRunnable_fields();	
+	
 
 	public static final Callable<ContactMap> generateContactMapCallable(File cMap_file) {
 		Callable<ContactMap> callable = new Callable<ContactMap>() {

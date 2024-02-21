@@ -152,7 +152,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final int LENGTH_VACCINATION_SETTING = VACCINATION_SETTING_VACCINE_ALLOCATED_PER_SNAP + 1;
 
 	// Runnable field for viability testing
-	public static final int RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING = RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY
+	public static final int RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING = RUNNABLE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION = RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING
 			+ 1;
@@ -1329,7 +1329,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		// float[dx_sensitivity, dx_specificity][gender][site]
 		// or float[dx_sensitivity, dx_specificity, treatment_rate][gender][site]
-		float[][][] test_accuracy = (float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY];
+		float[][][] test_accuracy = (float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES];
 
 		// Treatment due to DX
 		int[] infectious_key_index = new int[LENGTH_SITE];

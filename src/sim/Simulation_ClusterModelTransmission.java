@@ -505,24 +505,27 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					reallocateRiskGrp(baseContactMapSeed);
 
 				} else {
-					// Sparse version
-					double[][] riskCatListSparse = (double[][]) riskCatList;
 
-					fillRiskGrpArrByCasualPartnership(prealloactedRiskGrpArray,
-							baseContactMapMapping.get(baseContactMapSeed), cumulative_pop_composition,
-							riskCatListSparse, contactMapTimeRange);
+					File pre_allocate_risk_file = new File(baseDir, String.format(
+							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 
-					try {
-						File pre_allocate_risk_file = new File(baseDir,
-								String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
-										baseContactMapSeed));
-						PrintWriter pWri_riskGrp = new PrintWriter(pre_allocate_risk_file);
-						for (Number[] ent : prealloactedRiskGrpArray) {
-							pWri_riskGrp.printf("%d,%d,%f,%f\n", ent[0], ent[1], ent[2], ent[3]);
+					if (!pre_allocate_risk_file.exists()) {
+
+						// Sparse version
+						double[][] riskCatListSparse = (double[][]) riskCatList;
+
+						fillRiskGrpArrByCasualPartnership(prealloactedRiskGrpArray,
+								baseContactMapMapping.get(baseContactMapSeed), cumulative_pop_composition,
+								riskCatListSparse, contactMapTimeRange);
+						try {
+							PrintWriter pWri_riskGrp = new PrintWriter(pre_allocate_risk_file);
+							for (Number[] ent : prealloactedRiskGrpArray) {
+								pWri_riskGrp.printf("%d,%d,%f,%f\n", ent[0], ent[1], ent[2], ent[3]);
+							}
+							pWri_riskGrp.close();
+						} catch (IOException ex) {
+							ex.printStackTrace(System.err);
 						}
-						pWri_riskGrp.close();
-					} catch (IOException ex) {
-						ex.printStackTrace(System.err);
 					}
 
 				}

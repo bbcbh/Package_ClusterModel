@@ -46,7 +46,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM = RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES
 			+ 1;
-	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_ACCURACY = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
+	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
 			+ 1;
 	protected static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
@@ -104,6 +104,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	public abstract void initialse();	
 	public abstract void allocateSeedInfection(int[][] num_infected_count, int time);
 	public abstract int addInfectious(Integer infectedId, int infId, int site, int stage_id, int infectious_time, int recoveredAt);
+	public abstract void scheduleNextTest(Integer personId, int lastTestTime);
 
 	public long getSim_seed() {
 		return sIM_SEED;
@@ -319,6 +320,11 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			try {
 				BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));
 				String line;
+				
+				if (risk_cat_map == null) {
+					risk_cat_map = new HashMap<>();
+				}
+				
 				while ((line = reader.readLine()) != null) {
 					String[] lineSp = line.split(",");
 					risk_cat_map.put(
