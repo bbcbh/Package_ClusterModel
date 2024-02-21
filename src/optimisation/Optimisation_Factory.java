@@ -1665,7 +1665,7 @@ public class Optimisation_Factory {
 															riskCatListAll, baseDir, seed);
 												}
 
-												Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
+												Abstract_Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
 														(long) ga_ent[GA_ENT_CMAP_SEED], (long) ga_ent[GA_ENT_SIM_SEED],
 														POP_COMPOSITION, cmap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 												runnable.setBaseDir(baseDir);
@@ -2202,7 +2202,7 @@ public class Optimisation_Factory {
 								return found_res[found_res.length - 1].doubleValue();
 							} else {
 
-								Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
+								Abstract_Runnable_ClusterModel_Transmission runnable = new Runnable_ClusterModel_Transmission(
 										cMap_seed, sim_seed, pOP_COMPOSITION, cMap_mapping.get(cMap_seed),
 										nUM_TIME_STEPS_PER_SNAP, nUM_SNAP);
 								runnable.setBaseDir(baseDir);
@@ -3055,8 +3055,8 @@ public class Optimisation_Factory {
 
 	}
 
-	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable, Properties prop,
-			double[] point, boolean display_only) {
+	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
+			Properties prop, double[] point, boolean display_only) {
 		String[] parameter_settings = null;
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING)) {
 			parameter_settings = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
@@ -3067,11 +3067,9 @@ public class Optimisation_Factory {
 	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
 			String[] parameter_settings, double[] point, boolean display_only) {
 		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
-			setOptParamInRunnableSingleTransmission((Runnable_ClusterModel_Transmission) target_runnable,
+			setOptParamInRunnableSingleTransmission((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
 					parameter_settings, point, display_only);
-		} else {			
-			
-			// TODO: To be tested
+		} else {
 			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 				String param_setting = parameter_settings[param_arr_index];
 				param_setting = param_setting.replaceAll("\\s", "");
@@ -3082,14 +3080,15 @@ public class Optimisation_Factory {
 					int setting_level = 1;
 					recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 				}
-				
+				target_runnable.refreshField(param_name_index - RUNNABLE_OFFSET, true);
 			}
-			
+
 		}
 	}
 
-	public static void setOptParamInRunnableSingleTransmission(Runnable_ClusterModel_Transmission target_runnable,
-			String[] parameter_settings, double[] point, boolean display_only) {
+	public static void setOptParamInRunnableSingleTransmission(
+			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
+			boolean display_only) {
 
 		HashMap<Integer, Object> modified_param = new HashMap<>();
 

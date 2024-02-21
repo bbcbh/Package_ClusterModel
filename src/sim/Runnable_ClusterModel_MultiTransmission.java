@@ -1,5 +1,10 @@
 package sim;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -129,7 +134,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient HashMap<Integer, double[][][][]> map_trans_prob; // Key=PID,V=double[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
 	protected transient HashMap<Integer, int[][]> map_currrent_infection_stage; // Key=PID,V=int[INF_ID][SITE]{infection_stage}
 	protected transient HashMap<Integer, int[][]> map_infection_stage_switch; // Key=PID,V=int[INF_ID][SITE]{switch_time_at_site_0};
-	protected transient HashMap<String, ArrayList<Integer>> map_currently_infectious; // Key=Inf_ID_Site,V=ArrayList of
+	protected transient HashMap<String, ArrayList<Integer>> map_currently_infectious; // Key=Inf_ID,SiteID,V=ArrayList
+																						// of
 																						// pid with infectious
 
 	// For schedule, key are day and entries are list of person id, ordered
@@ -152,7 +158,18 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient RealDistribution[][][] dist_stage_period; // ReadDistribution[INF_ID][SITE][STAGE_ID]
 
 	protected static final int STAGE_ID_JUST_INFECTED = Integer.MIN_VALUE;
+	
+	protected static final String SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT = "Output_%d";
+	protected static final String SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT = "Output_%d_Infectious_Site";
+	protected static final String SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT =  "Output_%d_Infected_Site_Stage";
+	protected static final String SIM_OUTPUT_KEY_CUMUL_TREATMENT = "Output_%d";
+	protected static final String SIM_OUTPUT_KEY_CUMUL_INCIDENCE = "Output_%d";
+	protected static final String SIM_OUTPUT_KEY_CUMUL_INCIDENCE_SITE = "Output_%d_S";
+	
+	
 	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("MultiTransmission_(\\d+)_(\\d+)_(\\d+)");
+	
+	
 
 	public Runnable_ClusterModel_MultiTransmission(long cMap_seed, long sim_seed, int[] pop_composition,
 			ContactMap base_cMap, int numTimeStepsPerSnap, int numSnap, int num_inf, int num_site, int num_act) {
@@ -180,7 +197,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		dist_stage_period = new RealDistribution[NUM_INF][NUM_SITE][];
 		dist_sym_rate = new RealDistribution[NUM_INF][NUM_SITE][];
-
 	}
 
 	public void refreshField(int fieldId, boolean clearAll) {
@@ -408,6 +424,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		for (int r = 0; r < runnable_fields.length; r++) {
 			refreshField(r, true);
 		}
+
+		sim_output = new HashMap<>();
 	}
 
 	@Override
@@ -656,7 +674,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				} // End of checking one infectious
 			} // End loop for all infectious infection-site combinations
 
-			// TODO: Testing
+			// Testing
 			ArrayList<int[]> testToday = schedule_testing.remove(currentTime);
 			if (testToday != null) {
 				for (int[] testing_stat : testToday) {
@@ -713,12 +731,369 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				} // End of testing for single individual
 			} // End of all scheduled testing for today
 
+			// Storing of outputs
+			if (snap_index == 0) {
+				String key;
+
+				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
+					key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT,
+							Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[]> current_infected_gender_count = (HashMap<Integer, int[]>) sim_output
+							.get(key);
+					if (current_infected_gender_count == null) {
+						current_infected_gender_count = new HashMap<>();
+						sim_output.put(key, current_infected_gender_count);
+					}
+
+					key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT,
+							Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[]> current_infected_site_count = (HashMap<Integer, int[]>) sim_output.get(key);
+					if (current_infected_site_count == null) {
+						current_infected_site_count = new HashMap<>();
+						sim_output.put(key, current_infected_site_count);
+					}
+
+					int[] num_inf_count = new int[NUM_INF * NUM_SITE];
+					int[] num_inf_by_gender = new int[NUM_INF * NUM_GENDER];
+
+					current_infected_gender_count.put(currentTime, num_inf_by_gender);
+					current_infected_site_count.put(currentTime, num_inf_count);
+
+					int pt = 0;
+					for (int i = 0; i < NUM_INF; i++) {
+						ArrayList<Integer> alreadyCounted = new ArrayList<>();
+						for (int s = 0; s < NUM_SITE; s++) {
+							String infKey = String.format("%d,%d", i, s);
+							ArrayList<Integer> arr = map_currently_infectious.get(infKey);
+							if (arr != null) {
+								num_inf_count[pt] = arr.size();
+								for (Integer pid : arr) {
+									int pt_inf = Collections.binarySearch(alreadyCounted, pid);
+									if (pt_inf < 0) {
+										num_inf_by_gender[i* NUM_GENDER + getGenderType(pid)]++;
+										alreadyCounted.add(~pt_inf, pid);
+									}
+
+								}
+
+							}
+							pt++;
+						}
+					}
+
+					key = String.format(SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT,
+							Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
+
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, HashMap<String, Integer>> current_infected_site_stage_count = (HashMap<Integer, HashMap<String, Integer>>) sim_output
+							.get(key);
+
+					if (current_infected_site_stage_count == null) {
+						current_infected_site_stage_count = new HashMap<>();
+						sim_output.put(key, current_infected_site_stage_count);
+					}
+
+					HashMap<String, Integer> infect_site_stage_count_current = new HashMap<>();
+					current_infected_site_stage_count.put(currentTime, infect_site_stage_count_current);
+
+					for (Integer pid : map_currrent_infection_stage.keySet()) {
+						int[][] inf_stage = map_currrent_infection_stage.get(pid);
+						for (int i = 0; i < NUM_INF; i++) {
+							for (int s = 0; s < NUM_SITE; s++) {
+								String count_key = String.format("%d,%d,%d", i, s, inf_stage[i][s]);
+								Integer ent = infect_site_stage_count_current.get(count_key);
+								if (ent == null) {
+									ent = 0;
+								}
+								infect_site_stage_count_current.put(count_key, ent + 1);
+							}
+						}
+					}
+				}
+
+				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+					// int[][] cumul_treatment_by_person = new int[NUM_INF][NUM_GENDER];
+					key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
+							Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[]> cumulative_treatment = (HashMap<Integer, int[]>) sim_output.get(key);
+					if (cumulative_treatment == null) {
+						cumulative_treatment = new HashMap<>();
+						sim_output.put(key, cumulative_treatment);
+					}
+					int[] ent = new int[NUM_INF * NUM_GENDER];
+					cumulative_treatment.put(currentTime, ent);
+
+					int pt = 0;
+					for (int i = 0; i < NUM_INF; i++) {
+						for (int g = 0; g < NUM_GENDER; g++) {
+							ent[pt] = cumul_treatment_by_person[i][g];
+							pt++;
+						}
+					}
+
+				}
+
+				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
+					key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE,
+							Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
+
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[]> cumulative_incidence_by_person = (HashMap<Integer, int[]>) sim_output
+							.get(key);
+					if (cumulative_incidence_by_person == null) {
+						cumulative_incidence_by_person = new HashMap<>();
+						sim_output.put(key, cumulative_incidence_by_person);
+					}
+					int[] ent = new int[NUM_INF * NUM_GENDER];
+					cumulative_incidence_by_person.put(currentTime, ent);
+
+					int pt = 0;
+					for (int i = 0; i < NUM_INF; i++) {
+						for (int g = 0; g < NUM_GENDER; g++) {
+							ent[pt] = cumul_incidence_by_person[i][g];
+							pt++;
+						}
+					}
+					key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE_SITE,
+							Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
+
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[]> cumulative_incidence_by_site = (HashMap<Integer, int[]>) sim_output
+							.get(key);
+					if (cumulative_incidence_by_site == null) {
+						cumulative_incidence_by_site = new HashMap<>();
+						sim_output.put(key, cumulative_incidence_by_site);
+					}
+					ent = new int[NUM_INF * NUM_GENDER * NUM_SITE];
+					cumulative_incidence_by_site.put(currentTime, ent);
+					pt = 0;
+					for (int i = 0; i < NUM_INF; i++) {
+						for (int g = 0; g < NUM_GENDER; g++) {
+							for (int s = 0; s < NUM_SITE; s++) {
+								ent[pt] = cumul_incidence_by_site[i][g][s];
+								pt++;
+							}
+						}
+					}
+				}
+				if (print_progress != null && runnableId != null) {
+					try {
+						print_progress.printf("Thread <%s>: t = %d . Timestamp = %tc.\n", runnableId, currentTime,
+								System.currentTimeMillis());
+					} catch (Exception ex) {
+						System.err.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
+					}
+				}
+			}
+
+			snap_index = (snap_index + 1) % nUM_TIME_STEPS_PER_SNAP;
+			hasInfectious = hasInfectious();
+
 		} // End of time step
 
-		// TODO: To be implement/Check
+		if (runnableId != null) {
+			System.out.printf("Thread <%s> completed.\n", runnableId);
+		}
 
-		System.out.println("Debug: Run completed.");
+		// Post simulation
+		postSimulation();
 
+	}
+
+	@SuppressWarnings("unchecked")
+	protected void postSimulation() {
+		String key, fileName;
+		HashMap<Integer, int[]> countMap;
+		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
+		
+		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT, Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
+
+			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
+					cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER });
+
+		}
+		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
+			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE, Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
+			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON,
+					cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER });
+
+			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE_SITE, Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
+
+			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE,
+					cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Site_%d", new int[] { NUM_INF, NUM_GENDER, NUM_SITE });
+
+		}
+
+		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
+			
+			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT,
+					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
+			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON,
+					cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER });			
+			
+			
+			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT,
+					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
+			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
+			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE,
+					cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "Inf_%d_Site_%d", new int[] { NUM_INF, NUM_SITE });
+
+			// TODO: To check timing 
+			
+			/*
+			key = String.format(SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT,
+					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
+			
+			HashMap<Integer, HashMap<String, Integer>> infect_site_stage_count = (HashMap<Integer, HashMap<String, Integer>>) sim_output
+					.get(key);
+
+			Comparator<String> stateKeyComp = new Comparator<String>() {
+				@Override
+				public int compare(String o1, String o2) {
+					String[] s1 = o1.split(",");
+					String[] s2 = o2.split(",");
+					int res = 0;
+					int pt = 0;
+					while (res == 0 && pt < Math.min(s1.length, s2.length)) {
+						res = Integer.compare(Integer.parseInt(s1[pt]), Integer.parseInt(s2[pt]));
+					}
+					return res;
+				}
+			};
+
+			ArrayList<String> headerKey = new ArrayList<>();
+			Integer[] timeArr = infect_site_stage_count.keySet().toArray(new Integer[0]);
+			Arrays.sort(timeArr);
+
+			// Check max state
+			for (Integer time : timeArr) {
+				HashMap<String, Integer> infect_site_stage_count_current = infect_site_stage_count.get(time);
+				String[] state_key_arr = infect_site_stage_count_current.keySet().toArray(new String[0]);
+				for (String state_key : state_key_arr) {
+					int pt = Collections.binarySearch(headerKey, state_key, stateKeyComp);
+					if (pt < 0) {
+						headerKey.add(~pt, state_key);
+					}
+				}
+			}
+			// Print entry
+			PrintWriter pWri;
+			StringWriter sWri = null;
+			try {
+				FileOutputStream fOut = new FileOutputStream(new File(baseDir,
+						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE,
+								cMAP_SEED, sIM_SEED)),true);
+				pWri = new PrintWriter(fOut);
+			} catch (FileNotFoundException e) {
+				e.printStackTrace(System.err);
+				sWri = new StringWriter();
+				pWri = new PrintWriter(sWri);
+			}
+
+			pWri.println("Infection-Site-Stage-Count");
+			pWri.print("Time");
+			for (String header : headerKey) {
+				pWri.print(',');
+				pWri.print(header);
+			}
+			pWri.println();
+
+			for (Integer time : timeArr) {
+				pWri.print(time);
+				HashMap<String, Integer> infect_site_stage_count_current = infect_site_stage_count.get(time);
+				for (String header : headerKey) {
+					Integer count = infect_site_stage_count_current.get(header);
+					if (count == null) {
+						count = 0;
+					}
+					pWri.print(',');
+					pWri.print(count);
+				}
+				pWri.println();
+			}
+
+			pWri.close();
+
+			if (sWri != null) {
+				System.out.println(sWri.toString());
+			}
+			
+			*/
+
+		}
+
+		
+		
+		if (print_progress != null && runnableId != null) {
+			try {
+				print_progress.printf("Post simulation file generation for Thread <%s> completed. Timestamp = %tc.\n", runnableId,
+						System.currentTimeMillis());
+			} catch (Exception ex) {
+				System.err.printf("Post simulation file generation for Thread <%s> completed.\n", runnableId);
+			}
+		}
+	}
+
+	public void printCountMap(HashMap<Integer, int[]> countMap, String fileName, String headerFormat, int[] dimension) {
+
+		PrintWriter pWri;
+		StringWriter s = null;
+		try {
+			pWri = new PrintWriter(new File(baseDir, fileName));
+		} catch (FileNotFoundException e) {
+			e.printStackTrace(System.err);
+			s = new StringWriter();
+			pWri = new PrintWriter(s);
+		}
+
+		// Header
+		pWri.print("Time");
+		recursiveHeaderGeneration(dimension, 0, headerFormat, pWri);
+		pWri.println();
+
+		// Entry
+		Integer[] timePt = countMap.keySet().toArray(new Integer[countMap.size()]);
+		Arrays.sort(timePt);
+		for (Integer time : timePt) {
+			int[] ent = countMap.get(time);
+			pWri.print(time);
+			for (int i = 0; i < ent.length; i++) {
+				pWri.print(',');
+				pWri.print(ent[i]);
+			}
+			pWri.println();
+		}
+
+		pWri.close();
+
+		if (s != null) {
+			System.out.println(s.toString());
+		}
+
+	}
+
+	private void recursiveHeaderGeneration(int[] dimension, int dPt, String seedStr, PrintWriter pWri) {
+		for (int i = 0; i < dimension[dPt]; i++) {
+			if (dPt == dimension.length - 1) {
+				pWri.print(',');
+				pWri.print(seedStr.replaceFirst("%d", Integer.toString(i)));
+			} else {
+				recursiveHeaderGeneration(dimension, dPt + 1, seedStr.replaceFirst("%d", Integer.toString(i)), pWri);
+			}
+		}
 	}
 
 	public void scheduleNextTest(Integer personId, int lastTestTime) {

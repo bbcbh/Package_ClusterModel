@@ -105,6 +105,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	public abstract void allocateSeedInfection(int[][] num_infected_count, int time);
 	public abstract int addInfectious(Integer infectedId, int infId, int site, int stage_id, int infectious_time, int recoveredAt);
 	public abstract void scheduleNextTest(Integer personId, int lastTestTime);
+	public abstract void refreshField(int fieldId, boolean clearAll);
 
 	public long getSim_seed() {
 		return sIM_SEED;
@@ -381,6 +382,11 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			edges_array_pt++;
 		}
 		return edges_array_pt;
+	}
+
+
+	public HashMap<String, Object> getSim_output() {
+		return sim_output;
 	}
 
 }

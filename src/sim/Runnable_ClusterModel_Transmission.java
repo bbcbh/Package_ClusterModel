@@ -478,10 +478,6 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	public HashMap<String, Object> getSim_output() {
-		return sim_output;
-	}
-
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
 		int genderType = getGenderType(personId);
 
@@ -2033,6 +2029,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			mapping_infection_schedule.put(personId, schMap);
 		}
 		schMap[schMap_index] = schMap_ent;
+	}
+
+	@Override
+	public void refreshField(int fieldId, boolean clearAll) {
+		// Not used
+		
 	}
 
 }

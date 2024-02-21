@@ -28,6 +28,7 @@ import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 import population.Population_Bridging;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import sim.Abstract_Runnable_ClusterModel_Transmission;
 import sim.Runnable_ClusterModel_ContactMap_Generation;
 import sim.Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
@@ -700,7 +701,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			START_TIME = ((int[]) PropValUtils.propStrToObject(prop.getProperty(contactMapRangeKey), int[].class))[0];
 		}
 
-		Runnable_ClusterModel_Transmission[] runnable = new Runnable_ClusterModel_Transmission[bestResidue_by_runnable.length];
+		Abstract_Runnable_ClusterModel_Transmission[] runnable = new Abstract_Runnable_ClusterModel_Transmission[bestResidue_by_runnable.length];
 		int[] bestMatchStart_by_runnable = new int[runnable.length];
 		Arrays.fill(bestMatchStart_by_runnable, -1);
 
