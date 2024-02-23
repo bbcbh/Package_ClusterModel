@@ -10,17 +10,19 @@ import java.util.InvalidPropertiesFormatException;
 import java.util.regex.Pattern;
 
 import optimisation.Optimisation_Factory;
+import util.PropValUtils;
 import util.Util_Analyse_ClusterModel_Transmission_Output;
 import util.Util_Analyse_ContactMap_Outputs;
 import util.Util_Combine_ContactMap;
 import util.Util_Compare_ClusterModel_Transmission_Output;
+import util.Util_RiskGrpAllocation;
 
 public class Launcher_ClusterModel {
 
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
 
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans, -opt, -opt_trend, -optGA, -analyse, -analyse_trend, -analyse_map, -combine_map, -compare> PROP_FILE_DIRECTORY <...>\n"
+				"Usage: java %s <-gen, -trans, -opt, -opt_trend, -optGA, -analyse, -analyse_trend, -analyse_map, -combine_map, -compare -genRiskGrp> PROP_FILE_DIRECTORY <...>\n"
 						+ " or\tjava %s <-analyse_rx,  -clean_up_rx> FILE_DIRECTORY PATTERN <...>"
 						+ " or\tjava %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName(),
@@ -128,6 +130,14 @@ public class Launcher_ClusterModel {
 					}
 					System.out.printf("%d directories clean up.\n", candidateDir.length);
 				}
+			} else if ("-genRiskGrp".equals(flag)) {
+				if(args.length < 4) {
+					System.out.printf("Usage: java %s --genRiskGrp CMAP_DIR RISKGRP_CAT NUM_THREAD\n");
+					System.exit(0);
+				}else {					
+					Util_RiskGrpAllocation.generateRiskGrpAllocationByRiskCat(new File(args[1]), 
+							(float[][]) PropValUtils.propStrToObject(args[2], float[][].class), Integer.parseInt(args[3]));
+				}								
 
 			} else if ("-batch".equals(flag)) {
 				File commands = new File(args[1]);

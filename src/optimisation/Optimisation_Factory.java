@@ -346,7 +346,7 @@ public class Optimisation_Factory {
 					String line;
 					while ((line = reader.readLine()) != null) {
 						String[] ent = line.split(",");
-						if (ent.length > 2) {
+						if (ent.length >= 2) {
 							if (ent[0].length() > 0) {
 								cMap_seeds.add(Long.parseLong(ent[0]));
 							}
@@ -3070,6 +3070,7 @@ public class Optimisation_Factory {
 			setOptParamInRunnableSingleTransmission((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
 					parameter_settings, point, display_only);
 		} else {
+			ArrayList<Integer> field_to_update = new ArrayList<>();
 			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 				String param_setting = parameter_settings[param_arr_index];
 				param_setting = param_setting.replaceAll("\\s", "");
@@ -3080,7 +3081,15 @@ public class Optimisation_Factory {
 					int setting_level = 1;
 					recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 				}
-				target_runnable.refreshField(param_name_index - RUNNABLE_OFFSET, true);
+				int field_id = param_name_index - RUNNABLE_OFFSET;
+				int pt = Collections.binarySearch(field_to_update, field_id);
+				if (pt < 0) {
+					field_to_update.add(~pt, field_id);
+				}
+			}
+
+			for (Integer field_id : field_to_update) {
+				target_runnable.refreshField(field_id, true);
 			}
 
 		}

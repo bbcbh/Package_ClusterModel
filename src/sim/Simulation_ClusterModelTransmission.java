@@ -594,6 +594,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			completedSeedMap.put(baseContactMapSeed, completedSeed);
 
 		}
+		
+		long tic = System.currentTimeMillis();
 
 		HashMap<Long, ArrayList<Integer[]>> edge_list_map = new HashMap<>();
 
@@ -645,12 +647,19 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			// System.gc();
 
 		}
+		
+		if(printProgress) {
+			System.out.printf("Generation of edge_list map completed. Time required = = %.3fs.\n",
+					(System.currentTimeMillis() - tic)/1000.0f);
+		}
 
 		RandomGenerator rngBase = new MersenneTwisterRandomGenerator(seed);
 		boolean useParallel = numThreads > 1 && numSim > 1;
 		ExecutorService exec = null;
 		int inExec = 0;
-
+		
+		
+		
 		Abstract_Runnable_ClusterModel_Transmission[] runnable = new Abstract_Runnable_ClusterModel_Transmission[numSim];
 
 		long[] cMapSeed_list = new long[numSim];
@@ -688,15 +697,23 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 			}
 
-			if (runSim) {
-
-				if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+			if (runSim) {				
+				if(Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()){
+					Matcher m = Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType);
+					m.matches();
+					runnable[s] = new Runnable_ClusterModel_Syphilis_NG_Prophylaxis(baseContactMapSeed, simSeed,
+							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
+							num_snap, Float.parseFloat(m.group(1)), Integer.parseInt(m.group(2)),
+							Float.parseFloat(m.group(3)));																													
+					
+				}else if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
 					m.matches();
 					runnable[s] = new Runnable_ClusterModel_MultiTransmission(baseContactMapSeed, simSeed,
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
 							num_snap, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
-							Integer.parseInt(m.group(3)));
+							Integer.parseInt(m.group(3)));					
+					
 				} else {
 					runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
