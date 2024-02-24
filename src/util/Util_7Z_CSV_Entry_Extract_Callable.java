@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -143,6 +144,34 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 
 		}
 		return res;
+	}
+	
+
+	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile,
+			HashMap<String, ArrayList<String[]>> zip_ent) throws IOException {
+		SevenZFile inputZip = new SevenZFile(zipFile);
+		SevenZArchiveEntry inputEnt;
+	
+		byte[] buf = new byte[Util_Compare_ClusterModel_Transmission_Output.BUFFER];
+		while ((inputEnt = inputZip.getNextEntry()) != null) {
+			String file_name = inputEnt.getName();
+			StringBuilder str_builder = new StringBuilder();
+			String line;
+			ArrayList<String[]> lines = new ArrayList<>();
+			int count;
+			while ((count = inputZip.read(buf, 0, Util_Compare_ClusterModel_Transmission_Output.BUFFER)) != -1) {
+				str_builder.append(new String(Arrays.copyOf(buf, count)));
+			}
+			BufferedReader reader = new BufferedReader(new StringReader(str_builder.toString()));
+			while ((line = reader.readLine()) != null) {
+				if (line.length() > 0) {
+					lines.add(line.split(","));
+				}
+			}
+			zip_ent.put(file_name, lines);
+		}
+		inputZip.close();
+		return zip_ent;
 	}
 
 	public static StringBuilder extractCSVStringFromZip(SevenZFile inputZip) throws IOException {

@@ -1,12 +1,10 @@
 package util;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,8 +12,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 
-import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
-import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 
 import sim.Simulation_ClusterModelTransmission;
@@ -137,7 +133,7 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 			ref_ent_map = new HashMap<>();
 
 			for (File zipFile : ref_zips) {
-				ref_ent_map = extractedLinesFrom7Zip(zipFile, ref_ent_map);
+				ref_ent_map = Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(zipFile, ref_ent_map);
 			}
 
 			// Filling ref column
@@ -248,7 +244,7 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 				comp_zips = compare_dir.listFiles(zip_filter);
 				comp_ent_map = new HashMap<>();
 				for (File zipFile : comp_zips) {
-					comp_ent_map = extractedLinesFrom7Zip(zipFile, comp_ent_map);
+					comp_ent_map = Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(zipFile, comp_ent_map);
 				}
 				double[][][] rel_diff_from_ref_values = new double[ref_values.length][time_ent.length][ref_ent_arr.length];
 
@@ -379,33 +375,6 @@ public class Util_Compare_ClusterModel_Transmission_Output {
 
 			}
 		}
-	}
-
-	private static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile,
-			HashMap<String, ArrayList<String[]>> zip_ent) throws IOException {
-		SevenZFile inputZip = new SevenZFile(zipFile);
-		SevenZArchiveEntry inputEnt;
-
-		byte[] buf = new byte[BUFFER];
-		while ((inputEnt = inputZip.getNextEntry()) != null) {
-			String file_name = inputEnt.getName();
-			StringBuilder str_builder = new StringBuilder();
-			String line;
-			ArrayList<String[]> lines = new ArrayList<>();
-			int count;
-			while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
-				str_builder.append(new String(Arrays.copyOf(buf, count)));
-			}
-			BufferedReader reader = new BufferedReader(new StringReader(str_builder.toString()));
-			while ((line = reader.readLine()) != null) {
-				if (line.length() > 0) {
-					lines.add(line.split(","));
-				}
-			}
-			zip_ent.put(file_name, lines);
-		}
-		inputZip.close();
-		return zip_ent;
 	}
 
 	private static FileFilter generateFileFilterByPattern(Pattern pattern) {
