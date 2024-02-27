@@ -138,6 +138,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String OPT_TREND_INPUT_TYPE_NUMINF = "NumInf";
 	public static final String OPT_TREND_INPUT_TYPE_INCID = "CumulIncid";
 	public static final String OPT_TREND_INPUT_TYPE_DX = "CumulDX";
+	public static final String OPT_TREND_INPUT_TYPR_DX_TESTING = "CumulDX_Test";
 	
 	public static final String OPT_TREND_OUTPUT_PREFIX_OFFSET = "Offset  = ";
 
@@ -972,6 +973,23 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 										}
 									}
 								}
+							} else if(OptTrendFittingFunction.OPT_TREND_INPUT_TYPR_DX_TESTING.equals(type_key)) {
+								// V= int[gender_positive_dx, gender_true_infection]
+								int[][] ent_collection = new int[][] {
+										countMapByPerson[OptTrendFittingFunction.OPT_TREND_COUNT_MAP_CUMUL_POS_DX_BY_PERSON]
+												.get(time),										
+
+								};
+								for (int[] ent : ent_collection) {
+									if (ent != null) {
+										for (int g = 0; g < ent.length / 2; g++) {
+											if ((incl_grp & 1 << g) != 0) {
+												newVal += ent[g];
+											}
+										}
+									}
+								}
+								
 							}
 							y_values[t_pt] = newVal;
 							str_disp[t_pt].append(',');

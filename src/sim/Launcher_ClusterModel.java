@@ -132,7 +132,7 @@ public class Launcher_ClusterModel {
 				}
 			} else if ("-genRiskGrp".equals(flag)) {
 				if(args.length < 4) {
-					System.out.printf("Usage: java %s --genRiskGrp CMAP_DIR RISKGRP_CAT NUM_THREAD\n");
+					System.out.printf("Usage: java %s -genRiskGrp CMAP_DIR RISKGRP_CAT NUM_THREAD\n");
 					System.exit(0);
 				}else {					
 					Util_RiskGrpAllocation.generateRiskGrpAllocationByRiskCat(new File(args[1]), 
