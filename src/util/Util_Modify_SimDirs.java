@@ -312,7 +312,7 @@ public class Util_Modify_SimDirs {
 				});
 	
 				if (dup_riskGrp_files.length > 0) {
-					System.out.printf("Cleaning up Risk Group maaping for %s.\n", riskGrp_file.getName());
+					System.out.printf("Cleaning up Risk Group maping for %s.\n", riskGrp_file.getName());
 	
 					for (File dup_riskGrp_file : dup_riskGrp_files) {
 						Files.delete(dup_riskGrp_file.toPath());

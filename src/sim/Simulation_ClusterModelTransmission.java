@@ -174,6 +174,21 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		File pre_allocate_risk_file = new File(baseDir,
 				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 
+		File riskGrpDir = baseDir;
+		if (!pre_allocate_risk_file.exists()) {
+			// Try loading one in cMap folder
+			if (loadedProperties.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+				riskGrpDir = new File(
+						loadedProperties.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+				if (!riskGrpDir.exists() || !riskGrpDir.isDirectory()) {
+					riskGrpDir = baseDir;
+				}
+
+				pre_allocate_risk_file = new File(riskGrpDir, String.format(
+						Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+			}
+		}
+
 		if (pre_allocate_risk_file.exists()) {
 			if (prealloactedRiskGrpMap == null) {
 				prealloactedRiskGrpMap = new HashMap<>();
@@ -185,7 +200,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					prealloactedRiskGrpMap.put(baseContactMapSeed, prealloactedRiskGrpArray);
 				}
 
-				boolean reallocate = loadPreallocateRiskGrp(prealloactedRiskGrpArray, baseDir, baseContactMapSeed);
+				boolean reallocate = loadPreallocateRiskGrp(prealloactedRiskGrpArray, riskGrpDir, baseContactMapSeed);
 				if (reallocate) {
 					reallocateRiskGrp(baseContactMapSeed);
 				}
@@ -194,6 +209,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				ex.printStackTrace(System.err);
 			}
 		}
+
 	}
 
 	public void setExportSkipBackup(boolean exportSkipBackup) {
@@ -505,9 +521,23 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					reallocateRiskGrp(baseContactMapSeed);
 
 				} else {
-
 					File pre_allocate_risk_file = new File(baseDir, String.format(
 							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+					File riskGrpDir = baseDir;
+					if (!pre_allocate_risk_file.exists()) {
+						// Try loading one in cMap folder
+						if (loadedProperties.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+							riskGrpDir = new File(
+									loadedProperties.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+							if (!riskGrpDir.exists() || !riskGrpDir.isDirectory()) {
+								riskGrpDir = baseDir;
+							}
+
+							pre_allocate_risk_file = new File(riskGrpDir,
+									String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
+											baseContactMapSeed));
+						}
+					}
 
 					if (!pre_allocate_risk_file.exists()) {
 
@@ -594,7 +624,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			completedSeedMap.put(baseContactMapSeed, completedSeed);
 
 		}
-		
+
 		long tic = System.currentTimeMillis();
 
 		HashMap<Long, ArrayList<Integer[]>> edge_list_map = new HashMap<>();
@@ -647,19 +677,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			// System.gc();
 
 		}
-		
-		if(printProgress) {
+
+		if (printProgress) {
 			System.out.printf("Generation of edge_list map completed. Time required = = %.3fs.\n",
-					(System.currentTimeMillis() - tic)/1000.0f);
+					(System.currentTimeMillis() - tic) / 1000.0f);
 		}
 
 		RandomGenerator rngBase = new MersenneTwisterRandomGenerator(seed);
 		boolean useParallel = numThreads > 1 && numSim > 1;
 		ExecutorService exec = null;
 		int inExec = 0;
-		
-		
-		
+
 		Abstract_Runnable_ClusterModel_Transmission[] runnable = new Abstract_Runnable_ClusterModel_Transmission[numSim];
 
 		long[] cMapSeed_list = new long[numSim];
@@ -697,23 +725,23 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 			}
 
-			if (runSim) {				
-				if(Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()){
+			if (runSim) {
+				if (Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType);
 					m.matches();
 					runnable[s] = new Runnable_ClusterModel_Syphilis_NG_Prophylaxis(baseContactMapSeed, simSeed,
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
 							num_snap, Float.parseFloat(m.group(1)), Integer.parseInt(m.group(2)),
-							Float.parseFloat(m.group(3)));																													
-					
-				}else if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+							Float.parseFloat(m.group(3)));
+
+				} else if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
 					m.matches();
 					runnable[s] = new Runnable_ClusterModel_MultiTransmission(baseContactMapSeed, simSeed,
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
 							num_snap, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
-							Integer.parseInt(m.group(3)));					
-					
+							Integer.parseInt(m.group(3)));
+
 				} else {
 					runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
@@ -975,9 +1003,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 	}
 
-	public static boolean loadPreallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, File baseDir,
+	public static boolean loadPreallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, File riskGrpDir,
 			long baseContactMapSeed) throws NumberFormatException, IOException {
-		File pre_allocate_risk_file = new File(baseDir,
+		File pre_allocate_risk_file = new File(riskGrpDir,
 				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 		boolean reallocate = false;
 
@@ -1032,8 +1060,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			seed = Long.parseLong(
 					loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
 		}
+
+		File riskGrpDir = baseDir;
+		
+
 		reallocateRiskGrp(prealloactedRiskGrpMap.get(baseContactMapSeed), baseContactMapSeed,
-				cumulative_pop_composition, riskCatListAll, baseDir, seed);
+				cumulative_pop_composition, riskCatListAll, riskGrpDir, seed);
 	}
 
 	public static void reallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, long baseContactMapSeed,

@@ -568,18 +568,24 @@ public class Optimisation_Factory {
 						BufferedReader reader = new BufferedReader(new FileReader(resList));
 						reader.readLine(); // Header line
 						String line;
-						while ((line = reader.readLine()) != null) {
+						while ((line = reader.readLine()) != null && cId < opt_callable.length) {
 							String[] ent = line.split(",");
-							if (ent.length > 3) {
-								best_result_collection[cId] = new Number[ent.length];
-								best_result_collection[cId][0] = Long.parseLong(ent[0]); // CMap_Seed
+							best_result_collection[cId] = new Number[Math.max(ent.length, init_param_default.length+3)];
+							best_result_collection[cId][0] = Long.parseLong(ent[0]); // CMap_Seed
+							if (ent.length > 1) {
 								best_result_collection[cId][1] = Long.parseLong(ent[1]); // Sim_Seed
+							}else {
+								best_result_collection[cId][1] = rng.nextLong();
+							}														
+							if (ent.length > 3 && ent.length == best_result_collection[cId].length) {
 								for (int c = 2; c < ent.length; c++) {
 									best_result_collection[cId][c] = Double.parseDouble(ent[c]); // Best fit parameter
 								}
-								best_result_collection[cId][ent.length - 1] = Double.parseDouble(ent[ent.length - 1]); // Residue;
-								cId++;
+								best_result_collection[cId][best_result_collection[cId].length - 1] = Double.parseDouble(ent[ent.length - 1]); // Residue;
+							}else {
+								best_result_collection[cId][best_result_collection[cId].length - 1] = Double.NaN;
 							}
+							cId++;
 						}
 						reader.close();
 					} else {
@@ -601,6 +607,7 @@ public class Optimisation_Factory {
 					// Fill results with result lookup (if needed)
 					if (results_lookup != null) {
 						for (Number[] best_res : best_result_collection) {
+
 							Number[] searchkey_min = new Number[best_res.length];
 							Number[] searchkey_max = new Number[best_res.length];
 							Arrays.fill(searchkey_min, Double.NEGATIVE_INFINITY);
@@ -632,6 +639,7 @@ public class Optimisation_Factory {
 								}
 							}
 						}
+
 					}
 
 					// Export current result collection
@@ -1634,6 +1642,23 @@ public class Optimisation_Factory {
 
 												boolean reallocate = true;
 
+												File riskGrpDir = baseDir;
+												if (!pre_allocate_risk_file.exists()) {
+													// Try loading one in cMap folder
+													if (prop.getProperty(
+															Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+														riskGrpDir = new File(prop.getProperty(
+																Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+														if (!riskGrpDir.exists() || !riskGrpDir.isDirectory()) {
+															riskGrpDir = baseDir;
+														}
+
+														pre_allocate_risk_file = new File(riskGrpDir, String.format(
+																Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
+																(long) ga_ent[GA_ENT_CMAP_SEED]));
+													}
+												}
+
 												if (!pre_allocate_risk_file.exists()) {
 
 													final String time_rangeKey = POP_PROP_INIT_PREFIX + Integer
@@ -1652,7 +1677,7 @@ public class Optimisation_Factory {
 												} else {
 													try {
 														reallocate = Simulation_ClusterModelTransmission
-																.loadPreallocateRiskGrp(riskGrpArr, baseDir,
+																.loadPreallocateRiskGrp(riskGrpArr, riskGrpDir,
 																		(long) ga_ent[GA_ENT_CMAP_SEED]);
 													} catch (Exception e) {
 														e.printStackTrace(System.err);
@@ -2223,13 +2248,31 @@ public class Optimisation_Factory {
 								runnable.initialse();
 
 								// Set pre-allocated risk group
+								File riskGrpDir = baseDir;
 								File pre_allocate_risk_file = new File(baseDir, String.format(
 										Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMap_seed));
+
+								if (!pre_allocate_risk_file.exists()) {
+									// Try loading one in cMap folder
+									if (prop.getProperty(
+											Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+										riskGrpDir = new File(prop
+												.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+										if (!riskGrpDir.exists() || !riskGrpDir.isDirectory()) {
+											riskGrpDir = baseDir;
+										}
+
+										pre_allocate_risk_file = new File(riskGrpDir, String.format(
+												Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
+												cMap_seed));
+									}
+								}
+
 								if (pre_allocate_risk_file.exists()) {
 									ArrayList<Number[]> riskGrpArr = new ArrayList<>();
 									try {
-										Simulation_ClusterModelTransmission.loadPreallocateRiskGrp(riskGrpArr, baseDir,
-												cMap_seed);
+										Simulation_ClusterModelTransmission.loadPreallocateRiskGrp(riskGrpArr,
+												riskGrpDir, cMap_seed);
 									} catch (Exception e) {
 										e.printStackTrace(System.err);
 									}
@@ -2406,9 +2449,28 @@ public class Optimisation_Factory {
 							float[][] riskCatListAll = (float[][]) PropValUtils
 									.propStrToObject(prop.getProperty(riskCatListAllKey), float[][].class);
 
+							File riskGrpDir = baseDir;
 							File pre_allocate_risk_file = new File(baseDir,
 									String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
 											cMap_seed[rId]));
+
+							if (!pre_allocate_risk_file.exists()) {
+								// Try loading one in cMap folder
+								if (prop.getProperty(
+										Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+									riskGrpDir = new File(
+											prop.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+									if (!riskGrpDir.exists() || !riskGrpDir.isDirectory()) {
+										riskGrpDir = baseDir;
+									}
+
+									pre_allocate_risk_file = new File(riskGrpDir,
+											String.format(
+													Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
+													cMap_seed[rId]));
+								}
+							}
+
 							ArrayList<Number[]> riskGrpArr = new ArrayList<>();
 
 							long seed = Long.parseLong(
@@ -2432,7 +2494,7 @@ public class Optimisation_Factory {
 							} else {
 								try {
 									reallocate = Simulation_ClusterModelTransmission.loadPreallocateRiskGrp(riskGrpArr,
-											baseDir, cMap_seed[rId]);
+											riskGrpDir, cMap_seed[rId]);
 								} catch (Exception e) {
 									e.printStackTrace(System.err);
 								}
