@@ -1,13 +1,11 @@
 package util;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -51,13 +49,13 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			// 0-3
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP.replaceAll("%d", replace_string),
-			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP.replaceAll("%d", replace_string),			
+			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP.replaceAll("%d", replace_string),
 			// 4-7
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_SOUGHT_PERSON_ZIP.replaceAll("%d",
 					replace_string),
-			Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP.replaceAll("%d", replace_string),			
+			Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE_ZIP.replaceAll("%d", replace_string),
 			// 8-9
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP.replaceAll("%d", replace_string),
@@ -74,13 +72,13 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false,
 			false, false, false };
-	
-	public final static int rISK_GRP_MAP_INDEX_PID = 0;		
-	public final static int rISK_GRP_MAP_INDEX_NUM_TIME_SPAN = rISK_GRP_MAP_INDEX_PID + 1;	
+
+	public final static int rISK_GRP_MAP_INDEX_PID = 0;
+	public final static int rISK_GRP_MAP_INDEX_NUM_TIME_SPAN = rISK_GRP_MAP_INDEX_PID + 1;
 	public final static int rISK_GRP_MAP_INDEX_NUM_INC = rISK_GRP_MAP_INDEX_NUM_TIME_SPAN + 1;
 	public final static int rISK_GRP_MAP_INDEX_NUM_NOTIF = rISK_GRP_MAP_INDEX_NUM_INC + 1;
 	public final static int rISK_GRP_MAP_LENGTH = rISK_GRP_MAP_INDEX_NUM_NOTIF + 1;
-	
+
 	public Util_Analyse_ClusterModel_Transmission_Output() {
 
 	}
@@ -198,6 +196,8 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 				if (zipFiles.length > 0) {
 					System.out.printf("Analysing %d file(s) of format \"%s\".\n", zipFiles.length, zipFileName);
+
+				
 
 					if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_INFECTION_HISTORY_ZIP
 							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"))) {
@@ -426,9 +426,9 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 						ArrayList<Util_CSV_Table_Map> csvTableExtra = new ArrayList<>();
 						ArrayList<int[][]> csvTableExtra_colSel = new ArrayList<>();
 						ArrayList<String> csvTableExtra_filename = new ArrayList<>();
-						
+
 						String replace_str = "(-{0,1}\\\\d+(?:_\\\\d+){0,1})";
-					
+
 						if (zipFileName.equals(Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP
 								.replaceAll("%d", replace_str))) {
 							csvTableExtra.add(new Util_CSV_Table_Map("Time,Heterosexual,MSM,All"));
@@ -450,32 +450,59 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 							csvTableExtra.add(new Util_CSV_Table_Map("Time,Site_1,Site_2,Site_3"));
 							csvTableExtra_colSel.add(
 									new int[][] { new int[] { 10, 14 }, new int[] { 11, 15 }, new int[] { 12, 16 }, });
-							csvTableExtra_filename.add("Summary_Prevalence_MSM_%s.csv");
+							csvTableExtra_filename.add("Summary_Prevalence_MSM_Site_%s.csv");
 						}
+						
+
+						if (zipFileName
+								.equals(Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP
+										.replaceAll("%d", replace_str))) {
+							Util_CSV_Table_Map table = new Util_CSV_Table_Map("Time,Female,Male");
+							table.setCumulative(isCumul);							
+							csvTableExtra.add(table);
+							csvTableExtra_colSel.add(new int[][] { new int[] { 1 }, new int[] { 2, 3, 4 } });
+							csvTableExtra_filename.add("Summary_Treatment_BehavGrp_%s.csv");							
+						}
+						
+						if (zipFileName
+								.equals(Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON_ZIP
+										.replaceAll("%d", replace_str))) {
+							Util_CSV_Table_Map table = new Util_CSV_Table_Map("Time,Female,Male");
+							table.setCumulative(isCumul);							
+							csvTableExtra.add(table);
+							csvTableExtra_colSel.add(new int[][] { new int[] { 1 }, new int[] { 2, 3, 4 } });
+							csvTableExtra_filename.add("Summary_DX_BehavGrp_%s.csv");							
+						}							
+						
+						if (zipFileName
+								.equals(Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP
+										.replaceAll("%d", replace_str))) {
+							Util_CSV_Table_Map table = new Util_CSV_Table_Map("Time,Female,All_Male,MSM");
+							table.setCumulative(isCumul);							
+							csvTableExtra.add(table);
+							csvTableExtra_colSel.add(new int[][] { new int[] { 1 }, new int[] { 2, 3, 4 }, new int[] { 3, 4 } });
+							csvTableExtra_filename.add("Summary_Incident_BehavGrp_%s.csv");							
+						}							
 
 						for (File f : zipFiles) {
-							SevenZFile resultZip = new SevenZFile(f);
-							SevenZArchiveEntry ent;
-							while ((ent = resultZip.getNextEntry()) != null) {
-								StringBuilder txt_entries = new StringBuilder();
-								int count;
-								while ((count = resultZip.read(buf, 0, BUFFER)) != -1) {
-									txt_entries.append(new String(Arrays.copyOf(buf, count)));
-								}
-
-								BufferedReader lines = new BufferedReader(new StringReader(txt_entries.toString()));
-								String line = lines.readLine(); // First line
+							HashMap<String, ArrayList<String[]>> file_ent = new HashMap<>();
+							file_ent = Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(f, file_ent);		
+							
+							//System.out.printf("From %s: %d simulations\n", f.getName(), file_ent.size());
+							
+							for (String zipEntName : file_ent.keySet()) {
+								ArrayList<String[]> data = file_ent.get(zipEntName);
 								if (csvTableMapping == null) {
-									csvTableMapping = new Util_CSV_Table_Map(line);
+									csvTableMapping = new Util_CSV_Table_Map(concatStr(data.get(0)));
 									csvTableMapping.setCumulative(isCumul);
 								}
-
-								while ((line = lines.readLine()) != null) {
+								for (int r = 1; r < data.size(); r++) {
+									String line = concatStr(data.get(r));
 									if (line.length() > 0) {
 										try {
 											csvTableMapping.addRow(line);
 											if (!csvTableExtra.isEmpty()) {
-												String[] lineAtt = line.split(",");
+												String[] lineAtt = data.get(r);
 												Integer time = Integer.parseInt(lineAtt[0]);
 												for (int i = 0; i < csvTableExtra.size(); i++) {
 													int[][] colSel = csvTableExtra_colSel.get(i);
@@ -489,13 +516,11 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 												}
 											}
 										} catch (Exception ex) {
-											System.err.printf("Error in adding row from %s (%s)\n", ent.getName(),
-													line);
+											System.err.printf("Error in adding row from %s (%s)\n", zipEntName, line);
 										}
 									}
 								}
 							}
-							resultZip.close();
 						}
 
 						if (csvTableMapping != null) {
@@ -522,6 +547,17 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			System.exit(-1);
 		}
 
+	}
+
+	protected String concatStr(String[] splitedStr) {
+		StringBuilder res = new StringBuilder();
+		for (String hE : splitedStr) {
+			if (!res.isEmpty()) {
+				res.append(',');
+			}
+			res.append(hE);
+		}
+		return res.toString();
 	}
 
 	private Number[] printDuration(PrintWriter pWri, ArrayList<Long> history_dur_map_ent) {
@@ -580,56 +616,57 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 		}
 	}
 
-	public static int[] calculateIncNoticationFromHistory(Integer pid, ArrayList<String[]> ent, int[] time_range, int incNotifRow) {
-	
+	public static int[] calculateIncNoticationFromHistory(Integer pid, ArrayList<String[]> ent, int[] time_range,
+			int incNotifRow) {
+
 		int numInc = 0;
 		int numNotif = 0;
 		int[] time_span = new int[] { -1, -1 };
-	
-		if (incNotifRow < ent.size()) {		
-			String[] inc_notif_row = ent.get(incNotifRow);					
-			for(int s = 2; s < inc_notif_row.length; s++) { // Offset: pid, site...
+
+		if (incNotifRow < ent.size()) {
+			String[] inc_notif_row = ent.get(incNotifRow);
+			for (int s = 2; s < inc_notif_row.length; s++) { // Offset: pid, site...
 				String time_str = inc_notif_row[s];
-				Integer nextTime = Integer.parseInt(time_str);				
+				Integer nextTime = Integer.parseInt(time_str);
 				time_range[0] = Math.min(time_range[0], Math.abs(nextTime));
 				time_range[1] = Math.max(time_range[1], Math.abs(nextTime));
 				if (nextTime < 0) {
 					numNotif++;
-				}else {
+				} else {
 					numInc++;
-				}								
-			}				
+				}
+			}
 		} else {
 			// Backward compatibly for result prior to 20240206
-	
+
 			int[] timing_pt = new int[ent.size()];
 			Arrays.fill(timing_pt, 2);
 			int inf_stat = 0;
 			int nextTimeRow;
-	
+
 			while ((nextTimeRow = getNextTimeRowFromHistory(ent, timing_pt)) >= 0) {
 				int nextTime = Integer.parseInt(ent.get(nextTimeRow)[timing_pt[nextTimeRow] - 1]);
-	
+
 				time_range[0] = Math.min(time_range[0], Math.abs(nextTime));
 				time_range[1] = Math.max(time_range[1], Math.abs(nextTime));
-	
+
 				if (time_span[0] < 0) {
 					time_span[0] = nextTime;
 				}
 				if (time_span[1] < nextTime) {
 					time_span[1] = nextTime;
 				}
-	
+
 				if (nextTime < 0) {
 					numNotif++;
 					inf_stat = 0; // Treatment for all
 				} else {
 					if ((inf_stat & 1 << nextTimeRow) == 0) { // New infection at site
-	
+
 						if (inf_stat == 0) { // new infection at any site
 							numInc++;
 						}
-	
+
 						inf_stat |= 1 << nextTimeRow;
 					} else {
 						if ((inf_stat & 1 << nextTimeRow) != 0) {
@@ -639,7 +676,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				}
 			}
 		}
-	
+
 		int[] mappingEnt = new int[rISK_GRP_MAP_LENGTH];
 		mappingEnt[rISK_GRP_MAP_INDEX_PID] = pid;
 		mappingEnt[rISK_GRP_MAP_INDEX_NUM_INC] = numInc;
@@ -658,7 +695,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				nextTime = Math.abs(Integer.parseInt(ent_s[timing_pt[i]]));
 				nextTime_ent = Integer.parseInt(ent_s[timing_pt[i]]);
 				nextTimeRow = i;
-	
+
 			}
 		}
 		if (nextTimeRow != -1) {
@@ -667,10 +704,10 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 				if (timing_pt[i] < ent_s.length && nextTime_ent == Integer.parseInt(ent_s[timing_pt[i]])) {
 					timing_pt[i]++;
 				}
-	
+
 			}
 		}
-	
+
 		return nextTimeRow;
 	}
 

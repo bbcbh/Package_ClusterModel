@@ -1045,56 +1045,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
 			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Site_%d", new int[] { NUM_INF, NUM_SITE });
-
-			// TODO: To check timing
-
-			/*
-			 * key = String.format(SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT,
-			 * Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
-			 * 
-			 * HashMap<Integer, HashMap<String, Integer>> infect_site_stage_count =
-			 * (HashMap<Integer, HashMap<String, Integer>>) sim_output .get(key);
-			 * 
-			 * Comparator<String> stateKeyComp = new Comparator<String>() {
-			 * 
-			 * @Override public int compare(String o1, String o2) { String[] s1 =
-			 * o1.split(","); String[] s2 = o2.split(","); int res = 0; int pt = 0; while
-			 * (res == 0 && pt < Math.min(s1.length, s2.length)) { res =
-			 * Integer.compare(Integer.parseInt(s1[pt]), Integer.parseInt(s2[pt])); } return
-			 * res; } };
-			 * 
-			 * ArrayList<String> headerKey = new ArrayList<>(); Integer[] timeArr =
-			 * infect_site_stage_count.keySet().toArray(new Integer[0]);
-			 * Arrays.sort(timeArr);
-			 * 
-			 * // Check max state for (Integer time : timeArr) { HashMap<String, Integer>
-			 * infect_site_stage_count_current = infect_site_stage_count.get(time); String[]
-			 * state_key_arr = infect_site_stage_count_current.keySet().toArray(new
-			 * String[0]); for (String state_key : state_key_arr) { int pt =
-			 * Collections.binarySearch(headerKey, state_key, stateKeyComp); if (pt < 0) {
-			 * headerKey.add(~pt, state_key); } } } // Print entry PrintWriter pWri;
-			 * StringWriter sWri = null; try { FileOutputStream fOut = new
-			 * FileOutputStream(new File(baseDir, String.format(filePrefix +
-			 * Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMAP_SEED,
-			 * sIM_SEED)),true); pWri = new PrintWriter(fOut); } catch
-			 * (FileNotFoundException e) { e.printStackTrace(System.err); sWri = new
-			 * StringWriter(); pWri = new PrintWriter(sWri); }
-			 * 
-			 * pWri.println("Infection-Site-Stage-Count"); pWri.print("Time"); for (String
-			 * header : headerKey) { pWri.print(','); pWri.print(header); } pWri.println();
-			 * 
-			 * for (Integer time : timeArr) { pWri.print(time); HashMap<String, Integer>
-			 * infect_site_stage_count_current = infect_site_stage_count.get(time); for
-			 * (String header : headerKey) { Integer count =
-			 * infect_site_stage_count_current.get(header); if (count == null) { count = 0;
-			 * } pWri.print(','); pWri.print(count); } pWri.println(); }
-			 * 
-			 * pWri.close();
-			 * 
-			 * if (sWri != null) { System.out.println(sWri.toString()); }
-			 * 
-			 */
+			printCountMap(countMap, fileName, "Inf_%d_Site_%d", new int[] { NUM_INF, NUM_SITE });			
 
 		}
 

@@ -21,7 +21,7 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 	final private String[] CSV_Filenames_Pattern;
 	final private String CMapId;
 	final private int[][] Entry_Pairs; // {[File_id, colNum}
-	final private int[] TimePoint; // Read last line if null 
+	final private int[] TimePoint; // Read last line if null
 
 	public Util_7Z_CSV_Entry_Extract_Callable(File baseDir, String cMapId, String[] csv_Filenames_Pattern,
 			int[][] entry_Pairs, int[] timePoint) {
@@ -145,13 +145,16 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 		}
 		return res;
 	}
-	
+
+	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile) throws IOException {
+		return extractedLinesFrom7Zip(zipFile, new HashMap<String, ArrayList<String[]>>());
+	}
 
 	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile,
 			HashMap<String, ArrayList<String[]>> zip_ent) throws IOException {
 		SevenZFile inputZip = new SevenZFile(zipFile);
 		SevenZArchiveEntry inputEnt;
-	
+
 		byte[] buf = new byte[Util_Compare_ClusterModel_Transmission_Output.BUFFER];
 		while ((inputEnt = inputZip.getNextEntry()) != null) {
 			String file_name = inputEnt.getName();
@@ -179,7 +182,7 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 		int count;
 		final int BUFFER = 2048;
 		byte[] buf = new byte[BUFFER];
-	
+
 		while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
 			str.append(new String(Arrays.copyOf(buf, count)));
 		}

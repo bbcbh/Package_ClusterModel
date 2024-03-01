@@ -732,7 +732,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					runnable[s] = new Runnable_ClusterModel_Syphilis_NG_Prophylaxis(baseContactMapSeed, simSeed,
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
 							num_snap, Float.parseFloat(m.group(1)), Integer.parseInt(m.group(2)),
-							Float.parseFloat(m.group(3)));
+							Integer.parseInt(m.group(3)));
 
 				} else if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
