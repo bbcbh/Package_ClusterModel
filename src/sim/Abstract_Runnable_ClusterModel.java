@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import relationship.ContactMap;
@@ -51,6 +52,36 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 
 	public abstract Object[] getRunnable_fields();	
 	
+
+	public static ContactMap generateContactMapAcrossTimeRange(ContactMap baseMap, int[] time_range) {
+		if (baseMap == null) {
+			return null;
+		} else {
+			ContactMap resMap = new ContactMap();
+			Set<Integer[]> edges = baseMap.edgeSet();
+			for (Integer[] e : edges) {
+				if (isEdgeBetweenTimeRange(e, time_range)) {
+					Integer p1 = e[CONTACT_MAP_EDGE_P1];
+					Integer p2 = e[CONTACT_MAP_EDGE_P2];
+					if (!resMap.containsVertex(p1)) {
+						resMap.addVertex(p1);
+					}
+					if (!resMap.containsVertex(p2)) {
+						resMap.addVertex(p2);
+					}
+					resMap.addEdge(p1, p2, e);
+				}
+			}
+			return resMap;
+		}
+	}
+
+	public static boolean isEdgeBetweenTimeRange(Integer[] e, int[] time_range) {		
+		int eStart = e[CONTACT_MAP_EDGE_START_TIME];
+		int eEnd = e[CONTACT_MAP_EDGE_START_TIME]
+				+ e[CONTACT_MAP_EDGE_DURATION];
+		return eStart < time_range[1] && eEnd >= time_range[0];
+	}
 
 	public static final Callable<ContactMap> generateContactMapCallable(File cMap_file) {
 		Callable<ContactMap> callable = new Callable<ContactMap>() {
@@ -232,5 +263,9 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		};
 		return edge_cmp;
 	}
+	
+	
+	
+	
 
 }

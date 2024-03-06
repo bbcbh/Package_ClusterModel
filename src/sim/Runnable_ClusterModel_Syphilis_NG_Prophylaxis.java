@@ -125,7 +125,7 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Runnable_Clus
 				}
 				if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] >= currentTime && pid == pid_inf_tar) { // Doesn't prevent
 																									// transmission
-					transProb *= (1 - prophylaxis_starts_at);
+					transProb *= 0;
 				}
 			}
 		}

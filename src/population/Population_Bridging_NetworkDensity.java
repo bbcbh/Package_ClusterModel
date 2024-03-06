@@ -246,28 +246,10 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 
 		}
 	}
-
+	
 	private ContactMap contactMapInLast12Months(ContactMap baseMap) {
-		if (baseMap == null) {
-			return null;
-		} else {
-			ContactMap resMap = new ContactMap();
-			Set<Integer[]> edges = baseMap.edgeSet();
-			for (Integer[] e : edges) {
-				if (isEdgelast12Month(e)) {
-					Integer p1 = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
-					Integer p2 = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2];
-					if (!resMap.containsVertex(p1)) {
-						resMap.addVertex(p1);
-					}
-					if (!resMap.containsVertex(p2)) {
-						resMap.addVertex(p2);
-					}
-					resMap.addEdge(p1, p2, e);
-				}
-			}
-			return resMap;
-		}
+		return Abstract_Runnable_ClusterModel.generateContactMapAcrossTimeRange(baseMap, 
+				new int[] {getGlobalTime()- AbstractIndividualInterface.ONE_YEAR_INT, getGlobalTime()});
 	}
 
 	private boolean hasEdgeIn12Months(ContactMap map, int pid_1, int pid_2) {
@@ -279,13 +261,6 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 		}
 
 	}
-
-	private boolean isEdgelast12Month(Integer[] e) {
-		int eStart = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
-		int eEnd = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
-				+ e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
-
-		return eStart < getGlobalTime() && eEnd >= getGlobalTime() - AbstractIndividualInterface.ONE_YEAR_INT;
-	}
+	
 
 }

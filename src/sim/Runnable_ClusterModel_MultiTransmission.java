@@ -1045,7 +1045,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
 			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE,
 					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Site_%d", new int[] { NUM_INF, NUM_SITE });			
+			printCountMap(countMap, fileName, "Inf_%d_Site_%d", new int[] { NUM_INF, NUM_SITE });
 
 		}
 
@@ -1225,16 +1225,37 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public void allocateSeedInfection(int[][] num_infected, int time) {
 		// num_infected = int[infection_id]{GENDER_INC_INDEX_0, SITE_INDEX_0,
 		// Number_INF_0,...}
+		// or
+		// num_infected = int[infection_id]{-MIN_NUM_PARTNER_IN_LAST_12_MONTHS,
+		// SITE_INDEX_0,
+		// Number_INF_0,...}
 
 		int lastPid = cUMULATIVE_POP_COMPOSITION[cUMULATIVE_POP_COMPOSITION.length - 1];
 		firstSeedTime = Math.min(firstSeedTime, time);
 
 		int inf_id = 0;
 		ArrayList<Integer> candidate = new ArrayList<>();
+
+		ContactMap cMap = null;
+		
+
+		cMapLoop: for (int[] inf_setting : num_infected) {
+			int pt = 0;
+			while (pt < inf_setting.length) {
+				if (inf_setting[pt] < 0) {
+					cMap = Abstract_Runnable_ClusterModel.generateContactMapAcrossTimeRange(bASE_CONTACT_MAP,
+							new int[] { time - AbstractIndividualInterface.ONE_YEAR_INT, time });
+					
+					break cMapLoop;
+				}
+				pt += 3;
+			}
+		}
+
 		for (int[] inf_setting : num_infected) {
 			int pt = 0;
 			while (pt < inf_setting.length) {
-				int genderInclude = inf_setting[pt];
+				int includeIndex = inf_setting[pt];
 				pt++;
 				int site_index = inf_setting[pt];
 				pt++;
@@ -1262,9 +1283,20 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					// List out all valid candidate
 					candidate.clear();
 					for (int pid = 1; pid <= lastPid; pid++) {
-						if ((genderInclude & 1 << getGenderType(pid)) > 0) {
-							candidate.add(pid);
+						if (includeIndex > 0) { // By gender group
+							if ((includeIndex & 1 << getGenderType(pid)) > 0) {
+								candidate.add(pid);
+							}
+						} else { // By Risk Group
+							int numPartLimit = -includeIndex;
+							if (cMap.containsVertex(pid)) {
+								//pWri.printf("%d,%d\n", pid, cMap.degreeOf(pid));
+								if(cMap.degreeOf(pid) >= numPartLimit) {
+									candidate.add(pid);
+								}
+							}
 						}
+
 					}
 
 					int counter = 0;
@@ -1298,6 +1330,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 			inf_id++;
 		}
+		
 	}
 
 	@Override
