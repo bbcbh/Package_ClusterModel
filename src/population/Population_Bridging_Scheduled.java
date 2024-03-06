@@ -62,10 +62,23 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	public static final int SCHEDULE_PARTNERSHIP_TYPE = SCHEDULE_PARTNERSHIP_P2 + 1;
 	public static final int LENGTH_SCHEDULE_PARTNERSHIP = SCHEDULE_PARTNERSHIP_TYPE + 1;
 
-	private static final int CANDIDATE_ARRAY_SCHEDULE_LIMIT = 0;
-	private static final int CANDIDATE_ARRAY_SOUGHT_ANY = CANDIDATE_ARRAY_SCHEDULE_LIMIT + 1;
-	private static final int CANDIDATE_ARRAY_SOUGHT_REG = CANDIDATE_ARRAY_SOUGHT_ANY + 1;
-	private static final int CANDIDATE_ARRAY_SOUGHT_CAS = CANDIDATE_ARRAY_SOUGHT_REG + 1;
+	protected static final int CANDIDATE_ARRAY_SCHEDULE_LIMIT = 0;
+	protected static final int CANDIDATE_ARRAY_SOUGHT_ANY = CANDIDATE_ARRAY_SCHEDULE_LIMIT + 1;
+	protected static final int CANDIDATE_ARRAY_SOUGHT_REG = CANDIDATE_ARRAY_SOUGHT_ANY + 1;
+	protected static final int CANDIDATE_ARRAY_SOUGHT_CAS = CANDIDATE_ARRAY_SOUGHT_REG + 1;
+
+	protected final Comparator<Integer[]> schedule_partnership_comparator = new Comparator<Integer[]>() {
+		@Override
+		public int compare(Integer[] o1, Integer[] o2) {
+			int res = 0;
+			int pt = 0;
+			while (res == 0 && pt < o1.length) {
+				res = Integer.compare(o1[pt], o2[pt]);
+				pt++;
+			}
+			return res;
+		}
+	};
 
 	public Population_Bridging_Scheduled(long seed) {
 		super(seed);
@@ -78,7 +91,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	public void setSpace_save(boolean space_save) {
 		this.space_save = space_save;
 	}
-	
+
 	public boolean isSpace_save() {
 		return this.space_save;
 	}
@@ -206,7 +219,6 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	}
 
 	@Override
-
 	public void advanceTimeStep(int deltaT) {
 
 		float[] field_mean_number_partner = (float[]) (getFields()[FIELD_MEAN_NUM_PARTNER_IN_12_MONTHS]);
@@ -269,9 +281,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				}
 
 				if (space_save) {
-					
-					String str_pattern_contactMap = 
-							Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP.replaceFirst("%d",Long.toString(getSeed()));					
+
+					String str_pattern_contactMap = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP
+							.replaceFirst("%d", Long.toString(getSeed()));
 					str_pattern_contactMap = str_pattern_contactMap.replaceFirst("%d", "(-{0,1}\\\\d+)");
 					Pattern pattern_contactMap = Pattern.compile(str_pattern_contactMap);
 					File[] oldContactMap = baseDir.listFiles(new FileFilter() {
@@ -698,7 +710,12 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 											partnerships = new ArrayList<>();
 											schedule_partnership.put(partner_form_time, partnerships);
 										}
-										partnerships.add(schedule_partnership_ent);
+
+										int pt = Collections.binarySearch(partnerships, schedule_partnership_ent,
+												schedule_partnership_comparator);
+										if (pt < 0) {
+											partnerships.add(~pt, schedule_partnership_ent);
+										}
 
 									}
 

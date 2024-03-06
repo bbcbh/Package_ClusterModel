@@ -40,7 +40,7 @@ public class Util_RiskGrpAllocation {
 		File riskGrpFile = new File(cMapFile.getParentFile(),
 				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMapSeed));
 		if (riskGrpFile.exists()) {
-			System.err.printf("Warning: %s already exists. Risk group file not generated.\n", riskGrpFile.getName());
+			System.out.printf("Warning: %s already exists. Risk group file not generated.\n", riskGrpFile.getName());
 		} else {
 			pWri.printf("Reading %s...\n", cMapFile.getName());
 			StringBuilder cMap_str = new StringBuilder();

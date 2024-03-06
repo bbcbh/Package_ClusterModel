@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
+import population.Population_Bridging_NetworkDensity;
 import population.Population_Bridging_Scheduled;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
@@ -228,6 +229,12 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
 					population = new Population_Bridging_Scheduled(popSeed);
 					((Population_Bridging_Scheduled) population).setSpace_save(space_save);
+				} else if (Population_Bridging_NetworkDensity.class.getName().equals(
+						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
+					
+					population = new Population_Bridging_NetworkDensity(popSeed);
+					((Population_Bridging_NetworkDensity) population).setSpace_save(space_save);
+					
 
 				} else {
 					population = new Population_Bridging(popSeed);
