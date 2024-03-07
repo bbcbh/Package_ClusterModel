@@ -304,23 +304,54 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				int[] switchTime = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT),
 						int[].class);
 
+				int num_snap = 1;
+				int num_time_steps_per_snap = 1;
+
+				if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
+					num_snap = Integer.parseInt(loadedProperties
+							.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
+				}
+				if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
+					num_time_steps_per_snap = Integer.parseInt(loadedProperties
+							.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
+				}
+
+				int maxTime = num_snap * num_time_steps_per_snap;
+
+				HashMap<Integer, String> ent = null;
 				for (int sI = 0; sI < switchTime.length; sI++) {
 					int sTime = switchTime[sI];
-					String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
 
-					for (Object key : prop_switch.keySet()) {
-						String keyStr = key.toString();
-						if (keyStr.startsWith(switch_prefix)) {
-							Integer runnableKey = Integer
-									.parseInt(keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
-							HashMap<Integer, String> ent = propSwitch_map.get(sTime);
-							if (ent == null) {
-								ent = new HashMap<>();
-								propSwitch_map.put(sTime, ent);
+					if (sTime > 0) {
+						String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
+
+						for (Object key : prop_switch.keySet()) {
+							String keyStr = key.toString();
+							if (keyStr.startsWith(switch_prefix)) {
+								Integer runnableKey = Integer.parseInt(
+										keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
+								ent = propSwitch_map.get(sTime);
+								if (ent == null) {
+									ent = new HashMap<>();
+									propSwitch_map.put(sTime, ent);
+								}
+								ent.put(runnableKey, prop_switch.getProperty(keyStr));
 							}
-							ent.put(runnableKey, prop_switch.getProperty(keyStr));
-
 						}
+					} else if (ent != null) {
+						int entTime = switchTime[sI - 1] + -sTime;
+						while (entTime < maxTime) {
+							HashMap<Integer, String> new_ent = propSwitch_map.get(entTime);
+							if (new_ent == null) {
+								new_ent = new HashMap<>();
+								propSwitch_map.put(entTime, new_ent);
+							}
+							for (Integer k : ent.keySet()) {
+								new_ent.put(k, ent.get(k));
+							}
+							entTime += -sTime;
+						}
+
 					}
 				}
 
@@ -526,9 +557,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					File riskGrpDir = baseDir;
 					if (!pre_allocate_risk_file.exists()) {
 						// Try loading one in cMap folder
-						if (loadedProperties.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
-							riskGrpDir = new File(
-									loadedProperties.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
+						if (loadedProperties
+								.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC) != null) {
+							riskGrpDir = new File(loadedProperties
+									.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC));
 							if (!riskGrpDir.exists() || !riskGrpDir.isDirectory()) {
 								riskGrpDir = baseDir;
 							}
@@ -1062,7 +1094,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		File riskGrpDir = baseDir;
-		
 
 		reallocateRiskGrp(prealloactedRiskGrpMap.get(baseContactMapSeed), baseContactMapSeed,
 				cumulative_pop_composition, riskCatListAll, riskGrpDir, seed);
