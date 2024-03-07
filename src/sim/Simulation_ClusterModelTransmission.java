@@ -340,7 +340,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						}
 					} else if (ent != null) {
 						int entTime = switchTime[sI - 1] + -sTime;
-						while (entTime < maxTime) {
+						while (entTime < maxTime + -sTime) {
 							HashMap<Integer, String> new_ent = propSwitch_map.get(entTime);
 							if (new_ent == null) {
 								new_ent = new HashMap<>();
@@ -351,6 +351,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							}
 							entTime += -sTime;
 						}
+						
+						
 
 					}
 				}
