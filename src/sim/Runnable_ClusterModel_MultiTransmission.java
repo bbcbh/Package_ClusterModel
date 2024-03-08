@@ -400,10 +400,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 				if (dist_sym_rate[inf_Id][site] == null) {
 					dist_sym_rate[inf_Id][site] = new RealDistribution[state + 1];
-				} else if (dist_sym_rate[inf_Id][site].length < state) {
+				} else if (!(state < dist_sym_rate[inf_Id][site].length)) {
 					dist_sym_rate[inf_Id][site] = Arrays.copyOf(dist_sym_rate[inf_Id][site], state + 1);
 				}
-
 				if (param.length == 1) {
 					dist_sym_rate[inf_Id][site][state] = generateNonDistribution(param);
 				} else {
@@ -555,7 +554,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							if (state_change_today.get(inf_id).get(site_id) != null
 									&& state_change_today.get(inf_id).get(site_id).size() > 0) {
 								ArrayList<Integer> state_change_pids = state_change_today.get(inf_id).get(site_id);
-
 								// Update infection state
 								for (Integer pid : state_change_pids) {
 									int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
@@ -584,7 +582,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int infected_site_id = Integer.parseInt(key_s[1]);
 
 				for (Integer pid_inf_src : currenty_infectious_ent) {
-
 					if (cMap.containsVertex(pid_inf_src)) {
 						int g_s = getGenderType(pid_inf_src);
 						Integer[][] edges = cMap.edgesOf(pid_inf_src).toArray(new Integer[0][]);
@@ -655,6 +652,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								double[] fieldEntry = table_act_frequency[a][g_s][g_t];
 								for (int s = 0; s < 2; s++) { // if s==0 p_1=site_1, else p_1=site_2
 									if ((hasActed[a] & 1 << s) != 0) {
+
 										int p1_site, p2_site;
 										p1_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P1]
 												: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
@@ -676,6 +674,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 												if (transProb > 0) {
 													if (RNG.nextDouble() < transProb) {
+
 														// Transmission successful
 														cumul_incidence_by_site[inf_id][g_t][tar_site]++;
 
@@ -723,7 +722,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				} // End of checking one infectious
 			} // End loop for all infectious infection-site combinations
 
-			// Transmission acts among non-infectious
+			// Simulate acts among non-infectious
 			simulate_non_infectious_act(currentTime, cMap, acted_today);
 
 			// Testing
@@ -731,7 +730,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			if (testToday != null) {
 				for (int[] testing_stat : testToday) {
 					// Testing stat: int[]{PID,INF_INCLUDE_INDEX,SITE_INCLUDE_INDEX}
-					int pid = testing_stat[0];
+					// symptomatic or one off test if PID < 0
+					int pid = Math.abs(testing_stat[0]);
 					int infIncl = testing_stat[1];
 					int siteIncl = testing_stat[2];
 					for (int infId = 0; infId < NUM_INF; infId++) {
@@ -748,9 +748,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 									if (test_properies != null) {
 										inf_stage = map_currrent_infection_stage.get(pid);
 										if (inf_stage != null && inf_stage[infId][siteId] >= 0) {
-
 											int test_state_inc_pt = FIELD_DX_TEST_PROPERTIES_STAGE_INC_START;
-
 											while (test_state_inc_pt < test_properies.length) {
 												tested_stage_inc = (int) test_properies[test_state_inc_pt];
 												if ((tested_stage_inc & 1 << inf_stage[infId][siteId]) != 0) {
@@ -772,6 +770,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							}
 						} // End of testing for infection
 					} // Check if infection is tested
+
+					// Schedule next test
+					if (testing_stat[0] > 0) {
+						scheduleNextTest(pid, currentTime);
+					}
+
 				} // End of testing for single individual
 			} // End of all scheduled testing for today
 
@@ -850,17 +854,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						}
 					}
 
-					
-
-					// Not used
-
 					key = String.format(SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT,
 							Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
 
 					@SuppressWarnings("unchecked")
 					HashMap<Integer, HashMap<String, Integer>> current_infected_site_stage_count = (HashMap<Integer, HashMap<String, Integer>>) sim_output
 							.get(key);
-
 					if (current_infected_site_stage_count == null) {
 						current_infected_site_stage_count = new HashMap<>();
 						sim_output.put(key, current_infected_site_stage_count);
@@ -868,17 +867,18 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 					HashMap<String, Integer> infect_site_stage_count_current = new HashMap<>();
 					current_infected_site_stage_count.put(currentTime, infect_site_stage_count_current);
-
 					for (Integer pid : map_currrent_infection_stage.keySet()) {
 						int[][] inf_stage = map_currrent_infection_stage.get(pid);
 						for (int i = 0; i < NUM_INF; i++) {
 							for (int s = 0; s < NUM_SITE; s++) {
-								String count_key = String.format("%d,%d,%d", i, s, inf_stage[i][s]);
-								Integer ent = infect_site_stage_count_current.get(count_key);
-								if (ent == null) {
-									ent = 0;
+								if (inf_stage[i][s] != AbstractIndividualInterface.INFECT_S) {
+									String count_key = String.format("%d,%d,%d", i, s, inf_stage[i][s]);
+									Integer ent = infect_site_stage_count_current.get(count_key);
+									if (ent == null) {
+										ent = 0;
+									}
+									infect_site_stage_count_current.put(count_key, ent + 1);
 								}
-								infect_site_stage_count_current.put(count_key, ent + 1);
 							}
 						}
 					}
@@ -1028,80 +1028,17 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
-		String key, fileName;
-		HashMap<Integer, int[]> countMap;
-		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
-
-		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
-			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
-
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
-					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER });
-
-		}
-		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
-			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON,
-					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER });
-
-			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE_SITE,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
-
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE,
-					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Site_%d", new int[] { NUM_INF, NUM_GENDER, NUM_SITE });
-
-		}
-
-		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
-
-			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(
-					filePrefix + "Infectious_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON,
-					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER });
-
-			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(
-					filePrefix + "Infectious_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE,
-					cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Site_%d", new int[] { NUM_INF, NUM_SITE });
-
-			key = String.format(SIM_OUTPUT_KEY_INFECTED_AT_GENDER_COUNT,
-					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
-			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
-			fileName = String.format(
-					filePrefix + "Infected_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE, cMAP_SEED,
-					sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Infected_at_sites_%d",
-					new int[] { NUM_INF, NUM_GENDER, 1 << (NUM_SITE + 1) });
-
-		}
-
-		if (print_progress != null && runnableId != null) {
-			try {
-				print_progress.printf("Post simulation file generation for Thread <%s> completed. Timestamp = %tc.\n",
-						runnableId, System.currentTimeMillis());
-			} catch (Exception ex) {
-				System.err.printf("Post simulation file generation for Thread <%s> completed.\n", runnableId);
-			}
-		}
+		System.out.printf("Warning. %s.postSimulation() not set or overwritten.\n", this.getClass().getName());
+		// Do nothing - but could be overwritten by subclasses
 	}
 
 	public void printCountMap(HashMap<Integer, int[]> countMap, String fileName, String headerFormat, int[] dimension) {
+		printCountMap(countMap, fileName, headerFormat, dimension, null);
+	}
+
+	public void printCountMap(HashMap<Integer, int[]> countMap, String fileName, String headerFormat, int[] dimension,
+			int[] col_to_print) {
 
 		PrintWriter pWri;
 		StringWriter s = null;
@@ -1115,8 +1052,22 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		// Header
 		pWri.print("Time");
-		recursiveHeaderGeneration(dimension, 0, headerFormat, pWri);
-		pWri.println();
+		StringBuilder header = new StringBuilder();
+		recursiveHeaderGeneration(dimension, 0, headerFormat, header);
+		if (col_to_print != null) {
+			StringBuilder sel_header = new StringBuilder();
+			String[] ent = header.toString().split(",");
+			for (int col_sel : col_to_print) { // Offset of 1
+				if (col_sel + 1 < ent.length) {
+					sel_header.append(',');
+					sel_header.append(ent[col_sel + 1]);
+				}
+			}
+
+			header = sel_header;
+		}
+
+		pWri.println(header.toString());
 
 		// Entry
 		Integer[] timePt = countMap.keySet().toArray(new Integer[countMap.size()]);
@@ -1125,8 +1076,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			int[] ent = countMap.get(time);
 			pWri.print(time);
 			for (int i = 0; i < ent.length; i++) {
-				pWri.print(',');
-				pWri.print(ent[i]);
+				if (col_to_print == null || Arrays.binarySearch(col_to_print, i) >= 0) {
+					pWri.print(',');
+					pWri.print(ent[i]);
+				}
 			}
 			pWri.println();
 		}
@@ -1139,15 +1092,17 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	}
 
-	private void recursiveHeaderGeneration(int[] dimension, int dPt, String seedStr, PrintWriter pWri) {
+	private void recursiveHeaderGeneration(int[] dimension, int dPt, String seedStr, StringBuilder strBuilder) {
 		for (int i = 0; i < dimension[dPt]; i++) {
 			if (dPt == dimension.length - 1) {
-				pWri.print(',');
-				pWri.print(seedStr.replaceFirst("%d", Integer.toString(i)));
+				strBuilder.append(',');
+				strBuilder.append(seedStr.replaceFirst("%d", Integer.toString(i)));
 			} else {
-				recursiveHeaderGeneration(dimension, dPt + 1, seedStr.replaceFirst("%d", Integer.toString(i)), pWri);
+				recursiveHeaderGeneration(dimension, dPt + 1, seedStr.replaceFirst("%d", Integer.toString(i)),
+						strBuilder);
 			}
 		}
+
 	}
 
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
@@ -1460,7 +1415,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		int pt;
 		double state_duration;
 		int infect_switch_time = current_time;
-
 		if (current_infection_stage == STAGE_ID_JUST_INFECTED) {
 			String key = String.format("%d,%d,%d", infection_id, site_id, STAGE_ID_JUST_INFECTED);
 			ArrayList<double[]> optionsArr = lookupTable_instant_stage_switch.get(key);
@@ -1497,7 +1451,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					(int) dist_stage_period[infection_id][site_id][current_infection_stage].sample());
 
 		} else {
-
 			if (state_duration_preset <= 0) {
 				while (infect_switch_time == current_time) {
 					String key = String.format("%d,%d,%d", infection_id, site_id, current_infection_stage);
@@ -1508,7 +1461,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						infect_switch_time = -1;
 						break;
 					} else {
-
 						int state_pt = Arrays.binarySearch(nextProb, 0, nextProb.length / 2, RNG.nextDouble());
 						if (state_pt <= 0) {
 							state_pt = ~state_pt;
@@ -1572,14 +1524,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					day_sch = new ArrayList<>();
 					schedule_testing.put(nextTestDate, day_sch);
 				}
-				int[] test_pair = new int[] { pid, 1 << infection_id, 1 << site_id };
+				int[] test_pair = new int[] { -pid, 1 << infection_id, 1 << site_id }; // -ive pid for symptomatic test
+
 				int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
 					@Override
 					public int compare(int[] o1, int[] o2) {
 						int res = 0;
 						int pt = 0;
 						while (res == 0 && pt < o1.length) {
-							res = Integer.compare(o1[pt], o2[pt]);
+							res = Integer.compare(Math.abs(o1[pt]), Math.abs(o2[pt]));
 							pt++;
 						}
 						return res;
