@@ -3177,6 +3177,7 @@ public class Optimisation_Factory {
 				if (val != null) {
 					int setting_level = 1;
 					switch (param_name_index - RUNNABLE_OFFSET) {
+					/*
 					case Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
 						double[][] inf_dur = (double[][]) val;
 						int site_key = Integer.parseInt(param_setting_arr[1]);
@@ -3189,6 +3190,8 @@ public class Optimisation_Factory {
 							}
 						}
 						break;
+					*/	
+					/*	
 					case Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
 						double[] sought_test_param = (double[]) val;
 						int index_key = Integer.parseInt(param_setting_arr[1]);
@@ -3203,6 +3206,7 @@ public class Optimisation_Factory {
 							}
 						}
 						break;
+					*/
 					default:
 						recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 

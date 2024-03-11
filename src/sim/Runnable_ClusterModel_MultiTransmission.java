@@ -1256,7 +1256,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int num_inf = inf_setting[pt];
 				pt++;
 
-				int validStage = lookupTable_infection_infectious_stages[inf_id][site_index];
+				int validStage = 1; //lookupTable_infection_infectious_stages[inf_id][site_index];
 
 				if (validStage == 0) {
 					System.err.printf("Warning: no infectious stage find for Inf_#%d at site #%d.\n", inf_id,
