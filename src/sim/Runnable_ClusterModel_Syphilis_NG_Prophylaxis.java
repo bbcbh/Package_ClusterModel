@@ -68,7 +68,7 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Runnable_Clus
 				Arrays.fill(prop_rec, -1);
 				prophylaxis_record.put(pid, prop_rec);
 			}
-			if (RNG.nextFloat() < prophylaxis_uptake_per_treatment) {
+			if (prophylaxis_uptake_per_treatment > 0 && RNG.nextFloat() < prophylaxis_uptake_per_treatment) {
 				if (prop_rec[PROPHYLAXIS_REC_LAST_OFFER_AT] < currentTime) {
 					prop_rec[PROPHYLAXIS_REC_DOSAGE] = prophylaxis_dosage_max;
 					prop_rec[PROPHYLAXIS_REC_LAST_UPTAKE_AT] = currentTime;
@@ -84,6 +84,27 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Runnable_Clus
 
 	@Override
 	protected void simulate_non_infectious_act(int currentTime, ContactMap cMap, HashMap<String, int[]> acted_today) {
+
+		if (prophylaxis_uptake_per_treatment < 0 && currentTime == prophylaxis_starts_at) {
+			float prophylaxis_update_mass_rate = -prophylaxis_uptake_per_treatment;
+			for (Integer pid : cMap.vertexSet()) {
+				if (RNG.nextFloat() < prophylaxis_update_mass_rate) {
+					int[] prop_rec = prophylaxis_record.get(pid);
+					if (prop_rec == null) {
+						prop_rec = new int[LENGTH_PROPHYLAXIS_REC];
+						Arrays.fill(prop_rec, -1);
+						prophylaxis_record.put(pid, prop_rec);
+					}
+
+					if (prop_rec[PROPHYLAXIS_REC_LAST_OFFER_AT] < currentTime) {
+						prop_rec[PROPHYLAXIS_REC_DOSAGE] = prophylaxis_dosage_max;
+						prop_rec[PROPHYLAXIS_REC_LAST_UPTAKE_AT] = currentTime;
+					}
+
+				}
+			}
+		}
+
 		for (Integer pid_inf : prophylaxis_record.keySet()) {
 			int[] prop_rec = prophylaxis_record.get(pid_inf);
 
