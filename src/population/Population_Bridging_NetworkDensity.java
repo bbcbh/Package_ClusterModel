@@ -19,10 +19,13 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 
 	// As defined in Karang et al. doi:10.53638/phpma.2017.v5.i1.p15
 	private static final int NETWORK_DENSITY_LVL_3 = 3; // at least 3 sexual relations,
-	private static final int NETWORK_DENSITY_LVL_4 = NETWORK_DENSITY_LVL_3+1; // at least 4 sexual relations with one common partner
-	private static final int NETWORK_DENSITY_LVL_5 = NETWORK_DENSITY_LVL_4+1; // at least 5 sexual relations and 2 common partners
-	private static final int NETWORK_DENSITY_LVL_6 = NETWORK_DENSITY_LVL_5+1; // at least 6 sexual relations where at least 2 common partners
-														// also has partnership
+	private static final int NETWORK_DENSITY_LVL_4 = NETWORK_DENSITY_LVL_3 + 1; // at least 4 sexual relations with one
+																				// common partner
+	private static final int NETWORK_DENSITY_LVL_5 = NETWORK_DENSITY_LVL_4 + 1; // at least 5 sexual relations and 2
+																				// common partners
+	private static final int NETWORK_DENSITY_LVL_6 = NETWORK_DENSITY_LVL_5 + 1; // at least 6 sexual relations where at
+																				// least 2 common partners
+	// also has partnership
 
 	private static final int[] N_PER_LVL = new int[] { 99, 20, 5, 1 };
 	private static float N_SUM;
@@ -30,12 +33,6 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 	private RandomGenerator RNG_density;
 
 	ContactMap cMapLast12Months = new ContactMap();
-
-	HashMap<Integer, int[]> density_record = new HashMap<>(); // Key = PID, V= {Density_Lvl, valid_until}
-
-	private static final int DENSITY_RECORD_LVL = 0;
-	private static final int DENSITY_RECORD_VALID_UNTIL = DENSITY_RECORD_LVL + 1;
-	private static final int LENGTH_DENSITY_RECORD = DENSITY_RECORD_VALID_UNTIL + 1;
 
 	public Population_Bridging_NetworkDensity(long seed) {
 		super(seed);
@@ -106,71 +103,68 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 		HashMap<Integer, ArrayList<Integer[]>> lookup_no_partnership_between_partners = new HashMap<>();
 
 		// Clear out all partner that finished 12 months ago
+		ArrayList<Integer[]> edge_to_remove = new ArrayList<>();
+
 		for (Integer[] e : cMapLast12Months.edgeSet()) {
 			if (getGlobalTime() > AbstractIndividualInterface.ONE_YEAR_INT
 					&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
 							+ e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] < getGlobalTime()
 									- AbstractIndividualInterface.ONE_YEAR_INT) {
-				cMapLast12Months.removeEdge(e);
+				edge_to_remove.add(e);
 			}
 		}
 
+		for (Integer[] e : edge_to_remove) {
+			cMapLast12Months.removeEdge(e);
+		}
+
 		for (Integer index_pid : cMapLast12Months.vertexSet()) {
-			int[] density_record_ent = density_record.get(index_pid);
-			if (density_record_ent != null && density_record_ent[DENSITY_RECORD_VALID_UNTIL] < getGlobalTime()) {
-				lookup_densityLevel.put(index_pid, density_record_ent[DENSITY_RECORD_LVL]);
-			} else {
-				if (cMapLast12Months.degreeOf(index_pid) >= 3) {
-					if (density_record_ent == null) {
-						density_record_ent = new int[LENGTH_DENSITY_RECORD];
-						density_record.put(index_pid, density_record_ent);
+
+			if (cMapLast12Months.degreeOf(index_pid) >= 3) {
+
+				ArrayList<Integer> connection = new ArrayList<>();
+				Set<Integer[]> edgeAll = cMapLast12Months.edgesOf(index_pid);
+
+				int firstMatchAt = Integer.MAX_VALUE;
+				int validUntil = Integer.MAX_VALUE;
+				int density_lvl = NETWORK_DENSITY_LVL_3;
+
+				for (Integer[] e : edgeAll) {
+					Integer partner = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1].equals(index_pid)
+							? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
+							: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
+
+					int pt = Collections.binarySearch(connection, partner);
+					if (pt < 0) {
+						connection.add(~pt, partner);
 					}
-
-					ArrayList<Integer> connection = new ArrayList<>();
-					Set<Integer[]> edgeAll = cMapLast12Months.edgesOf(index_pid);
-
-					int firstMatchAt = Integer.MAX_VALUE;
-					int validUntil = Integer.MAX_VALUE;
-					int density_lvl = NETWORK_DENSITY_LVL_3;
-
-					for (Integer[] e : edgeAll) {
-						Integer partner = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1].equals(index_pid)
-								? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
-								: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
-
-						int pt = Collections.binarySearch(connection, partner);
-						if (pt < 0) {
-							connection.add(~pt, partner);
-						}
-						firstMatchAt = Math.min(firstMatchAt,
-								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
-						validUntil = Math.min(validUntil,
-								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
-										+ e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]
-										+ AbstractIndividualInterface.ONE_YEAR_INT);
-					}
-
-					Integer[] partners = connection.toArray(new Integer[0]);
-					ArrayList<Integer[]> no_partnership_array_index = new ArrayList<>();
-
-					for (int p1 = 0; p1 < partners.length; p1++) {
-						for (int p2 = p1 + 1; p2 < partners.length; p2++) {
-							if (!cMapLast12Months.containsEdge(partners[p1], partners[p2])) {
-								no_partnership_array_index.add(new Integer[] { partners[p1], partners[p2] });
-							} else {
-								density_lvl = Math.min(density_lvl + 1, NETWORK_DENSITY_LVL_6);
-							}
-						}
-					}
-					lookup_partners.put(index_pid, partners);
-					lookup_no_partnership_between_partners.put(index_pid, no_partnership_array_index);
-					lookup_densityLevel.put(index_pid, density_lvl);
-					lookup_firstMatchFrom.put(index_pid, firstMatchAt);
-
-					density_record_ent[DENSITY_RECORD_LVL] = density_lvl;
-					density_record_ent[DENSITY_RECORD_VALID_UNTIL] = validUntil;
+					firstMatchAt = Math.min(firstMatchAt,
+							e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+					validUntil = Math.min(validUntil,
+							e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
+									+ e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]
+									+ AbstractIndividualInterface.ONE_YEAR_INT);
 				}
+
+				Integer[] partners = connection.toArray(new Integer[0]);
+				ArrayList<Integer[]> no_partnership_array_index = new ArrayList<>();
+
+				for (int p1 = 0; p1 < partners.length; p1++) {
+					for (int p2 = p1 + 1; p2 < partners.length; p2++) {
+						if (!cMapLast12Months.containsEdge(partners[p1], partners[p2])) {
+							no_partnership_array_index.add(new Integer[] { partners[p1], partners[p2] });
+						} else {
+							density_lvl = Math.min(density_lvl + 1, NETWORK_DENSITY_LVL_6);
+						}
+					}
+				}
+				lookup_partners.put(index_pid, partners);
+				lookup_no_partnership_between_partners.put(index_pid, no_partnership_array_index);
+				lookup_densityLevel.put(index_pid, density_lvl);
+				lookup_firstMatchFrom.put(index_pid, firstMatchAt);
+
 			}
+
 		}
 
 		// Analyse density from individual level
@@ -212,30 +206,31 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 					}
 
 					int indexSel = densityLvlCandidates.get(colSel)
-							.remove(RNG_density.nextInt(densityLvlCandidates.get(colSel).size()));					
+							.remove(RNG_density.nextInt(densityLvlCandidates.get(colSel).size()));
 
 					int partnerBeforeTime = lookup_firstMatchFrom.get(indexSel)
 							+ AbstractIndividualInterface.ONE_YEAR_INT;
 
 					if (partnerBeforeTime > getGlobalTime()) {
-						
-						ArrayList<Integer[]> no_partnership_index = lookup_no_partnership_between_partners.get(indexSel);
+
+						ArrayList<Integer[]> no_partnership_index = lookup_no_partnership_between_partners
+								.get(indexSel);
 						int numConnectionToAdd = (int) Math.min(dI - colSel, no_partnership_index.size());
 
 						// Schedule a future partnership to schedule
 						while (numConnectionToAdd > 0) {
-							
+
 							Integer[] selectPartner = no_partnership_index
 									.remove(RNG_density.nextInt(no_partnership_index.size()));
-							
+
 							int partnershipFormTime = getGlobalTime()
 									+ RNG_density.nextInt(partnerBeforeTime - getGlobalTime());
 							Integer[] newEdge = new Integer[] { selectPartner[0], selectPartner[1],
-									CANDIDATE_ARRAY_SOUGHT_ANY};
+									CANDIDATE_ARRAY_SOUGHT_ANY };
 
 							ArrayList<Integer[]> schedule_partnership_ent = schedule_partnership
 									.get(partnershipFormTime);
-							
+
 							if (schedule_partnership_ent == null) {
 								schedule_partnership_ent = new ArrayList<>();
 								schedule_partnership.put(partnershipFormTime, schedule_partnership_ent);
@@ -253,16 +248,18 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 				}
 			}
 
-			System.out.printf("Time = %d. Unadj. density=%s. Adj. density = %s.\n", getGlobalTime(), init_count,
-					Arrays.toString(count));
 			if (reportPartnerStat) {
+				System.out.printf("Time = %d. Unadj. density=%s. Ideal. density = %s.\n", getGlobalTime(), init_count,
+						Arrays.toString(idealCount));
 				if (printStatus != null) {
 					if (reportPartnerStat) {
-						String str_networkDensity = String.format("Time = %d. Network densitiy = %s", getGlobalTime(),
+						String str_networkDensity = String.format("Network densitiy at Time %d = %s", getGlobalTime(),
 								init_count);
 						for (PrintStream pWri : printStatus) {
 							pWri.println(str_networkDensity);
+							pWri.println();
 						}
+
 					}
 				}
 			}
@@ -271,5 +268,4 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 
 	}
 
-	
 }
