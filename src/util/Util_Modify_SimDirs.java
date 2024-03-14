@@ -382,9 +382,16 @@ public class Util_Modify_SimDirs {
 				File subZip = new File(tarDir, String.format("%s_%s.csv.7z", m.group(2), m.group(3)));
 
 				if (subZip.exists()) {
-					System.err.printf("Error: Target zip %s already exist. Exiting...");
-					System.exit(1);
-				} else {
+					System.out.printf("Error: Target zip %s already exist. Target zip are to be renamed.\n", subZip.getName());
+					int extra = 0;
+					while (subZip.exists()) {
+						subZip = new File(tarDir, String.format("%s_%s_%d.csv.7z", m.group(2), m.group(3), extra));
+						extra++;
+					}
+
+				}
+
+				if (!subZip.exists()) {
 					System.out.printf("Generating %s ....", subZip.getAbsolutePath());
 					Simulation_ClusterModelTransmission.zipSelectedOutputs(tarDir, subZip.getName(), subCSVPatten,
 							true);
