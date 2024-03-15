@@ -229,12 +229,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			new float[][] { null, null, DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM,
 					DEFAULT_RISK_CATEGORIES_CASUAL_PARNTERS_MSM },
 			// RUNNABLE_FIELD_TESTING_RATE_BY_RISK_CATEGORIES
-			// Alt format: Number[] 
-			//{-genderIncl_Index, numRiskGrp, numCasualPartnerCat
+			// Alt format: Number[]
+			// {-genderIncl_Index, numRiskGrp, numCasualPartnerCat
 			// numCasualPartCatUpperRange_0, numCasualPartCatUpperRange_1 ...
 			// riskGrp0_Cat0, riskGrp0_Cat1, ...
 			// riskGrp1_Cat0, riskGrp1_Cat1, ...}
-			
+
 			new float[][][] { null, null, DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM,
 					DEFAULT_TESTING_RATE_BY_CATEGORIES_MSM },
 			// RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
@@ -483,20 +483,28 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		float[][] testRate = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES])[genderType];
 		if (testRate != null) {
-			int riskCat = Math.max(0, getRiskCategories(personId, genderType));
-			float[] testRateByCat = testRate[riskCat];
-			int divder = (testRateByCat.length - 1) / 2;
+			int riskCat = getRiskCategories(personId, genderType);
 
-			int pI;
-
-			float p = RNG.nextFloat();
-			pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
-			if (pI < 0) {
-				pI = ~pI;
+			int pI;			
+			float[] testRateByCat;
+			int divder;
+			
+			if (riskCat >= 0) {
+				testRateByCat = testRate[riskCat];
+				divder = (testRateByCat.length - 1) / 2;
+				float p = RNG.nextFloat();
+				pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
+				if (pI < 0) {
+					pI = ~pI;
+				}
+			} else {
+				testRateByCat = testRate[0];
+				divder = (testRateByCat.length - 1) / 2;
+				pI = ~riskCat; // Pre-defined pI				
+				
 			}
 
 			if (pI < divder) {
-
 				double testGapTime = (testRateByCat[divder + pI] + testRateByCat[divder + pI + 1]) / 2;
 				testGapTime *= 1 + RNG.nextGaussian() / 10;
 
@@ -542,26 +550,42 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			float[] riskCatList = ((float[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS])[genderType];
 
 			if (riskCatList != null) {
-				int numCasual = 0;
-				int firstPartnerTime = Integer.MAX_VALUE;
-				int lastPartnerTime = 0;
-				Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
-				for (Integer[] e : edges) {
-					if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
-							&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
-						firstPartnerTime = Math.min(firstPartnerTime,
-								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
-						lastPartnerTime = Math.max(lastPartnerTime,
-								e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
-						numCasual++;
+				if (riskCatList.length == 1) {
+					// Use base testing rate if it only has one catergories					
+					float[] unitform_testRate = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES])[genderType][0];
+					if (unitform_testRate != null) {
+						float p = RNG.nextFloat();
+						int pI = Arrays.binarySearch(unitform_testRate, 0, (unitform_testRate.length - 1)/ 2, p);
+						if(pI < 0) {
+							pI = ~pI;
+						}
+						riskCat = ~pI;
+					}else {
+						riskCat = 0;
 					}
-				}
 
-				float numCasualPerYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual)
-						/ (lastPartnerTime - firstPartnerTime);
-				riskCat = Arrays.binarySearch(riskCatList, numCasualPerYear);
-				if (riskCat < 0) {
-					riskCat = ~riskCat;
+				} else {
+					int numCasual = 0;
+					int firstPartnerTime = Integer.MAX_VALUE;
+					int lastPartnerTime = 0;
+					Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
+					for (Integer[] e : edges) {
+						if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
+								&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
+							firstPartnerTime = Math.min(firstPartnerTime,
+									e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+							lastPartnerTime = Math.max(lastPartnerTime,
+									e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+							numCasual++;
+						}
+					}
+
+					float numCasualPerYear = (((float) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual)
+							/ (lastPartnerTime - firstPartnerTime);
+					riskCat = Arrays.binarySearch(riskCatList, numCasualPerYear);
+					if (riskCat < 0) {
+						riskCat = ~riskCat;
+					}
 				}
 
 			}
@@ -598,14 +622,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 		}
 	}
-	
-	
+
 	@Override
-	public int addInfectious(Integer infectedId, int intId_not_used, int site, int state_not_used, int infectious_time, int recoveredAt) {
+	public int addInfectious(Integer infectedId, int intId_not_used, int site, int state_not_used, int infectious_time,
+			int recoveredAt) {
 		// Single Infection
 		return addInfectious(infectedId, site, infectious_time, recoveredAt);
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public int addInfectious(Integer infectedId, int site, int infectious_time, int recoveredAt) {
 		int key = Collections.binarySearch(currently_infectious[site], infectedId);
@@ -762,7 +786,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			Integer[][] edges_array = getEdgesArrayFromBaseConctactMap();
 			int edges_array_pt = 0;
-			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();			
+			HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
 			edges_array_pt = initaliseCMap(cMap, edges_array, edges_array_pt, startTime, removeEdges);
 
 			// Pre allocate risk categories (mainly form MSM)
@@ -778,7 +802,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			boolean hasInfected = hasInfectedInPop();
 
-			ArrayList<Integer> infected_today = new ArrayList<>();			
+			ArrayList<Integer> infected_today = new ArrayList<>();
 
 			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];
@@ -1419,7 +1443,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) > 0) {
 				ArrayList<Integer>[] hist = infection_history.get(test_pid);
 				hist[hist.length - 1].add(-currentTime); // -ive = treatment
-			}					
+			}
 
 			for (int site = 0; site < LENGTH_SITE; site++) {
 				if (infectious_key_index[site] >= 0) {
@@ -2034,7 +2058,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	@Override
 	public void refreshField(int fieldId, boolean clearAll) {
 		// Not used
-		
+
 	}
 
 }
