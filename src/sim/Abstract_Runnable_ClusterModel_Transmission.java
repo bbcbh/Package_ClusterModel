@@ -77,6 +77,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected ArrayList<Integer[]> edges_list;
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
 	protected transient HashMap<Integer, Integer> risk_cat_map;
+	protected transient HashMap<Integer, Integer> test_rate_index_map;
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
 
@@ -323,7 +324,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				String line;
 				
 				if (risk_cat_map == null) {
-					risk_cat_map = new HashMap<>();
+					risk_cat_map = new HashMap<>();					
+
 				}
 				
 				while ((line = reader.readLine()) != null) {

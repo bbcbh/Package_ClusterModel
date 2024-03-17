@@ -472,6 +472,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 
 		sim_output = new HashMap<>();
+		
+		risk_cat_map = new HashMap<>();
+		test_rate_index_map = new HashMap<>();
 	}
 
 	@Override

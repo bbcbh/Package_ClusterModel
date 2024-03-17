@@ -424,6 +424,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		if (risk_cat_map == null) {
 			risk_cat_map = new HashMap<>();
 		}
+		test_rate_index_map = new HashMap<>();
 
 		// For infection tracking
 		// Key = pid, V = [infection_start_time_1, infection_end_time_1...];
@@ -485,23 +486,27 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		if (testRate != null) {
 			int riskCat = getRiskCategories(personId, genderType);
 
-			int pI;			
+			int pI;
 			float[] testRateByCat;
 			int divder;
-			
+
 			if (riskCat >= 0) {
 				testRateByCat = testRate[riskCat];
-				divder = (testRateByCat.length - 1) / 2;
-				float p = RNG.nextFloat();
-				pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
-				if (pI < 0) {
-					pI = ~pI;
+				divder = (testRateByCat.length - 1) / 2;				
+				if (test_rate_index_map.containsKey(personId)) {
+					pI = test_rate_index_map.get(personId);
+				} else {
+					float p = RNG.nextFloat();
+					pI = Arrays.binarySearch(testRateByCat, 0, divder, p);
+					if (pI < 0) {
+						pI = ~pI;
+					}
+					test_rate_index_map.put(personId, pI);					
 				}
 			} else {
 				testRateByCat = testRate[0];
 				divder = (testRateByCat.length - 1) / 2;
-				pI = ~riskCat; // Pre-defined pI				
-				
+				pI = ~riskCat; // Pre-defined pI
 			}
 
 			if (pI < divder) {
@@ -551,16 +556,16 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			if (riskCatList != null) {
 				if (riskCatList.length == 1) {
-					// Use base testing rate if it only has one catergories					
+					// Use base testing rate if it only has one catergories
 					float[] unitform_testRate = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES])[genderType][0];
 					if (unitform_testRate != null) {
 						float p = RNG.nextFloat();
-						int pI = Arrays.binarySearch(unitform_testRate, 0, (unitform_testRate.length - 1)/ 2, p);
-						if(pI < 0) {
+						int pI = Arrays.binarySearch(unitform_testRate, 0, (unitform_testRate.length - 1) / 2, p);
+						if (pI < 0) {
 							pI = ~pI;
 						}
 						riskCat = ~pI;
-					}else {
+					} else {
 						riskCat = 0;
 					}
 
@@ -1714,7 +1719,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	 */
 	@SuppressWarnings("unchecked")
 	protected void postSimulation(Object[] simulation_store) {
-		PrintWriter pWri;
+
 		HashMap<Integer, int[][]> count_map;
 		HashMap<Integer, int[]> count_map_by_person;
 		StringBuilder str = null;
@@ -1756,6 +1761,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 
 				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
+					PrintWriter pWri;
 					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT);
 					str = printCountMap(count_map, "Gender_%d_Site_%d");
 					pWri = new PrintWriter(new File(baseDir,
@@ -1775,6 +1781,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				}
 				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
+					PrintWriter pWri;
 					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE);
 					str = printCountMap(count_map, "Gender_%d_Site_%d");
 					pWri = new PrintWriter(new File(baseDir,
@@ -1795,6 +1802,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					pWri.close();
 				}
 				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
+					PrintWriter pWri;
 
 					count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
 					str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
@@ -1832,6 +1840,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				if ((simSetting
 						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_INFECTION_HISTORY) != 0) {
+					PrintWriter pWri;
 					Integer[] pids = infection_history.keySet().toArray(new Integer[infection_history.size()]);
 					Arrays.sort(pids);
 					pWri = new PrintWriter(new File(baseDir,
@@ -1857,6 +1866,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				if ((simSetting
 						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
+					PrintWriter pWri;
 					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE);
 					str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 },
 							"Gender_%d_Usage_%d"); // Proper, Over treatment
@@ -1872,6 +1882,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE) != 0) {
 					HashMap<Integer, int[][][]> count_map_vacc = (HashMap<Integer, int[][][]>) sim_output
 							.get(SIM_OUTPUT_VACCINE_COVERAGE);
+					PrintWriter pWri;
 					pWri = new PrintWriter(new File(baseDir,
 							String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_VACCINE_COVERAGE,
 									cMAP_SEED, sIM_SEED)));
