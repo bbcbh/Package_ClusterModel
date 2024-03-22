@@ -760,7 +760,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (runSim) {
-				if (Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+				if(Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+					runnable[s] = new Runnable_ClusterModel_Bali(baseContactMapSeed, simSeed, 
+							pop_composition, baseContactMapMapping.get(baseContactMapSeed), 
+							num_time_steps_per_snap, num_snap);										
+				}else if (Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType);
 					m.matches();
 					runnable[s] = new Runnable_ClusterModel_Syphilis_NG_Prophylaxis(baseContactMapSeed, simSeed,

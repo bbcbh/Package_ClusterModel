@@ -299,6 +299,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient float[] vaccine_allocation_limit = new float[Population_Bridging.LENGTH_GENDER];
 
 	protected transient RealDistribution[][] vacc_dur = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
+	protected transient HashMap<Integer, Integer> test_rate_index_map;
 
 	// HashMap<Integer, int[][]> with K = time, V= int[gender][site]
 	public static final String SIM_OUTPUT_INFECTIOUS_COUNT = "SIM_OUTPUT_INFECTIOUS_COUNT";
@@ -477,6 +478,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 		schedule_vaccination = new HashMap<>();
 
+	}
+	
+	public void test_rate_index_map_reset() {
+		test_rate_index_map.clear();
 	}
 
 	public void scheduleNextTest(Integer personId, int lastTestTime) {

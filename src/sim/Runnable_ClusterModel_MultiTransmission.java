@@ -175,6 +175,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient RealDistribution[][][] dist_stage_period; // RealDistribution[INF_ID][SITE][STAGE_ID]
 	protected transient RealDistribution[] dist_seek_test_period; // RealDistribution[GENDER_ID]
 
+	protected transient HashMap<Integer, HashMap<Integer, Integer>> test_rate_index_map; // KEY = PID, V
+																							// =Map<TestRateId, Pt_ID>
+
 	protected static final int STAGE_ID_JUST_INFECTED = Integer.MIN_VALUE;
 
 	protected static final String SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT = "Output_%d_Gender_Count";
@@ -472,7 +475,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 
 		sim_output = new HashMap<>();
-		
+
 		risk_cat_map = new HashMap<>();
 		test_rate_index_map = new HashMap<>();
 	}
@@ -494,8 +497,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		// Pre allocate risk categories (mainly form MSM)
 		setPreAllocatedRiskFromFile();
-
 		int startTime = firstSeedTime;
+
 		// Schedule testing
 		for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
 			scheduleNextTest(personId, startTime);
@@ -1108,106 +1111,144 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	}
 
+	public void test_rate_index_map_reset() {
+		test_rate_index_map.clear();
+	}
+
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
-		int genderType = getGenderType(personId);
+
 		int riskCat;
 		if (risk_cat_map.containsKey(personId)) {
 			riskCat = risk_cat_map.get(personId);
 		} else {
-			riskCat = -1;
-			// Based on number of casual partners
-			Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
-			int numCasual = 0;
-			int firstPartnerTime = Integer.MAX_VALUE;
-			int lastPartnerTime = 0;
-			for (Integer[] e : edges) {
-				if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
-						&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
-					firstPartnerTime = Math.min(firstPartnerTime,
-							e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
-					lastPartnerTime = Math.max(lastPartnerTime,
-							e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
-					numCasual++;
-				}
-			}
-			double numCasualPerYear = (((double) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual)
-					/ (lastPartnerTime - firstPartnerTime);
-
-			double[][] riskCatDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS];
-
-			for (int i = 0; i < riskCatDefs.length && riskCat == -1; i++) {
-				int gIncl = (int) riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_GENDER_INCLUDE_INDEX];
-				if ((gIncl & 1 << genderType) != 0) {
-					if (riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_NUM_CASUAL_PARTNER_LOWER] < numCasualPerYear
-							&& numCasualPerYear < riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_NUM_CASUAL_PARTNER_UPPER]) {
-						riskCat = (int) riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_RISK_GRP_DEF_ID];
-					}
-				}
-
-			}
+			riskCat = determineRiskGrp(personId);
 			risk_cat_map.put(personId, riskCat);
 		}
 
 		if (riskCat != -1) {
 			double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+			int genderType = getGenderType(personId);
+
+			HashMap<Integer, Integer> past_test_pt = test_rate_index_map.get(personId);
+
 			for (int i = 0; i < testRateDefs.length; i++) {
 				double[] testRateDef = testRateDefs[i];
 				int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
 				int iIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
 				int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
-				if (((gIncl & (1 << genderType)) & (rIncl & (1 << riskCat))) != 0) {
+
+				if (((gIncl & (1 << genderType)) != 0) && ((rIncl & (1 << riskCat)) != 0)) {
 					int sIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX];
-					// FORMAT: {Cumul_Prob_0, Cummul_Prob_1, .... test_gap_time_0, test_gap_time_1,
-					// test_gap_time_2..}
-					int cumul_end_index = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START
-							+ ((testRateDef.length - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START) - 1)
-									/ 2;
-					int pt = Arrays.binarySearch(testRateDef,
-							FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START, cumul_end_index,
-							RNG.nextDouble());
-					if (pt < 0) {
-						pt = ~pt;
-					}
-					int nextTestAfter = (int) (testRateDef[cumul_end_index
-							- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + pt + 1]
-							+ RNG.nextInt((int) testRateDef[cumul_end_index
-									- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + pt]
-									- (int) testRateDef[cumul_end_index
-											- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + pt + 1]));
+					int test_pt;
 
-					int nextTestDate = lastTestTime + nextTestAfter;
+					if (past_test_pt == null || past_test_pt.get(i) == null) {
+						int pt;
 
-					ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
+						// FORMAT: {Cumul_Prob_0, Cummul_Prob_1, .... test_gap_time_0, test_gap_time_1,
+						// test_gap_time_2..}
+						int cumul_end_index = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START
+								+ ((testRateDef.length - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START)
+										- 1) / 2;
 
-					if (day_sch == null) {
-						day_sch = new ArrayList<>();
-						schedule_testing.put(nextTestDate, day_sch);
-					}
-
-					int[] test_pair = new int[] { personId, iIncl, sIncl };
-
-					int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
-						@Override
-						public int compare(int[] o1, int[] o2) {
-							int res = 0;
-							int pt = 0;
-							while (res == 0 && pt < o1.length) {
-								res = Integer.compare(o1[pt], o2[pt]);
-								pt++;
-							}
-							return res;
+						if (past_test_pt == null) {
+							past_test_pt = new HashMap<>();
+							test_rate_index_map.put(personId, past_test_pt);
 						}
-					});
+						pt = Arrays.binarySearch(testRateDef,
+								FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START, cumul_end_index,
+								RNG.nextDouble());
+						if (pt < 0) {
+							pt = ~pt;
+						}
 
-					if (pt_t < 0) {
-						day_sch.add(~pt_t, test_pair);
+						test_pt = cumul_end_index - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + pt;
+						past_test_pt.put(i, test_pt);
 					} else {
-						int[] org_pair = day_sch.get(pt_t);
-						org_pair[1] |= iIncl;
+						test_pt = past_test_pt.get(i);
+					}
+
+					if (!Double.isInfinite(testRateDef[test_pt])) {
+						int nextTestAfter = (int) (testRateDef[test_pt + 1]
+								+ RNG.nextInt((int) testRateDef[test_pt] - (int) testRateDef[test_pt + 1]));
+
+						int nextTestDate = lastTestTime + nextTestAfter;
+
+						ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
+
+						if (day_sch == null) {
+							day_sch = new ArrayList<>();
+							schedule_testing.put(nextTestDate, day_sch);
+						}
+
+						int[] test_pair = new int[] { personId, iIncl, sIncl };
+						int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
+							@Override
+							public int compare(int[] o1, int[] o2) {
+								int res = 0;
+								int pt = 0;
+								while (res == 0 && pt < o1.length) {
+									res = Integer.compare(o1[pt], o2[pt]);
+									pt++;
+								}
+								return res;
+							}
+						});
+
+						if (pt_t < 0) {
+							day_sch.add(~pt_t, test_pair);
+						} else {
+							int[] org_pair = day_sch.get(pt_t);
+							org_pair[1] |= iIncl;
+						}
 					}
 				}
 			}
 		}
+
+	}
+
+	protected int determineRiskGrp(Integer personId) {
+		int riskCat;
+		riskCat = -1;
+		int genderType = getGenderType(personId);
+		// Based on number of casual partners
+		Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
+		int numCasual = 0;
+		int firstPartnerTime = Integer.MAX_VALUE;
+		int lastPartnerTime = 0;
+		for (Integer[] e : edges) {
+			if (e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] >= firstSeedTime
+					&& e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] <= 1) {
+				firstPartnerTime = Math.min(firstPartnerTime,
+						e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+				lastPartnerTime = Math.max(lastPartnerTime,
+						e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+				numCasual++;
+			}
+		}
+		double numCasualPerYear;
+
+		if (lastPartnerTime > firstPartnerTime) {
+			numCasualPerYear = (((double) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual)
+					/ (lastPartnerTime - firstPartnerTime);
+		} else {
+			numCasualPerYear = (((double) AbstractIndividualInterface.ONE_YEAR_INT) * numCasual)
+					/ (nUM_TIME_STEPS_PER_SNAP * nUM_SNAP);
+		}
+
+		double[][] riskCatDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_RISK_CATEGORIES_BY_CASUAL_PARTNERS];
+
+		for (int i = 0; i < riskCatDefs.length && riskCat == -1; i++) {
+			int gIncl = (int) riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_GENDER_INCLUDE_INDEX];
+			if ((gIncl & 1 << genderType) != 0) {
+				if (riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_NUM_CASUAL_PARTNER_LOWER] <= numCasualPerYear
+						&& numCasualPerYear < riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_NUM_CASUAL_PARTNER_UPPER]) {
+					riskCat = (int) riskCatDefs[i][FIELD_RISK_CATEGORIES_BY_CASUAL_PARTNERS_RISK_GRP_DEF_ID];
+				}
+			}
+
+		}
+		return riskCat;
 	}
 
 	protected boolean hasInfectious() {
@@ -1259,7 +1300,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int num_inf = inf_setting[pt];
 				pt++;
 
-				int validStage = 1; //lookupTable_infection_infectious_stages[inf_id][site_index];
+				int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
 
 				if (validStage == 0) {
 					System.err.printf("Warning: no infectious stage find for Inf_#%d at site #%d.\n", inf_id,
