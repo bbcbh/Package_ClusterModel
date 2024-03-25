@@ -13,31 +13,29 @@ import java.util.regex.Pattern;
 import relationship.ContactMap;
 
 public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTransmission {
-	
+
 	// 0: TP, 1: NG, 2: CT, 3: HIV
-	private static final int num_inf = 4; 
+	private static final int num_inf = 4;
 	// 0: ANY, 1: URETHAL, 2: RECTAL
 	private static final int num_site = 3;
-	 //0 = ANY, 1 = ANAL
+	// 0 = ANY, 1 = ANAL
 	private static final int num_act = 2;
-	
-	
-	public static final Pattern PROP_TYPE_PATTERN = Pattern
-			.compile("Bali_Model");
-	
+
+	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("Bali_Model");
+
 	// Note: Excl time column
-	private static final int[] COL_SEL_INF_GENDER = new int[] { 2, 6 };
-	private static final int[] COL_SEL_INF_SITE = new int[] { 0, 5, 6, 7 };
-	private static final int[] COL_SEL_INF_GENDER_SITE = new int[] { 8, 25, 26, 27 };
-	private static final int[] COL_SEL_INF_GENDER_SITE_AT = new int[] { 64, 65, 192, 194, 196, 198, 200, 202, 204,
-			206 };
-	
+	private static final int[] COL_SEL_INF_GENDER = new int[] { 2, 6, 10, 14 };
+	private static final int[] COL_SEL_INF_SITE = new int[] { 0, 4, 5, 7, 8, 9 };
+	private static final int[] COL_SEL_INF_GENDER_SITE = new int[] { 6, 19, 20, 31, 32, 42 };
+	private static final int[] COL_SEL_INF_GENDER_SITE_AT = new int[] { 32, 33, 96, 98, 100, 102, 160, 162, 164, 166,
+			224, 225 };
 
 	public Runnable_ClusterModel_Bali(long cMap_seed, long sim_seed, int[] pop_composition, ContactMap base_cMap,
 			int numTimeStepsPerSnap, int numSnap) {
-		super(cMap_seed, sim_seed, pop_composition, base_cMap, numTimeStepsPerSnap, numSnap, num_inf, num_site, num_act);		
+		super(cMap_seed, sim_seed, pop_composition, base_cMap, numTimeStepsPerSnap, numSnap, num_inf, num_site,
+				num_act);
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
 		String key, fileName;

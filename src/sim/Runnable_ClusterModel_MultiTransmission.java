@@ -68,7 +68,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			// TARGET_STAGE_INC_1, TREATMENT_SUC_STAGE_1,TARGET_STAGE_INC_2,
 			// TREATMENT_SUC_STAGE_2..}, ...}
 			new double[][] {}, };
-
+		
 	// Fixed input value
 	protected final int NUM_INF;
 	protected final int NUM_SITE;
@@ -180,10 +180,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	protected static final int STAGE_ID_JUST_INFECTED = Integer.MIN_VALUE;
 
-	protected static final String SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT = "Output_%d_Gender_Count";
-	protected static final String SIM_OUTPUT_KEY_INFECTED_AT_GENDER_COUNT = "Output_%d_Infected_At_By_Gender";
-	protected static final String SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT = "Output_%d_Infectious_Site";
-	protected static final String SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT = "Output_%d_Infected_Site_Stage";
+	public static final String SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT = "Output_%d_Gender_Count";
+	public static final String SIM_OUTPUT_KEY_INFECTED_AT_GENDER_COUNT = "Output_%d_Infected_At_By_Gender";
+	public static final String SIM_OUTPUT_KEY_INFECTIOUS_SITE_COUNT = "Output_%d_Infectious_Site";
+	public static final String SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT = "Output_%d_Infected_Site_Stage";
 
 	protected static final String SIM_OUTPUT_KEY_CUMUL_TREATMENT = "Output_%d";
 	protected static final String SIM_OUTPUT_KEY_CUMUL_INCIDENCE = "Output_%d";
@@ -478,6 +478,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		risk_cat_map = new HashMap<>();
 		test_rate_index_map = new HashMap<>();
+		
+		propSwitch_map = new HashMap<>();
 	}
 
 	@Override
