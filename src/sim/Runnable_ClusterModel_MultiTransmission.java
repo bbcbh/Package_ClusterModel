@@ -68,7 +68,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			// TARGET_STAGE_INC_1, TREATMENT_SUC_STAGE_1,TARGET_STAGE_INC_2,
 			// TREATMENT_SUC_STAGE_2..}, ...}
 			new double[][] {}, };
-		
+
 	// Fixed input value
 	protected final int NUM_INF;
 	protected final int NUM_SITE;
@@ -478,7 +478,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		risk_cat_map = new HashMap<>();
 		test_rate_index_map = new HashMap<>();
-		
+
 		propSwitch_map = new HashMap<>();
 	}
 
@@ -1372,8 +1372,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						counter++;
 					}
 
-					System.out.printf("Time = %d. Inf #%d candidate = %d. # added = %d.\n", time, inf_id,
-							candidate.size(), num_inf_added);
+					if (print_progress != null) {
+						print_progress.printf("Time = %d. Inf #%d candidate = %d. # added = %d.\n", time, inf_id,
+								candidate.size(), num_inf_added);
+					}
 				}
 			}
 			inf_id++;

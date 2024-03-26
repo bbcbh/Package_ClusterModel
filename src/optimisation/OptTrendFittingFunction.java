@@ -705,6 +705,12 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			START_TIME = ((int[]) PropValUtils.propStrToObject(prop.getProperty(contactMapRangeKey), int[].class))[0];
 		}
 
+		int simSetting = 1;
+
+		if (prop.containsKey(Simulation_ClusterModelTransmission.PROP_SIM_SETTING)) {
+			simSetting = Integer.parseInt(prop.getProperty(Simulation_ClusterModelTransmission.PROP_SIM_SETTING));
+		}
+
 		Abstract_Runnable_ClusterModel_Transmission[] runnable = new Abstract_Runnable_ClusterModel_Transmission[bestResidue_by_runnable.length];
 		int[] bestMatchStart_by_runnable = new int[runnable.length];
 		Arrays.fill(bestMatchStart_by_runnable, -1);
@@ -779,7 +785,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						}
 					}
 
-					runnable[rId].setSimSetting(1); // No output
+					runnable[rId].setSimSetting(simSetting);
 					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, c == null);
 					runnable[rId].initialse();
 
@@ -855,7 +861,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			Arrays.sort(trend_target_key);
 
 			UnivariateInterpolator interpolator = new LinearInterpolator();
-			int minFitFrom = 0; // Not used
+			int minFitFrom = 0;
 			double[] weight = new double[num_target_trend];
 			UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
 			String[][] trend_target_key_split = new String[num_target_trend][];
@@ -880,7 +886,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						System.out.printf("[%d,%d]->%s: completed.\n", runnable[r].getcMap_seed(),
 								runnable[r].getSim_seed(), Arrays.toString(point));
 					}
-					double residue = 0;
+					bestResidue_by_runnable[r] = 0;
 					StringBuilder[] str_disp = null;
 
 					for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
@@ -899,17 +905,19 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								}
 
 								for (int i = 0; i < sim_time.length; i++) {
-									if (str_disp[i] == null) {
-										str_disp[i] = new StringBuilder();
-										str_disp[i].append(sim_time[i]);
+									if (sim_time[i].intValue() >= minFitFrom) {
+										if (str_disp[i] == null) {
+											str_disp[i] = new StringBuilder();
+											str_disp[i].append(sim_time[i]);
+										}
+										double sim_y = countMap.get(sim_time[i])[Integer
+												.parseInt(trend_matcher.group(2))];
+										bestResidue_by_runnable[r] += weight[trend_target_pt] * Math.pow(
+												sim_y - interpolation[trend_target_pt].value(sim_time[i].doubleValue()),
+												2);
+										str_disp[i].append(',');
+										str_disp[i].append(sim_y);
 									}
-
-									double sim_y = countMap.get(sim_time[i])[Integer.parseInt(trend_matcher.group(2))];
-									residue += weight[trend_target_pt] * Math.pow(
-											sim_y - interpolation[trend_target_pt].value(sim_time[i].doubleValue()), 2);
-
-									str_disp[i].append(',');
-									str_disp[i].append(sim_y);
 								}
 							} catch (NullPointerException | ArrayIndexOutOfBoundsException ex) {
 								System.err.printf(
@@ -923,10 +931,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						}
 					}
 
-					bestResidue_by_runnable[r] = residue;
-
 					// Display trends
-
 					try {
 						File opt_output_file;
 						opt_output_file = new File(baseDir, String.format(OPT_TREND_FILE_NAME_TREND_OUTPUT,
@@ -954,7 +959,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 						if (str_disp != null) {
 							for (StringBuilder s : str_disp) {
-								pWri.println(s.toString());
+								if (s != null) {
+									pWri.println(s.toString());
+								}
 							}
 						}
 						pWri.println();
@@ -1253,11 +1260,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						}
 					} // if (simTime != null) {
 				} // if(runnable[r] != null) {
-			} // for (int r = 0; r < rId; r++) {			
+			} // for (int r = 0; r < rId; r++) {
 			outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_COUNT_BY_SITE, countMapBySite);
 			outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_COUNT_BY_PERSON, countMapByPerson);
 		} // if(isMultiTrans){...} else{ }
-		
+
 		outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_RUNNABLE, runnable);
 		outputMap.put(OptTrendFittingFunction.OPT_TREND_OUTPUT_BEST_RESIDUE, bestResidue_by_runnable);
 
