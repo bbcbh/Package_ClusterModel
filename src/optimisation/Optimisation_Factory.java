@@ -570,19 +570,21 @@ public class Optimisation_Factory {
 						String line;
 						while ((line = reader.readLine()) != null && cId < opt_callable.length) {
 							String[] ent = line.split(",");
-							best_result_collection[cId] = new Number[Math.max(ent.length, init_param_default.length+3)];
+							best_result_collection[cId] = new Number[Math.max(ent.length,
+									init_param_default.length + 3)];
 							best_result_collection[cId][0] = Long.parseLong(ent[0]); // CMap_Seed
 							if (ent.length > 1) {
 								best_result_collection[cId][1] = Long.parseLong(ent[1]); // Sim_Seed
-							}else {
+							} else {
 								best_result_collection[cId][1] = rng.nextLong();
-							}														
+							}
 							if (ent.length > 3 && ent.length == best_result_collection[cId].length) {
 								for (int c = 2; c < ent.length; c++) {
 									best_result_collection[cId][c] = Double.parseDouble(ent[c]); // Best fit parameter
 								}
-								best_result_collection[cId][best_result_collection[cId].length - 1] = Double.parseDouble(ent[ent.length - 1]); // Residue;
-							}else {
+								best_result_collection[cId][best_result_collection[cId].length - 1] = Double
+										.parseDouble(ent[ent.length - 1]); // Residue;
+							} else {
 								best_result_collection[cId][best_result_collection[cId].length - 1] = Double.NaN;
 							}
 							cId++;
@@ -642,8 +644,8 @@ public class Optimisation_Factory {
 
 					}
 
-					// Export current result collection
-					exportResultCollection(best_result_collection, resList);
+					// Export current result collection - Replaced by Opt trend files
+					// exportResultCollection(best_result_collection, resList);
 					cId = 0;
 
 					Arrays.sort(best_result_collection, new Comparator<Number[]>() {
@@ -713,7 +715,7 @@ public class Optimisation_Factory {
 									opt_outputs[cId] = opt_callable[cId].call();
 									best_result_collection[cId][0] = (Double) opt_outputs[cId]
 											.get(OptTrendFittingFunction.OPT_TREND_CALLABLE_OUTPUT_BEST_SO_FAR);
-									exportResultCollection(best_result_collection, resList);
+									// exportResultCollection(best_result_collection, resList);
 								} catch (Exception e) {
 									e.printStackTrace(System.err);
 								}
@@ -853,50 +855,34 @@ public class Optimisation_Factory {
 			}
 		}
 
-		try {
-			exportResultCollection(best_result_collection, resList);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace(System.err);
-		}
+		/*
+		 * try { exportResultCollection(best_result_collection, resList); } catch
+		 * (FileNotFoundException e) { e.printStackTrace(System.err); }
+		 */
 
 	}
 
-	private static void exportResultCollection(Number[][] result_collection, File resList)
-			throws FileNotFoundException {
-
-		Arrays.sort(result_collection, new Comparator<Number[]>() {
-			@Override
-			public int compare(Number[] o1, Number[] o2) {
-				int res = -Double.compare((Double) o1[o1.length - 1], (Double) o2[o2.length - 1]);
-				if (res == 0) {
-					res = Long.compare((Long) o1[1], (Long) o2[1]); // cMap_seed
-				}
-				return 0;
-			}
-		});
-
-		PrintWriter pWri = new PrintWriter(resList);
-		pWri.println("CMAP_SEED,SIM_SEED,PARAM");
-
-		for (Number[] row : result_collection) {
-			StringBuilder line = null;
-			for (Number n : row) {
-				if (line == null) {
-					line = new StringBuilder();
-
-				} else {
-					line.append(',');
-				}
-				if (n != null) {
-					line.append(n.toString());
-				} else {
-					line.append(Double.NaN);
-				}
-			}
-			pWri.println(line.toString());
-		}
-		pWri.close();
-	}
+	/*
+	 * private static void exportResultCollection(Number[][] result_collection, File
+	 * resList) throws FileNotFoundException {
+	 * 
+	 * Arrays.sort(result_collection, new Comparator<Number[]>() {
+	 * 
+	 * @Override public int compare(Number[] o1, Number[] o2) { int res =
+	 * -Double.compare((Double) o1[o1.length - 1], (Double) o2[o2.length - 1]); if
+	 * (res == 0) { res = Long.compare((Long) o1[1], (Long) o2[1]); // cMap_seed }
+	 * return 0; } });
+	 * 
+	 * PrintWriter pWri = new PrintWriter(resList);
+	 * pWri.println("CMAP_SEED,SIM_SEED,PARAM");
+	 * 
+	 * for (Number[] row : result_collection) { StringBuilder line = null; for
+	 * (Number n : row) { if (line == null) { line = new StringBuilder();
+	 * 
+	 * } else { line.append(','); } if (n != null) { line.append(n.toString()); }
+	 * else { line.append(Double.NaN); } } pWri.println(line.toString()); }
+	 * pWri.close(); }
+	 */
 
 	private static void runBayesianOpt(OptFittingFunction opt_trend_obj_func, double[] init_param,
 			double[][] boundaries, int numEval, File baseDir, long seed, boolean disp)
@@ -2185,7 +2171,7 @@ public class Optimisation_Factory {
 				}
 
 				Number[][] result_collection_best_so_far = resultArr.toArray(new Number[resultArr.size()][]);
-				exportResultCollection(result_collection_best_so_far, resultList);
+				// exportResultCollection(result_collection_best_so_far, resultList);
 
 				HashMap<Long, ContactMap> cMap_mapping = new HashMap<>();
 				for (int c = 0; c < bASE_CONTACT_MAP_SEED.length; c++) {
@@ -3123,14 +3109,100 @@ public class Optimisation_Factory {
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING)) {
 			parameter_settings = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
 		}
-		setOptParamInRunnable(target_runnable, parameter_settings, point, display_only);
+
+		ArrayList<Integer> field_to_update = setOptParamInRunnableFields(target_runnable, parameter_settings, point,
+				display_only);
+
+		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
+			String transform_str = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
+					.replaceAll("\\s", "");
+
+			if (transform_str.length() > 0) {
+				// Mapping between raw parameter values and name
+				HashMap<String, Double> param_map = new HashMap<>(parameter_settings.length);
+				for (int i = 0; i < parameter_settings.length; i++) {
+					param_map.put(parameter_settings[i], point[i]);
+				}
+
+				// Fill transfrom_ents
+				ArrayList<String[]> transfrom_ents = new ArrayList<>();
+				Pattern pattern_braceEntry = Pattern.compile("\\[([^\\[\\]]*)\\]");
+
+				Matcher m = pattern_braceEntry.matcher(transform_str.substring(1, transform_str.length() - 1));
+				while (m.find()) {
+					String ent = m.group(1);
+					transfrom_ents.add(ent.split(","));
+				}
+
+				for (String[] transfrom_ent : transfrom_ents) {
+					String transfrom_param_name = transfrom_ent[0];
+					String[] param_setting_arr = transfrom_param_name.split("_");
+					int param_name_index = Integer.parseInt(param_setting_arr[0]);
+					int field_id = param_name_index - RUNNABLE_OFFSET;
+					Object val = target_runnable.getRunnable_fields()[field_id];
+
+					if (val != null) {
+						double transformed_val = Double.parseDouble(transfrom_ent[transfrom_ent.length - 1]);
+						int pt = 1;
+						while (pt < transfrom_ent.length - 1) {
+							String srcParam = transfrom_ent[pt];
+							double base = 1;
+							if (srcParam.startsWith("*")) {
+								if (param_map.containsKey(transfrom_param_name)) {
+									base = param_map.get(transfrom_param_name).doubleValue();
+								} else {
+									Object baseVal = val;
+									for (int i = 1; i < param_setting_arr.length; i++) {
+										int incIndex = Integer.parseInt(param_setting_arr[i]);
+										if (incIndex != 0) {
+											int shiftPt = 0;
+											while ((incIndex & 1 << shiftPt) == 0) {
+												shiftPt++;
+											}
+											if (baseVal instanceof Object[]) {
+												baseVal = ((Object[]) baseVal)[shiftPt];
+											} else {
+												base = ((double[]) baseVal)[shiftPt];
+											}
+										}
+									}
+									param_map.put(transfrom_param_name, base);
+								}
+								srcParam = srcParam.substring(1);
+							}
+							if (param_map.containsKey(srcParam)) {
+								transformed_val += base * param_map.get(srcParam).doubleValue()
+										* Double.parseDouble(transfrom_ent[pt + 1]);
+							}
+
+							pt += 2;
+						}
+						int setting_level = 1;
+						recursiveRunnableFieldReplace(val, 0, new double[] { transformed_val }, param_setting_arr,
+								setting_level);
+						pt = Collections.binarySearch(field_to_update, field_id);
+						if (pt < 0) {
+							field_to_update.add(~pt, field_id);
+						}
+						param_map.put(transfrom_param_name, transformed_val);
+					}
+				}
+			}
+		}
+
+		for (Integer field_id : field_to_update) {
+			target_runnable.refreshField(field_id, true);
+		}
+
 	}
 
-	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
-			String[] parameter_settings, double[] point, boolean display_only) {
+	public static ArrayList<Integer> setOptParamInRunnableFields(
+			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
+			boolean display_only) {
 		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
 			setOptParamInRunnableSingleTransmission((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
 					parameter_settings, point, display_only);
+			return null;
 		} else {
 			ArrayList<Integer> field_to_update = new ArrayList<>();
 			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
@@ -3138,22 +3210,20 @@ public class Optimisation_Factory {
 				param_setting = param_setting.replaceAll("\\s", "");
 				String[] param_setting_arr = param_setting.split("_");
 				int param_name_index = Integer.parseInt(param_setting_arr[0]);
-				Object val = target_runnable.getRunnable_fields()[param_name_index - RUNNABLE_OFFSET];
+				int field_id = param_name_index - RUNNABLE_OFFSET;
+				Object val = target_runnable.getRunnable_fields()[field_id];
 				if (val != null) {
 					int setting_level = 1;
 					recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 				}
-				int field_id = param_name_index - RUNNABLE_OFFSET;
+
 				int pt = Collections.binarySearch(field_to_update, field_id);
 				if (pt < 0) {
 					field_to_update.add(~pt, field_id);
 				}
 			}
 
-			for (Integer field_id : field_to_update) {
-				target_runnable.refreshField(field_id, true);
-			}
-
+			return field_to_update;
 		}
 	}
 
@@ -3177,36 +3247,6 @@ public class Optimisation_Factory {
 				if (val != null) {
 					int setting_level = 1;
 					switch (param_name_index - RUNNABLE_OFFSET) {
-					/*
-					case Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
-						double[][] inf_dur = (double[][]) val;
-						int site_key = Integer.parseInt(param_setting_arr[1]);
-						for (int s = 0; s < inf_dur.length; s++) {
-							if ((1 << s & site_key) != 0) {
-								double org_mean = inf_dur[s][0];
-								inf_dur[s][0] = point[param_arr_index];
-								// Adjust SD based on ratio from mean
-								inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
-							}
-						}
-						break;
-					*/	
-					/*	
-					case Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
-						double[] sought_test_param = (double[]) val;
-						int index_key = Integer.parseInt(param_setting_arr[1]);
-						for (int s = 0; s < sought_test_param.length; s++) {
-							if ((1 << s & index_key) != 0) {
-								double org_dur = sought_test_param[s];
-								sought_test_param[s] = point[param_arr_index];
-								if (s % 2 == 0) {
-									// Adjust SD based on ratio from mean
-									sought_test_param[s + 1] = (point[9] / org_dur) * sought_test_param[s + 1];
-								}
-							}
-						}
-						break;
-					*/
 					default:
 						recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 

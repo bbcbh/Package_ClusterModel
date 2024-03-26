@@ -51,11 +51,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	private final double[][] target_trend_time_range;
 	private double[] bestResidue_by_runnable;
 
-	// public static final String USAGE_INFO = "Usage: PROP_FILE_DIRECTORY
-	// INIT_PARAM_VALUE (double[]) BOUNDARIES (double[][]) "
-	// + "RESULT_LIST_FILENAME <optional: -nEval=NUM_EVAL (int)> <optional:
-	// -verbose)>";
-
 	// Arguments for OptTrendFittingFunction.calculate_residue_opt_trend
 	public static final String ARGS_PROGRESS_DISP = "ARGS_PROGRESS_DISP";
 	public static final String ARGS_OPT_METHOD = "ARGS_OPT_METHOD";
@@ -72,7 +67,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String ARGS_PREV_RESULTS = "ARGS_PREV_RESULTS";
 	public static final String ARGS_VERBOSE = "ARGS_VERBOSE";
 
-	public static final String POP_PROP_OPT_PARAM_FIT_SETTING = "POP_PROP_OPT_PARAM_FIT_SETTING";
+	
 	// POP_PROP_OPT_PARAM_FIT_SETTING
 	// Format: String[] { popPropInitPrefix_IncIndices_... , ...}
 	// Examples:
@@ -91,8 +86,14 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	// 17_8_1 = MEAN_DUR_O
 	// 19_14_2 = % Sym. for all male at P
 	// 22_1 = Mean period sym hetro female of seeking treatment
-	// 22_4 = Mean period sym hetro male of seeking treatment
-
+	// 22_4 = Mean period sym hetro male of seeking treatment		
+	public static final String POP_PROP_OPT_PARAM_FIT_SETTING = "POP_PROP_OPT_PARAM_FIT_SETTING";
+	
+	// POP_PROP_OPT_PARAM_TRANSFORM
+    // Format: String[][] {popPropInitPrefix_IncIndices, popPropInitPrefix_IncIndices_src_1, ratio_1 ...}
+	// e.g. [A, *B, 0.2, C, 0.1, Const ] => A = A * 0.2 B + 0.1 C + Const
+	public static final String POP_PROP_OPT_PARAM_TRANSFORM = "POP_PROP_OPT_PARAM_TRANSFORM";
+	
 	public static final Pattern POP_PROP_OPT_PARAM_FIT_SETTING_DIFF_FORMAT = Pattern.compile("Diff(\\d+)");
 	// Eg. 18_Diff1 means Param[18] = opt. parameter value + value of opt parameter
 	// with index 1

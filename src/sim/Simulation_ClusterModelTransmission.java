@@ -832,8 +832,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							runnable[s].setRunnableId(Arrays.toString(pt));
 						} else {
 							runnable[s].setRunnableId(String.format("[%d]", s));
+						}						
+						
+						ArrayList<Integer> field_to_update = Optimisation_Factory.setOptParamInRunnableFields(runnable[s], preGenParamKey, pt, false);						
+						for (Integer field_id : field_to_update) {
+							runnable[s].refreshField(field_id, true);
 						}
-						Optimisation_Factory.setOptParamInRunnable(runnable[s], preGenParamKey, pt, false);
 					}
 				}
 
