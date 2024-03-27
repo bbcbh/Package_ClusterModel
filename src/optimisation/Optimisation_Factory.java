@@ -3110,83 +3110,19 @@ public class Optimisation_Factory {
 			parameter_settings = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
 		}
 
-		ArrayList<Integer> field_to_update = setOptParamInRunnableFields(target_runnable, parameter_settings, point,
+		ArrayList<Integer> field_to_update = setOptParamInRunnable_Direct(target_runnable, parameter_settings, point,
 				display_only);
 
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 			String transform_str = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
 					.replaceAll("\\s", "");
-
 			if (transform_str.length() > 0) {
 				// Mapping between raw parameter values and name
 				HashMap<String, Double> param_map = new HashMap<>(parameter_settings.length);
 				for (int i = 0; i < parameter_settings.length; i++) {
 					param_map.put(parameter_settings[i], point[i]);
 				}
-
-				// Fill transfrom_ents
-				ArrayList<String[]> transfrom_ents = new ArrayList<>();
-				Pattern pattern_braceEntry = Pattern.compile("\\[([^\\[\\]]*)\\]");
-
-				Matcher m = pattern_braceEntry.matcher(transform_str.substring(1, transform_str.length() - 1));
-				while (m.find()) {
-					String ent = m.group(1);
-					transfrom_ents.add(ent.split(","));
-				}
-
-				for (String[] transfrom_ent : transfrom_ents) {
-					String transfrom_param_name = transfrom_ent[0];
-					String[] param_setting_arr = transfrom_param_name.split("_");
-					int param_name_index = Integer.parseInt(param_setting_arr[0]);
-					int field_id = param_name_index - RUNNABLE_OFFSET;
-					Object val = target_runnable.getRunnable_fields()[field_id];
-
-					if (val != null) {
-						double transformed_val = Double.parseDouble(transfrom_ent[transfrom_ent.length - 1]);
-						int pt = 1;
-						while (pt < transfrom_ent.length - 1) {
-							String srcParam = transfrom_ent[pt];
-							double base = 1;
-							if (srcParam.startsWith("*")) {
-								if (param_map.containsKey(transfrom_param_name)) {
-									base = param_map.get(transfrom_param_name).doubleValue();
-								} else {
-									Object baseVal = val;
-									for (int i = 1; i < param_setting_arr.length; i++) {
-										int incIndex = Integer.parseInt(param_setting_arr[i]);
-										if (incIndex != 0) {
-											int shiftPt = 0;
-											while ((incIndex & 1 << shiftPt) == 0) {
-												shiftPt++;
-											}
-											if (baseVal instanceof Object[]) {
-												baseVal = ((Object[]) baseVal)[shiftPt];
-											} else {
-												base = ((double[]) baseVal)[shiftPt];
-											}
-										}
-									}
-									param_map.put(transfrom_param_name, base);
-								}
-								srcParam = srcParam.substring(1);
-							}
-							if (param_map.containsKey(srcParam)) {
-								transformed_val += base * param_map.get(srcParam).doubleValue()
-										* Double.parseDouble(transfrom_ent[pt + 1]);
-							}
-
-							pt += 2;
-						}
-						int setting_level = 1;
-						recursiveRunnableFieldReplace(val, 0, new double[] { transformed_val }, param_setting_arr,
-								setting_level);
-						pt = Collections.binarySearch(field_to_update, field_id);
-						if (pt < 0) {
-							field_to_update.add(~pt, field_id);
-						}
-						param_map.put(transfrom_param_name, transformed_val);
-					}
-				}
+				setOptParamInRunnable_Transfrom(target_runnable, transform_str, param_map, field_to_update);
 			}
 		}
 
@@ -3196,11 +3132,78 @@ public class Optimisation_Factory {
 
 	}
 
-	public static ArrayList<Integer> setOptParamInRunnableFields(
+	public static void setOptParamInRunnable_Transfrom(Abstract_Runnable_ClusterModel_Transmission target_runnable,
+			String transform_str, HashMap<String, Double> param_map, ArrayList<Integer> field_to_update) {
+		// Fill transfrom_ents
+		ArrayList<String[]> transfrom_ents = new ArrayList<>();
+		Pattern pattern_braceEntry = Pattern.compile("\\[([^\\[\\]]*)\\]");
+
+		Matcher m = pattern_braceEntry.matcher(transform_str.substring(1, transform_str.length() - 1));
+		while (m.find()) {
+			String ent = m.group(1);
+			transfrom_ents.add(ent.split(","));
+		}
+
+		for (String[] transfrom_ent : transfrom_ents) {
+			String transfrom_param_name = transfrom_ent[0];
+			String[] param_setting_arr = transfrom_param_name.split("_");
+			int param_name_index = Integer.parseInt(param_setting_arr[0]);
+			int field_id = param_name_index - RUNNABLE_OFFSET;
+			Object val = target_runnable.getRunnable_fields()[field_id];
+
+			if (val != null) {
+				double transformed_val = Double.parseDouble(transfrom_ent[transfrom_ent.length - 1]);
+				int pt = 1;
+				while (pt < transfrom_ent.length - 1) {
+					String srcParam = transfrom_ent[pt];
+					double base = 1;
+					if (srcParam.startsWith("*")) {
+						if (param_map.containsKey(transfrom_param_name)) {
+							base = param_map.get(transfrom_param_name).doubleValue();
+						} else {
+							Object baseVal = val;
+							for (int i = 1; i < param_setting_arr.length; i++) {
+								int incIndex = Integer.parseInt(param_setting_arr[i]);
+								if (incIndex != 0) {
+									int shiftPt = 0;
+									while ((incIndex & 1 << shiftPt) == 0) {
+										shiftPt++;
+									}
+									if (baseVal instanceof Object[]) {
+										baseVal = ((Object[]) baseVal)[shiftPt];
+									} else {
+										base = ((double[]) baseVal)[shiftPt];
+									}
+								}
+							}
+							param_map.put(transfrom_param_name, base);
+						}
+						srcParam = srcParam.substring(1);
+					}
+					if (param_map.containsKey(srcParam)) {
+						transformed_val += base * param_map.get(srcParam).doubleValue()
+								* Double.parseDouble(transfrom_ent[pt + 1]);
+					}
+
+					pt += 2;
+				}
+				int setting_level = 1;
+				recursiveRunnableFieldReplace(val, 0, new double[] { transformed_val }, param_setting_arr,
+						setting_level);
+				pt = Collections.binarySearch(field_to_update, field_id);
+				if (pt < 0) {
+					field_to_update.add(~pt, field_id);
+				}
+				param_map.put(transfrom_param_name, transformed_val);
+			}
+		}
+	}
+
+	public static ArrayList<Integer> setOptParamInRunnable_Direct(
 			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
 			boolean display_only) {
 		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
-			setOptParamInRunnableSingleTransmission((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
+			setOptParamInSingleTransmissionRunnable((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
 					parameter_settings, point, display_only);
 			return null;
 		} else {
@@ -3227,7 +3230,7 @@ public class Optimisation_Factory {
 		}
 	}
 
-	public static void setOptParamInRunnableSingleTransmission(
+	public static void setOptParamInSingleTransmissionRunnable(
 			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
 			boolean display_only) {
 
@@ -3236,7 +3239,7 @@ public class Optimisation_Factory {
 		if (parameter_settings == null || parameter_settings.length != point.length) {
 			// Backward compatibility.
 			System.out.println("Warning Parameter setting not used as it mismatches with number or parameters.");
-			setOptParamInRunnable(target_runnable, point, display_only);
+			setOptParamInSingleTransmissionRunnable(target_runnable, point, display_only);
 		} else {
 			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 				String param_setting = parameter_settings[param_arr_index];
@@ -3334,7 +3337,7 @@ public class Optimisation_Factory {
 		}
 	}
 
-	private static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
+	private static void setOptParamInSingleTransmissionRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
 			double[] point, boolean display_only) {
 		double[][][] transmission_rate = (double[][][]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];

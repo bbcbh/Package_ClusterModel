@@ -31,6 +31,7 @@ import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
 
+import optimisation.OptTrendFittingFunction;
 import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
@@ -834,7 +835,19 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							runnable[s].setRunnableId(String.format("[%d]", s));
 						}						
 						
-						ArrayList<Integer> field_to_update = Optimisation_Factory.setOptParamInRunnableFields(runnable[s], preGenParamKey, pt, false);						
+						ArrayList<Integer> field_to_update 
+						 = Optimisation_Factory.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, false);
+						
+						if(loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
+							String transform_str = loadedProperties.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
+									.replaceAll("\\s", "");
+							if (transform_str.length() > 0) {
+								HashMap<String, Double> param_map = new HashMap<>();								
+								Optimisation_Factory.setOptParamInRunnable_Transfrom(runnable[s],
+										transform_str, param_map, field_to_update);
+							}																					
+						}																												
+						
 						for (Integer field_id : field_to_update) {
 							runnable[s].refreshField(field_id, true);
 						}
