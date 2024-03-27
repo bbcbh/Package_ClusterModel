@@ -970,6 +970,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 			snap_index = (snap_index + 1) % nUM_TIME_STEPS_PER_SNAP;
 			hasInfectious = hasInfectious();
+			
+			postTimeStep(currentTime);
 
 		} // End of time step
 
@@ -982,6 +984,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Post simulation
 		postSimulation();
 
+	}
+	
+	protected void postTimeStep(int currentTime) {
+		// Do nothing, but can be overwritten by sub-classes
 	}
 
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,

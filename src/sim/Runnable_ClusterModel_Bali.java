@@ -36,6 +36,18 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 				num_act);
 	}
 
+	@Override
+	protected void postTimeStep(int currentTime) {
+		// TODO Auto-generated method stub
+		super.postTimeStep(currentTime);
+		
+		
+		
+		
+		
+	}
+
+
 	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
 		String key, fileName;
@@ -101,6 +113,8 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Infected_SiteInc_%d",
 					new int[] { NUM_INF, NUM_GENDER, 1 << (NUM_SITE + 1) }, COL_SEL_INF_GENDER_SITE_AT);
 
+			
+			
 			key = String.format(SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
 			HashMap<Integer, HashMap<String, Integer>> infected_site_stage_count = (HashMap<Integer, HashMap<String, Integer>>) sim_output
