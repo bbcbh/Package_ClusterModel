@@ -3180,10 +3180,35 @@ public class Optimisation_Factory {
 						}
 						srcParam = srcParam.substring(1);
 					}
+					
+					double paramVal; 
 					if (param_map.containsKey(srcParam)) {
-						transformed_val += base * param_map.get(srcParam).doubleValue()
-								* Double.parseDouble(transfrom_ent[pt + 1]);
+						paramVal = param_map.get(srcParam).doubleValue();
+					}else {
+						paramVal = Double.NaN;
+						String[] srcParamSplit = srcParam.split("_");
+						Object srcVal = target_runnable.getRunnable_fields()
+								[Integer.parseInt(srcParamSplit[0])- RUNNABLE_OFFSET];
+						
+						for (int i = 1; i < srcParamSplit.length; i++) {
+							int incIndex = Integer.parseInt(srcParamSplit[i]);
+							if (incIndex != 0) {
+								int shiftPt = 0;
+								while ((incIndex & 1 << shiftPt) == 0) {
+									shiftPt++;
+								}
+								if (srcVal instanceof Object[]) {
+									srcVal = ((Object[]) srcVal)[shiftPt];
+								} else {
+									paramVal = ((double[]) srcVal)[shiftPt];
+								}
+							}
+						}
+						param_map.put(srcParam, paramVal);
 					}
+					
+					transformed_val += base * paramVal
+							* Double.parseDouble(transfrom_ent[pt + 1]);
 
 					pt += 2;
 				}
