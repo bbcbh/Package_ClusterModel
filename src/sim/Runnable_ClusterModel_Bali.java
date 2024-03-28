@@ -10,6 +10,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 
+import random.MersenneTwisterRandomGenerator;
+import random.RandomGenerator;
 import relationship.ContactMap;
 
 public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTransmission {
@@ -30,23 +32,82 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 	private static final int[] COL_SEL_INF_GENDER_SITE_AT = new int[] { 32, 33, 96, 98, 100, 102, 160, 162, 164, 166,
 			224, 225 };
 
+	final RandomGenerator rng_test;
+
 	public Runnable_ClusterModel_Bali(long cMap_seed, long sim_seed, int[] pop_composition, ContactMap base_cMap,
 			int numTimeStepsPerSnap, int numSnap) {
 		super(cMap_seed, sim_seed, pop_composition, base_cMap, numTimeStepsPerSnap, numSnap, num_inf, num_site,
 				num_act);
+		rng_test = new MersenneTwisterRandomGenerator(getSim_seed());
+
 	}
+
+	protected static final int TEST_RATE_ADJ = -1;
+	protected static final int TEST_RATE_ADJ_SWITCH_TIME = 6570;
+	protected static final float TEST_RATE_ADJ_PROB = 1f;
+	protected static final int[] TEST_RATE_ADJ_RANGE = new int[] { 30, 15 };
 
 	@Override
 	protected void postTimeStep(int currentTime) {
-		// TODO Auto-generated method stub
-		super.postTimeStep(currentTime);
-		
-		
-		
-		
-		
+		super.postTimeStep(currentTime);		
+		if (currentTime == TEST_RATE_ADJ_SWITCH_TIME) {
+			for (Integer personId : test_rate_index_map.keySet()) {
+				HashMap<Integer, Integer> test_rate_index = test_rate_index_map.get(personId);
+				if (test_rate_index.get(0).equals(6) 
+						&& rng_test.nextFloat() < TEST_RATE_ADJ_PROB) {					
+					test_rate_index.put(TEST_RATE_ADJ, 0);
+					scheduleNextTest(personId, currentTime);
+				}
+			}
+		}
 	}
 
+	@Override
+	public void scheduleNextTest(Integer personId, int lastTestTime) {
+		HashMap<Integer, Integer> test_rate_index = test_rate_index_map.get(personId);
+		// Overwrite existing test rate
+		if (test_rate_index != null && test_rate_index.containsKey(TEST_RATE_ADJ)) {
+			int test_pt = test_rate_index.get(TEST_RATE_ADJ);
+			
+			int nextTestAfter = (int) (TEST_RATE_ADJ_RANGE[test_pt + 1]
+					+ RNG.nextInt((int) TEST_RATE_ADJ_RANGE[test_pt] - (int) TEST_RATE_ADJ_RANGE[test_pt + 1]));
+			
+			int nextTestDate = lastTestTime + nextTestAfter;
+
+			ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
+
+			if (day_sch == null) {
+				day_sch = new ArrayList<>();
+				schedule_testing.put(nextTestDate, day_sch);
+			}
+
+			int[] test_pair = new int[] { personId, 7, 7 };
+			int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
+				@Override
+				public int compare(int[] o1, int[] o2) {
+					int res = 0;
+					int pt = 0;
+					while (res == 0 && pt < o1.length) {
+						res = Integer.compare(o1[pt], o2[pt]);
+						pt++;
+					}
+					return res;
+				}
+			});
+
+			if (pt_t < 0) {
+				day_sch.add(~pt_t, test_pair);
+			} else {
+				int[] org_pair = day_sch.get(pt_t);
+				org_pair[1] |= 7;
+			}
+
+			
+
+		} else {
+			super.scheduleNextTest(personId, lastTestTime);
+		}
+	}
 
 	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
@@ -113,8 +174,6 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Infected_SiteInc_%d",
 					new int[] { NUM_INF, NUM_GENDER, 1 << (NUM_SITE + 1) }, COL_SEL_INF_GENDER_SITE_AT);
 
-			
-			
 			key = String.format(SIM_OUTPUT_KEY_INFECTED_SITE_STAGE_COUNT,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE);
 			HashMap<Integer, HashMap<String, Integer>> infected_site_stage_count = (HashMap<Integer, HashMap<String, Integer>>) sim_output
