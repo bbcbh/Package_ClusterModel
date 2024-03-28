@@ -1,5 +1,7 @@
 package sim;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -8,11 +10,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
+import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import util.PropValUtils;
 
 public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTransmission {
 
@@ -34,27 +39,59 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 
 	final RandomGenerator rng_test;
 
+	// Parameter - to be set
+	public static final String DX_SWITCH_FILENAME = "dx_Bali.prop";
+	protected final int TEST_RATE_ADJ = -1;
+
+	protected int dxSwitchAt = -1;
+	protected int dxSwitchGrp = 1 << 6;
+	protected float dxSwitchProb = 1f;
+	protected int[] dxSwitchTestTimeRange = new int[] { 360, 180 };
+	protected float switchPrEPUptake = 0.0f;
+	protected int switchPrEPAt = -1;
+
+	protected final int INF_ID_HIV = 3;
+	protected final int STAGE_PREP = 4;
+
 	public Runnable_ClusterModel_Bali(long cMap_seed, long sim_seed, int[] pop_composition, ContactMap base_cMap,
 			int numTimeStepsPerSnap, int numSnap) {
 		super(cMap_seed, sim_seed, pop_composition, base_cMap, numTimeStepsPerSnap, numSnap, num_inf, num_site,
 				num_act);
 		rng_test = new MersenneTwisterRandomGenerator(getSim_seed());
-
 	}
 
-	protected static final int TEST_RATE_ADJ = -1;
-	protected static final int TEST_RATE_ADJ_SWITCH_TIME = 6570;
-	protected static final float TEST_RATE_ADJ_PROB = 1f;
-	protected static final int[] TEST_RATE_ADJ_RANGE = new int[] { 360, 180 };
+	@Override
+	public void initialse() {
+		super.initialse();
+		File dxSwitchFile = new File(baseDir, DX_SWITCH_FILENAME);
+		if (dxSwitchFile.exists()) {
+			try {
+				Properties dxProp = new Properties();
+				FileInputStream f = new FileInputStream(dxSwitchFile);
+				dxProp.loadFromXML(f);
+				f.close();
+				dxSwitchAt = Integer.parseInt(dxProp.getProperty("DX_SWITCH_TIME", Integer.toString(dxSwitchAt)));
+				dxSwitchGrp = Integer.parseInt(dxProp.getProperty("DX_SWITCH_GRP", Integer.toString(dxSwitchGrp)));
+				dxSwitchProb = Float.parseFloat(dxProp.getProperty("DX_SWITCH_PROB", Float.toString(dxSwitchProb)));
+				dxSwitchTestTimeRange = (int[]) PropValUtils.propStrToObject(
+						dxProp.getProperty("DX_SWITCH_RANGE", Arrays.toString(dxSwitchTestTimeRange)), int[].class);
+				switchPrEPAt = Integer.parseInt(dxProp.getProperty("PREP_SWITCH_AT", Integer.toString(switchPrEPAt)));
+				switchPrEPUptake = Float
+						.parseFloat(dxProp.getProperty("PREP_UPTAKE", Float.toString(switchPrEPUptake)));
+
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
+			}
+		}
+	}
 
 	@Override
 	protected void postTimeStep(int currentTime) {
-		super.postTimeStep(currentTime);		
-		if (currentTime == TEST_RATE_ADJ_SWITCH_TIME) {
+		super.postTimeStep(currentTime);
+		if (currentTime == dxSwitchAt) {
 			for (Integer personId : test_rate_index_map.keySet()) {
 				HashMap<Integer, Integer> test_rate_index = test_rate_index_map.get(personId);
-				if (test_rate_index.get(0).equals(6) 
-						&& rng_test.nextFloat() < TEST_RATE_ADJ_PROB) {					
+				if ((test_rate_index.get(0).intValue() << dxSwitchGrp != 0) && rng_test.nextFloat() < dxSwitchProb) {
 					test_rate_index.put(TEST_RATE_ADJ, 0);
 					scheduleNextTest(personId, currentTime);
 				}
@@ -63,15 +100,49 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 	}
 
 	@Override
+	protected void testPerson(int currentTime, int pid, int infIncl, int siteIncl, int[][] cumul_treatment_by_person) {
+		int[][] inf_stage = map_currrent_infection_stage.get(pid);
+		// Negative HIV DX
+		if (switchPrEPAt > 0 && currentTime >= switchPrEPAt && (infIncl & 1 << INF_ID_HIV) != 0
+				&& (inf_stage == null || inf_stage[INF_ID_HIV][0] == AbstractIndividualInterface.INFECT_S)) {
+			if (rng_test.nextFloat() < switchPrEPUptake) {
+				int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
+				if (current_stage_arr == null) {
+					current_stage_arr = new int[NUM_INF][NUM_SITE];
+					for (int[] stage_by_infection : current_stage_arr) {
+						Arrays.fill(stage_by_infection, AbstractIndividualInterface.INFECT_S);
+					}
+					map_currrent_infection_stage.put(pid, current_stage_arr);
+				}
+				int[][] infection_state_switch = map_infection_stage_switch.get(pid);
+				if (infection_state_switch == null) {
+					infection_state_switch = new int[NUM_INF][NUM_SITE];
+					map_infection_stage_switch.put(pid, infection_state_switch);
+				}
+
+				current_stage_arr[INF_ID_HIV][0] = STAGE_PREP;
+				int PrEP_switch_time = (int) Math
+						.round(currentTime + dist_stage_period[INF_ID_HIV][0][STAGE_PREP].sample());
+
+				updateInfectStageChangeSchedule(pid, INF_ID_HIV, 0, PrEP_switch_time,
+						infection_state_switch[INF_ID_HIV][0]);
+			}
+		} else {
+			super.testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
+		}
+
+	}
+
+	@Override
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
 		HashMap<Integer, Integer> test_rate_index = test_rate_index_map.get(personId);
 		// Overwrite existing test rate
 		if (test_rate_index != null && test_rate_index.containsKey(TEST_RATE_ADJ)) {
 			int test_pt = test_rate_index.get(TEST_RATE_ADJ);
-			
-			int nextTestAfter = (int) (TEST_RATE_ADJ_RANGE[test_pt + 1]
-					+ RNG.nextInt((int) TEST_RATE_ADJ_RANGE[test_pt] - (int) TEST_RATE_ADJ_RANGE[test_pt + 1]));
-			
+
+			int nextTestAfter = (int) (dxSwitchTestTimeRange[test_pt + 1]
+					+ RNG.nextInt((int) dxSwitchTestTimeRange[test_pt] - (int) dxSwitchTestTimeRange[test_pt + 1]));
+
 			int nextTestDate = lastTestTime + nextTestAfter;
 
 			ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
@@ -101,8 +172,6 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 				int[] org_pair = day_sch.get(pt_t);
 				org_pair[1] |= 7;
 			}
-
-			
 
 		} else {
 			super.scheduleNextTest(personId, lastTestTime);
