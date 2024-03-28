@@ -45,7 +45,7 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 	protected static final int TEST_RATE_ADJ = -1;
 	protected static final int TEST_RATE_ADJ_SWITCH_TIME = 6570;
 	protected static final float TEST_RATE_ADJ_PROB = 1f;
-	protected static final int[] TEST_RATE_ADJ_RANGE = new int[] { 30, 15 };
+	protected static final int[] TEST_RATE_ADJ_RANGE = new int[] { 360, 180 };
 
 	@Override
 	protected void postTimeStep(int currentTime) {
