@@ -93,6 +93,7 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 				HashMap<Integer, Integer> test_rate_index = test_rate_index_map.get(personId);
 				if ((test_rate_index.get(0).intValue() << dxSwitchGrp != 0) && rng_test.nextFloat() < dxSwitchProb) {
 					test_rate_index.put(TEST_RATE_ADJ, 0);
+					test_rate_index.remove(0); // Replace 1st schedule
 					scheduleNextTest(personId, currentTime);
 				}
 			}
@@ -173,9 +174,9 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 				org_pair[1] |= 7;
 			}
 
-		} else {
-			super.scheduleNextTest(personId, lastTestTime);
 		}
+		super.scheduleNextTest(personId, lastTestTime);
+
 	}
 
 	@SuppressWarnings("unchecked")

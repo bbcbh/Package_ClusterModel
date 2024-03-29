@@ -476,17 +476,22 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								.parseDouble(line.substring(Optimisation_Factory.OPT_OUTPUT_PREFIX_RESIDUE.length()));
 
 						line = reader.readLine();
-						long offset = Integer.parseInt(line.substring(OPT_TREND_OUTPUT_PREFIX_OFFSET.length()));
+						long offset = 0;						
+						if(line.startsWith(OPT_TREND_OUTPUT_PREFIX_OFFSET)) {					
+							offset = Integer.parseInt(line.substring(OPT_TREND_OUTPUT_PREFIX_OFFSET.length()));
+							line = reader.readLine();
+						}
 
 						ArrayList<String> trend_arr = new ArrayList<>();
 
 						// TrendEntry
-						while ((line = reader.readLine()) != null) {
+						while (line != null) {
 							if (line.trim().length() > 0) {
 								trend_arr.add(line);
 							} else {
 								break;
 							}
+							line = reader.readLine();
 						}
 						String[] trends = trend_arr.toArray(new String[trend_arr.size()]);
 						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends };
