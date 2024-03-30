@@ -2690,7 +2690,8 @@ public class Optimisation_Factory {
 
 		try {
 			PointValuePair pV;
-			pV = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess, new MaxEval(numEval));
+			MaxEval maxVal = numEval <= 0? MaxEval.unlimited() : new MaxEval(numEval);
+			pV = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess, maxVal);
 			double[] point = wrapper.unboundedToBounded(pV.getPoint());
 
 			StringBuilder pt_str = new StringBuilder();
@@ -2704,7 +2705,7 @@ public class Optimisation_Factory {
 			System.out.printf("Optimisation Completed.\nP = [%s], V = %f\n", pt_str.toString(), pV.getValue());
 
 		} catch (org.apache.commons.math3.exception.TooManyEvaluationsException ex) {
-			System.out.printf("Eval limit of %d reached.\nSimplex (bounded):\n", numEval);
+			System.out.printf("Eval limit of %d (ex.getMax=%d) reached.\nSimplex (bounded):\n", numEval, ex.getMax());
 
 			PointValuePair[] res = simplex.getPoints();
 			Arrays.sort(res, new Comparator<PointValuePair>() {
