@@ -67,7 +67,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String ARGS_PREV_RESULTS = "ARGS_PREV_RESULTS";
 	public static final String ARGS_VERBOSE = "ARGS_VERBOSE";
 
-	
 	// POP_PROP_OPT_PARAM_FIT_SETTING
 	// Format: String[] { popPropInitPrefix_IncIndices_... , ...}
 	// Examples:
@@ -86,14 +85,15 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	// 17_8_1 = MEAN_DUR_O
 	// 19_14_2 = % Sym. for all male at P
 	// 22_1 = Mean period sym hetro female of seeking treatment
-	// 22_4 = Mean period sym hetro male of seeking treatment		
+	// 22_4 = Mean period sym hetro male of seeking treatment
 	public static final String POP_PROP_OPT_PARAM_FIT_SETTING = "POP_PROP_OPT_PARAM_FIT_SETTING";
-	
+
 	// POP_PROP_OPT_PARAM_TRANSFORM
-    // Format: String[][] {popPropInitPrefix_IncIndices, popPropInitPrefix_IncIndices_src_1, ratio_1 ...}
+	// Format: String[][] {popPropInitPrefix_IncIndices,
+	// popPropInitPrefix_IncIndices_src_1, ratio_1 ...}
 	// e.g. [A, *B, 0.2, C, 0.1, Const ] => A = A * 0.2 B + 0.1 C + Const
 	public static final String POP_PROP_OPT_PARAM_TRANSFORM = "POP_PROP_OPT_PARAM_TRANSFORM";
-	
+
 	public static final Pattern POP_PROP_OPT_PARAM_FIT_SETTING_DIFF_FORMAT = Pattern.compile("Diff(\\d+)");
 	// Eg. 18_Diff1 means Param[18] = opt. parameter value + value of opt parameter
 	// with index 1
@@ -415,12 +415,18 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 		final Pattern bestFileFile_pattern = Pattern
 				.compile(OPT_TREND_FILE_NAME_TREND_OUTPUT.replaceAll("%d", "(-{0,1}\\\\d+)"));
-		File[] subDirs = basedir.listFiles(new FileFilter() {
-			@Override
-			public boolean accept(File pathname) {
-				return pathname.isDirectory() && subDirPattern.matcher(pathname.getName()).matches();
-			}
-		});
+
+		File[] subDirs;
+		if (subDirPattern != null) {
+			subDirs = basedir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pathname.isDirectory() && subDirPattern.matcher(pathname.getName()).matches();
+				}
+			});
+		} else {
+			subDirs = new File[] { basedir };
+		}
 
 		// double residue, long cMapSeed, long simSeed, long offset, String[] param_str,
 		// String[] trends
@@ -476,8 +482,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								.parseDouble(line.substring(Optimisation_Factory.OPT_OUTPUT_PREFIX_RESIDUE.length()));
 
 						line = reader.readLine();
-						long offset = 0;						
-						if(line.startsWith(OPT_TREND_OUTPUT_PREFIX_OFFSET)) {					
+						long offset = 0;
+						if (line.startsWith(OPT_TREND_OUTPUT_PREFIX_OFFSET)) {
 							offset = Integer.parseInt(line.substring(OPT_TREND_OUTPUT_PREFIX_OFFSET.length()));
 							line = reader.readLine();
 						}
