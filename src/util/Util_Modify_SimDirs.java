@@ -39,6 +39,114 @@ import sim.Simulation_ClusterModelTransmission;
  */
 public class Util_Modify_SimDirs {
 
+	public static HashMap<String, Integer> generateSeedFilesFromOptSummary(File optSummaryFile, File target_dirs_base,
+			int numParamSetToIncl_Max, int numParamPerSeedList_Max, File[] directFileCopy, String seed_list_header,
+			boolean unqiueCombinationOnly) throws IOException {
+
+		BufferedReader reader = new BufferedReader(new FileReader(optSummaryFile));
+		String line;
+		line = reader.readLine(); // Skip first line
+
+		ArrayList<long[]> included_seed = new ArrayList<>();
+		ArrayList<String[]> line_selected = new ArrayList<>();
+
+		while ((line = reader.readLine()) != null && line_selected.size() < numParamSetToIncl_Max) {
+			String[] ent = line.split(",");
+			long[] seed_arr = new long[] { Long.parseLong(ent[1]), Long.parseLong(ent[2]) };
+			boolean toBeInclude = true;
+
+			if (unqiueCombinationOnly) {
+				int pt = Collections.binarySearch(included_seed, seed_arr, new Comparator<long[]>() {
+					@Override
+					public int compare(long[] o1, long[] o2) {
+						int res = 0;
+						for (int i = 0; i < o1.length && res == 0; i++) {
+							res = Long.compare(o1[i], o2[i]);
+						}
+						return res;
+					}
+				});
+				toBeInclude = pt < 0;
+				if (toBeInclude) {
+					included_seed.add(~pt, seed_arr);
+				}
+			}
+			if (toBeInclude) {
+				int pt = Collections.binarySearch(line_selected, ent, new Comparator<String[]>() {
+					@Override
+					public int compare(String[] o1, String[] o2) {
+						int res = 0;
+						for (int i = 0; i < o1.length && res == 0; i++) {
+							switch (i) {
+							case 1: // Seed
+							case 2:
+								res = Long.compare(Long.parseLong(o1[i]), Long.parseLong(o2[i]));
+								break;
+							default:
+								res = Double.compare(Double.parseDouble(o1[i]), Double.parseDouble(o2[i]));
+
+							}
+						}
+						return res;
+					}
+
+				});
+
+				if (pt < 0) {
+					line_selected.add(~pt, ent);
+				}
+			}
+		}
+		reader.close();
+
+		// Copying other files
+		for (File df : directFileCopy) {
+			Files.copy(df.toPath(), new File(target_dirs_base, df.getName()).toPath(),
+					StandardCopyOption.REPLACE_EXISTING);
+		}
+
+		// Generating seed files
+		final String seedFileName = "Seed_List_%d.csv";
+		long last_cmap = -1;
+		String lastSeedFileName = null;
+		int numInSeed = 0;
+		int seedFile_num = 0;
+		HashMap<String, Integer> mapping_num_seed_map = new HashMap<>();
+
+		PrintWriter pWri_seedList = null;
+		for (String[] param_set : line_selected) {
+			long cMap_seed = Long.parseLong(param_set[1]);
+			if (last_cmap != cMap_seed || numInSeed == numParamPerSeedList_Max) {
+				if (pWri_seedList != null) {
+					mapping_num_seed_map.put(lastSeedFileName, numInSeed);
+					pWri_seedList.close();
+				}
+
+				lastSeedFileName = String.format(seedFileName, seedFile_num);
+				pWri_seedList = new PrintWriter(new File(target_dirs_base, lastSeedFileName));
+				pWri_seedList.println(seed_list_header);
+
+				numInSeed = 0;
+				seedFile_num++;
+				last_cmap = cMap_seed;
+			}
+
+			for (int i = 1; i < param_set.length - 1; i++) {
+				if (i != 1) {
+					pWri_seedList.print(',');
+				}
+				pWri_seedList.print(param_set[i]);
+
+			}
+			pWri_seedList.println();
+			numInSeed++;
+		}
+		pWri_seedList.close();
+
+		return mapping_num_seed_map;
+
+	}
+
 	/**
 	 * Generate multiple simulations directories based on optimisation summary file
 	 * 
@@ -382,7 +490,8 @@ public class Util_Modify_SimDirs {
 				File subZip = new File(tarDir, String.format("%s_%s.csv.7z", m.group(2), m.group(3)));
 
 				if (subZip.exists()) {
-					System.out.printf("Error: Target zip %s already exist. Target zip are to be renamed.\n", subZip.getName());
+					System.out.printf("Error: Target zip %s already exist. Target zip are to be renamed.\n",
+							subZip.getName());
 					int extra = 0;
 					while (subZip.exists()) {
 						subZip = new File(tarDir, String.format("%s_%s_%d.csv.7z", m.group(2), m.group(3), extra));

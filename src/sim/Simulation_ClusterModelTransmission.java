@@ -832,7 +832,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						if (runnable.length > 1) {
 							runnable[s].setRunnableId(Arrays.toString(pt));
 						} else {
-							runnable[s].setRunnableId(String.format("[%d]", s));
+							runnable[s].setRunnableId(String.format("[%d,%d,%d]", baseContactMapSeed, simSeed, s));
 						}						
 						
 						ArrayList<Integer> field_to_update 
