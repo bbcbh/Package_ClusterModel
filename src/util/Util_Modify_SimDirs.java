@@ -40,7 +40,7 @@ import sim.Simulation_ClusterModelTransmission;
 public class Util_Modify_SimDirs {
 
 	public static HashMap<String, Integer> generateSeedFilesFromOptSummary(File optSummaryFile, File target_dirs_base,
-			int numParamSetToIncl_Max, int numParamPerSeedList_Max, File[] directFileCopy, String seed_list_header,
+			int numParam, int numParamSetToIncl_Max, int numParamPerSeedList_Max, File[] directFileCopy, String seed_list_header,
 			boolean unqiueCombinationOnly) throws IOException {
 
 		BufferedReader reader = new BufferedReader(new FileReader(optSummaryFile));
@@ -131,7 +131,7 @@ public class Util_Modify_SimDirs {
 				last_cmap = cMap_seed;
 			}
 
-			for (int i = 1; i < param_set.length - 1; i++) {
+			for (int i = 1; i < Math.min(param_set.length, numParam-1); i++) {
 				if (i != 1) {
 					pWri_seedList.print(',');
 				}
