@@ -2,6 +2,8 @@ package util;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -144,6 +146,20 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 
 		}
 		return res;
+	}
+
+	public static String[] extracted_lines_from_text(File srcTxt) throws FileNotFoundException, IOException {
+		ArrayList<String> lines = new ArrayList<>();
+		BufferedReader reader = new BufferedReader(new FileReader(srcTxt));
+		String line;
+		int line_counter = 0;
+		while ((line = reader.readLine()) != null) {
+			lines.add(line);
+			line_counter++;
+		}		
+		reader.close();
+		String[] line_pbs_arr = lines.toArray(new String[line_counter]);
+		return line_pbs_arr;
 	}
 
 	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile) throws IOException {

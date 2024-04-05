@@ -39,9 +39,9 @@ import sim.Simulation_ClusterModelTransmission;
  */
 public class Util_Modify_SimDirs {
 
-	public static HashMap<String, Integer> generateSeedFilesFromOptSummary(File optSummaryFile, File target_dirs_base,
-			int numParam, int numParamSetToIncl_Max, int numParamPerSeedList_Max, File[] directFileCopy, String seed_list_header,
-			boolean unqiueCombinationOnly) throws IOException {
+	public static HashMap<File, Integer> generateSeedFilesFromOptSummary(File optSummaryFile, File target_dirs_base,
+			String target_dir_name_format, int numParam, int numParamSetToIncl_Max, int numParamPerSeedList_Max,
+			File[] directFileCopy, String seed_list_header, boolean unqiueCombinationOnly) throws IOException {
 
 		BufferedReader reader = new BufferedReader(new FileReader(optSummaryFile));
 		String line;
@@ -99,31 +99,39 @@ public class Util_Modify_SimDirs {
 		}
 		reader.close();
 
-		// Copying other files
-		for (File df : directFileCopy) {
-			Files.copy(df.toPath(), new File(target_dirs_base, df.getName()).toPath(),
-					StandardCopyOption.REPLACE_EXISTING);
-		}
-
 		// Generating seed files
 		final String seedFileName = "Seed_List_%d.csv";
 		long last_cmap = -1;
-		String lastSeedFileName = null;
+		File lastSeedFile = null;
 		int numInSeed = 0;
 		int seedFile_num = 0;
-		HashMap<String, Integer> mapping_num_seed_map = new HashMap<>();
+		File tarDir = null;
+
+		HashMap<File, Integer> mapping_num_seed_map = new HashMap<>();
 
 		PrintWriter pWri_seedList = null;
 		for (String[] param_set : line_selected) {
 			long cMap_seed = Long.parseLong(param_set[1]);
 			if (last_cmap != cMap_seed || numInSeed == numParamPerSeedList_Max) {
 				if (pWri_seedList != null) {
-					mapping_num_seed_map.put(lastSeedFileName, numInSeed);
+					mapping_num_seed_map.put(lastSeedFile, numInSeed);
 					pWri_seedList.close();
 				}
 
-				lastSeedFileName = String.format(seedFileName, seedFile_num);
-				pWri_seedList = new PrintWriter(new File(target_dirs_base, lastSeedFileName));
+				if (target_dir_name_format != null) {
+					tarDir = tarDir == null ? new File(target_dirs_base, target_dir_name_format)
+							: new File(target_dirs_base,
+									String.format("%s_Extra_%d", target_dir_name_format, seedFile_num));
+					tarDir.mkdirs();
+				}else {
+					// Group all seed list in same folder
+					tarDir = target_dirs_base;
+				}
+				
+
+				lastSeedFile = new File(tarDir, String.format(seedFileName, seedFile_num));
+
+				pWri_seedList = new PrintWriter(lastSeedFile);
 				pWri_seedList.println(seed_list_header);
 
 				numInSeed = 0;
@@ -131,7 +139,7 @@ public class Util_Modify_SimDirs {
 				last_cmap = cMap_seed;
 			}
 
-			for (int i = 1; i < Math.min(param_set.length, numParam-1); i++) {
+			for (int i = 1; i < Math.min(param_set.length, numParam + 3); i++) {
 				if (i != 1) {
 					pWri_seedList.print(',');
 				}
@@ -141,7 +149,17 @@ public class Util_Modify_SimDirs {
 			pWri_seedList.println();
 			numInSeed++;
 		}
+
+		mapping_num_seed_map.put(lastSeedFile, numInSeed);
 		pWri_seedList.close();
+
+		// Copying other files
+		for (File seedFile : mapping_num_seed_map.keySet()) {
+			for (File df : directFileCopy) {
+				Files.copy(df.toPath(), new File(seedFile.getParent(), df.getName()).toPath(),
+						StandardCopyOption.REPLACE_EXISTING);
+			}
+		}
 
 		return mapping_num_seed_map;
 

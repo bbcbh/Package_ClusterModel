@@ -47,6 +47,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected Properties loadedProperties = null; // From .prop file, if any
 	protected boolean stopNextTurn = false;
 	protected File baseDir = null;
+	protected File preGenSeedFile = null;
 
 	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
 	protected boolean exportSkipBackup = false;
@@ -57,6 +58,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected HashMap<Long, ArrayList<Long>> preGenSimSeedMap = null;
 	protected HashMap<String, ArrayList<double[]>> preGenParam = null;
 	protected String[] preGenParamKey = null;
+	
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
@@ -222,7 +224,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	}
 
 	public void loadPreGenSimSeed(File seedFile) {
-		try {
+		preGenSeedFile = seedFile;
+		try {			
 			preGenSimSeedMap = new HashMap<>();
 			BufferedReader reader = new BufferedReader(new FileReader(seedFile));
 			String headerline = reader.readLine(); // Header
@@ -824,17 +827,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				runnable[s].initialse();
 				runnable[s].fillRiskCatMap(prealloactedRiskGrpMap.get(baseContactMapSeed));
 
-				if (preGenParam != null) {
+				if (preGenParam != null) {					
 					String preGenParamMapKey = String.format("%d_%d", baseContactMapSeed, simSeed);
 					ArrayList<double[]> paramSet = preGenParam.get(preGenParamMapKey);
 					if (paramSet != null) {
 						double[] pt = paramSet.remove(0);
-						if (runnable.length > 1) {
-							runnable[s].setRunnableId(Arrays.toString(pt));
-						} else {
-							runnable[s].setRunnableId(String.format("[%d,%d,%d]", baseContactMapSeed, simSeed, s));
-						}						
-						
+						runnable[s].setRunnableId(String.format("[%s,%d]", preGenSeedFile.getName(),s));															
 						ArrayList<Integer> field_to_update 
 						 = Optimisation_Factory.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, false);
 						
