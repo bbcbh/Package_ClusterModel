@@ -3134,7 +3134,7 @@ public class Optimisation_Factory {
 		}
 
 	}
-
+	
 	public static void setOptParamInRunnable_Transfrom(Abstract_Runnable_ClusterModel_Transmission target_runnable,
 			String transform_str, HashMap<String, Double> param_map, ArrayList<Integer> field_to_update) {
 		// Fill transfrom_ents
@@ -3202,7 +3202,9 @@ public class Optimisation_Factory {
 								}
 								if (srcVal instanceof Object[]) {
 									srcVal = ((Object[]) srcVal)[shiftPt];
-								} else {
+								} else if (srcVal instanceof float[]) {
+									paramVal = ((float[]) srcVal)[shiftPt];
+								} else  {
 									paramVal = ((double[]) srcVal)[shiftPt];
 								}
 							}
@@ -3231,9 +3233,8 @@ public class Optimisation_Factory {
 			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
 			boolean display_only) {
 		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
-			setOptParamInSingleTransmissionRunnable((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
-					parameter_settings, point, display_only);
-			return null;
+			return setOptParamInSingleTransmissionRunnable((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
+					parameter_settings, point, display_only);			
 		} else {
 			ArrayList<Integer> field_to_update = new ArrayList<>();
 			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
@@ -3258,11 +3259,12 @@ public class Optimisation_Factory {
 		}
 	}
 
-	public static void setOptParamInSingleTransmissionRunnable(
+	public static ArrayList<Integer> setOptParamInSingleTransmissionRunnable(
 			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
 			boolean display_only) {
 
 		HashMap<Integer, Object> modified_param = new HashMap<>();
+		ArrayList<Integer> field_to_update = new ArrayList<>();
 
 		if (parameter_settings == null || parameter_settings.length != point.length) {
 			// Backward compatibility.
@@ -3273,16 +3275,22 @@ public class Optimisation_Factory {
 				String param_setting = parameter_settings[param_arr_index];
 				param_setting = param_setting.replaceAll("\\s", "");
 				String[] param_setting_arr = param_setting.split("_");
-				int param_name_index = Integer.parseInt(param_setting_arr[0]);
-				Object val = target_runnable.getRunnable_fields()[param_name_index - RUNNABLE_OFFSET];
+				int param_name_index = Integer.parseInt(param_setting_arr[0]);				
+				int field_id =  param_name_index - RUNNABLE_OFFSET;
+				Object val = target_runnable.getRunnable_fields()[field_id];
 				if (val != null) {
 					int setting_level = 1;
-					switch (param_name_index - RUNNABLE_OFFSET) {
+					switch (field_id) {
 					default:
 						recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
 
 					}
 					// Special modification for
+					int pt = Collections.binarySearch(field_to_update, field_id);
+					if (pt < 0) {
+						field_to_update.add(~pt, field_id);
+					}
+					
 					modified_param.put(param_name_index, val);
 
 				} else {
@@ -3306,7 +3314,10 @@ public class Optimisation_Factory {
 
 			}
 
-		}
+		}		
+		return field_to_update;
+		
+
 	}
 
 	private static void recursiveRunnableFieldReplace(Object runnableField, int param_index, double[] param_val_all,

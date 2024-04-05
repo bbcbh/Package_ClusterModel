@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.InvalidPropertiesFormatException;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -296,78 +297,83 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if (prop.containsKey(PROP_SIM_SETTING)) {
 			simSetting = Integer.parseInt(prop.getProperty(PROP_SIM_SETTING));
 		}
+		
 
 		File propSwitchFile = new File(baseDir, FILENAME_PROP_SWITCH);
-
 		try {
 			if (propSwitchFile.exists()) {
-				Properties prop_switch = new Properties();
-				FileInputStream fIS_switch = new FileInputStream(propSwitchFile);
-				prop_switch.loadFromXML(fIS_switch);
-				fIS_switch.close();
-				int[] switchTime = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT),
-						int[].class);
-
-				int num_snap = 1;
-				int num_time_steps_per_snap = 1;
-
-				if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
-					num_snap = Integer.parseInt(loadedProperties
-							.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
-				}
-				if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
-					num_time_steps_per_snap = Integer.parseInt(loadedProperties
-							.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
-				}
-
-				int maxTime = num_snap * num_time_steps_per_snap;
-
-				HashMap<Integer, String> ent = null;
-				for (int sI = 0; sI < switchTime.length; sI++) {
-					int sTime = switchTime[sI];
-
-					if (sTime > 0) {
-						String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
-
-						for (Object key : prop_switch.keySet()) {
-							String keyStr = key.toString();
-							if (keyStr.startsWith(switch_prefix)) {
-								Integer runnableKey = Integer.parseInt(
-										keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
-								ent = propSwitch_map.get(sTime);
-								if (ent == null) {
-									ent = new HashMap<>();
-									propSwitch_map.put(sTime, ent);
-								}
-								ent.put(runnableKey, prop_switch.getProperty(keyStr));
-							}
-						}
-					} else if (ent != null) {
-						int entTime = switchTime[sI - 1] + -sTime;
-						while (entTime < maxTime + -sTime) {
-							HashMap<Integer, String> new_ent = propSwitch_map.get(entTime);
-							if (new_ent == null) {
-								new_ent = new HashMap<>();
-								propSwitch_map.put(entTime, new_ent);
-							}
-							for (Integer k : ent.keySet()) {
-								new_ent.put(k, ent.get(k));
-							}
-							entTime += -sTime;
-						}
-						
-						
-
-					}
-				}
-
-				System.out.printf("Properties switch file < %s > loaded.\n", propSwitchFile.getAbsolutePath());
+				loadPropSwitchFile(propSwitchFile);
 			}
 		} catch (IOException ex) {
 			ex.printStackTrace(System.err);
 
 		}
 
+	}
+
+	protected void loadPropSwitchFile(File propSwitchFile)
+			throws FileNotFoundException, IOException, InvalidPropertiesFormatException {
+		Properties prop_switch = new Properties();
+		FileInputStream fIS_switch = new FileInputStream(propSwitchFile);
+		prop_switch.loadFromXML(fIS_switch);
+		fIS_switch.close();
+		int[] switchTime = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT),
+				int[].class);
+
+		int num_snap = 1;
+		int num_time_steps_per_snap = 1;
+
+		if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
+			num_snap = Integer.parseInt(loadedProperties
+					.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
+		}
+		if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
+			num_time_steps_per_snap = Integer.parseInt(loadedProperties
+					.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
+		}
+
+		int maxTime = num_snap * num_time_steps_per_snap;
+
+		HashMap<Integer, String> ent = null;
+		for (int sI = 0; sI < switchTime.length; sI++) {
+			int sTime = switchTime[sI];
+
+			if (sTime > 0) {
+				String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
+
+				for (Object key : prop_switch.keySet()) {
+					String keyStr = key.toString();
+					if (keyStr.startsWith(switch_prefix)) {
+						Integer runnableKey = Integer.parseInt(
+								keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
+						ent = propSwitch_map.get(sTime);
+						if (ent == null) {
+							ent = new HashMap<>();
+							propSwitch_map.put(sTime, ent);
+						}
+						ent.put(runnableKey, prop_switch.getProperty(keyStr));
+					}
+				}
+			} else if (ent != null) {
+				int entTime = switchTime[sI - 1] + -sTime;
+				while (entTime < maxTime + -sTime) {
+					HashMap<Integer, String> new_ent = propSwitch_map.get(entTime);
+					if (new_ent == null) {
+						new_ent = new HashMap<>();
+						propSwitch_map.put(entTime, new_ent);
+					}
+					for (Integer k : ent.keySet()) {
+						new_ent.put(k, ent.get(k));
+					}
+					entTime += -sTime;
+				}
+				
+				
+
+			}
+		}
+
+		System.out.printf("Properties switch file < %s > loaded.\n", propSwitchFile.getAbsolutePath());
 	}
 
 	@Override
