@@ -1,7 +1,10 @@
 package util;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +20,11 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 	private String[] header;
 	private ArrayList<Integer> time_pt;
 	boolean isCumulative = false;
+	
+	
+	public Util_CSV_Table_Map(String[] headerRow) {
+		this(concatStr(headerRow));		
+	}
 
 	public Util_CSV_Table_Map(String headerRow) {
 		header = headerRow.split(",");
@@ -52,6 +60,10 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 		}
 
 	}
+	
+	public void addRow(String[] csv_line_sp) {
+		addRow(concatStr(csv_line_sp));
+	}	
 
 	public void addRow(String csv_line) {
 		String[] entry = csv_line.split(",");
@@ -126,6 +138,37 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 		}
 
 		return str.toString();
+	}
+
+	public void printSummaryFile(String summaryFileFormat, File baseDir)
+			throws FileNotFoundException {
+		String dirName = summaryFileFormat;
+		int subIndex = summaryFileFormat.indexOf("_%s");
+		if (subIndex > 0) {
+			dirName = summaryFileFormat.substring(0, subIndex);
+		}
+		File resultsDir = new File(baseDir, dirName);
+		resultsDir.mkdirs();
+	
+		String[] headers = getHeader();
+		for (int s = 1; s < headers.length; s++) {
+			String summary = displayStat(s);
+			File summaryFile = new File(resultsDir, String.format(summaryFileFormat, headers[s]));
+			PrintWriter pWri = new PrintWriter(summaryFile);
+			pWri.println(summary);
+			pWri.close();
+		}
+	}
+
+	private static String concatStr(String[] splitedStr) {
+		StringBuilder res = new StringBuilder();
+		for (String hE : splitedStr) {
+			if (!res.isEmpty()) {
+				res.append(',');
+			}
+			res.append(hE);
+		}
+		return res.toString();
 	}
 
 	public static void updateInfectionHistoryMap(HashMap<String, ArrayList<Integer>> infection_history_count_map,

@@ -2,6 +2,7 @@ package util;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 
 public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, long[]>> {
 
@@ -146,6 +148,29 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 
 		}
 		return res;
+	}
+
+	public static void zipFile(File[] FileList, File tarFile) throws IOException, FileNotFoundException {
+		SevenZOutputFile outputZip = new SevenZOutputFile(tarFile);
+	
+		SevenZArchiveEntry entry;
+		FileInputStream fIn;
+	
+		for (int fI = 0; fI < FileList.length; fI++) {
+			entry = outputZip.createArchiveEntry(FileList[fI], FileList[fI].getName());
+			outputZip.putArchiveEntry(entry);
+			fIn = new FileInputStream(FileList[fI]);
+			outputZip.write(fIn);
+			outputZip.closeArchiveEntry();
+			fIn.close();
+		}
+	
+		outputZip.close();
+	
+		// Clean up
+		for (File f : FileList) {
+			f.delete();
+		}
 	}
 
 	public static String[] extracted_lines_from_text(File srcTxt) throws FileNotFoundException, IOException {

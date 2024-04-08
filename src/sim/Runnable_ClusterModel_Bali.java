@@ -1,7 +1,9 @@
 package sim;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -17,7 +19,9 @@ import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import test.Test_Analysis_Bali;
 import util.PropValUtils;
+import util.Util_7Z_CSV_Entry_Extract_Callable;
 
 public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTransmission {
 
@@ -321,6 +325,29 @@ public class Runnable_ClusterModel_Bali extends Runnable_ClusterModel_MultiTrans
 				System.err.printf("Post simulation file generation for Thread <%s> completed.\n", runnableId);
 			}
 		}
+	}
+
+	public static void zipOutputFiles(File baseDir) throws FileNotFoundException, IOException {
+		// Seed File
+		Pattern patten_seed = Pattern.compile("Seed_List_(\\d+).csv");
+
+		File[] seedList = baseDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return patten_seed.matcher(pathname.getName()).matches();
+			}
+		});
+
+		if (seedList.length > 0) {
+
+			File seed_zip = new File(baseDir, "Seed_List_All.csv.7z");
+			Util_7Z_CSV_Entry_Extract_Callable.zipFile(seedList, seed_zip);
+
+			for (File s : seedList) {
+				s.delete();
+			}
+		}		
+
 	}
 
 }
