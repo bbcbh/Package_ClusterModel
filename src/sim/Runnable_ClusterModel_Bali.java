@@ -19,7 +19,6 @@ import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
-import test.Test_Analysis_Bali;
 import util.PropValUtils;
 import util.Util_7Z_CSV_Entry_Extract_Callable;
 
