@@ -42,6 +42,8 @@ import relationship.ContactMap;
 import relationship.TransmissionMap;
 import util.PersonClassifier;
 import util.PropValUtils;
+import util.Util_7Z_CSV_Entry_Extract_Callable;
+import util.Util_CSV_Table_Map;
 
 public class Simulation_ClusterModelTransmission implements SimulationInterface {
 
@@ -59,7 +61,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected HashMap<Long, ArrayList<Long>> preGenSimSeedMap = null;
 	protected HashMap<String, ArrayList<double[]>> preGenParam = null;
 	protected String[] preGenParamKey = null;
-	
 
 	public static final String POP_PROP_INIT_PREFIX = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX;
 	public static final String POP_PROP_INIT_PREFIX_CLASS = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX_CLASS;
@@ -226,7 +227,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void loadPreGenSimSeed(File seedFile) {
 		preGenSeedFile = seedFile;
-		try {			
+		try {
 			preGenSimSeedMap = new HashMap<>();
 			BufferedReader reader = new BufferedReader(new FileReader(seedFile));
 			String headerline = reader.readLine(); // Header
@@ -297,7 +298,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if (prop.containsKey(PROP_SIM_SETTING)) {
 			simSetting = Integer.parseInt(prop.getProperty(PROP_SIM_SETTING));
 		}
-		
 
 		File propSwitchFile = new File(baseDir, FILENAME_PROP_SWITCH);
 		try {
@@ -324,12 +324,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		int num_time_steps_per_snap = 1;
 
 		if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
-			num_snap = Integer.parseInt(loadedProperties
-					.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
+			num_snap = Integer.parseInt(
+					loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
 		}
 		if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
-			num_time_steps_per_snap = Integer.parseInt(loadedProperties
-					.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
+			num_time_steps_per_snap = Integer.parseInt(
+					loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
 		}
 
 		int maxTime = num_snap * num_time_steps_per_snap;
@@ -344,8 +344,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				for (Object key : prop_switch.keySet()) {
 					String keyStr = key.toString();
 					if (keyStr.startsWith(switch_prefix)) {
-						Integer runnableKey = Integer.parseInt(
-								keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
+						Integer runnableKey = Integer
+								.parseInt(keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
 						ent = propSwitch_map.get(sTime);
 						if (ent == null) {
 							ent = new HashMap<>();
@@ -367,8 +367,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 					entTime += -sTime;
 				}
-				
-				
 
 			}
 		}
@@ -770,11 +768,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (runSim) {
-				if(Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					runnable[s] = new Runnable_ClusterModel_Bali(baseContactMapSeed, simSeed, 
-							pop_composition, baseContactMapMapping.get(baseContactMapSeed), 
-							num_time_steps_per_snap, num_snap);										
-				}else if (Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+				if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+					runnable[s] = new Runnable_ClusterModel_Bali(baseContactMapSeed, simSeed, pop_composition,
+							baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);
+				} else if (Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType);
 					m.matches();
 					runnable[s] = new Runnable_ClusterModel_Syphilis_NG_Prophylaxis(baseContactMapSeed, simSeed,
@@ -833,25 +830,26 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				runnable[s].initialse();
 				runnable[s].fillRiskCatMap(prealloactedRiskGrpMap.get(baseContactMapSeed));
 
-				if (preGenParam != null) {					
+				if (preGenParam != null) {
 					String preGenParamMapKey = String.format("%d_%d", baseContactMapSeed, simSeed);
 					ArrayList<double[]> paramSet = preGenParam.get(preGenParamMapKey);
 					if (paramSet != null) {
 						double[] pt = paramSet.remove(0);
-						runnable[s].setRunnableId(String.format("[%s,%d]", preGenSeedFile.getName(),s));															
-						ArrayList<Integer> field_to_update 
-						 = Optimisation_Factory.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, false);
-						
-						if(loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
-							String transform_str = loadedProperties.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
+						runnable[s].setRunnableId(String.format("[%s,%d]", preGenSeedFile.getName(), s));
+						ArrayList<Integer> field_to_update = Optimisation_Factory
+								.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, false);
+
+						if (loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
+							String transform_str = loadedProperties
+									.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
 									.replaceAll("\\s", "");
 							if (transform_str.length() > 0) {
-								HashMap<String, Double> param_map = new HashMap<>();								
-								Optimisation_Factory.setOptParamInRunnable_Transfrom(runnable[s],
-										transform_str, param_map, field_to_update);
-							}																					
-						}																												
-						
+								HashMap<String, Double> param_map = new HashMap<>();
+								Optimisation_Factory.setOptParamInRunnable_Transfrom(runnable[s], transform_str,
+										param_map, field_to_update);
+							}
+						}
+
 						for (Integer field_id : field_to_update) {
 							runnable[s].refreshField(field_id, true);
 						}
@@ -1317,6 +1315,87 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		final Pattern pattern_include_file = Pattern
 				.compile("(\\[.*\\]){0,1}" + file_name.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
 		zipSelectedOutputs(baseDir, zip_file_name, pattern_include_file, exportSkipBackup);
+	}
+
+	public static void output_analysis_csv(File baseDir, String[] incl_filename, String[] summary_stat_filename)
+			throws IOException, FileNotFoundException {
+		Pattern[] fileNamePattern = new Pattern[incl_filename.length];
+		File[] zipFile = new File[incl_filename.length];
+		for (int p = 0; p < fileNamePattern.length; p++) {
+			fileNamePattern[p] = Pattern.compile(String.format("\\[.*\\]%s.*.csv", incl_filename[p]));
+			zipFile[p] = new File(baseDir, String.format("%sAll.csv.7z", incl_filename[p]));
+		}
+		output_analysis_csv(baseDir, fileNamePattern, zipFile, summary_stat_filename);
+	}
+
+	public static void output_analysis_csv(File baseDir, 	 
+			Pattern[] incl_filename_pattern, 
+			File[] zip_file, String[] summary_stat_filename)
+			throws IOException, FileNotFoundException {
+
+		// Zipping Seed File
+		Pattern patten_seed = Pattern.compile("Seed_List_(\\d+).csv");
+
+		File[] seedList = baseDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return patten_seed.matcher(pathname.getName()).matches();
+			}
+		});
+		if (seedList.length > 0) {
+			File seed_zip = new File(baseDir, "Seed_List_All.csv.7z");
+			Util_7Z_CSV_Entry_Extract_Callable.zipFile(seedList, seed_zip);
+			for (File s : seedList) {
+				s.delete();
+			}
+		}
+		// Zipping and analyzing csv
+		for (int f = 0; f < incl_filename_pattern.length; f++) {
+			Pattern pattern_zf = incl_filename_pattern[f];
+			File[] matchList = baseDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pattern_zf.matcher(pathname.getName()).matches();
+				}
+			});
+
+			File match_zip = zip_file[f];
+
+			if (matchList.length > 0) {
+				Util_7Z_CSV_Entry_Extract_Callable.zipFile(matchList, match_zip);
+				for (File s : matchList) {
+					s.delete();
+				}
+			}
+
+			if (summary_stat_filename[f] != null) {
+				HashMap<String, ArrayList<String[]>> file_ent = new HashMap<>();
+				file_ent = Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(match_zip, file_ent);
+				Util_CSV_Table_Map csvTableMapping = null;
+
+				for (String zipEntName : file_ent.keySet()) {
+					ArrayList<String[]> data = file_ent.get(zipEntName);
+					if (csvTableMapping == null) {
+						csvTableMapping = new Util_CSV_Table_Map(data.get(0));
+						csvTableMapping.setCumulative(f == 0);
+					}
+					for (int r = 1; r < data.size(); r++) {
+						if (data.get(r).length > 0) {
+							try {
+								csvTableMapping.addRow(data.get(r));
+							} catch (Exception ex) {
+								System.err.printf("Error in adding row from %s (%s)\n", zipEntName);
+							}
+						}
+					}
+				}
+				if (csvTableMapping != null) {
+					String summaryFileFormat = summary_stat_filename[f];
+					csvTableMapping.printSummaryFile(summaryFileFormat, baseDir);
+				}
+			}
+
+		}
 	}
 
 	public static void zipSelectedOutputs(File baseDir, String zip_file_name, final Pattern pattern_include_file,
