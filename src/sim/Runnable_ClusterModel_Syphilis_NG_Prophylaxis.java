@@ -12,13 +12,11 @@ import java.util.regex.Pattern;
 
 import relationship.ContactMap;
 
-public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Runnable_ClusterModel_MultiTransmission {
+public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis {
 
 	float prophylaxis_uptake_per_treatment;
 	int prophylaxis_dosage_max;
-	int prophylaxis_starts_at;
-	int prophylaxis_duration = 3;
-
+	
 	private static final int num_inf = 2;
 	private static final int num_site = 4;
 	private static final int num_act = 3;
@@ -33,13 +31,6 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Runnable_Clus
 	public static final Pattern PROP_TYPE_PATTERN = Pattern
 			.compile("Syphilis_NG_Prophylaxis_(-?\\d+\\.\\d+)_(\\d+)_(-?\\d+)");
 
-	protected transient HashMap<Integer, int[]> prophylaxis_record; // K=PID
-	protected static final int PROPHYLAXIS_REC_LAST_OFFER_AT = 0;
-	protected static final int PROPHYLAXIS_REC_LAST_UPTAKE_AT = PROPHYLAXIS_REC_LAST_OFFER_AT + 1;
-	protected static final int PROPHYLAXIS_REC_DOSAGE = PROPHYLAXIS_REC_LAST_UPTAKE_AT + 1;
-	protected static final int PROPHYLAXIS_REC_PROTECT_UNTIL = PROPHYLAXIS_REC_DOSAGE + 1;
-	protected static final int LENGTH_PROPHYLAXIS_REC = PROPHYLAXIS_REC_PROTECT_UNTIL + 1;
-
 	public Runnable_ClusterModel_Syphilis_NG_Prophylaxis(long cMap_seed, long sim_seed, int[] pop_composition,
 			ContactMap base_cMap, int numTimeStepsPerSnap, int numSnap, float prophylaxis_uptake_per_treatment,
 			int prophylaxis_dosage, int prophylaxis_starts_at) {
@@ -50,12 +41,6 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Runnable_Clus
 		this.prophylaxis_dosage_max = prophylaxis_dosage;
 		this.prophylaxis_starts_at = prophylaxis_starts_at;
 
-	}
-
-	@Override
-	public void initialse() {
-		super.initialse();
-		prophylaxis_record = new HashMap<>();
 	}
 
 	@Override
@@ -143,26 +128,6 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Runnable_Clus
 			}
 
 		}
-	}
-
-	@Override
-	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
-			int partnershipDuration, int actType, int src_site, int tar_site) {
-		double transProb = super.getTransmissionProb(currentTime, inf_id, pid_inf_src, pid_inf_tar, partnershipDuration,
-				actType, src_site, tar_site);
-		for (int pid : new int[] { pid_inf_tar }) { // PREP only effect susceptibility not transmission
-			int[] prop_rec = prophylaxis_record.get(pid);
-			if (prop_rec != null) {
-				if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] < currentTime && prop_rec[PROPHYLAXIS_REC_DOSAGE] > 0) {
-					prop_rec[PROPHYLAXIS_REC_DOSAGE]--;
-					prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + prophylaxis_duration;
-				}
-				if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] >= currentTime) {
-					transProb *= 0; // Assume 100 efficiency atm
-				}
-			}
-		}
-		return transProb;
 	}
 
 	@SuppressWarnings("unchecked")

@@ -7,6 +7,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Properties;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
@@ -17,6 +18,7 @@ import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import util.PropValUtils;
 
 public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstract_Runnable_ClusterModel {
 
@@ -49,20 +51,19 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
 			+ 1;
 	protected static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-				+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
-				+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
+			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
 		int index = Arrays.binarySearch(cumul_pop_comp, personId);
-	
+
 		if (index < 0) {
 			return ~index;
 		} else {
 			return index;
 		}
 	}
-
 
 	protected final int[] cUMULATIVE_POP_COMPOSITION;
 	protected final ContactMap bASE_CONTACT_MAP;
@@ -79,6 +80,19 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected transient HashMap<Integer, Integer> risk_cat_map;
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
+
+	protected static final String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
+			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+
+	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, 
+			ContactMap base_cMap, Properties prop) {			
+		
+		this(cMap_seed, sim_seed, 
+				(int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),int[].class), 
+				base_cMap, 
+				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])), 
+				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])));
+	}
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] pop_composition,
 			ContactMap base_cMap, int numTimeStepsPerSnap, int numSnap) {
@@ -99,12 +113,16 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 		RNG = new MersenneTwisterRandomGenerator(sIM_SEED);
 	}
-	
-	
-	public abstract void initialse();	
+
+	public abstract void initialse();
+
 	public abstract void allocateSeedInfection(int[][] num_infected_count, int time);
-	public abstract int addInfectious(Integer infectedId, int infId, int site, int stage_id, int infectious_time, int recoveredAt);
+
+	public abstract int addInfectious(Integer infectedId, int infId, int site, int stage_id, int infectious_time,
+			int recoveredAt);
+
 	public abstract void scheduleNextTest(Integer personId, int lastTestTime);
+
 	public abstract void refreshField(int fieldId, boolean clearAll);
 
 	public long getSim_seed() {
@@ -223,13 +241,13 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			return generateNonDistribution(input);
 		}
 	}
-	
+
 	protected AbstractRealDistribution generateUniformDistribution(double[] input) {
-		if(input[1] != 0) {
-			return new UniformRealDistribution(RNG, input[0], input[1]);						
-		}else {
+		if (input[1] != 0) {
+			return new UniformRealDistribution(RNG, input[0], input[1]);
+		} else {
 			return generateNonDistribution(input);
-		}	
+		}
 	}
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
@@ -240,11 +258,9 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		this.propSwitch_map = propSwitch_map;
 	}
 
-
 	public int getGenderType(Integer personId) {
 		return getGenderType(personId, cUMULATIVE_POP_COMPOSITION);
 	}
-
 
 	public void fillRiskCatMap(ArrayList<Number[]> prealloactedRiskGrpArr) {
 		if (prealloactedRiskGrpArr != null) {
@@ -252,7 +268,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				if (risk_cat_map == null) {
 					risk_cat_map = new HashMap<>();
 				}
-	
+
 				risk_cat_map.put(
 						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID],
 						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
@@ -260,10 +276,9 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-
 	protected Integer[][] getEdgesArrayFromBaseConctactMap() {
 		if (edges_list == null) {
-	
+
 			try {
 				edges_list = generateMapEdgeArray(bASE_CONTACT_MAP).call();
 			} catch (Exception e) {
@@ -271,24 +286,24 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
 				edges_list = new ArrayList<>();
 				System.exit(-1);
-	
+
 			}
 		}
 		Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
 		return edges_array;
 	}
 
-
-	protected int initaliseCMap(ContactMap cMap, Integer[][] edges_array, int edges_array_pt, int startTime, HashMap<Integer, ArrayList<Integer[]>> removeEdges) {
+	protected int initaliseCMap(ContactMap cMap, Integer[][] edges_array, int edges_array_pt, int startTime,
+			HashMap<Integer, ArrayList<Integer[]>> removeEdges) {
 		ArrayList<Integer[]> toRemove;
-	
+
 		// Skip invalid edges
 		while (edges_array_pt < edges_array.length
 				&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < startTime) {
 			Integer[] edge = edges_array[edges_array_pt];
 			int edge_start_time = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
 			int expireAt = edge_start_time + edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
-	
+
 			if (expireAt > startTime) {
 				toRemove = removeEdges.get(expireAt);
 				if (toRemove == null) {
@@ -296,7 +311,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 					removeEdges.put(expireAt, toRemove);
 				}
 				toRemove.add(edge);
-	
+
 				for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
 						Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
 					if (!cMap.containsVertex(edge[index])) {
@@ -306,27 +321,26 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
 						edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 			}
-	
+
 			edges_array_pt++;
 		}
 		return edges_array_pt;
 	}
 
-
 	protected void setPreAllocatedRiskFromFile() {
 		File pre_allocate_risk_file = new File(baseDir,
 				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));
-	
+
 		if (pre_allocate_risk_file.isFile()) {
 			try {
 				BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));
 				String line;
-				
+
 				if (risk_cat_map == null) {
-					risk_cat_map = new HashMap<>();					
+					risk_cat_map = new HashMap<>();
 
 				}
-				
+
 				while ((line = reader.readLine()) != null) {
 					String[] lineSp = line.split(",");
 					risk_cat_map.put(
@@ -335,7 +349,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 							Integer.parseInt(
 									lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));
 				}
-	
+
 				reader.close();
 			} catch (Exception e) {
 				e.printStackTrace(System.err);
@@ -343,9 +357,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-
-	protected int updateCMap(ContactMap cMap, int currentTime, 
-			Integer[][] edges_array, int edges_array_pt, HashMap<Integer, ArrayList<Integer[]>> edgesToRemove) {
+	protected int updateCMap(ContactMap cMap, int currentTime, Integer[][] edges_array, int edges_array_pt,
+			HashMap<Integer, ArrayList<Integer[]>> edgesToRemove) {
 		ArrayList<Integer[]> toRemove;
 		// Remove expired edges
 		toRemove = edgesToRemove.get(currentTime);
@@ -354,37 +367,36 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				cMap.removeEdge(edge);
 			}
 		}
-	
+
 		// Add new edges and update removal schedule
 		while (edges_array_pt < edges_array.length
 				&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-	
+
 			Integer[] edge = edges_array[edges_array_pt];
 			Integer expireAt = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
 					+ Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1);
-	
+
 			toRemove = edgesToRemove.get(expireAt);
 			if (toRemove == null) {
 				toRemove = new ArrayList<>();
 				edgesToRemove.put(expireAt, toRemove);
 			}
 			toRemove.add(edge);
-	
+
 			for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
 					Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
 				if (!cMap.containsVertex(edge[index])) {
 					cMap.addVertex(edge[index]);
 				}
 			}
-	
+
 			cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
 					edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
-	
+
 			edges_array_pt++;
 		}
 		return edges_array_pt;
 	}
-
 
 	public HashMap<String, Object> getSim_output() {
 		return sim_output;

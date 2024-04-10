@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -190,6 +191,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected static final String SIM_OUTPUT_KEY_CUMUL_INCIDENCE_SITE = "Output_%d_S";
 
 	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("MultiTransmission_(\\d+)_(\\d+)_(\\d+)");
+
+	public Runnable_ClusterModel_MultiTransmission(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop,
+			int num_inf, int num_site, int num_act) {
+		this(cMap_seed, sim_seed,
+				(int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey), int[].class), base_cMap,
+				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])),
+				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])),
+				num_inf, num_site, num_act);
+	}
 
 	public Runnable_ClusterModel_MultiTransmission(long cMap_seed, long sim_seed, int[] pop_composition,
 			ContactMap base_cMap, int numTimeStepsPerSnap, int numSnap, int num_inf, int num_site, int num_act) {
@@ -955,9 +965,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				double[] test_properies;
 				int tested_stage_inc;
 				int[][] inf_stage = null;
-				
-				for (int siteId = 0; siteId < NUM_SITE && !applyTreatment; siteId++) {										
-					if ((siteIncl & 1 << siteId) != 0) {																	
+
+				for (int siteId = 0; siteId < NUM_SITE && !applyTreatment; siteId++) {
+					if ((siteIncl & 1 << siteId) != 0) {
 						// Test for the site
 						test_properies = lookupTable_test_treatment_properties
 								.get(String.format("%d,%d", infId, siteId));
@@ -966,8 +976,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							if (inf_stage != null && inf_stage[infId][siteId] >= 0) {
 								int test_state_inc_pt = FIELD_DX_TEST_PROPERTIES_STAGE_INC_START;
 								while (test_state_inc_pt < test_properies.length) {
-									tested_stage_inc = (int) test_properies[test_state_inc_pt];																		
-									if ((tested_stage_inc & 1 << inf_stage[infId][siteId]) != 0) {																												
+									tested_stage_inc = (int) test_properies[test_state_inc_pt];
+									if ((tested_stage_inc & 1 << inf_stage[infId][siteId]) != 0) {
 										double testSensitivity = test_properies[FIELD_DX_TEST_PROPERTIES_ACCURACY];
 										if (testSensitivity > 0) {
 											applyTreatment |= RNG.nextDouble() < testSensitivity;
@@ -1536,7 +1546,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Update state_switch map
 		current_stage_arr[infection_id][site_id] = current_infection_stage;
 		infection_state_switch[infection_id][site_id] = infect_switch_time;
-		
+
 		if (infect_switch_time > current_time) {
 			// Update schedule
 			updateInfectStageChangeSchedule(pid, infection_id, site_id, infect_switch_time, -1);
