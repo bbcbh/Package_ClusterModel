@@ -681,8 +681,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		File baseDir = (File) args.get(OptTrendFittingFunction.ARGS_BASEDIR);
 		Properties prop = (Properties) args.get(OptTrendFittingFunction.ARGS_PROP);
 		HashMap<String, double[][]> target_trend_collection = (HashMap<String, double[][]>) args
-				.get(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS);
-		double[][] time_range = (double[][]) args.get(OptTrendFittingFunction.ARGS_TAR_TRENDS_TIMERANGE);
+				.get(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS);		
 		Number[][] result_lookup = (Number[][]) args.get(ARGS_PREV_RESULTS);
 
 		// Setting initial value from properties
@@ -724,8 +723,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		}
 
 		Abstract_Runnable_ClusterModel_Transmission[] runnable = new Abstract_Runnable_ClusterModel_Transmission[bestResidue_by_runnable.length];
-		int[] bestMatchStart_by_runnable = new int[runnable.length];
-		Arrays.fill(bestMatchStart_by_runnable, -1);
 
 		StringBuilder param_str = new StringBuilder();
 		for (double pt : point) {
@@ -1022,6 +1019,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 					Integer[] simTime = null;
 
+					bestResidue_by_runnable[r] = 0;
+
 					for (HashMap<Integer, int[][]> map : countMapBySite) {
 						if (map != null) {
 							if (simTime == null || map.keySet().size() > simTime.length) {
@@ -1041,6 +1040,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						System.err.printf(
 								"Simulation results not found for simulation with CMAP_SEED = %d and SIM_SEED = %d.\n",
 								runnable[r].getcMap_seed(), runnable[r].getSim_seed());
+
+						bestResidue_by_runnable[r] = Double.NaN;
 					} else {
 						Arrays.sort(simTime);
 						int num_target_trend = target_trend_collection.size();
@@ -1055,24 +1056,14 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 						// Trim simTime to valid starting point
 
-						int minFitFrom = simTime[0];
 						String[][] trend_target_key_split = new String[trend_target_key.length][];
 						for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 							trend_target_key_split[trend_target_pt] = trend_target_key[trend_target_pt].split(",");
-							minFitFrom = Math.max(minFitFrom, Integer.parseInt(
-									trend_target_key_split[trend_target_pt][OptTrendFittingFunction.OPT_TREND_MAP_KEY_FITFROM]));
-						}
-
-						if (minFitFrom > simTime[0]) {
-							int trimFrom = Arrays.binarySearch(simTime, minFitFrom);
-							if (trimFrom < 0) {
-								trimFrom = ~trimFrom - 1;
-							}
-							simTime = Arrays.copyOfRange(simTime, Math.max(0, trimFrom), simTime.length);
 						}
 
 						double[][][] tar_values = new double[num_target_trend][][];
 						double[] weight = new double[num_target_trend];
+						int[] fitFrom = new int[num_target_trend];
 						UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
 						UnivariateInterpolator interpolator = new LinearInterpolator();
 
@@ -1092,6 +1083,20 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 									.get(trend_target_key[trend_target_pt]);
 							weight[trend_target_pt] = Double
 									.parseDouble(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_WEIGHT]);
+
+							fitFrom[trend_target_pt] = Integer.parseInt(
+									trend_target_key_split[trend_target_pt][OptTrendFittingFunction.OPT_TREND_MAP_KEY_FITFROM]);
+
+							// Trend value with fitFrom adjustment
+							double[] target_t = Arrays.copyOf(tar_values[trend_target_pt][0],
+									tar_values[trend_target_pt][0].length);
+							double[] target_y = Arrays.copyOf(tar_values[trend_target_pt][1],
+									tar_values[trend_target_pt][1].length);
+
+							for (int tt = 0; tt < target_t.length; tt++) {
+								target_t[tt] += fitFrom[trend_target_pt];
+							}
+							interpolation[trend_target_pt] = interpolator.interpolate(target_t, target_y);
 
 							Matcher m = OPT_TREND_TYPE_FORMAT_BY_SITE
 									.matcher(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE]);
@@ -1185,46 +1190,24 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 							}
 
-							interpolation[trend_target_pt] = interpolator.interpolate(t_values, y_values);
+							// Adjust y_value to start from first y_value
+							if (trend_target_key_split[trend_target_pt][OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE]
+									.startsWith("Cumul")) {
+								for (int ty = 0; ty < y_values.length; ty++) {
+									y_values[ty] -= y_values[0];
+								}
+							}
+
+							for (int t_pt = 0; t_pt < simTime.length; t_pt++) {
+								if (target_t[0] <= simTime[t_pt] && simTime[t_pt] <= target_t[target_t.length - 1]) {
+									double model_y = y_values[t_pt];
+									double trend_y = interpolation[trend_target_pt].value(simTime[t_pt]);
+									bestResidue_by_runnable[r] += weight[trend_target_pt]
+											* Math.pow(model_y - trend_y, 2);
+								}
+							}
 
 						}
-						// Calculate best fit for all target
-						for (int match_start_time = simTime[0]; match_start_time <= simTime[simTime.length - 1]
-								- (time_range[0][1] - time_range[0][0]); match_start_time++) {
-							double residue = 0;
-
-							for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
-								double offset = 0;
-								double no_match_val = 0;
-								if (trend_target_key_split[trend_target_pt][OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE]
-										.startsWith("Cumul")) {
-									offset = interpolation[trend_target_pt].value(match_start_time);
-									no_match_val = interpolation[trend_target_pt].value(simTime[simTime.length - 1]);
-
-								}
-								for (int i = 0; i < tar_values[trend_target_pt][0].length; i++) {
-									double model_adj_tar_t = match_start_time + tar_values[trend_target_pt][0][i];
-									double target_y = tar_values[trend_target_pt][1][i];
-									double model_y;
-
-									if (model_adj_tar_t <= simTime[simTime.length - 1]) {
-										model_y = interpolation[trend_target_pt].value(model_adj_tar_t);
-									} else {
-										model_y = no_match_val;
-									}
-
-									residue += weight[trend_target_pt] * Math.pow((model_y - offset) - target_y, 2);
-								}
-
-							}
-							// System.out.printf("Start_time = %d, R = %f\n", match_start_time,
-							// residue);
-							if (Double.isNaN(bestResidue_by_runnable[r]) || residue < bestResidue_by_runnable[r]) {
-								bestResidue_by_runnable[r] = residue;
-								bestMatchStart_by_runnable[r] = match_start_time;
-							}
-						}
-
 						// Display trends
 						try {
 							File opt_output_file;
@@ -1252,7 +1235,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 							pWri.printf("%s[%s]\n", Optimisation_Factory.OPT_OUTPUT_PREFIX_PARAM, param_str.toString());
 							pWri.printf("%s%f\n", Optimisation_Factory.OPT_OUTPUT_PREFIX_RESIDUE,
 									bestResidue_by_runnable[r]);
-							pWri.printf("%s%d\n", OPT_TREND_OUTPUT_PREFIX_OFFSET, bestMatchStart_by_runnable[r]);
 
 							for (StringBuilder s : str_disp) {
 								pWri.println(s.toString());
