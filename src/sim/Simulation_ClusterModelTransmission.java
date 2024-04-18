@@ -768,17 +768,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (runSim) {
-				if(Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					// TODO: Loading of Runnable_ClusterModel_Prophylaxis specific value					
-					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,							
-							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);					
-				}else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+				if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+					// TODO: Loading of Runnable_ClusterModel_Prophylaxis specific value
+					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
+							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
+				} else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					runnable[s] = new Runnable_ClusterModel_Bali(baseContactMapSeed, simSeed, pop_composition,
 							baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);
 				} else if (Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					System.out.printf("Warning. Old vesion - might consider to use %s instead.\n", 
+					System.out.printf("Warning. Old vesion - might consider to use %s instead.\n",
 							Runnable_ClusterModel_Prophylaxis.class.getName());
-					
+
 					Matcher m = Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType);
 					m.matches();
 					runnable[s] = new Runnable_ClusterModel_Syphilis_NG_Prophylaxis(baseContactMapSeed, simSeed,
@@ -964,6 +964,28 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				zipOutputFiles();
 			}
 		}
+
+		// Zip extra files		
+		Pattern pattern_csv_extra = Pattern
+				.compile("(?:\\[.*\\]){0,1}(.*)_(-{0,1}\\d+)_-{0,1}\\d+.csv");
+		FileFilter extra_filter = new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return pattern_csv_extra.matcher(pathname.getName()).matches();
+			}
+		};
+
+		File[] extra_csv = baseDir.listFiles(extra_filter);
+		while (extra_csv != null && extra_csv.length > 0) {
+			Matcher m = pattern_csv_extra.matcher(extra_csv[0].getName());
+			m.matches();
+			String filename_id = m.group(1);
+			String baseContactSeed_str = m.group(2);
+			zipSelectedOutputs(String.format("%s_%s_%%d.csv", filename_id, baseContactSeed_str),
+					String.format("%s_%s.csv.7z", filename_id, baseContactSeed_str));
+			extra_csv = baseDir.listFiles(extra_filter);
+		}
+
 	}
 
 	public static void fillRiskGrpArrByCasualPartnership(ArrayList<Number[]> riskGrpArr, ContactMap cMap,
@@ -1314,6 +1336,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						FILENAME_VACCINE_COVERAGE_PERSON.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 						String.format(FILENAME_VACCINE_COVERAGE_PERSON_ZIP, baseContactMapSeed));
 			}
+
 		}
 	}
 
@@ -1324,86 +1347,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		zipSelectedOutputs(baseDir, zip_file_name, pattern_include_file, exportSkipBackup);
 	}
 
-	public static void output_analysis_csv(File baseDir, String[] incl_filename, String[] summary_stat_filename)
-			throws IOException, FileNotFoundException {
-		Pattern[] fileNamePattern = new Pattern[incl_filename.length];
-		File[] zipFile = new File[incl_filename.length];
-		for (int p = 0; p < fileNamePattern.length; p++) {
-			fileNamePattern[p] = Pattern.compile(String.format("\\[.*\\]%s.*.csv", incl_filename[p]));
-			zipFile[p] = new File(baseDir, String.format("%sAll.csv.7z", incl_filename[p]));
-		}
-		output_analysis_csv(baseDir, fileNamePattern, zipFile, summary_stat_filename);
-	}
-
-	public static void output_analysis_csv(File baseDir, 	 
-			Pattern[] incl_filename_pattern, 
-			File[] zip_file, String[] summary_stat_filename)
-			throws IOException, FileNotFoundException {
-
-		// Zipping Seed File
-		Pattern patten_seed = Pattern.compile("Seed_List_(\\d+).csv");
-
-		File[] seedList = baseDir.listFiles(new FileFilter() {
-			@Override
-			public boolean accept(File pathname) {
-				return patten_seed.matcher(pathname.getName()).matches();
-			}
-		});
-		if (seedList.length > 0) {
-			File seed_zip = new File(baseDir, "Seed_List_All.csv.7z");
-			Util_7Z_CSV_Entry_Extract_Callable.zipFile(seedList, seed_zip);
-			for (File s : seedList) {
-				s.delete();
-			}
-		}
-		// Zipping and analyzing csv
-		for (int f = 0; f < incl_filename_pattern.length; f++) {
-			Pattern pattern_zf = incl_filename_pattern[f];
-			File[] matchList = baseDir.listFiles(new FileFilter() {
-				@Override
-				public boolean accept(File pathname) {
-					return pattern_zf.matcher(pathname.getName()).matches();
-				}
-			});
-
-			File match_zip = zip_file[f];
-
-			if (matchList.length > 0) {
-				Util_7Z_CSV_Entry_Extract_Callable.zipFile(matchList, match_zip);
-				for (File s : matchList) {
-					s.delete();
-				}
-			}
-
-			if (summary_stat_filename[f] != null) {
-				HashMap<String, ArrayList<String[]>> file_ent = new HashMap<>();
-				file_ent = Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(match_zip, file_ent);
-				Util_CSV_Table_Map csvTableMapping = null;
-
-				for (String zipEntName : file_ent.keySet()) {
-					ArrayList<String[]> data = file_ent.get(zipEntName);
-					if (csvTableMapping == null) {
-						csvTableMapping = new Util_CSV_Table_Map(data.get(0));
-						csvTableMapping.setCumulative(f == 0);
-					}
-					for (int r = 1; r < data.size(); r++) {
-						if (data.get(r).length > 0) {
-							try {
-								csvTableMapping.addRow(data.get(r));
-							} catch (Exception ex) {
-								System.err.printf("Error in adding row from %s (%s)\n", zipEntName);
-							}
-						}
-					}
-				}
-				if (csvTableMapping != null) {
-					String summaryFileFormat = summary_stat_filename[f];
-					csvTableMapping.printSummaryFile(summaryFileFormat, baseDir);
-				}
-			}
-
-		}
-	}
+	
 
 	public static void zipSelectedOutputs(File baseDir, String zip_file_name, final Pattern pattern_include_file,
 			boolean exportSkipBackup) throws IOException, FileNotFoundException {
@@ -1479,6 +1423,85 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			for (File f : files_list) {
 				f.delete();
 			}
+		}
+	}
+	
+	public static void output_analysis_csv(File baseDir, String[] incl_filename, String[] summary_stat_filename)
+			throws IOException, FileNotFoundException {
+		Pattern[] fileNamePattern = new Pattern[incl_filename.length];
+		File[] zipFile = new File[incl_filename.length];
+		for (int p = 0; p < fileNamePattern.length; p++) {
+			fileNamePattern[p] = Pattern.compile(String.format("\\[.*\\]%s.*.csv", incl_filename[p]));
+			zipFile[p] = new File(baseDir, String.format("%sAll.csv.7z", incl_filename[p]));
+		}
+		output_analysis_csv(baseDir, fileNamePattern, zipFile, summary_stat_filename);
+	}
+
+	public static void output_analysis_csv(File baseDir, Pattern[] incl_filename_pattern, File[] zip_file,
+			String[] summary_stat_filename) throws IOException, FileNotFoundException {
+
+		// Zipping Seed File
+		Pattern patten_seed = Pattern.compile("Seed_List_(\\d+).csv");
+
+		File[] seedList = baseDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return patten_seed.matcher(pathname.getName()).matches();
+			}
+		});
+		if (seedList.length > 0) {
+			File seed_zip = new File(baseDir, "Seed_List_All.csv.7z");
+			Util_7Z_CSV_Entry_Extract_Callable.zipFile(seedList, seed_zip);
+			for (File s : seedList) {
+				s.delete();
+			}
+		}
+		// Zipping and analyzing csv
+		for (int f = 0; f < incl_filename_pattern.length; f++) {
+			Pattern pattern_zf = incl_filename_pattern[f];
+			File[] matchList = baseDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pattern_zf.matcher(pathname.getName()).matches();
+				}
+			});
+
+			File match_zip = zip_file[f];
+
+			if (matchList.length > 0) {
+				Util_7Z_CSV_Entry_Extract_Callable.zipFile(matchList, match_zip);
+				for (File s : matchList) {
+					s.delete();
+				}
+			}
+
+			if (summary_stat_filename[f] != null) {
+				HashMap<String, ArrayList<String[]>> file_ent = new HashMap<>();
+				file_ent = Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(match_zip, file_ent);
+				Util_CSV_Table_Map csvTableMapping = null;
+
+				for (String zipEntName : file_ent.keySet()) {
+					ArrayList<String[]> data = file_ent.get(zipEntName);
+					if (csvTableMapping == null) {
+						csvTableMapping = new Util_CSV_Table_Map(data.get(0));
+						csvTableMapping.setCumulative(f == 0);
+					}
+					for (int r = 1; r < data.size(); r++) {
+						if (data.get(r).length > 0) {
+							try {
+								csvTableMapping.addRow(data.get(r));
+							} catch (Exception ex) {
+								System.err.printf("Error in adding row from %s (%s)\n", zipEntName);
+							}
+						}
+					}
+				}
+				if (csvTableMapping != null) {
+					String summaryFileFormat = summary_stat_filename[f];
+					csvTableMapping.printSummaryFile(summaryFileFormat, baseDir);
+				}
+			}
+
 		}
 	}
 

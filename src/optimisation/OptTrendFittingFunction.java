@@ -872,10 +872,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			UnivariateInterpolator interpolator = new LinearInterpolator();
 			int minFitFrom = 0;
 			double[] weight = new double[num_target_trend];
+			int[] first_target_time = new int[num_target_trend];
 			UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
 			String[][] trend_target_key_split = new String[num_target_trend][];
-
-			Pattern pattern_trend_type = Pattern.compile("(.*)_C(\\d+)");
+			Pattern pattern_trend_type = Pattern.compile("(.*)_C(-?\\d+)");			
+					
 
 			for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 				trend_target_key_split[trend_target_pt] = trend_target_key[trend_target_pt].split(",");
@@ -884,8 +885,10 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						Integer.parseInt(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_FITFROM]));
 				double[][] tar_values = target_trend_collection.get(trend_target_key[trend_target_pt]);
 				interpolation[trend_target_pt] = interpolator.interpolate(tar_values[0], tar_values[1]);
+				first_target_time[trend_target_pt] = (int) tar_values[0][0];
 				weight[trend_target_pt] = Double
-						.parseDouble(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_WEIGHT]);
+						.parseDouble(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_WEIGHT]);			
+				
 
 			}
 
@@ -908,21 +911,33 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 										.get(trend_matcher.group(1));
 								Integer[] sim_time = countMap.keySet().toArray(new Integer[countMap.size()]);
 								Arrays.sort(sim_time);
-
 								if (str_disp == null) {
 									str_disp = new StringBuilder[sim_time.length];
-								}
-
+								}								
+								int col_number = Integer.parseInt(trend_matcher.group(2));								
+								double offset = 0;
+								if(col_number < 0) {
+									int pt = Arrays.binarySearch(sim_time, first_target_time[trend_target_pt]);									
+									if(pt < 0) {
+										System.err.printf("Warning: offset time %d not found in countMap of time range = %s. Average of neighbouring value used.\n",																								
+												first_target_time[trend_target_pt], Arrays.deepToString(sim_time));
+										offset = ((countMap.get(sim_time[~pt-1]))[Math.abs(col_number)] 
+												+ (countMap.get(sim_time[~pt]))[Math.abs(col_number)])/2 ;																				
+									}else {									
+										offset = (countMap.get(sim_time[pt]))[Math.abs(col_number)];
+									}
+								}																
+								
 								for (int i = 0; i < sim_time.length; i++) {
 									if (sim_time[i].intValue() >= minFitFrom) {
 										if (str_disp[i] == null) {
 											str_disp[i] = new StringBuilder();
 											str_disp[i].append(sim_time[i]);
-										}
-										double sim_y = countMap.get(sim_time[i])[Integer
-												.parseInt(trend_matcher.group(2))];
+										}																													
+										double sim_y = countMap.get(sim_time[i])[Math.abs(col_number)] ;																																												
+										
 										bestResidue_by_runnable[r] += weight[trend_target_pt] * Math.pow(
-												sim_y - interpolation[trend_target_pt].value(sim_time[i].doubleValue()),
+												(sim_y - offset) - interpolation[trend_target_pt].value(sim_time[i].doubleValue()),
 												2);
 										str_disp[i].append(',');
 										str_disp[i].append(sim_y);
