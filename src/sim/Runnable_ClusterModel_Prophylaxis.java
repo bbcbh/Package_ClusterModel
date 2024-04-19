@@ -312,20 +312,6 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			}
 		}
 		
-		
-		/*
-		String[] zipFormat = new String[] { "Infected_All_Stages_Prevalence_Site_", 
-				"Infected_Prevalence_Site_", "Infectious_Prevalence_Person_", "Infectious_Prevalence_Site_"};		
-		String[] stat_file_name = new String[] { null, null, null, null};
-		
-		try {
-			Simulation_ClusterModelTransmission.output_analysis_csv(baseDir, zipFormat, stat_file_name);
-		} catch (IOException e) {			
-			e.printStackTrace(System.err);
-		}
-		*/
-		
-		
 	}
 
 }
