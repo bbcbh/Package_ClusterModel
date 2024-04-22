@@ -25,7 +25,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 	private static final int num_inf = 3; // TP, NG and CT
 	private static final int num_site = 4;
-	private static final int num_act = 3;
+	private static final int num_act = 5;
 	private RealDistribution adherenceDist;
 
 	protected double[] prophylaxis_adherence;
