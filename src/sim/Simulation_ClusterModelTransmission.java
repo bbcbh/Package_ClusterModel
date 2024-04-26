@@ -767,7 +767,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 			}
 
-			if (runSim) {
+			if (runSim) {						
+				
+				if(popType == null) {
+					popType = ""; // Default
+				}							
+				
 				if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					// TODO: Loading of Runnable_ClusterModel_Prophylaxis specific value
 					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
@@ -968,10 +973,14 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		// Zip extra files		
 		Pattern pattern_csv_extra = Pattern
 				.compile("(?:\\[.*\\]){0,1}(.*)_(-{0,1}\\d+)_-{0,1}\\d+.csv");
+		
+		Pattern pattern_csv_cMap =  Pattern.compile(FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+		
 		FileFilter extra_filter = new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
-				return pattern_csv_extra.matcher(pathname.getName()).matches();
+				return !pattern_csv_cMap.matcher(pathname.getName()).matches() 
+						&&	 pattern_csv_extra.matcher(pathname.getName()).matches();
 			}
 		};
 
