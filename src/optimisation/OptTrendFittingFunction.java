@@ -341,7 +341,11 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						summary_store_ent[i] = Long.parseLong(ent[i]);
 						break;
 					default:
-						summary_store_ent[i] = Float.parseFloat(ent[i]);
+						try {											
+							summary_store_ent[i] = Float.parseFloat(ent[i]);
+						}catch(NumberFormatException ex) {
+							summary_store_ent[i] = Float.NaN;
+						}
 					}
 				}
 				summary_store_ent[ent.length] = mapping_key;
@@ -429,7 +433,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		}
 
 		// double residue, long cMapSeed, long simSeed, long offset, String[] param_str,
-		// String[] trends
+		// String[] trends, File trendFile
 		ArrayList<Object[]> resultsTrendCollections = new ArrayList<>();
 		final Comparator<Object[]> resultTrendCollectionsComp = new Comparator<Object[]>() {
 			@Override
@@ -440,6 +444,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						r = Double.compare((Double) o1[p], (Double) o2[p]);
 					} else if (o1[p] instanceof Long) {
 						r = Long.compare((Long) o1[p], (Long) o2[p]);
+						
+					} else if (o1[p] instanceof File) {						
+						r = ((File) o1[p]).compareTo((File) o2[p]);
 					} else {
 						String[] s1 = (String[]) o1[p];
 						String[] s2 = (String[]) o2[p];
@@ -500,7 +507,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 							line = reader.readLine();
 						}
 						String[] trends = trend_arr.toArray(new String[trend_arr.size()]);
-						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends };
+						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends, trendFile};
 
 						int key = Collections.binarySearch(resultsTrendCollections, val, resultTrendCollectionsComp);
 						if (key < 0) {
@@ -514,12 +521,12 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 		// Print of results
 		PrintWriter pWri_summary = new PrintWriter(new File(basedir, OPT_SUMMARY_FILE));
-		pWri_summary.println("Residue,CMapSeed,SimSeed,Param");
+		pWri_summary.println("Residue,CMapSeed,SimSeed,Dir,Param");
 
 		PrintWriter[] pWri_trend = null;
 
 		for (Object[] val : resultsTrendCollections) {
-			pWri_summary.printf("%f,%d,%d", (Double) val[0], (Long) val[1], (Long) val[2]);
+			pWri_summary.printf("%f,%d,%d,%s", (Double) val[0], (Long) val[1], (Long) val[2], ((File) val[val.length-1]).getParentFile().getName());
 			String[] param = (String[]) val[4];
 			for (int s = 0; s < param.length; s++) {
 				pWri_summary.print(',');
