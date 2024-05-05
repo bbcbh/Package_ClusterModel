@@ -44,7 +44,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	private static final String replace_string = "(-?\\\\d+(?:_-?\\\\d+){0,1})";
 
-	public static final String[] ZIP_FILES_LIST = new String[] {									
+	public String[] ZIP_FILES_LIST = new String[] {
 			// 0-3
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON_ZIP.replaceAll("%d", replace_string),
@@ -60,17 +60,16 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON_ZIP.replaceAll("%d", replace_string),
 			Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_SITE_ZIP.replaceAll("%d", replace_string), };
 
-	public static final String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
+	public String[] STAT_FILEFORMAT = new String[] { "Summary_Treatment_Person_%s.csv",
 			"Summary_Prevalence_Person_%s.csv", "Summary_Prevalence_Site_%s.csv", "Summary_Infection_History_%s.csv",
 			"Summary_DX_Person_%s.csv", "Summary_DX_Sought_Person_%s.csv", "Summary_Vaccine_Person_%s.csv",
 			"Summary_Cumul_Antibiotic_Usage_%s.csv", "Summary_Incidence_Person_%s.csv",
 			"Summary_Incidence_Site_%s.csv" };
 
-	public static final boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, false,
-			true, true };
+	public boolean[] CUMUL_DATA = new boolean[] { true, false, false, false, true, true, false, false, true, true };
 
-	public static final boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false,
-			false, false, false };
+	public boolean[] SKIP_ANALYSIS = new boolean[] { false, false, false, false, false, false, false, false, false,
+			false };
 
 	public final static int rISK_GRP_MAP_INDEX_PID = 0;
 	public final static int rISK_GRP_MAP_INDEX_NUM_TIME_SPAN = rISK_GRP_MAP_INDEX_PID + 1;
@@ -80,6 +79,16 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 	public Util_Analyse_ClusterModel_Transmission_Output() {
 
+	}
+
+	public Util_Analyse_ClusterModel_Transmission_Output(
+			String[] zipFileFormats, String[] summaryFileFormat, boolean[] isCumulData) {
+		super();
+		ZIP_FILES_LIST = zipFileFormats;
+		STAT_FILEFORMAT = summaryFileFormat;
+		CUMUL_DATA = isCumulData;				
+		SKIP_ANALYSIS = new boolean[ZIP_FILES_LIST.length];
+		Arrays.fill(SKIP_ANALYSIS, false);
 	}
 
 	public void setSkipAnalysis(int key) {
@@ -123,8 +132,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 					Matcher file_prefix = Pattern.compile("(.*)_\\(.*\\)(.csv.7z)").matcher(zipFileName);
 					file_prefix.matches();
-					
-					
+
 					File zipFileSingle = new File(baseDir,
 							String.format("%s_0%s", file_prefix.group(1), file_prefix.group(2)));
 
@@ -514,7 +522,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 									csvTableMapping = new Util_CSV_Table_Map(data.get(0));
 									csvTableMapping.setCumulative(isCumul);
 								}
-								for (int r = 1; r < data.size(); r++) {								
+								for (int r = 1; r < data.size(); r++) {
 									if (data.get(r).length > 0) {
 										try {
 											csvTableMapping.addRow(data.get(r));
