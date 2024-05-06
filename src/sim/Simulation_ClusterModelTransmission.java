@@ -779,17 +779,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
 				} else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					runnable[s] = new Runnable_ClusterModel_Bali(baseContactMapSeed, simSeed, pop_composition,
-							baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);
-				} else if (Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					System.out.printf("Warning. Old vesion - might consider to use %s instead.\n",
-							Runnable_ClusterModel_Prophylaxis.class.getName());
-
-					Matcher m = Runnable_ClusterModel_Syphilis_NG_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType);
-					m.matches();
-					runnable[s] = new Runnable_ClusterModel_Syphilis_NG_Prophylaxis(baseContactMapSeed, simSeed,
-							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
-							num_snap, Float.parseFloat(m.group(1)), Integer.parseInt(m.group(2)),
-							Integer.parseInt(m.group(3)));
+							baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);				
 
 				} else if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);

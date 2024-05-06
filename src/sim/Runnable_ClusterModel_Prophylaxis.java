@@ -37,15 +37,21 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 	public static final String PROP_PEP_ADHERENCE = "PROP_PEP_ADHERENCE";
 	public static final String PROP_PEP_UPTAKE = "PROP_PEP_UPTAKE";
-	
+
+	protected static final int PEP_AVAIL_TP = 0; // At least once
+	protected static final int PEP_AVAIL_ANY_STI = 2; // More than twice
+
 	// FILENAME_PREVALENCE_PERSON, FILENAME_CUMUL_INCIDENCE_PERSON
-	private static final int[] COL_SEL_INF_GENDER = new int[] { 2, 6, 10 };	
+	private static final int[] COL_SEL_INF_GENDER = new int[] { 2, 6, 10 };
 	// FILENAME_CUMUL_INCIDENCE_SITE
-	private static final int[] COL_SEL_INF_GENDER_SITE = new int[] { 8, 25, 26, 27, 41 , 42, 43 };
+	private static final int[] COL_SEL_INF_GENDER_SITE = new int[] { 8, 25, 26, 27, 41, 42, 43 };
 	// "Infectious_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE
-	private static final int[] COL_SEL_INF_SITE = new int[] { 0, 5, 6, 7, 9, 10, 11};
+	private static final int[] COL_SEL_INF_SITE = new int[] { 0, 5, 6, 7, 9, 10, 11 };
 	// "Infected_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE
-	private static final int[] COL_SEL_INF_GENDER_SITE_AT =  null; //new int[] { 64, 65, 192, 194, 196, 198, 200, 202, 204  160, 162, 164, 166,	224, 225 };
+	private static final int[] COL_SEL_INF_GENDER_SITE_AT = null; // new int[] { 64, 65, 192, 194, 196, 198, 200, 202,
+																	// 204 160, 162, 164, 166, 224, 225 };
+
+	private static final String SIM_OUTPUT_KEY_PEP_COVERAGE = "SIM_OUTPUT_PEP_COVERAGE";
 
 	public Runnable_ClusterModel_Prophylaxis(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop) {
 		super(cMap_seed, sim_seed, base_cMap, prop, num_inf, num_site, num_act);
@@ -88,7 +94,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		super.postTimeStep(currentTime);
 
 		// Risk group based PEP
-		if (currentTime == this.prophylaxis_starts_at && prophylaxis_uptake_HIV_PrEP > 0) {
+		if (this.prophylaxis_starts_at > 0 && currentTime == this.prophylaxis_starts_at
+				&& prophylaxis_uptake_HIV_PrEP > 0) {
 			for (Integer pid : bASE_CONTACT_MAP.vertexSet()) {
 				if (risk_cat_map.get(pid).intValue() == 0 || risk_cat_map.get(pid).intValue() == 1) {
 					if (prophylaxis_uptake_HIV_PrEP >= 1 || rng_PEP.nextFloat() < prophylaxis_uptake_HIV_PrEP) {
@@ -103,53 +110,79 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		for (Integer treated_previously : dx_last_12_months.keySet()) {
 			int[] dx_hist = dx_last_12_months.get(treated_previously);
 			if (dx_hist != null) {
+				if (dx_hist[currentTime % dx_hist.length] != 0) { // Has a positive dx today
 
-				if (currentTime == this.prophylaxis_starts_at
-						&& (prophylaxis_uptake_last_TP > 0 || prophylaxis_uptake_last_STI > 0)) {
-					int[] num_dx_12_months = new int[num_inf];
-					int num_dx_12_month_any = 0;
-					for (int dx_daily_record : dx_hist) {
-						for (int i = 0; i < num_dx_12_months.length; i++) {
-							if ((dx_daily_record & 1 << i) != 0) {
-								num_dx_12_months[i]++;
-								num_dx_12_month_any++;
+					if (this.prophylaxis_starts_at > 0 && currentTime >= this.prophylaxis_starts_at
+							&& (prophylaxis_uptake_last_TP > 0 || prophylaxis_uptake_last_STI > 0)) {
+						int[] num_dx_12_months = new int[num_inf];
+						int num_dx_12_month_any = 0;
+						for (int dx_daily_record : dx_hist) {
+							for (int i = 0; i < num_dx_12_months.length; i++) {
+								if ((dx_daily_record & 1 << i) != 0) {
+									num_dx_12_months[i]++;
+									num_dx_12_month_any++;
+								}
 							}
 						}
-					}
 
-					boolean allocateProphylaxis = prophylaxis_record.containsKey(treated_previously);
+						boolean allocateProphylaxis = false; // prophylaxis_record.containsKey(treated_previously);
 
-					if (!allocateProphylaxis && num_dx_12_months[0] > 0 && prophylaxis_uptake_last_TP > 0) {
-						allocateProphylaxis |= prophylaxis_uptake_last_TP >= 1
-								|| rng_PEP.nextFloat() < prophylaxis_uptake_last_TP;
-					}
-
-					if (!allocateProphylaxis && num_dx_12_month_any > 2 && prophylaxis_uptake_last_STI > 0) {
-						allocateProphylaxis |= prophylaxis_uptake_last_STI >= 1
-								|| rng_PEP.nextFloat() < prophylaxis_uptake_last_STI;
-					}
-
-					if (!allocateProphylaxis && prophylaxis_uptake_last_STI < 0) { // Special case with no other STI
-																					// transmission
-						final float[][] sti_incident_all = new float[][] { // HIV-, HIV+
-								new float[] { 23.9f, 31.5f }, new float[] { 29.2f, 40.9f } };
-						float[] sti_incident = risk_cat_map.get(treated_previously).intValue() == 0
-								? sti_incident_all[1]
-								: sti_incident_all[0];
-						for (int i = 0; i < sti_incident.length && num_dx_12_month_any <= 2; i++) {
-							if (rng_PEP.nextFloat() < sti_incident[i] / 100f) {
-								num_dx_12_month_any++;
-							}
+						if (!allocateProphylaxis && num_dx_12_months[0] > PEP_AVAIL_TP
+								&& prophylaxis_uptake_last_TP > 0) {
+							allocateProphylaxis |= prophylaxis_uptake_last_TP >= 1
+									|| rng_PEP.nextFloat() < prophylaxis_uptake_last_TP;
 						}
-						allocateProphylaxis = num_dx_12_month_any > 2;
-					}
-					if (allocateProphylaxis) {
-						allocateProphylaxis(currentTime, treated_previously);
+
+						if (!allocateProphylaxis && num_dx_12_month_any > PEP_AVAIL_ANY_STI
+								&& prophylaxis_uptake_last_STI > 0) {
+							allocateProphylaxis |= prophylaxis_uptake_last_STI >= 1
+									|| rng_PEP.nextFloat() < prophylaxis_uptake_last_STI;
+						}
+
+						if (!allocateProphylaxis && prophylaxis_uptake_last_STI < 0) { // Special case with no other STI
+																						// transmission
+							final float[][] sti_incident_all = new float[][] { // HIV-, HIV+
+									new float[] { 23.9f, 31.5f }, new float[] { 29.2f, 40.9f } };
+							float[] sti_incident = risk_cat_map.get(treated_previously).intValue() == 0
+									? sti_incident_all[1]
+									: sti_incident_all[0];
+							for (int i = 0; i < sti_incident.length && num_dx_12_month_any <= 2; i++) {
+								if (rng_PEP.nextFloat() < sti_incident[i] / 100f) {
+									num_dx_12_month_any++;
+								}
+							}
+							allocateProphylaxis = num_dx_12_month_any > 2;
+						}
+						if (allocateProphylaxis) {
+							allocateProphylaxis(currentTime, treated_previously);
+						}
 					}
 				}
-				// Reset record
-				dx_hist[currentTime % dx_hist.length] = 0;
+
+				// Reset record for the next day
+				dx_hist[(currentTime + 1) % dx_hist.length] = 0;
 			}
+
+		}
+
+		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0 && prophylaxis_record.size() > 0) {
+			@SuppressWarnings("unchecked")
+			HashMap<Integer, int[]> pep_coverage = (HashMap<Integer, int[]>) sim_output
+					.get(SIM_OUTPUT_KEY_PEP_COVERAGE);
+			if (pep_coverage == null) {
+				pep_coverage = new HashMap<>();
+				sim_output.put(SIM_OUTPUT_KEY_PEP_COVERAGE, pep_coverage);
+			}
+			int[] stat = new int[2]; // Ever PEP, Currently on PEP
+			stat[0] = prophylaxis_record.size();
+			for (int pid : prophylaxis_record.keySet()) {
+				int[] prop_rec = prophylaxis_record.get(pid);
+				if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] > currentTime) {
+					stat[1]++;
+				}
+
+			}
+			pep_coverage.put(currentTime, stat);
 
 		}
 
@@ -167,13 +200,20 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		prop_rec[PROPHYLAXIS_REC_DOSAGE] = Integer.MAX_VALUE; // Infinite in this model
 		prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + (int) Math.round(adherenceDist.sample());
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
 		String key, fileName;
 		HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
 		
+		//PEP Usage
+		countMap  = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_PEP_COVERAGE);		
+		if(countMap != null) {			
+			fileName = String.format(filePrefix + "PEP_Stat_%d_%d.csv",	cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "PEP_User_Type_%d", new int[] {2});
+		}						
+
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
@@ -184,9 +224,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER },
 					COL_SEL_INF_GENDER);
 
-		}		
+		}
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE) != 0) {
-			
+
 			key = String.format(SIM_OUTPUT_KEY_CUMUL_INCIDENCE,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_INCIDENCE_FILE);
 			countMap = (HashMap<Integer, int[]>) sim_output.get(key);
@@ -203,9 +243,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 					cMAP_SEED, sIM_SEED);
 			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Site_%d", new int[] { NUM_INF, NUM_GENDER, NUM_SITE },
 					COL_SEL_INF_GENDER_SITE);
-			
+
 		}
-		
+
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 
 			key = String.format(SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT,
@@ -302,7 +342,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			}
 
 		}
-		
+
 		if (print_progress != null && runnableId != null) {
 			try {
 				print_progress.printf("Post simulation file generation for Thread <%s> completed. Timestamp = %tc.\n",
@@ -311,7 +351,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 				System.err.printf("Post simulation file generation for Thread <%s> completed.\n", runnableId);
 			}
 		}
-		
+
 	}
 
 }

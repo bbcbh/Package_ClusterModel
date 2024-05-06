@@ -4,12 +4,13 @@ import java.util.HashMap;
 import java.util.Properties;
 
 import relationship.ContactMap;
+import util.PropValUtils;
 
 public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 		extends Runnable_ClusterModel_MultiTransmission {
 
-	protected int prophylaxis_duration = 3;
-	protected float prophylaxis_efficiency = 1; // Assume 100 efficiency atm
+	protected int prophylaxis_duration_per_dose = 3;
+	protected float[] prophylaxis_efficacy; // Assume 100 efficiency atm
 	protected int prophylaxis_starts_at = -1;
 
 	protected transient HashMap<Integer, int[]> prophylaxis_record;
@@ -22,17 +23,18 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 	
 	public static final String PROP_PEP_START_AT = "PROP_PEP_START_AT";
 	public static final String PROP_PEP_DURATION_PER_DOSE = "PROP_PEP_DURATION_PER_DOSE";
-	public static final String PROP_PEP_EFFICIENCY = "PROP_PEP_EFFICIENCY";
+	public static final String PROP_PEP_EFFICACY = "PROP_PEP_EFFICACY";
 	
 	public Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis(long cMap_seed, long sim_seed,
 			ContactMap base_cMap, Properties prop, int num_inf,	int num_site, int num_act) {
 		super(cMap_seed, sim_seed, base_cMap, prop, num_inf, num_site, num_act);
 		
 		if(prop.containsKey(PROP_PEP_DURATION_PER_DOSE)) {
-			prophylaxis_duration = Integer.parseInt(prop.getProperty(PROP_PEP_DURATION_PER_DOSE));			
+			prophylaxis_duration_per_dose = Integer.parseInt(prop.getProperty(PROP_PEP_DURATION_PER_DOSE));			
 		}
-		if(prop.containsKey(PROP_PEP_EFFICIENCY)) {
-			prophylaxis_efficiency = Float.parseFloat(prop.getProperty(PROP_PEP_EFFICIENCY));
+		if(prop.containsKey(PROP_PEP_EFFICACY)) {
+			prophylaxis_efficacy = (float[]) 
+					PropValUtils.propStrToObject(prop.getProperty(PROP_PEP_EFFICACY), float[].class);
 		}			
 		
 	}
@@ -57,17 +59,30 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 				actType, src_site, tar_site);
 		for (int pid : new int[] { pid_inf_tar }) { // PREP only effect susceptibility not transmission
 			int[] prop_rec = prophylaxis_record.get(pid);
-			if (prop_rec != null) {				
-				// Limited prophylaxis dosage options 
-				if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] < currentTime && prop_rec[PROPHYLAXIS_REC_DOSAGE] > 0
-						&& prop_rec[PROPHYLAXIS_REC_DOSAGE] != Integer.MAX_VALUE) {
-					prop_rec[PROPHYLAXIS_REC_DOSAGE]--;
-					prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + prophylaxis_duration;
+			if (prop_rec != null) {							
+				if(prop_rec[PROPHYLAXIS_REC_DOSAGE] != Integer.MAX_VALUE) {
+					// Limited prophylaxis dosage 			
+					if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] < currentTime 
+							&& prop_rec[PROPHYLAXIS_REC_DOSAGE] > 0) {
+						prop_rec[PROPHYLAXIS_REC_DOSAGE]--;
+						prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + prophylaxis_duration_per_dose;
+					}
+					
+				}else {
+					// Unlimited dosage					
+					if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] == Integer.MAX_VALUE 
+							|| prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] >= currentTime) {
+						if(prophylaxis_efficacy != null) {
+							transProb *= prophylaxis_efficacy.length == NUM_INF? 
+									1-prophylaxis_efficacy[inf_id] :
+										1-prophylaxis_efficacy[inf_id * NUM_SITE + tar_site];
+						}										
+					}					
+					
 				}
-				if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] == Integer.MAX_VALUE 
-						|| prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] >= currentTime) {
-					transProb *= 1-prophylaxis_efficiency; 
-				}
+				
+				
+				
 			}
 		}
 		return transProb;

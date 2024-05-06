@@ -12,6 +12,10 @@ import java.util.regex.Pattern;
 
 import relationship.ContactMap;
 
+/**
+ * 
+ * @deprecated Use Runnable_ClusterModel_Prophylaxis instead
+ */
 public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis {
 
 	float prophylaxis_uptake_per_treatment;
@@ -118,7 +122,7 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Abstract_Runn
 							}
 							if (acted && prop_rec[PROPHYLAXIS_REC_DOSAGE] > 0) {
 								prop_rec[PROPHYLAXIS_REC_DOSAGE]--;
-								prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + prophylaxis_duration;
+								prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + prophylaxis_duration_per_dose;
 							}
 
 						}
