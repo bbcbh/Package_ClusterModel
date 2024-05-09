@@ -3265,7 +3265,7 @@ public class Optimisation_Factory {
 							for (int j = 0; j < seedInfectNum[i].length; j++) {
 								inc_index = Integer.parseInt(param_setting_arr[j_lvl]);
 								if ((inc_index & 1 << j) != 0) {
-									seedInfectNum[i][j] = (int) point[param_arr_index];
+									seedInfectNum[i][j] = (int) Math.round(point[param_arr_index]);
 								}
 							}
 						}

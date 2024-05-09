@@ -25,6 +25,7 @@ import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
 import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 
+import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import random.RandomGenerator;
 import relationship.ContactMap;
@@ -882,6 +883,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			int minFitFrom = 0;
 			double[] weight = new double[num_target_trend];
 			int[] first_target_time = new int[num_target_trend];
+			int[] last_target_time = new int[num_target_trend];
 			UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
 			String[][] trend_target_key_split = new String[num_target_trend][];
 			Pattern pattern_trend_type = Pattern.compile("(.*)_C(-?\\d+)");
@@ -894,6 +896,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 				double[][] tar_values = target_trend_collection.get(trend_target_key[trend_target_pt]);
 				interpolation[trend_target_pt] = interpolator.interpolate(tar_values[0], tar_values[1]);
 				first_target_time[trend_target_pt] = (int) tar_values[0][0];
+				last_target_time[trend_target_pt] = (int) tar_values[0][tar_values[0].length - 1];
 				weight[trend_target_pt] = Double
 						.parseDouble(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_WEIGHT]);
 
@@ -922,6 +925,22 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 									str_disp = new StringBuilder[sim_time.length];
 								}
 								int col_number = Integer.parseInt(trend_matcher.group(2));
+
+								double[][] model_val = new double[2][sim_time.length];
+								// Print output
+								for (int i = 0; i < str_disp.length; i++) {
+									if (str_disp[i] == null) {
+										str_disp[i] = new StringBuilder();
+										str_disp[i].append(sim_time[i]);
+									}
+									model_val[0][i] = sim_time[i];
+									model_val[1][i] = countMap.get(sim_time[i])[Math.abs(col_number)];
+									str_disp[i].append(',');
+									str_disp[i].append(model_val[1][i]);
+								}
+								UnivariateFunction model_interpolation = interpolator.interpolate(model_val[0],
+										model_val[1]);
+
 								double offset = 0;
 								if (col_number < 0) {
 									int pt = Arrays.binarySearch(sim_time, first_target_time[trend_target_pt]);
@@ -936,31 +955,35 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 									}
 								}
 
-								for (int i = 0; i < sim_time.length; i++) {
-									if (sim_time[i].intValue() >= minFitFrom) {
-										if (str_disp[i] == null) {
-											str_disp[i] = new StringBuilder();
-											str_disp[i].append(sim_time[i]);
-										}
-										double sim_y = countMap.get(sim_time[i])[Math.abs(col_number)];
+								int sample_time = Math.max(minFitFrom, first_target_time[trend_target_pt]);
+								while (sample_time <= last_target_time[trend_target_pt]) {
+									double sim_y;
+									if (sample_time >= model_val[0][0]
+											&& sample_time <= model_val[0][model_val[0].length - 1]) {
 
+										sim_y = model_interpolation.value(sample_time);
 										if (weight[trend_target_pt] < 0) {
 											// Offset from previous time step
-											if (i > 0) {
-												offset += countMap.get(sim_time[i - 1])[Math.abs(col_number)];
+											if (sample_time
+													- AbstractIndividualInterface.ONE_YEAR_INT >= model_val[0][0]) {
+												offset += model_interpolation
+														.value(sample_time - AbstractIndividualInterface.ONE_YEAR_INT);
 											} else {
 												System.err.printf(
 														"Warning: Negative weight (%f) for prior to time step %d not available. Offset of %f used instead\n",
-														weight[trend_target_pt], sim_time[i], offset);
+														weight[trend_target_pt], sample_time, offset);
 											}
 										}
-										bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt])
-												* Math.pow((sim_y - offset) - interpolation[trend_target_pt]
-														.value(sim_time[i].doubleValue()), 2);
-										str_disp[i].append(',');
-										str_disp[i].append(sim_y);
+									} else {
+										// Outside model range - assume to be zero
+										sim_y = 0;
 									}
+									bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt]) * Math.pow(
+											(sim_y - offset) - interpolation[trend_target_pt].value(sample_time), 2);
+
+									sample_time += AbstractIndividualInterface.ONE_YEAR_INT;
 								}
+
 							} catch (NullPointerException | ArrayIndexOutOfBoundsException ex) {
 								System.err.printf(
 										"Warning: Exception encountered for trend type %s, fitting ignored.\n",
