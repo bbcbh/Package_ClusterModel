@@ -444,7 +444,7 @@ public class Optimisation_Factory {
 						}
 					}
 
-					setOptParamInRunnable(runnable, prop, init_param_default, true);
+					setOptParamInRunnable(runnable, prop, init_param_default, null, true);
 					System.exit(1);
 
 				}
@@ -1725,7 +1725,7 @@ public class Optimisation_Factory {
 													param_double[i] = param_number[i].doubleValue();
 												}
 
-												setOptParamInRunnable(runnable, PROP, param_double, false);
+												setOptParamInRunnable(runnable, PROP, param_double, SEED_INFECTION, false);
 												runnable.initialse();
 												runnable.fillRiskCatMap(riskGrpArr);
 												runnable.allocateSeedInfection(SEED_INFECTION, START_TIME);
@@ -2029,7 +2029,7 @@ public class Optimisation_Factory {
 				}
 
 				runnable.setSimSetting(1); // No output
-				setOptParamInRunnable(runnable, prop, init_param, true);
+				setOptParamInRunnable(runnable, prop, init_param, seed_infection, true);
 			}
 
 			// Check for contact cluster generated
@@ -2230,7 +2230,7 @@ public class Optimisation_Factory {
 								}
 
 								runnable.setSimSetting(1); // No output
-								setOptParamInRunnable(runnable, prop, point, false);
+								setOptParamInRunnable(runnable, prop, point,sEED_INFECTION, false);
 								runnable.initialse();
 
 								// Set pre-allocated risk group
@@ -2508,7 +2508,7 @@ public class Optimisation_Factory {
 							}
 
 							runnable[rId].setSimSetting(1); // No output
-							setOptParamInRunnable(runnable[rId], PROP, point, c == null);
+							setOptParamInRunnable(runnable[rId], PROP, point,sEED_INFECTION, c == null);
 							runnable[rId].initialse();
 							runnable[rId].fillRiskCatMap(riskGrpArr);
 							runnable[rId].allocateSeedInfection(sEED_INFECTION, sTART_TIME);
@@ -2690,9 +2690,9 @@ public class Optimisation_Factory {
 
 		try {
 			PointValuePair pV;
-			MaxEval maxVal = numEval <= 0? MaxEval.unlimited() : new MaxEval(numEval);			
+			MaxEval maxVal = numEval <= 0 ? MaxEval.unlimited() : new MaxEval(numEval);
 			System.out.printf("Optimisation start Max Eval = %d.\n", maxVal.getMaxEval());
-			
+
 			pV = optimizer.optimize(objFunc, simplex, GoalType.MINIMIZE, initial_guess, maxVal);
 			double[] point = wrapper.unboundedToBounded(pV.getPoint());
 
@@ -3107,14 +3107,14 @@ public class Optimisation_Factory {
 	}
 
 	public static void setOptParamInRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
-			Properties prop, double[] point, boolean display_only) {
+			Properties prop, double[] point, int[][] seedInfection, boolean display_only) {
 		String[] parameter_settings = null;
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING)) {
 			parameter_settings = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING).split(",");
 		}
 
 		ArrayList<Integer> field_to_update = setOptParamInRunnable_Direct(target_runnable, parameter_settings, point,
-				display_only);
+				seedInfection, display_only);
 
 		if (prop.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 			String transform_str = prop.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
@@ -3134,7 +3134,7 @@ public class Optimisation_Factory {
 		}
 
 	}
-	
+
 	public static void setOptParamInRunnable_Transfrom(Abstract_Runnable_ClusterModel_Transmission target_runnable,
 			String transform_str, HashMap<String, Double> param_map, ArrayList<Integer> field_to_update) {
 		// Fill transfrom_ents
@@ -3183,16 +3183,16 @@ public class Optimisation_Factory {
 						}
 						srcParam = srcParam.substring(1);
 					}
-					
-					double paramVal; 
+
+					double paramVal;
 					if (param_map.containsKey(srcParam)) {
 						paramVal = param_map.get(srcParam).doubleValue();
-					}else {
+					} else {
 						paramVal = Double.NaN;
 						String[] srcParamSplit = srcParam.split("_");
-						Object srcVal = target_runnable.getRunnable_fields()
-								[Integer.parseInt(srcParamSplit[0])- RUNNABLE_OFFSET];
-						
+						Object srcVal = target_runnable.getRunnable_fields()[Integer.parseInt(srcParamSplit[0])
+								- RUNNABLE_OFFSET];
+
 						for (int i = 1; i < srcParamSplit.length; i++) {
 							int incIndex = Integer.parseInt(srcParamSplit[i]);
 							if (incIndex != 0) {
@@ -3204,16 +3204,15 @@ public class Optimisation_Factory {
 									srcVal = ((Object[]) srcVal)[shiftPt];
 								} else if (srcVal instanceof float[]) {
 									paramVal = ((float[]) srcVal)[shiftPt];
-								} else  {
+								} else {
 									paramVal = ((double[]) srcVal)[shiftPt];
 								}
 							}
 						}
 						param_map.put(srcParam, paramVal);
 					}
-					
-					transformed_val += base * paramVal
-							* Double.parseDouble(transfrom_ent[pt + 1]);
+
+					transformed_val += base * paramVal * Double.parseDouble(transfrom_ent[pt + 1]);
 
 					pt += 2;
 				}
@@ -3231,10 +3230,11 @@ public class Optimisation_Factory {
 
 	public static ArrayList<Integer> setOptParamInRunnable_Direct(
 			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
-			boolean display_only) {
+			int[][] seedInfectNum, boolean display_only) {
 		if (target_runnable instanceof Runnable_ClusterModel_Transmission) {
-			return setOptParamInSingleTransmissionRunnable((Abstract_Runnable_ClusterModel_Transmission) target_runnable,
-					parameter_settings, point, display_only);			
+			return setOptParamInSingleTransmissionRunnable(
+					(Abstract_Runnable_ClusterModel_Transmission) target_runnable, parameter_settings, point,
+					display_only);
 		} else {
 			ArrayList<Integer> field_to_update = new ArrayList<>();
 			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
@@ -3243,15 +3243,34 @@ public class Optimisation_Factory {
 				String[] param_setting_arr = param_setting.split("_");
 				int param_name_index = Integer.parseInt(param_setting_arr[0]);
 				int field_id = param_name_index - RUNNABLE_OFFSET;
-				Object val = target_runnable.getRunnable_fields()[field_id];
-				if (val != null) {
-					int setting_level = 1;
-					recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
-				}
 
-				int pt = Collections.binarySearch(field_to_update, field_id);
-				if (pt < 0) {
-					field_to_update.add(~pt, field_id);
+				if (field_id >= 0) { // Runnable field
+					Object val = target_runnable.getRunnable_fields()[field_id];
+					if (val != null) {
+						int setting_level = 1;
+						recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
+					}
+
+					int pt = Collections.binarySearch(field_to_update, field_id);
+					if (pt < 0) {
+						field_to_update.add(~pt, field_id);
+					}
+				} else {
+					// Seed infection replacement
+					int i_lvl = 1;
+					int j_lvl = 2;
+					for (int i = 0; i < seedInfectNum.length; i++) {
+						int inc_index = Integer.parseInt(param_setting_arr[i_lvl]);
+						if ((inc_index & 1 << i) != 0) {
+							for (int j = 0; j < seedInfectNum[i].length; j++) {
+								inc_index = Integer.parseInt(param_setting_arr[j_lvl]);
+								if ((inc_index & 1 << j) != 0) {
+									seedInfectNum[i][j] = (int) point[param_arr_index];
+								}
+							}
+						}
+					}
+					System.out.printf("Seed infection replacement to %s\n", Arrays.deepToString(seedInfectNum));
 				}
 			}
 
@@ -3275,8 +3294,8 @@ public class Optimisation_Factory {
 				String param_setting = parameter_settings[param_arr_index];
 				param_setting = param_setting.replaceAll("\\s", "");
 				String[] param_setting_arr = param_setting.split("_");
-				int param_name_index = Integer.parseInt(param_setting_arr[0]);				
-				int field_id =  param_name_index - RUNNABLE_OFFSET;
+				int param_name_index = Integer.parseInt(param_setting_arr[0]);
+				int field_id = param_name_index - RUNNABLE_OFFSET;
 				Object val = target_runnable.getRunnable_fields()[field_id];
 				if (val != null) {
 					int setting_level = 1;
@@ -3290,7 +3309,7 @@ public class Optimisation_Factory {
 					if (pt < 0) {
 						field_to_update.add(~pt, field_id);
 					}
-					
+
 					modified_param.put(param_name_index, val);
 
 				} else {
@@ -3314,9 +3333,8 @@ public class Optimisation_Factory {
 
 			}
 
-		}		
+		}
 		return field_to_update;
-		
 
 	}
 
@@ -3376,8 +3394,8 @@ public class Optimisation_Factory {
 		}
 	}
 
-	private static void setOptParamInSingleTransmissionRunnable(Abstract_Runnable_ClusterModel_Transmission target_runnable,
-			double[] point, boolean display_only) {
+	private static void setOptParamInSingleTransmissionRunnable(
+			Abstract_Runnable_ClusterModel_Transmission target_runnable, double[] point, boolean display_only) {
 		double[][][] transmission_rate = (double[][][]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
 

@@ -839,7 +839,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						double[] pt = paramSet.remove(0);
 						runnable[s].setRunnableId(String.format("[%s,%d]", preGenSeedFile.getName(), s));
 						ArrayList<Integer> field_to_update = Optimisation_Factory
-								.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, false);
+								.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, seedInfectNum,false);
 
 						if (loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 							String transform_str = loadedProperties

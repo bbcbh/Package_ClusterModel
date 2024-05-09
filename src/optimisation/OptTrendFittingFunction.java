@@ -804,7 +804,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 					}
 
 					runnable[rId].setSimSetting(simSetting);
-					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, c == null);
+					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, SEED_INFECTION, c == null);
 					runnable[rId].initialse();
 
 					File riskGrpDir = baseDir;
