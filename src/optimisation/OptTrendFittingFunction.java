@@ -341,9 +341,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						summary_store_ent[i] = Long.parseLong(ent[i]);
 						break;
 					default:
-						try {											
+						try {
 							summary_store_ent[i] = Float.parseFloat(ent[i]);
-						}catch(NumberFormatException ex) {
+						} catch (NumberFormatException ex) {
 							summary_store_ent[i] = Float.NaN;
 						}
 					}
@@ -444,8 +444,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						r = Double.compare((Double) o1[p], (Double) o2[p]);
 					} else if (o1[p] instanceof Long) {
 						r = Long.compare((Long) o1[p], (Long) o2[p]);
-						
-					} else if (o1[p] instanceof File) {						
+
+					} else if (o1[p] instanceof File) {
 						r = ((File) o1[p]).compareTo((File) o2[p]);
 					} else {
 						String[] s1 = (String[]) o1[p];
@@ -507,7 +507,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 							line = reader.readLine();
 						}
 						String[] trends = trend_arr.toArray(new String[trend_arr.size()]);
-						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends, trendFile};
+						Object[] val = new Object[] { residue, cMapSeed, simSeed, offset, param_str, trends,
+								trendFile };
 
 						int key = Collections.binarySearch(resultsTrendCollections, val, resultTrendCollectionsComp);
 						if (key < 0) {
@@ -526,7 +527,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		PrintWriter[] pWri_trend = null;
 
 		for (Object[] val : resultsTrendCollections) {
-			pWri_summary.printf("%f,%d,%d,%s", (Double) val[0], (Long) val[1], (Long) val[2], ((File) val[val.length-1]).getParentFile().getName());
+			pWri_summary.printf("%f,%d,%d,%s", (Double) val[0], (Long) val[1], (Long) val[2],
+					((File) val[val.length - 1]).getParentFile().getName());
 			String[] param = (String[]) val[4];
 			for (int s = 0; s < param.length; s++) {
 				pWri_summary.print(',');
@@ -688,7 +690,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		File baseDir = (File) args.get(OptTrendFittingFunction.ARGS_BASEDIR);
 		Properties prop = (Properties) args.get(OptTrendFittingFunction.ARGS_PROP);
 		HashMap<String, double[][]> target_trend_collection = (HashMap<String, double[][]>) args
-				.get(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS);		
+				.get(OptTrendFittingFunction.ARGS_TAR_TRENDS_COLLECTIONS);
 		Number[][] result_lookup = (Number[][]) args.get(ARGS_PREV_RESULTS);
 
 		// Setting initial value from properties
@@ -882,8 +884,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			int[] first_target_time = new int[num_target_trend];
 			UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
 			String[][] trend_target_key_split = new String[num_target_trend][];
-			Pattern pattern_trend_type = Pattern.compile("(.*)_C(-?\\d+)");			
-					
+			Pattern pattern_trend_type = Pattern.compile("(.*)_C(-?\\d+)");
 
 			for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 				trend_target_key_split[trend_target_pt] = trend_target_key[trend_target_pt].split(",");
@@ -894,8 +895,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 				interpolation[trend_target_pt] = interpolator.interpolate(tar_values[0], tar_values[1]);
 				first_target_time[trend_target_pt] = (int) tar_values[0][0];
 				weight[trend_target_pt] = Double
-						.parseDouble(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_WEIGHT]);			
-				
+						.parseDouble(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_WEIGHT]);
 
 			}
 
@@ -920,32 +920,43 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								Arrays.sort(sim_time);
 								if (str_disp == null) {
 									str_disp = new StringBuilder[sim_time.length];
-								}								
-								int col_number = Integer.parseInt(trend_matcher.group(2));								
+								}
+								int col_number = Integer.parseInt(trend_matcher.group(2));
 								double offset = 0;
-								if(col_number < 0) {
-									int pt = Arrays.binarySearch(sim_time, first_target_time[trend_target_pt]);									
-									if(pt < 0) {
-										System.err.printf("Warning: offset time %d not found in countMap of time range = %s. Average of neighbouring value used.\n",																								
+								if (col_number < 0) {
+									int pt = Arrays.binarySearch(sim_time, first_target_time[trend_target_pt]);
+									if (pt < 0) {
+										System.err.printf(
+												"Warning: offset time %d not found in countMap of time range = %s. Average of neighbouring value used.\n",
 												first_target_time[trend_target_pt], Arrays.deepToString(sim_time));
-										offset = ((countMap.get(sim_time[~pt-1]))[Math.abs(col_number)] 
-												+ (countMap.get(sim_time[~pt]))[Math.abs(col_number)])/2 ;																				
-									}else {									
+										offset = ((countMap.get(sim_time[~pt - 1]))[Math.abs(col_number)]
+												+ (countMap.get(sim_time[~pt]))[Math.abs(col_number)]) / 2;
+									} else {
 										offset = (countMap.get(sim_time[pt]))[Math.abs(col_number)];
 									}
-								}																
-								
+								}
+
 								for (int i = 0; i < sim_time.length; i++) {
 									if (sim_time[i].intValue() >= minFitFrom) {
 										if (str_disp[i] == null) {
 											str_disp[i] = new StringBuilder();
 											str_disp[i].append(sim_time[i]);
-										}																													
-										double sim_y = countMap.get(sim_time[i])[Math.abs(col_number)] ;																																												
-										
-										bestResidue_by_runnable[r] += weight[trend_target_pt] * Math.pow(
-												(sim_y - offset) - interpolation[trend_target_pt].value(sim_time[i].doubleValue()),
-												2);
+										}
+										double sim_y = countMap.get(sim_time[i])[Math.abs(col_number)];
+
+										if (weight[trend_target_pt] < 0) {
+											// Offset from previous time step
+											if (i > 0) {
+												offset += countMap.get(sim_time[i - 1])[Math.abs(col_number)];
+											} else {
+												System.err.printf(
+														"Warning: Negative weight (%f) for prior to time step %d not available. Offset of %f used instead\n",
+														weight[trend_target_pt], sim_time[i], offset);
+											}
+										}
+										bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt])
+												* Math.pow((sim_y - offset) - interpolation[trend_target_pt]
+														.value(sim_time[i].doubleValue()), 2);
 										str_disp[i].append(',');
 										str_disp[i].append(sim_y);
 									}
@@ -1224,7 +1235,19 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								if (target_t[0] <= simTime[t_pt] && simTime[t_pt] <= target_t[target_t.length - 1]) {
 									double model_y = y_values[t_pt];
 									double trend_y = interpolation[trend_target_pt].value(simTime[t_pt]);
-									bestResidue_by_runnable[r] += weight[trend_target_pt]
+
+									if (weight[trend_target_pt] < 0) {
+										// Offset from previous time step
+										if (t_pt > 0) {
+											model_y = model_y - y_values[t_pt - 1];
+										} else {
+											System.err.printf(
+													"Warning: Negative weight (%f) for prior to time step %d not available.\n",
+													weight[trend_target_pt], simTime[t_pt]);
+										}
+									}
+
+									bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt])
 											* Math.pow(model_y - trend_y, 2);
 								}
 							}
