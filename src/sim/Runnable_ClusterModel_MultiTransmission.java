@@ -63,6 +63,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			new double[][] {},
 			// 7: RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM;
 			// double{{GENDER_INCLUDE_INDEX, SEEK_TEST_MEAN, SEEK_TEST_SD}, ...}
+			// or double{{GENDER_INCLUDE_INDEX, SEEK_TEST_MEAN, SEEK_TEST_SD, WILL_SEEK_TREATMENT}, ...}
 			new double[][] {},
 			// 8 RUNNABLE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES
 			// double{{INF_INDEX, SITE_INDEX, TEST_ACCURACY,
@@ -138,6 +139,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			+ 1;
 	public static final int FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_SD = FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_MEAN
 			+ 1;
+	public static final int FIELD_SOUGHT_TEST_RATE = FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_SD + 1;
+	
 	// For RUNNALBE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES
 	public static final int FIELD_DX_TEST_PROPERTIES_INF_ID = 0;
 	public static final int FIELD_DX_TEST_PROPERTIES_SITE = FIELD_DX_TEST_PROPERTIES_INF_ID + 1;
@@ -175,6 +178,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient RealDistribution[][][][] dist_tranmissionMatrix; // RealDistribution[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
 	protected transient RealDistribution[][][] dist_stage_period; // RealDistribution[INF_ID][SITE][STAGE_ID]
 	protected transient RealDistribution[] dist_seek_test_period; // RealDistribution[GENDER_ID]
+	protected transient double[] seek_test_rate; // double[GENDER_ID]
+	
 
 	protected transient HashMap<Integer, HashMap<Integer, Integer>> test_rate_index_map; // KEY = PID, V
 																							// =Map<TestRateId, Pt_ID>
@@ -228,7 +233,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		dist_stage_period = new RealDistribution[NUM_INF][NUM_SITE][];
 		dist_sym_rate = new RealDistribution[NUM_INF][NUM_SITE][];
-		dist_seek_test_period = new RealDistribution[NUM_GENDER];
+		dist_seek_test_period = new RealDistribution[NUM_GENDER];		
+		seek_test_rate = new double[NUM_GENDER];
+		Arrays.fill(seek_test_rate, 1);
 	}
 
 	public void refreshField(int fieldId, boolean clearAll) {
@@ -442,6 +449,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						dist_seek_test_period[g] = generateGammaDistribution(
 								new double[] { ent[FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_MEAN],
 										ent[FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_SD] });
+						if(ent.length > FIELD_SOUGHT_TEST_RATE) {
+							seek_test_rate[g] = ent[FIELD_SOUGHT_TEST_RATE];
+						}												
 					}
 				}
 			}
@@ -1583,8 +1593,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				if (dist_sym_rate[infection_id][site_id][current_infection_stage] != null) {
 					hasSym = RNG.nextDouble() < dist_sym_rate[infection_id][site_id][current_infection_stage].sample();
 				}
-			}
-			if (hasSym) {
+			}					
+			// Check if seek treatment
+			boolean seekTest = seek_test_rate[getGenderType(pid)] >= 1;
+			if(seek_test_rate[getGenderType(pid)] < 1) {
+				seekTest = RNG.nextDouble() < seek_test_rate[getGenderType(pid)];
+			}						
+			if (hasSym & seekTest) {																	
 				int seekTestAfter = (int) Math.max(1, Math.round(dist_seek_test_period[getGenderType(pid)].sample()));
 				int nextTestDate = current_time + seekTestAfter;
 				ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
