@@ -2109,7 +2109,67 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	@Override
 	public void refreshField(int fieldId, boolean clearAll) {
-		// Not used
+		switch (fieldId) {
+		case RUNNABLE_FIELD_TRANSMISSION_SYM_RATE:
+		case RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ:
+			// Do nothing  - refer to field directly
+			break;
+		case RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
+		case RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD:
+			double[][] durParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
+			double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD];
+			for (int s = 0; s < infectious_period.length; s++) {
+				if (durParam[s] != null) {
+					infectious_period[s] = generateGammaDistribution(durParam[s]);
+				} else {
+					infectious_period[s] = null;
+				}
+				if (incParam[s] != null) {
+					incubation_period[s] = new UniformRealDistribution(RNG, incParam[s][0], incParam[s][1]);
+
+					if (incParam[s].length > 2) {
+						immune_period[s] = new UniformRealDistribution(RNG, incParam[s][2], incParam[s][3]);
+					} else {
+						immune_period[s] = null;
+					}
+
+				} else {
+					incubation_period[s] = null;
+					immune_period[s] = null;
+				}
+			}
+			break;
+		case RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE:
+			double[][][] tranParm = (double[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
+			for (int sf = 0; sf < tranmissionMatrix.length; sf++) {
+				for (int st = 0; st < tranmissionMatrix[sf].length; st++) {
+					double[] param = tranParm[sf][st];
+					if (param != null) {
+						tranmissionMatrix[sf][st] = generateBetaDistribution(param);
+					}
+				}
+			}
+			break;
+		
+		case RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
+			double[] sought_test_param = (double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
+			if (sought_test_param.length == 2) {
+				RealDistribution dist = generateGammaDistribution(sought_test_param);
+				for (int g = 0; g < sym_test_period_by_gender.length; g++) {
+					sym_test_period_by_gender[g] = dist;
+				}
+			} else {
+				int offset = 0;
+				for (int g = 0; g < sym_test_period_by_gender.length; g++) {
+					sym_test_period_by_gender[g] = generateGammaDistribution(
+							Arrays.copyOfRange(sought_test_param, offset, offset + 2));
+					offset += 2;
+				}
+			}
+			break;
+		default:
+			System.err.printf("Warning: refreshField option for fieldId=%d not set.\n", fieldId);
+		}
 
 	}
 
