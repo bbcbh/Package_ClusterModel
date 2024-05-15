@@ -59,7 +59,8 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 				actType, src_site, tar_site);
 		for (int pid : new int[] { pid_inf_tar }) { // PREP only effect susceptibility not transmission
 			int[] prop_rec = prophylaxis_record.get(pid);
-			if (prop_rec != null) {							
+			if (prop_rec != null) {				
+				
 				if(prop_rec[PROPHYLAXIS_REC_DOSAGE] != Integer.MAX_VALUE) {
 					// Limited prophylaxis dosage 			
 					if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] < currentTime 

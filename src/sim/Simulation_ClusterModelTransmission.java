@@ -773,7 +773,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					popType = ""; // Default
 				}							
 				
-				if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {					
+				if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+					// TODO: Loading of Runnable_ClusterModel_Prophylaxis specific value
 					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
 				} else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
@@ -837,8 +838,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					if (paramSet != null) {
 						double[] pt = paramSet.remove(0);
 						runnable[s].setRunnableId(String.format("[%s,%d]", preGenSeedFile.getName(), s));
-						ArrayList<Integer> field_to_update = Optimisation_Factory
-								.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, seedInfectNum,false);
+						
+						ArrayList<Integer> field_to_update = runnable[s].loadOptParamter(preGenParamKey, pt, seedInfectNum, runSim);
+						
+						/*
+						ArrayList<Integer> field_to_update = 
+								Optimisation_Factory.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, seedInfectNum, false);
+					    */
 
 						if (loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 							String transform_str = loadedProperties

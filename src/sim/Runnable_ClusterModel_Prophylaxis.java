@@ -9,10 +9,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.math3.distribution.RealDistribution;
-
 import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
@@ -206,13 +206,13 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		String key, fileName;
 		HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
-		
-		//PEP Usage
-		countMap  = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_PEP_COVERAGE);		
-		if(countMap != null) {			
-			fileName = String.format(filePrefix + "PEP_Stat_%d_%d.csv",	cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "PEP_User_Type_%d", new int[] {2});
-		}						
+
+		// PEP Usage
+		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_PEP_COVERAGE);
+		if (countMap != null) {
+			fileName = String.format(filePrefix + "PEP_Stat_%d_%d.csv", cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "PEP_User_Type_%d", new int[] { 2 });
+		}
 
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
@@ -352,6 +352,68 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			}
 		}
 
+	}
+
+	@Override
+	public ArrayList<Integer> loadOptParamter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
+			boolean display_only) {
+
+		ArrayList<String> common_parameter_name = new ArrayList<>();
+		ArrayList<Double> common_parameter_value = new ArrayList<>();
+
+		for (int i = 0; i < parameter_settings.length; i++) {
+			if (PROP_PEP_START_AT.equals(parameter_settings[i])) {
+				this.prophylaxis_starts_at = (int) point[i];
+			} else if (parameter_settings[i].startsWith(PROP_PEP_UPTAKE)) {
+				Matcher m = Pattern.compile(PROP_PEP_UPTAKE + "_(\\d+)").matcher(parameter_settings[i]);
+				if (m.matches()) {
+					switch (Integer.parseInt(m.group(1))) {
+					case 0:
+						prophylaxis_uptake_HIV_PrEP = (float) point[i];
+						break;
+					case 1:
+						prophylaxis_uptake_last_TP = (float) point[i];
+						break;						
+					default:
+						prophylaxis_uptake_last_STI = (float) point[i];
+					}
+				}
+			} else if (parameter_settings[i].startsWith(PROP_PEP_ADHERENCE)) {
+				Matcher m = Pattern.compile(PROP_PEP_ADHERENCE + "_(\\d+)").matcher(parameter_settings[i]);
+				if (m.matches()) {
+					int adhereId =  Integer.parseInt(m.group(1));
+					if(adhereId >= prophylaxis_adherence.length) {
+						prophylaxis_adherence = Arrays.copyOf(prophylaxis_adherence, adhereId+1);
+					}
+					prophylaxis_adherence[adhereId] = point[i];
+					
+					if (prophylaxis_adherence.length == 1) {
+						adherenceDist = generateNonDistribution(prophylaxis_adherence);
+					} else if (prophylaxis_adherence[1] < 0) {
+						double[] param = Arrays.copyOf(prophylaxis_adherence, 2);
+						param[1] = Math.abs(param[1]);
+						adherenceDist = generateUniformDistribution(param);
+					} else {
+						adherenceDist = generateGammaDistribution(prophylaxis_adherence);
+					}
+					
+				}
+
+			} else {
+				common_parameter_name.add(parameter_settings[i]);
+				common_parameter_value.add(point[i]);
+			}
+		}
+
+		Double[] common_parameter_val_obj = common_parameter_value.toArray(new Double[common_parameter_value.size()]);
+
+		double[] common_parameter_val = new double[common_parameter_value.size()];
+		for (int i = 0; i < common_parameter_val.length; i++) {
+			common_parameter_val[i] = common_parameter_val_obj[i].doubleValue();
+		}
+
+		return super.loadOptParamter(common_parameter_name.toArray(new String[common_parameter_name.size()]),
+				common_parameter_val, seedInfectNum, display_only);
 	}
 
 }
