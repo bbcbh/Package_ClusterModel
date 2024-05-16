@@ -839,7 +839,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						double[] pt = paramSet.remove(0);
 						runnable[s].setRunnableId(String.format("[%s,%d]", preGenSeedFile.getName(), s));
 						
-						ArrayList<Integer> field_to_update = runnable[s].loadOptParamter(preGenParamKey, pt, seedInfectNum, runSim);
+						ArrayList<Integer> field_to_update = runnable[s].loadOptParamter(preGenParamKey, pt, seedInfectNum, false);
 						
 						/*
 						ArrayList<Integer> field_to_update = 
