@@ -726,6 +726,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		RandomGenerator rngBase = new MersenneTwisterRandomGenerator(seed);
+
+		if (preGenSimSeedMap != null) {
+			int simTotalFromMap = 0;
+			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
+				simTotalFromMap += preGenSimSeedMap.get(baseContactMapSeed).size();
+			}
+			numSim = Math.max(numSim, simTotalFromMap);
+		}
+
 		boolean useParallel = numThreads > 1 && numSim > 1;
 		ExecutorService exec = null;
 		int inExec = 0;
@@ -767,19 +776,18 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 			}
 
-			if (runSim) {						
-				
-				if(popType == null) {
+			if (runSim) {
+
+				if (popType == null) {
 					popType = ""; // Default
-				}							
-				
+				}
+
 				if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					// TODO: Loading of Runnable_ClusterModel_Prophylaxis specific value
 					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
 				} else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					runnable[s] = new Runnable_ClusterModel_Bali(baseContactMapSeed, simSeed, pop_composition,
-							baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);				
+							baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);
 
 				} else if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
@@ -809,8 +817,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
-					if (simFields[ent_offset + f] != null) {
-						runnable[s].getRunnable_fields()[f] = simFields[ent_offset + f];
+					if (simFields[ent_offset + f] != null) {						
+						// To ensure the simField is a fresh copy
+						Object field_to_clone = PropValUtils.propStrToObject(
+								PropValUtils.objectToPropStr(simFields[ent_offset + f], simFieldClass[ent_offset + f]),
+								simFieldClass[ent_offset + f]);
+						runnable[s].getRunnable_fields()[f] = field_to_clone;
 					}
 				}
 
@@ -838,13 +850,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					if (paramSet != null) {
 						double[] pt = paramSet.remove(0);
 						runnable[s].setRunnableId(String.format("[%s,%d]", preGenSeedFile.getName(), s));
-						
-						ArrayList<Integer> field_to_update = runnable[s].loadOptParamter(preGenParamKey, pt, seedInfectNum, false);
-						
+
+						ArrayList<Integer> field_to_update = runnable[s].loadOptParamter(preGenParamKey, pt,
+								seedInfectNum, false);
+
 						/*
-						ArrayList<Integer> field_to_update = 
-								Optimisation_Factory.setOptParamInRunnable_Direct(runnable[s], preGenParamKey, pt, seedInfectNum, false);
-					    */
+						 * ArrayList<Integer> field_to_update =
+						 * Optimisation_Factory.setOptParamInRunnable_Direct(runnable[s],
+						 * preGenParamKey, pt, seedInfectNum, false);
+						 */
 
 						if (loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 							String transform_str = loadedProperties
@@ -965,17 +979,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 
-		// Zip extra files		
-		Pattern pattern_csv_extra = Pattern
-				.compile("(?:\\[.*\\]){0,1}(.*)_(-{0,1}\\d+)_-{0,1}\\d+.csv");
-		
-		Pattern pattern_csv_cMap =  Pattern.compile(FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
-		
+		// Zip extra files
+		Pattern pattern_csv_extra = Pattern.compile("(?:\\[.*\\]){0,1}(.*)_(-{0,1}\\d+)_-{0,1}\\d+.csv");
+
+		Pattern pattern_csv_cMap = Pattern.compile(FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
+
 		FileFilter extra_filter = new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
-				return !pattern_csv_cMap.matcher(pathname.getName()).matches() 
-						&&	 pattern_csv_extra.matcher(pathname.getName()).matches();
+				return !pattern_csv_cMap.matcher(pathname.getName()).matches()
+						&& pattern_csv_extra.matcher(pathname.getName()).matches();
 			}
 		};
 
@@ -1351,8 +1364,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		zipSelectedOutputs(baseDir, zip_file_name, pattern_include_file, exportSkipBackup);
 	}
 
-	
-
 	public static void zipSelectedOutputs(File baseDir, String zip_file_name, final Pattern pattern_include_file,
 			boolean exportSkipBackup) throws IOException, FileNotFoundException {
 
@@ -1429,7 +1440,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 	}
-	
+
 	public static void output_analysis_csv(File baseDir, String[] incl_filename, String[] summary_stat_filename)
 			throws IOException, FileNotFoundException {
 		Pattern[] fileNamePattern = new Pattern[incl_filename.length];

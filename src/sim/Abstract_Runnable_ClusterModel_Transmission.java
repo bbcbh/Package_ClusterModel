@@ -85,13 +85,12 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected static final String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
 			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
 
-	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, 
-			ContactMap base_cMap, Properties prop) {			
-		
-		this(cMap_seed, sim_seed, 
-				(int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),int[].class), 
-				base_cMap, 
-				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])), 
+	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
+			Properties prop) {
+
+		this(cMap_seed, sim_seed,
+				(int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey), int[].class), base_cMap,
+				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])),
 				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])));
 	}
 
@@ -146,7 +145,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		this.simSetting = simSetting;
 	}
 
-	protected final AbstractRealDistribution generateNonDistribution(double[] input) {
+	protected static final AbstractRealDistribution generateNonDistribution(RandomGenerator RNG, double[] input) {
 		return new AbstractRealDistribution(RNG) {
 			private static final long serialVersionUID = -4946118496555960005L;
 
@@ -203,9 +202,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		};
 
 	}
+	
+	
 
-	protected AbstractRealDistribution generateGammaDistribution(double[] input) {
-
+	protected static AbstractRealDistribution generateGammaDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
 			// For Gamma distribution
 			// GammaDistribution(RandomGenerator rng, double shape, double scale)
@@ -219,12 +219,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			res[0] = input[0] / res[1];
 			return new GammaDistribution(RNG, res[0], res[1]);
 		} else {
-			return generateNonDistribution(input);
+			return generateNonDistribution(RNG, input);
 
 		}
 	}
 
-	protected AbstractRealDistribution generateBetaDistribution(double[] input) {
+	
+
+	protected static AbstractRealDistribution generateBetaDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
 
 			// For Beta distribution,
@@ -239,17 +241,21 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			res[1] = rP * (1 - input[0]);
 			return new BetaDistribution(RNG, res[0], res[1]);
 		} else {
-			return generateNonDistribution(input);
+			return generateNonDistribution(RNG, input);
 		}
 	}
 
-	protected AbstractRealDistribution generateUniformDistribution(double[] input) {
+	
+
+	protected static AbstractRealDistribution generateUniformDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
 			return new UniformRealDistribution(RNG, input[0], input[1]);
 		} else {
-			return generateNonDistribution(input);
+			return generateNonDistribution(RNG, input);
 		}
 	}
+
+	
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
 		this.edges_list = edges_list;
@@ -402,11 +408,11 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	public HashMap<String, Object> getSim_output() {
 		return sim_output;
 	}
-	
-	public ArrayList<Integer> loadOptParamter(String[] parameter_settings, double[] point,
-			int[][] seedInfectNum, boolean display_only){		
-		return Optimisation_Factory.setOptParamInRunnable_Direct(this, parameter_settings, point, 
-				seedInfectNum, display_only);
+
+	public ArrayList<Integer> loadOptParamter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
+			boolean display_only) {
+		return Optimisation_Factory.setOptParamInRunnable_Direct(this, parameter_settings, point, seedInfectNum,
+				display_only);
 	}
 
 }

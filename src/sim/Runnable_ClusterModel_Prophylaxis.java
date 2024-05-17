@@ -68,13 +68,13 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		dx_last_12_months = new HashMap<>();
 
 		if (prophylaxis_adherence.length == 1) {
-			adherenceDist = generateNonDistribution(prophylaxis_adherence);
+			adherenceDist = generateNonDistribution(rng_PEP,prophylaxis_adherence);
 		} else if (prophylaxis_adherence[1] < 0) {
 			double[] param = Arrays.copyOf(prophylaxis_adherence, 2);
 			param[1] = Math.abs(param[1]);
-			adherenceDist = generateUniformDistribution(param);
+			adherenceDist = generateUniformDistribution(rng_PEP, param);
 		} else {
-			adherenceDist = generateGammaDistribution(prophylaxis_adherence);
+			adherenceDist = generateGammaDistribution(rng_PEP, prophylaxis_adherence);
 		}
 	}
 
@@ -91,11 +91,10 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 	@Override
 	protected void postTimeStep(int currentTime) {
-		super.postTimeStep(currentTime);
-
+		super.postTimeStep(currentTime);		
+		
 		// Risk group based PEP
-		if (this.prophylaxis_starts_at > 0 && currentTime == this.prophylaxis_starts_at
-				&& prophylaxis_uptake_HIV_PrEP > 0) {
+		if (currentTime == this.prophylaxis_starts_at && prophylaxis_uptake_HIV_PrEP > 0) {
 			for (Integer pid : bASE_CONTACT_MAP.vertexSet()) {
 				if (risk_cat_map.get(pid).intValue() == 0 || risk_cat_map.get(pid).intValue() == 1) {
 					if (prophylaxis_uptake_HIV_PrEP >= 1 || rng_PEP.nextFloat() < prophylaxis_uptake_HIV_PrEP) {
@@ -111,7 +110,6 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			int[] dx_hist = dx_last_12_months.get(treated_previously);
 			if (dx_hist != null) {
 				if (dx_hist[currentTime % dx_hist.length] != 0) { // Has a positive dx today
-
 					if (this.prophylaxis_starts_at > 0 && currentTime >= this.prophylaxis_starts_at
 							&& (prophylaxis_uptake_last_TP > 0 || prophylaxis_uptake_last_STI > 0)) {
 						int[] num_dx_12_months = new int[num_inf];
@@ -356,7 +354,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 	@Override
 	public ArrayList<Integer> loadOptParamter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
-			boolean display_only) {
+			boolean display_only) {		
 
 		ArrayList<String> common_parameter_name = new ArrayList<>();
 		ArrayList<Double> common_parameter_value = new ArrayList<>();
@@ -388,13 +386,13 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 					prophylaxis_adherence[adhereId] = point[i];
 					
 					if (prophylaxis_adherence.length == 1) {
-						adherenceDist = generateNonDistribution(prophylaxis_adherence);
+						adherenceDist = generateNonDistribution(rng_PEP, prophylaxis_adherence);
 					} else if (prophylaxis_adherence[1] < 0) {
 						double[] param = Arrays.copyOf(prophylaxis_adherence, 2);
 						param[1] = Math.abs(param[1]);
-						adherenceDist = generateUniformDistribution(param);
+						adherenceDist = generateUniformDistribution(rng_PEP, param);
 					} else {
-						adherenceDist = generateGammaDistribution(prophylaxis_adherence);
+						adherenceDist = generateGammaDistribution(rng_PEP, prophylaxis_adherence);
 					}
 					
 				}

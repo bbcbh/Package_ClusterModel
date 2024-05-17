@@ -358,7 +358,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			for (int st = 0; st < tranmissionMatrix[sf].length; st++) {
 				double[] param = tranParm[sf][st];
 				if (param != null) {
-					tranmissionMatrix[sf][st] = generateBetaDistribution(param);
+					tranmissionMatrix[sf][st] = generateBetaDistribution(RNG,param);
 				}
 			}
 		}
@@ -368,7 +368,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD];
 		for (int s = 0; s < infectious_period.length; s++) {
 			if (durParam[s] != null) {
-				infectious_period[s] = generateGammaDistribution(durParam[s]);
+				infectious_period[s] = generateGammaDistribution(RNG,durParam[s]);
 			} else {
 				infectious_period[s] = null;
 			}
@@ -392,14 +392,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		double[] sought_test_param = (double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 
 		if (sought_test_param.length == 2) {
-			RealDistribution dist = generateGammaDistribution(sought_test_param);
+			RealDistribution dist = generateGammaDistribution(RNG,sought_test_param);
 			for (int g = 0; g < sym_test_period_by_gender.length; g++) {
 				sym_test_period_by_gender[g] = dist;
 			}
 		} else {
 			int offset = 0;
 			for (int g = 0; g < sym_test_period_by_gender.length; g++) {
-				sym_test_period_by_gender[g] = generateGammaDistribution(
+				sym_test_period_by_gender[g] = generateGammaDistribution(RNG,
 						Arrays.copyOfRange(sought_test_param, offset, offset + 2));
 				offset += 2;
 			}
@@ -441,19 +441,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 			for (int s = 0; s < LENGTH_SITE; s++) {
 				if (non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_PROB] > 0) {
-					non_viable_inf_by_contact_duration[g][s] = generateGammaDistribution(new double[] {
+					non_viable_inf_by_contact_duration[g][s] = generateGammaDistribution(RNG, new double[] {
 							non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN],
 							non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_SD] });
 				}
 				if (non_viable_infection_setting[g][s][NON_VIABILITY_RECOVERY_INDUDCED_PROB] > 0) {
-					non_viable_inf_by_recovery_duration[g][s] = generateGammaDistribution(
+					non_viable_inf_by_recovery_duration[g][s] = generateGammaDistribution(RNG,
 							new double[] { non_viable_infection_setting[g][s][NON_VIABILITY_RECOVERY_INDUDCED_MEAN],
 									non_viable_infection_setting[g][s][NON_VIABILITY_RECOVERY_INDUDCED_SD] });
 
 				}
 			}
 
-			antibotic_duration[g] = generateGammaDistribution(antibotic_dur[g]);
+			antibotic_duration[g] = generateGammaDistribution(RNG, antibotic_dur[g]);
 		}
 
 		// Runnable properties switch if has not already set
@@ -2120,7 +2120,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD];
 			for (int s = 0; s < infectious_period.length; s++) {
 				if (durParam[s] != null) {
-					infectious_period[s] = generateGammaDistribution(durParam[s]);
+					infectious_period[s] = generateGammaDistribution(RNG,durParam[s]);
 				} else {
 					infectious_period[s] = null;
 				}
@@ -2145,7 +2145,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				for (int st = 0; st < tranmissionMatrix[sf].length; st++) {
 					double[] param = tranParm[sf][st];
 					if (param != null) {
-						tranmissionMatrix[sf][st] = generateBetaDistribution(param);
+						tranmissionMatrix[sf][st] = generateBetaDistribution(RNG, param);
 					}
 				}
 			}
@@ -2154,14 +2154,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		case RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
 			double[] sought_test_param = (double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 			if (sought_test_param.length == 2) {
-				RealDistribution dist = generateGammaDistribution(sought_test_param);
+				RealDistribution dist = generateGammaDistribution(RNG,sought_test_param);
 				for (int g = 0; g < sym_test_period_by_gender.length; g++) {
 					sym_test_period_by_gender[g] = dist;
 				}
 			} else {
 				int offset = 0;
 				for (int g = 0; g < sym_test_period_by_gender.length; g++) {
-					sym_test_period_by_gender[g] = generateGammaDistribution(
+					sym_test_period_by_gender[g] = generateGammaDistribution(RNG,
 							Arrays.copyOfRange(sought_test_param, offset, offset + 2));
 					offset += 2;
 				}

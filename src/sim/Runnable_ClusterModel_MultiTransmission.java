@@ -63,7 +63,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			new double[][] {},
 			// 7: RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM;
 			// double{{GENDER_INCLUDE_INDEX, SEEK_TEST_MEAN, SEEK_TEST_SD}, ...}
-			// or double{{GENDER_INCLUDE_INDEX, SEEK_TEST_MEAN, SEEK_TEST_SD, WILL_SEEK_TREATMENT}, ...}
+			// or double{{GENDER_INCLUDE_INDEX, SEEK_TEST_MEAN, SEEK_TEST_SD,
+			// WILL_SEEK_TREATMENT}, ...}
 			new double[][] {},
 			// 8 RUNNABLE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES
 			// double{{INF_INDEX, SITE_INDEX, TEST_ACCURACY,
@@ -140,46 +141,45 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public static final int FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_SD = FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_MEAN
 			+ 1;
 	public static final int FIELD_SOUGHT_TEST_RATE = FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_SD + 1;
-	
+
 	// For RUNNALBE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES
 	public static final int FIELD_DX_TEST_PROPERTIES_INF_ID = 0;
 	public static final int FIELD_DX_TEST_PROPERTIES_SITE = FIELD_DX_TEST_PROPERTIES_INF_ID + 1;
 	public static final int FIELD_DX_TEST_PROPERTIES_ACCURACY_START = FIELD_DX_TEST_PROPERTIES_SITE + 1;
-	// Transient field
-	protected transient HashMap<Integer, double[][][][]> map_trans_prob; // Key=PID,V=double[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
-	protected transient HashMap<Integer, int[][]> map_currrent_infection_stage; // Key=PID,V=int[INF_ID][SITE]{infection_stage}
-	protected transient HashMap<Integer, int[][]> map_infection_stage_switch; // Key=PID,V=int[INF_ID][SITE]{switch_time_at_site_0};
-	protected transient HashMap<String, ArrayList<Integer>> map_currently_infectious; // Key=Inf_ID,SiteID,V=ArrayList
-																						// of
-																						// pid with infectious
+
+	protected HashMap<Integer, double[][][][]> map_trans_prob; // Key=PID,V=double[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
+	protected HashMap<Integer, int[][]> map_currrent_infection_stage; // Key=PID,V=int[INF_ID][SITE]{infection_stage}
+	protected HashMap<Integer, int[][]> map_infection_stage_switch; // Key=PID,V=int[INF_ID][SITE]{switch_time_at_site_0};
+	protected HashMap<String, ArrayList<Integer>> map_currently_infectious; // Key=Inf_ID,SiteID,V=ArrayList
+																			// of
+																			// pid with infectious
 
 	// For schedule, key are day and entries are list of person id, ordered
-	protected transient HashMap<Integer, ArrayList<int[]>> schedule_testing; // V=int[]{PID,INF_INCLUDE_INDEX,SITE_INCLUDE_INDEX}
-	protected transient HashMap<Integer, ArrayList<ArrayList<ArrayList<Integer>>>> schedule_stage_change;
+	protected HashMap<Integer, ArrayList<int[]>> schedule_testing; // V=int[]{PID,INF_INCLUDE_INDEX,SITE_INCLUDE_INDEX}
+	protected HashMap<Integer, ArrayList<ArrayList<ArrayList<Integer>>>> schedule_stage_change;
 	// V=ArrayList<Inf><SITE>{PIds of those need to change}
 
 	// Helper objects set by fields
 
-	protected transient HashMap<String, double[]> lookupTable_infection_stage_path; // Key="INF_ID,SITE_ID,STAGE_ID",V={Cumul_Prob_0,...
-																					// State_ID_0...}
-	protected transient int[][] lookupTable_infection_infectious_stages; // int[INF_ID][SITE]=STAGE_INCLUDE_ID
-	protected transient HashMap<String, double[]> lookupTable_test_treatment_properties; // Key="INF_ID,SITE_ID,
+	protected HashMap<String, double[]> lookupTable_infection_stage_path; // Key="INF_ID,SITE_ID,STAGE_ID",V={Cumul_Prob_0,...
+																			// State_ID_0...}
+	protected int[][] lookupTable_infection_infectious_stages; // int[INF_ID][SITE]=STAGE_INCLUDE_ID
+	protected HashMap<String, double[]> lookupTable_test_treatment_properties; // Key="INF_ID,SITE_ID,
 	// V=TEST_ACCURACY_INFO
 
-	protected transient HashMap<String, ArrayList<double[]>> lookupTable_instant_stage_switch; // KEY="Inf_ID,SITE_ID,STAGE_ID",
-																								// V = fieldEntry
+	protected HashMap<String, ArrayList<double[]>> lookupTable_instant_stage_switch; // KEY="Inf_ID,SITE_ID,STAGE_ID",
+																						// V = fieldEntry
 
-	protected transient double[][][][] table_act_frequency; // double[ACT_ID][G_TO][G_FROM]=fieldEntry
+	protected double[][][][] table_act_frequency; // double[ACT_ID][G_TO][G_FROM]=fieldEntry
 
-	protected transient RealDistribution[][][] dist_sym_rate; // RealDistribution[INF_ID][SITE][STAGE_ID]
-	protected transient RealDistribution[][][][] dist_tranmissionMatrix; // RealDistribution[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
-	protected transient RealDistribution[][][] dist_stage_period; // RealDistribution[INF_ID][SITE][STAGE_ID]
-	protected transient RealDistribution[] dist_seek_test_period; // RealDistribution[GENDER_ID]
-	protected transient double[] seek_test_rate; // double[GENDER_ID]
-	
+	protected RealDistribution[][][] dist_sym_rate; // RealDistribution[INF_ID][SITE][STAGE_ID]
+	protected RealDistribution[][][][] dist_tranmissionMatrix; // RealDistribution[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
+	protected RealDistribution[][][] dist_stage_period; // RealDistribution[INF_ID][SITE][STAGE_ID]
+	protected RealDistribution[] dist_seek_test_period; // RealDistribution[GENDER_ID]
+	protected double[] seek_test_rate; // double[GENDER_ID]
 
-	protected transient HashMap<Integer, HashMap<Integer, Integer>> test_rate_index_map; // KEY = PID, V
-																							// =Map<TestRateId, Pt_ID>
+	protected HashMap<Integer, HashMap<Integer, Integer>> test_rate_index_map; // KEY = PID, V
+																				// =Map<TestRateId, Pt_ID>
 
 	protected static final int STAGE_ID_JUST_INFECTED = Integer.MIN_VALUE;
 
@@ -230,7 +230,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		dist_stage_period = new RealDistribution[NUM_INF][NUM_SITE][];
 		dist_sym_rate = new RealDistribution[NUM_INF][NUM_SITE][];
-		dist_seek_test_period = new RealDistribution[NUM_GENDER];		
+		dist_seek_test_period = new RealDistribution[NUM_GENDER];
 		seek_test_rate = new double[NUM_GENDER];
 		Arrays.fill(seek_test_rate, 1);
 	}
@@ -278,8 +278,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						Arrays.fill(inf_sf, null);
 					}
 				}
-
 			}
+
+			random.RandomGenerator trans_RNG = RNG;
+
 			for (double[] ent : field) {
 				int inf_id = (int) ent[FIELD_TRANSMISSION_RATE_INF_ID];
 				int state_include = (int) ent[FIELD_TRANSMISSION_RATE_STATE_INCLUDE_INDEX];
@@ -300,11 +302,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						}
 						if (param.length == 1) {
 							dist_tranmissionMatrix[inf_id][site_from][site_to][statePt] = generateNonDistribution(
-									param);
+									trans_RNG, param);
 						} else {
 							// Beta distribution
 							dist_tranmissionMatrix[inf_id][site_from][site_to][statePt] = generateBetaDistribution(
-									param);
+									trans_RNG, param);
 						}
 					}
 					comparator = comparator >> 1;
@@ -338,6 +340,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			HashMap<String, HashMap<Integer, Double>> map_infection_stage_switch; // Key="INF_ID,SITE_ID,STAGE_ID",V=Map(Stage->Prob)
 			HashMap<Integer, Double> map_target_stage;
 			map_infection_stage_switch = new HashMap<>();
+
+			random.RandomGenerator stage_dist = RNG;
+
 			for (double[] ent : field) {
 				int inf_id = (int) ent[FIELD_STAGE_PERIOD_INF_ID];
 				int site = (int) ent[FIELD_STAGE_PERIOD_SITE];
@@ -353,7 +358,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					}
 					arrEnt.add(ent);
 				} else {
-
 					int stage_id_from = (int) ent[FIELD_STAGE_PERIOD_STATE_FROM];
 					double switch_prob = ent[FIELD_STAGE_PERIOD_SWTICH_STAGE_PROB];
 					double[] param = Arrays.copyOfRange(ent, FIELD_STAGE_PERIOD_DURATION_PARAM_START, ent.length);
@@ -371,16 +375,17 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								stage_id_to + 1);
 					}
 					if (param.length == 1) {
-						dist_stage_period[inf_id][site][stage_id_to] = generateNonDistribution(param);
+						dist_stage_period[inf_id][site][stage_id_to] = generateNonDistribution(stage_dist, param);
 					} else {
 						if (param[1] < 0) {
 							// Uniform distribution
 							double[] param_u = Arrays.copyOf(param, param.length);
 							param_u[1] = Math.abs(param_u[1]);
-							dist_stage_period[inf_id][site][stage_id_to] = generateUniformDistribution(param_u);
+							dist_stage_period[inf_id][site][stage_id_to] = generateUniformDistribution(stage_dist,
+									param_u);
 						} else {
 							// Gamma Distribution
-							dist_stage_period[inf_id][site][stage_id_to] = generateGammaDistribution(param);
+							dist_stage_period[inf_id][site][stage_id_to] = generateGammaDistribution(stage_dist, param);
 						}
 					}
 				}
@@ -409,6 +414,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					Arrays.fill(inf, null);
 				}
 			}
+			random.RandomGenerator sym_rate_rng = RNG;
 			for (double[] ent : field) {
 				int inf_Id = (int) ent[FIELD_SYM_RATE_INF_ID];
 				int site = (int) ent[FIELD_SYM_RATE_SITE];
@@ -421,9 +427,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					dist_sym_rate[inf_Id][site] = Arrays.copyOf(dist_sym_rate[inf_Id][site], state + 1);
 				}
 				if (param.length == 1) {
-					dist_sym_rate[inf_Id][site][state] = generateNonDistribution(param);
+					dist_sym_rate[inf_Id][site][state] = generateNonDistribution(sym_rate_rng, param);
 				} else {
-					dist_sym_rate[inf_Id][site][state] = generateBetaDistribution(param);
+					dist_sym_rate[inf_Id][site][state] = generateBetaDistribution(sym_rate_rng, param);
 				}
 			}
 			break;
@@ -439,16 +445,18 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 			break;
 		case RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
+
+			random.RandomGenerator test_period_rng = RNG;
 			for (double[] ent : field) {
 				int gender_inc = (int) ent[FIELD_SOUGHT_TEST_PERIOD_BY_SYM_GENDER_INC];
 				for (int g = 0; g < dist_seek_test_period.length; g++) {
 					if ((gender_inc & 1 << g) != 0) {
-						dist_seek_test_period[g] = generateGammaDistribution(
+						dist_seek_test_period[g] = generateGammaDistribution(test_period_rng,
 								new double[] { ent[FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_MEAN],
 										ent[FIELD_SOUGHT_TEST_PERIOD_BY_SYM_SEEK_TEST_SD] });
-						if(ent.length > FIELD_SOUGHT_TEST_RATE) {
+						if (ent.length > FIELD_SOUGHT_TEST_RATE) {
 							seek_test_rate[g] = ent[FIELD_SOUGHT_TEST_RATE];
-						}												
+						}
 					}
 				}
 			}
@@ -497,6 +505,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		test_rate_index_map = new HashMap<>();
 
 		propSwitch_map = new HashMap<>();
+
 	}
 
 	@Override
@@ -979,22 +988,22 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						test_properies = lookupTable_test_treatment_properties
 								.get(String.format("%d,%d", infId, siteId));
 						if (test_properies != null) {
-							inf_stage = map_currrent_infection_stage.get(pid);																																		
-							if (inf_stage != null && inf_stage[infId][siteId] >= 0) {																												
+							inf_stage = map_currrent_infection_stage.get(pid);
+							if (inf_stage != null && inf_stage[infId][siteId] >= 0) {
 								double testSensitivity = 0;
-								int stage_pt  = FIELD_DX_TEST_PROPERTIES_ACCURACY_START;								
-								
-								while(testSensitivity == 0 &&  stage_pt < test_properies.length) {
+								int stage_pt = FIELD_DX_TEST_PROPERTIES_ACCURACY_START;
+
+								while (testSensitivity == 0 && stage_pt < test_properies.length) {
 									// TEST_ACCURACY_1, TARGET_STAGE_INC_1, TREATMENT_SUC_STAGE_1 ..
-									tested_stage_inc = (int) test_properies[stage_pt+1];
+									tested_stage_inc = (int) test_properies[stage_pt + 1];
 									if ((tested_stage_inc & 1 << inf_stage[infId][siteId]) != 0) {
 										testSensitivity = test_properies[stage_pt];
-									}																									
-									stage_pt+=3;
-								}								
+									}
+									stage_pt += 3;
+								}
 								if (testSensitivity > 0) {
 									applyTreatment |= RNG.nextDouble() < testSensitivity;
-								}																							
+								}
 							}
 						}
 					} // End of testing pid for infection and site
@@ -1046,7 +1055,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			test_treatment_properies = lookupTable_test_treatment_properties.get(String.format("%d,%d", infId, siteId));
 
 			if (test_treatment_properies != null) {
-				
+
 				// TEST_ACCURACY_1, TARGET_STAGE_INC_1, TREATMENT_SUC_STAGE_1 ...
 				int stage_inc_pt = FIELD_DX_TEST_PROPERTIES_ACCURACY_START + 1;
 
@@ -1294,6 +1303,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	@Override
 	public void allocateSeedInfection(int[][] num_infected, int time) {
+
 		// num_infected = int[infection_id]{GENDER_INC_INDEX_0, SITE_INDEX_0,
 		// Number_INF_0,...}
 		// or
@@ -1320,6 +1330,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 		}
 
+		Integer[] all_vertex = bASE_CONTACT_MAP.vertexSet().toArray(new Integer[bASE_CONTACT_MAP.vertexSet().size()]);
+		Arrays.sort(all_vertex);
+
 		for (int[] inf_setting : num_infected) {
 			int pt = 0;
 			while (pt < inf_setting.length) {
@@ -1331,12 +1344,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				pt++;
 
 				int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
-
-				if (validStage == 0) {
-					System.err.printf("Warning: no infectious stage find for Inf_#%d at site #%d.\n", inf_id,
-							site_index);
-				}
-
 				int stage_pt = 0;
 				ArrayList<Integer> validInfectiousStages = new ArrayList<>();
 				while (validStage != 0) {
@@ -1350,7 +1357,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				if (validInfectiousStages.size() > 0) {
 					// List out all valid candidate
 					candidate.clear();
-					for (Integer pid : bASE_CONTACT_MAP.vertexSet()) {
+					for (Integer pid : all_vertex) {
 						int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
 
 						if (current_stage_arr == null
@@ -1373,6 +1380,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 					int counter = 0;
 					int num_inf_added = 0;
+
 					for (Integer pid : candidate) {
 						if (RNG.nextInt(candidate.size() - counter) < (num_inf - num_inf_added)) {
 							int[] cumulProb = new int[validInfectiousStages.size()];
@@ -1383,8 +1391,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								cumulProb[i] += (int) Math.ceil(
 										dist_stage_period[inf_id][site_index][validInfectiousStages.get(i)].sample());
 							}
-
 							int stageDur = RNG.nextInt(cumulProb[cumulProb.length - 1]);
+
 							int stage_sel = Arrays.binarySearch(cumulProb, stageDur);
 							if (stage_sel < 0) {
 								stage_sel = ~stage_sel;
@@ -1393,9 +1401,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							if (stage_sel > 0) {
 								stageDur -= cumulProb[stage_sel - 1];
 							}
-
 							addInfectious(pid, inf_id, site_index, validStage, time, stageDur);
 							num_inf_added++;
+
 						}
 						counter++;
 					}
@@ -1407,6 +1415,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 			inf_id++;
+
 		}
 
 	}
@@ -1555,12 +1564,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		// Update state_switch map
 		current_stage_arr[infection_id][site_id] = current_infection_stage;
-		
+
 		if (infection_state_switch[infection_id][site_id] != infect_switch_time) {
 			int org_switch = infection_state_switch[infection_id][site_id];
 			infection_state_switch[infection_id][site_id] = infect_switch_time;
 			// Update schedule
-			updateInfectStageChangeSchedule(pid, infection_id, site_id, infect_switch_time, org_switch); 
+			updateInfectStageChangeSchedule(pid, infection_id, site_id, infect_switch_time, org_switch);
 		}
 
 		// Update infectious status
@@ -1594,13 +1603,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				if (dist_sym_rate[infection_id][site_id][current_infection_stage] != null) {
 					hasSym = RNG.nextDouble() < dist_sym_rate[infection_id][site_id][current_infection_stage].sample();
 				}
-			}					
+			}
 			// Check if seek treatment
 			boolean seekTest = seek_test_rate[getGenderType(pid)] >= 1;
-			if(seek_test_rate[getGenderType(pid)] < 1) {
+			if (seek_test_rate[getGenderType(pid)] < 1) {
 				seekTest = RNG.nextDouble() < seek_test_rate[getGenderType(pid)];
-			}						
-			if (hasSym & seekTest) {																	
+			}
+			if (hasSym & seekTest) {
 				int seekTestAfter = (int) Math.max(1, Math.round(dist_seek_test_period[getGenderType(pid)].sample()));
 				int nextTestDate = current_time + seekTestAfter;
 				ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
