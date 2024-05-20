@@ -3501,7 +3501,7 @@ public class Optimisation_Factory {
 			break;
 
 		default:
-			System.err.printf("Optimisation: Parameter intrepretation %s not defined. Exiting...\n",
+			System.err.printf("Optimisation: Parameter interpretation %s not defined. Exiting...\n",
 					Arrays.toString(point));
 			System.exit(-1);
 
