@@ -668,7 +668,7 @@ public class Optimisation_Factory {
 							// Start optimisation from previous min value
 							init_param = Arrays.copyOf(init_param_default, init_param_default.length);
 
-							if (row.length == init_param.length) {
+							if ((row.length -3) == init_param.length) { // cMap_seed, sim_seed, param_0, ..., residue
 								for (int i = 0; i < init_param.length; i++) {
 									if (row[i + 2] != null && !((Double) row[i + 2]).isNaN()) {
 										init_param[i] = ((Double) row[i + 2]).doubleValue();

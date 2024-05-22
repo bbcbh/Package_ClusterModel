@@ -1105,9 +1105,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								.toArray(new String[num_target_trend]);
 
 						Arrays.sort(trend_target_key);
-						double[] t_values = new double[simTime.length];
+						double[] model_t = new double[simTime.length];
 						for (int i = 0; i < simTime.length; i++) {
-							t_values[i] = simTime[i];
+							model_t[i] = simTime[i];
 						}
 
 						// Trim simTime to valid starting point
@@ -1133,7 +1133,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 							int incl_grp = Integer
 									.parseInt(trend_keys[OptTrendFittingFunction.OPT_TREND_MAP_KEY_TARGET_GRP]);
 
-							double[] y_values = new double[t_values.length];
+							double[] model_y = new double[model_t.length];
 
 							tar_values[trend_target_pt] = target_trend_collection
 									.get(trend_target_key[trend_target_pt]);
@@ -1240,39 +1240,42 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 									}
 
 								}
-								y_values[t_pt] = newVal;
+								model_y[t_pt] = newVal;
 								str_disp[t_pt].append(',');
 								str_disp[t_pt].append(newVal);
 
-							}
+							}							
+							
+							double sampleTime = target_t[0];
+							
+							UnivariateFunction model_value_interpol = interpolator.interpolate(model_t, model_y);											
 
-							// Adjust y_value to start from first y_value
-							if (trend_target_key_split[trend_target_pt][OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE]
-									.startsWith("Cumul")) {
-								for (int ty = 0; ty < y_values.length; ty++) {
-									y_values[ty] -= y_values[0];
-								}
-							}
-
-							for (int t_pt = 0; t_pt < simTime.length; t_pt++) {
-								if (target_t[0] <= simTime[t_pt] && simTime[t_pt] <= target_t[target_t.length - 1]) {
-									double model_y = y_values[t_pt];
-									double trend_y = interpolation[trend_target_pt].value(simTime[t_pt]);
-
+							while(sampleTime <= target_t[target_t.length-1]) {
+								double trend_y_val = interpolation[trend_target_pt].value(sampleTime);								
+								double model_y_val = Double.POSITIVE_INFINITY;
+								
+								if (model_t[0] <= sampleTime && sampleTime <= model_t[model_t.length - 1]) {
+									model_y_val = model_value_interpol.value(sampleTime);									
 									if (weight[trend_target_pt] < 0) {
 										// Offset from previous time step
-										if (t_pt > 0) {
-											model_y = model_y - y_values[t_pt - 1];
+										if (sampleTime - AbstractIndividualInterface.ONE_YEAR_INT >= model_t[0]) {
+											model_y_val = model_y_val - model_value_interpol.value(sampleTime - AbstractIndividualInterface.ONE_YEAR_INT);
 										} else {
 											System.err.printf(
-													"Warning: Negative weight (%f) for prior to time step %d not available.\n",
-													weight[trend_target_pt], simTime[t_pt]);
+													"Warning: Negative weight (%f) for prior to time %d not available.\n",
+													weight[trend_target_pt], model_t[0]);
+											model_y_val = Double.POSITIVE_INFINITY;
 										}
-									}
-
-									bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt])
-											* Math.pow(model_y - trend_y, 2);
+									}									
+								}else {
+									// Out of range								
+									model_y_val = 0;																																						
 								}
+								
+								bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt])
+										* Math.pow(model_y_val - trend_y_val, 2);
+								
+								sampleTime+= AbstractIndividualInterface.ONE_YEAR_INT;
 							}
 
 						}
