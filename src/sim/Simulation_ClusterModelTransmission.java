@@ -781,8 +781,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				if (popType == null) {
 					popType = ""; // Default
 				}
-
-				if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+				if(Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+					runnable[s] = new Runnable_ClusterModel_Viability(baseContactMapSeed, seed, 
+							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
+					
+				}else if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
 				} else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
