@@ -1542,10 +1542,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				while (infect_switch_time == current_time) {
 					String key = String.format("%d,%d,%d", infection_id, site_id, current_infection_stage);
 					double[] nextProb = lookupTable_infection_stage_path.get(key);
-					if (nextProb == null) {
-						// No next stage - return to susceptible
-						current_infection_stage = AbstractIndividualInterface.INFECT_S;
-						infect_switch_time = -1;
+					if (nextProb == null) {																		
+						// No next stage - return to susceptible		
+						int[] infect_switch_outcome = handleNoNextStage(pid,
+								infection_id, site_id, 
+								current_infection_stage, current_time);						
+						
+						current_infection_stage = infect_switch_outcome[0];
+						infect_switch_time = infect_switch_outcome[1];						
+						
 						break;
 					} else {
 						int state_pt = Arrays.binarySearch(nextProb, 0, nextProb.length / 2, RNG.nextDouble());
@@ -1638,6 +1643,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 
 		return infect_switch_time;
+	}
+
+	protected int[] handleNoNextStage(Integer pid, 
+			int infection_id, int site_id, 
+			int current_infection_stage, int current_time) {
+		int[] infect_switch_outcome; // {next_stage, duration}
+		infect_switch_outcome = new int[] {AbstractIndividualInterface.INFECT_S, -1};
+		return infect_switch_outcome;
 	}
 
 	protected void updateInfectStageChangeSchedule(Integer pid, int infection_id, int site_id, int infect_switch_time,
