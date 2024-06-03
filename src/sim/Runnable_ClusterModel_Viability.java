@@ -9,12 +9,14 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import util.PropValUtils;
 
 public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_MultiTransmission {
 
@@ -37,14 +39,17 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	protected static final int STAGE_ID_JUST_TREATED = -2;
 	protected static final int STAGE_ID_NON_VIABLE = 3;
 
-	protected float[][] prob_non_viabile_from_treatment = new float[num_inf][num_site];
-	protected float[][] dur_adj_non_viable_from_treatment = new float[num_inf][num_site];
+	protected float[][] prob_non_viabile_from_treatment; //new float[num_inf][num_site];
+	protected float[][] dur_adj_non_viable_from_treatment; //new float[num_inf][num_site];
 
 	protected RandomGenerator rng_viability;
 	protected HashMap<String, Integer> pre_treatment_duration;
 	protected int[] cumul_treatment_non_viable = new int[NUM_GENDER * NUM_INF];
 
 	private static final String SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE = "SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE";
+
+	public static final String PROP_PROB_NON_VIABLE_TREATMENT = "PROP_PROB_NON_VIABLE_TREATMENT";
+	public static final String PROP_DUR_ADJ_NON_VIABLE_TREATMENT = "PROP_DUR_ADJ_NON_VIABLE_TREATMENT";
 
 	public Runnable_ClusterModel_Viability(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop) {
 		super(cMap_seed, sim_seed, base_cMap, prop, num_inf, num_site, num_act);
@@ -55,6 +60,14 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 				dur_adj_non_viable_from_treatment[i][s] = 1;
 			}
 		}
+		String defaultStr = Arrays.deepToString(new float[num_inf][num_site]);
+		prob_non_viabile_from_treatment = (float[][]) PropValUtils.propStrToObject
+				(prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
+		dur_adj_non_viable_from_treatment = (float[][]) PropValUtils.propStrToObject
+				(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
+		
+		
+		
 		pre_treatment_duration = new HashMap<>();
 		Arrays.fill(cumul_treatment_non_viable, 0);
 	}
@@ -62,14 +75,53 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	@Override
 	public ArrayList<Integer> loadOptParamter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
 			boolean display_only) {
-		// TODO: Load parameter for Runnable_ClusterModel_Viability
+
+		ArrayList<String> common_parameter_name = new ArrayList<>();
+		ArrayList<Double> common_parameter_value = new ArrayList<>();
+
+		for (int i = 0; i < parameter_settings.length; i++) {
+			if (parameter_settings[i].startsWith(PROP_PROB_NON_VIABLE_TREATMENT)
+					|| parameter_settings[i].startsWith(PROP_DUR_ADJ_NON_VIABLE_TREATMENT)) {
+
+				String header = parameter_settings[i].startsWith(PROP_PROB_NON_VIABLE_TREATMENT)
+						? PROP_PROB_NON_VIABLE_TREATMENT
+						: PROP_DUR_ADJ_NON_VIABLE_TREATMENT;
+
+				Matcher m = Pattern.compile(header + "_(\\d+)_(\\d+)").matcher(parameter_settings[i]);
+
+				if (m.matches()) {
+					int inf = Integer.parseInt(m.group(1));
+					int site = Integer.parseInt(m.group(2));
+
+					if (header.equals(PROP_PROB_NON_VIABLE_TREATMENT)) {
+						prob_non_viabile_from_treatment[inf][site] = (float) point[i];
+					} else {
+						dur_adj_non_viable_from_treatment[inf][site] = (float) point[i];
+					}
+
+				}
+
+			} else {
+				common_parameter_name.add(parameter_settings[i]);
+				common_parameter_value.add(point[i]);
+			}
+
+		}
+
+		Double[] common_parameter_val_obj = common_parameter_value.toArray(new Double[common_parameter_value.size()]);
+
+		double[] common_parameter_val = new double[common_parameter_value.size()];
+		for (int i = 0; i < common_parameter_val.length; i++) {
+			common_parameter_val[i] = common_parameter_val_obj[i].doubleValue();
+		}
+
 		return super.loadOptParamter(parameter_settings, point, seedInfectNum, display_only);
 	}
 
 	@Override
 	protected void applyTreatment(int currentTime, int infId, int pid, int[][] inf_stage) {
 		int[][] infection_switch = map_infection_stage_switch.get(pid);
-		
+
 		boolean hasNonViableOnly = true;
 		for (int s = 0; s < num_site; s++) {
 			if (inf_stage[infId][s] != AbstractIndividualInterface.INFECT_S
