@@ -39,8 +39,8 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	protected static final int STAGE_ID_JUST_TREATED = -2;
 	protected static final int STAGE_ID_NON_VIABLE = 3;
 
-	protected float[][] prob_non_viabile_from_treatment; //new float[num_inf][num_site];
-	protected float[][] dur_adj_non_viable_from_treatment; //new float[num_inf][num_site];
+	protected float[][] prob_non_viabile_from_treatment; // new float[num_inf][num_site];
+	protected float[][] dur_adj_non_viable_from_treatment; // new float[num_inf][num_site];
 
 	protected RandomGenerator rng_viability;
 	protected HashMap<String, Integer> pre_treatment_duration;
@@ -54,20 +54,20 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	public Runnable_ClusterModel_Viability(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop) {
 		super(cMap_seed, sim_seed, base_cMap, prop, num_inf, num_site, num_act);
 		rng_viability = new MersenneTwisterRandomGenerator(sim_seed);
+
+		String defaultStr = Arrays.deepToString(new float[num_inf][num_site]);
+		prob_non_viabile_from_treatment = (float[][]) PropValUtils
+				.propStrToObject(prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
+		dur_adj_non_viable_from_treatment = (float[][]) PropValUtils
+				.propStrToObject(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
+
 		for (int i = 0; i < num_inf; i++) {
 			for (int s = 0; s < num_site; s++) {
 				prob_non_viabile_from_treatment[i][s] = 0;
 				dur_adj_non_viable_from_treatment[i][s] = 1;
 			}
 		}
-		String defaultStr = Arrays.deepToString(new float[num_inf][num_site]);
-		prob_non_viabile_from_treatment = (float[][]) PropValUtils.propStrToObject
-				(prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
-		dur_adj_non_viable_from_treatment = (float[][]) PropValUtils.propStrToObject
-				(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
-		
-		
-		
+
 		pre_treatment_duration = new HashMap<>();
 		Arrays.fill(cumul_treatment_non_viable, 0);
 	}
