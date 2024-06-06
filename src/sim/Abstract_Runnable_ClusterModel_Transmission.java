@@ -325,8 +325,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 						cMap.addVertex(edge[index]);
 					}
 				}
-				cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
-						edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
+				addPartnership(cMap, edge);
 			}
 
 			edges_array_pt++;
@@ -397,12 +396,16 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				}
 			}
 
-			cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
-					edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
+			addPartnership(cMap, edge);
 
 			edges_array_pt++;
 		}
 		return edges_array_pt;
+	}
+
+	protected void addPartnership(ContactMap cMap, Integer[] edge) {
+		cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+				edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 	}
 
 	public HashMap<String, Object> getSim_output() {
