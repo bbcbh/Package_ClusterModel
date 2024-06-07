@@ -3,7 +3,6 @@ package sim;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -14,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.math3.distribution.RealDistribution;
+
 import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
@@ -27,24 +27,25 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	private static final int num_inf = 3; // TP, NG and CT
 	private static final int num_site = 4;
 	private static final int num_act = 5;
-	private RealDistribution adherenceDist;
-
-	protected double[] prophylaxis_adherence;
-	protected float prophylaxis_uptake_HIV_PrEP;
-	protected float prophylaxis_uptake_last_TP;
-	protected float prophylaxis_uptake_last_STI;
-	protected float prophylaxis_uptake_num_partners;
-	protected float prophylaxis_uptake_num_partners_limit;
+	private RealDistribution adherenceDist;	
+	
+	private static final int UPTAKE_HIV_PrEP = 0;
+	private static final int UPTAKE_DX_TP = UPTAKE_HIV_PrEP +1;
+	private static final int UPTAKE_DX_STI = UPTAKE_DX_TP + 1;
+	private static final int UPTAKE_PARTNERS= UPTAKE_DX_STI + 1;
+	private static final int UPTAKE_PARTNERS_LIMIT = UPTAKE_PARTNERS + 1;
 
 	protected RandomGenerator rng_PEP;
+	protected double[] prophylaxis_persistence_adherence;
+	protected float[] prophylaxis_uptake;
+	
 	protected HashMap<Integer, int[]> dx_last_12_months;
 	protected HashMap<Integer, int[][]> sexual_contact_last_12_months;
 
-	public static final String PROP_PEP_ADHERENCE = "PROP_PEP_ADHERENCE";
+	public static final String PROP_PEP_PERSISTENCE_ADHERENCE = "PROP_PEP_PERSISTENCE_ADHERENCE";
 	public static final String PROP_PEP_UPTAKE = "PROP_PEP_UPTAKE";
 
-	protected static final int PEP_AVAIL_TP = 1; // At least once
-	protected static final int PEP_AVAIL_ANY_STI = 2; // More than twice
+	protected static final int PEP_AVAIL_ANY_STI = 1; // More than once (including current)
 
 	// FILENAME_PREVALENCE_PERSON, FILENAME_CUMUL_INCIDENCE_PERSON
 	private static final int[] COL_SEL_INF_GENDER = new int[] { 2, 6, 10 };
@@ -61,28 +62,24 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	public Runnable_ClusterModel_Prophylaxis(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop) {
 		super(cMap_seed, sim_seed, base_cMap, prop, num_inf, num_site, num_act);
 		this.prophylaxis_starts_at = Integer.parseInt(prop.getProperty(PROP_PEP_START_AT, "-1"));
-		this.prophylaxis_adherence = (double[]) PropValUtils
-				.propStrToObject(prop.getProperty(PROP_PEP_ADHERENCE, "[0,0]"), double[].class);
-		float[] update_rate = (float[]) PropValUtils
-				.propStrToObject(prop.getProperty(PROP_PEP_UPTAKE, "[0.0,0.0,0.0,0.0,0.0]"), float[].class);
-		this.prophylaxis_uptake_HIV_PrEP = update_rate[0];
-		this.prophylaxis_uptake_last_TP = update_rate[1];
-		this.prophylaxis_uptake_last_STI = update_rate[2];
-		this.prophylaxis_uptake_num_partners = update_rate[3];
-		this.prophylaxis_uptake_num_partners_limit = update_rate[4];
-
+		this.prophylaxis_persistence_adherence = (double[]) PropValUtils
+				.propStrToObject(prop.getProperty(PROP_PEP_PERSISTENCE_ADHERENCE, "[0,0,1]"), double[].class);
+		prophylaxis_uptake = (float[]) PropValUtils
+				.propStrToObject(prop.getProperty(PROP_PEP_UPTAKE, "[0.0,0.0,0.0,0.0,0.0]"), float[].class);		
 		rng_PEP = new MersenneTwisterRandomGenerator(sim_seed);
 		dx_last_12_months = new HashMap<>();
 		sexual_contact_last_12_months = new HashMap<>();
+		
+		double[] persistence = Arrays.copyOf(prophylaxis_persistence_adherence, 2);
 
-		if (prophylaxis_adherence.length == 1) {
-			adherenceDist = generateNonDistribution(rng_PEP, prophylaxis_adherence);
-		} else if (prophylaxis_adherence[1] < 0) {
-			double[] param = Arrays.copyOf(prophylaxis_adherence, 2);
+		if (persistence[1] == 0) {
+			adherenceDist = generateNonDistribution(rng_PEP, persistence);
+		} else if (persistence[1] < 0) {
+			double[] param = Arrays.copyOf(persistence, 2);
 			param[1] = Math.abs(param[1]);
 			adherenceDist = generateUniformDistribution(rng_PEP, param);
 		} else {
-			adherenceDist = generateGammaDistribution(rng_PEP, prophylaxis_adherence);
+			adherenceDist = generateGammaDistribution(rng_PEP, persistence);
 		}
 	}
 
@@ -90,13 +87,14 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	protected void simulate_non_infectious_act(int currentTime, ContactMap cMap, HashMap<String, int[]> acted_today) {
 		super.simulate_non_infectious_act(currentTime, cMap, acted_today);
 
-		if (prophylaxis_uptake_num_partners > 0 && prophylaxis_uptake_num_partners_limit > 0
+		if (this.prophylaxis_starts_at > 0 &&  prophylaxis_uptake[UPTAKE_PARTNERS] > 0
+				&& prophylaxis_uptake[UPTAKE_PARTNERS_LIMIT] > 0
 				&& currentTime > prophylaxis_starts_at - AbstractIndividualInterface.ONE_YEAR_INT) {
 
 			// Update act status for all
 			// (only called if PEP is offered based on act history)
 
-			for (Integer pid : cMap.vertexSet()) {
+			for (Integer pid : cMap.vertexSet()) {				
 				for (Integer[] edge : cMap.edgesOf(pid)) {
 					Integer[] partners = Arrays.copyOf(edge, 2);
 					Arrays.sort(partners);
@@ -106,7 +104,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 					if (hasActed == null) {
 						hasActed = new int[NUM_ACT];
 						for (int a = 0; a < NUM_ACT; a++) {
-							double[] fieldEntry = table_act_frequency[a][getGenderType(partners[0])][partners[1]];
+							double[] fieldEntry = table_act_frequency[a][getGenderType(partners[0])][getGenderType(
+									partners[1])];
 							if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
 								hasActed[a] = 1;
 							}
@@ -144,19 +143,49 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		super.testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
 
 		// Doxy-PEP allocation by test
-		if (this.prophylaxis_starts_at > 0 && currentTime >= this.prophylaxis_starts_at) {
+		if (this.prophylaxis_starts_at > 0 && this.prophylaxis_starts_at > 0
+				&& currentTime >= this.prophylaxis_starts_at) {
 
 			boolean allocatePEP = false;
-
+			
 			// Risk group based PEP
-			if (!allocatePEP && prophylaxis_uptake_HIV_PrEP > 0) {
+			if (!allocatePEP && prophylaxis_uptake[UPTAKE_HIV_PrEP] > 0) {
 				if (!allocatePEP && risk_cat_map.get(pid).intValue() == 0 || risk_cat_map.get(pid).intValue() == 1) {
-					allocatePEP |= rng_PEP.nextFloat() < prophylaxis_uptake_HIV_PrEP;
+					allocatePEP |= prophylaxis_uptake[UPTAKE_HIV_PrEP] >= 1
+							|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_HIV_PrEP];
 				}
 			}
 
-			// TODO: Partner based PEP
-			if (!allocatePEP && prophylaxis_uptake_num_partners > 0) {
+			// Treatment rate based PEP
+			if (!allocatePEP && (prophylaxis_uptake[UPTAKE_DX_TP] > 0 || prophylaxis_uptake[UPTAKE_DX_STI] > 0)) {
+				int[] dx_hist = dx_last_12_months.get(pid);
+				if (dx_hist != null) {
+					int current_dx = dx_hist[currentTime % dx_hist.length];
+					if (current_dx != 0) { // Has a positive dx today
+						// Has TP DX
+						if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_TP] > 0 && ((current_dx & 1) != 0)) {
+							allocatePEP |= prophylaxis_uptake[UPTAKE_DX_TP] >= 1
+									|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_DX_TP];
+						}
+						// Check for STI DX
+						if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_STI] > 0) {
+							int num_dx_12_month_any = 0;
+							for (int i = 0; i < dx_hist.length && !(num_dx_12_month_any > PEP_AVAIL_ANY_STI); i++) {
+								if (dx_hist[i] != 0) {
+									num_dx_12_month_any++;
+								}
+							}
+							if (num_dx_12_month_any > PEP_AVAIL_ANY_STI) {
+								allocatePEP |= prophylaxis_uptake[UPTAKE_DX_STI] >= 1
+										|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_DX_STI];
+							}
+						}
+					}
+				}
+			} // End of treatment based PEP
+
+			// Partner based PEP
+			if (!allocatePEP && prophylaxis_uptake[UPTAKE_PARTNERS] > 0) {
 				int[][] partner_hist = sexual_contact_last_12_months.get(pid);
 				if (partner_hist != null) {
 					ArrayList<Integer> partnerList = new ArrayList<>();
@@ -170,53 +199,12 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 							}
 						}
 					}
-					if (partnerList.size() > prophylaxis_uptake_num_partners_limit) {
-						allocatePEP |= rng_PEP.nextFloat() < prophylaxis_uptake_num_partners;
+					if (partnerList.size() > prophylaxis_uptake[UPTAKE_PARTNERS_LIMIT]) {
+						allocatePEP |= prophylaxis_uptake[UPTAKE_PARTNERS] >= 1
+								|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_PARTNERS];
 					}
 				}
 			}
-
-			// Treatment rate based PEP
-			if (!allocatePEP && (prophylaxis_uptake_last_TP > 0 || prophylaxis_uptake_last_STI > 0)) {
-				int[] dx_hist = dx_last_12_months.get(pid);
-				if (dx_hist != null) {
-					if (dx_hist[currentTime % dx_hist.length] != 0) { // Has a positive dx today
-						int[] num_dx_12_months = new int[num_inf];
-						int num_dx_12_month_any = 0;
-						for (int dx_daily_record : dx_hist) {
-							for (int i = 0; i < num_dx_12_months.length; i++) {
-								if ((dx_daily_record & 1 << i) != 0) {
-									num_dx_12_months[i]++;
-									num_dx_12_month_any++;
-								}
-							}
-						}
-						if (!allocatePEP && num_dx_12_months[0] >= PEP_AVAIL_TP && prophylaxis_uptake_last_TP > 0) {
-							allocatePEP |= prophylaxis_uptake_last_TP >= 1
-									|| rng_PEP.nextFloat() < prophylaxis_uptake_last_TP;
-						}
-						if (!allocatePEP && num_dx_12_month_any > PEP_AVAIL_ANY_STI
-								&& prophylaxis_uptake_last_STI > 0) {
-							allocatePEP |= prophylaxis_uptake_last_STI >= 1
-									|| rng_PEP.nextFloat() < prophylaxis_uptake_last_STI;
-						}
-						// Special case with no other STI transmission
-						if (!allocatePEP && prophylaxis_uptake_last_STI < 0) {
-							final float[][] sti_incident_all = new float[][] { // HIV-, HIV+
-									new float[] { 23.9f, 31.5f }, new float[] { 29.2f, 40.9f } };
-							float[] sti_incident = risk_cat_map.get(pid).intValue() == 0 ? sti_incident_all[1]
-									: sti_incident_all[0];
-							for (int i = 0; i < sti_incident.length && num_dx_12_month_any <= 2; i++) {
-								if (rng_PEP.nextFloat() < sti_incident[i] / 100f) {
-									num_dx_12_month_any++;
-								}
-							}
-							allocatePEP = num_dx_12_month_any > 2;
-						}
-					}
-				}
-
-			} // End of treatment based PEP
 
 			if (allocatePEP) {
 				allocateProphylaxis(currentTime, pid);
@@ -287,9 +275,25 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			prophylaxis_record.put(pid, prop_rec);
 		}
 		prop_rec[PROPHYLAXIS_REC_LAST_OFFER_AT] = currentTime;
-		prop_rec[PROPHYLAXIS_REC_LAST_UPTAKE_AT] = currentTime; // Not used
+		prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = 0; 
 		prop_rec[PROPHYLAXIS_REC_DOSAGE] = Integer.MAX_VALUE; // Infinite in this model
 		prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + (int) Math.round(adherenceDist.sample());
+	}
+	
+	@Override
+	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
+			int partnershipDuration, int actType, int src_site, int tar_site) {		
+		int[] prop_rec = prophylaxis_record.get(pid_inf_tar);
+		if (prop_rec != null) {			
+			if(Math.abs(prop_rec[PROPHYLAXIS_REC_LAST_USE_AT]) != currentTime) { // if time < 0, then PrEP is not used
+				double adherence = prophylaxis_persistence_adherence[prophylaxis_persistence_adherence.length-1];
+				prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = (adherence >= 1 || rng_PEP.nextDouble() < adherence) 
+						? currentTime : -currentTime; 
+			}
+		}
+		
+		return super.getTransmissionProb(currentTime, inf_id, pid_inf_src, pid_inf_tar, partnershipDuration, actType, src_site, tar_site);
+		
 	}
 
 	@SuppressWarnings("unchecked")
@@ -457,46 +461,23 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 				this.prophylaxis_starts_at = (int) point[i];
 			} else if (parameter_settings[i].startsWith(PROP_PEP_UPTAKE)) {
 				Matcher m = Pattern.compile(PROP_PEP_UPTAKE + "_(\\d+)").matcher(parameter_settings[i]);
-				if (m.matches()) {
-					switch (Integer.parseInt(m.group(1))) {
-					case 0:
-						prophylaxis_uptake_HIV_PrEP = (float) point[i];
-						break;
-					case 1:
-						prophylaxis_uptake_last_TP = (float) point[i];
-						break;
-					case 2:
-						prophylaxis_uptake_last_STI = (float) point[i];
-						break;
-					case 3:
-						prophylaxis_uptake_num_partners = (float) point[i];
-						break;
-					case 4:
-						prophylaxis_uptake_num_partners_limit = (float) point[i];
-						break;
-					default:
-						System.err.printf("PROP_PEP_UPTAKE of value %s not defined.\n", parameter_settings[i]);
-					}
+				if (m.matches()) {					
+					prophylaxis_uptake[Integer.parseInt(m.group(1))] = (float) point[i];										
 				}
-			} else if (parameter_settings[i].startsWith(PROP_PEP_ADHERENCE)) {
-				Matcher m = Pattern.compile(PROP_PEP_ADHERENCE + "_(\\d+)").matcher(parameter_settings[i]);
-				if (m.matches()) {
-					int adhereId = Integer.parseInt(m.group(1));
-					if (adhereId >= prophylaxis_adherence.length) {
-						prophylaxis_adherence = Arrays.copyOf(prophylaxis_adherence, adhereId + 1);
-					}
-					prophylaxis_adherence[adhereId] = point[i];
-
-					if (prophylaxis_adherence.length == 1) {
-						adherenceDist = generateNonDistribution(rng_PEP, prophylaxis_adherence);
-					} else if (prophylaxis_adherence[1] < 0) {
-						double[] param = Arrays.copyOf(prophylaxis_adherence, 2);
+			} else if (parameter_settings[i].startsWith(PROP_PEP_PERSISTENCE_ADHERENCE)) {
+				Matcher m = Pattern.compile(PROP_PEP_PERSISTENCE_ADHERENCE + "_(\\d+)").matcher(parameter_settings[i]);
+				if (m.matches()) {					
+					prophylaxis_persistence_adherence[Integer.parseInt(m.group(1))] = point[i];
+					double[] persistence = Arrays.copyOf(prophylaxis_persistence_adherence, 2);
+					if (persistence[1] == 0) {
+						adherenceDist = generateNonDistribution(rng_PEP, persistence);
+					} else if (persistence[1] < 0) {
+						double[] param = Arrays.copyOf(persistence, 2);
 						param[1] = Math.abs(param[1]);
 						adherenceDist = generateUniformDistribution(rng_PEP, param);
 					} else {
-						adherenceDist = generateGammaDistribution(rng_PEP, prophylaxis_adherence);
+						adherenceDist = generateGammaDistribution(rng_PEP, persistence);
 					}
-
 				}
 
 			} else {

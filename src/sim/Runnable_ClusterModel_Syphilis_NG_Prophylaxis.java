@@ -60,7 +60,7 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Abstract_Runn
 			if (prophylaxis_uptake_per_treatment > 0 && RNG.nextFloat() < prophylaxis_uptake_per_treatment) {
 				if (prop_rec[PROPHYLAXIS_REC_LAST_OFFER_AT] < currentTime) {
 					prop_rec[PROPHYLAXIS_REC_DOSAGE] = prophylaxis_dosage_max;
-					prop_rec[PROPHYLAXIS_REC_LAST_UPTAKE_AT] = currentTime;
+					prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = currentTime;
 
 				}
 			}
@@ -87,7 +87,7 @@ public class Runnable_ClusterModel_Syphilis_NG_Prophylaxis extends Abstract_Runn
 
 					if (prop_rec[PROPHYLAXIS_REC_LAST_OFFER_AT] < currentTime) {
 						prop_rec[PROPHYLAXIS_REC_DOSAGE] = prophylaxis_dosage_max;
-						prop_rec[PROPHYLAXIS_REC_LAST_UPTAKE_AT] = currentTime;
+						prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = currentTime;
 					}
 
 				}
