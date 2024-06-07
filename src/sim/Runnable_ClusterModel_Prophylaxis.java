@@ -38,7 +38,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 	protected RandomGenerator rng_PEP;
 	protected HashMap<Integer, int[]> dx_last_12_months;
-	protected HashMap<Integer, int[][]> partners_last_12_months;
+	protected HashMap<Integer, int[][]> sexual_contact_last_12_months;
 
 	public static final String PROP_PEP_ADHERENCE = "PROP_PEP_ADHERENCE";
 	public static final String PROP_PEP_UPTAKE = "PROP_PEP_UPTAKE";
@@ -73,7 +73,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 		rng_PEP = new MersenneTwisterRandomGenerator(sim_seed);
 		dx_last_12_months = new HashMap<>();
-		partners_last_12_months = new HashMap<>();
+		sexual_contact_last_12_months = new HashMap<>();
 
 		if (prophylaxis_adherence.length == 1) {
 			adherenceDist = generateNonDistribution(rng_PEP, prophylaxis_adherence);
@@ -87,34 +87,55 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	}
 
 	@Override
-	protected void addPartnership(ContactMap cMap, Integer[] edge) {
-		super.addPartnership(cMap, edge);
+	protected void simulate_non_infectious_act(int currentTime, ContactMap cMap, HashMap<String, int[]> acted_today) {
+		super.simulate_non_infectious_act(currentTime, cMap, acted_today);
 
-		if (prophylaxis_uptake_num_partners > 0 && prophylaxis_uptake_num_partners_limit > 0) {
-			// Only keep partner history if needed
-			for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
-					Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
-				int pid = edge[index];
-				int partnerId = edge[index == Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1
-						? Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2
-						: Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
+		if (prophylaxis_uptake_num_partners > 0 && prophylaxis_uptake_num_partners_limit > 0
+				&& currentTime > prophylaxis_starts_at - AbstractIndividualInterface.ONE_YEAR_INT) {
 
-				int recIndec = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
-						% AbstractIndividualInterface.ONE_YEAR_INT;
+			// Update act status for all
+			// (only called if PEP is offered based on act history)
 
-				int[][] partner_hist = partners_last_12_months.get(pid);
-				if (partner_hist == null) {
-					partner_hist = new int[AbstractIndividualInterface.ONE_YEAR_INT][];
-					partners_last_12_months.put(pid, partner_hist);
-				}
+			for (Integer pid : cMap.vertexSet()) {
+				for (Integer[] edge : cMap.edgesOf(pid)) {
+					Integer[] partners = Arrays.copyOf(edge, 2);
+					Arrays.sort(partners);
+					String key = Arrays.toString(partners);
+					int[] hasActed = acted_today.get(key);
+					boolean acted = false;
+					if (hasActed == null) {
+						hasActed = new int[NUM_ACT];
+						for (int a = 0; a < NUM_ACT; a++) {
+							double[] fieldEntry = table_act_frequency[a][getGenderType(partners[0])][partners[1]];
+							if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
+								hasActed[a] = 1;
+							}
+						}
+						acted_today.put(key, hasActed);
+					}
+					for (int a = 0; a < NUM_ACT && !acted; a++) {
+						acted |= hasActed[a] != 0;
+					}
+					if (acted) {
+						int recIndec = currentTime % AbstractIndividualInterface.ONE_YEAR_INT;
+						int partnerId = partners[0].equals(pid) ? partners[1] : partners[0];
+						int[][] contact_hist = sexual_contact_last_12_months.get(pid);
+						if (contact_hist == null) {
+							contact_hist = new int[AbstractIndividualInterface.ONE_YEAR_INT][];
+							sexual_contact_last_12_months.put(pid, contact_hist);
+						}
+						if (contact_hist[recIndec] == null) {
+							contact_hist[recIndec] = new int[] { partnerId };
+						} else {
+							contact_hist[recIndec] = Arrays.copyOf(contact_hist[recIndec],
+									contact_hist[recIndec].length + 1);
+							contact_hist[recIndec][contact_hist[recIndec].length - 1] = partnerId;
+						}
 
-				if (partner_hist[recIndec] == null) {
-					partner_hist[recIndec] = new int[] { partnerId };
-				} else {
-					partner_hist[recIndec] = Arrays.copyOf(partner_hist[recIndec], partner_hist[recIndec].length + 1);
-					partner_hist[recIndec][partner_hist[recIndec].length - 1] = partnerId;
+					}
 				}
 			}
+
 		}
 	}
 
@@ -136,22 +157,22 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 			// TODO: Partner based PEP
 			if (!allocatePEP && prophylaxis_uptake_num_partners > 0) {
-				int[][] partner_hist = partners_last_12_months.get(pid);
+				int[][] partner_hist = sexual_contact_last_12_months.get(pid);
 				if (partner_hist != null) {
 					ArrayList<Integer> partnerList = new ArrayList<>();
 					for (int i = 0; i < partner_hist.length; i++) {
-						if(partner_hist[i] != null) {
-							for(Integer part : partner_hist[i]) {
+						if (partner_hist[i] != null) {
+							for (Integer part : partner_hist[i]) {
 								int pt = Collections.binarySearch(partnerList, part);
-								if(pt < 0) {
+								if (pt < 0) {
 									partnerList.add(~pt, part);
-								}																
+								}
 							}
 						}
-					}					
-					if(partnerList.size() > prophylaxis_uptake_num_partners_limit) {
+					}
+					if (partnerList.size() > prophylaxis_uptake_num_partners_limit) {
 						allocatePEP |= rng_PEP.nextFloat() < prophylaxis_uptake_num_partners;
-					}					
+					}
 				}
 			}
 
@@ -228,8 +249,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			}
 		}
 
-		for (Integer hasPartnership : partners_last_12_months.keySet()) {
-			int[][] partner_hist = partners_last_12_months.get(hasPartnership);
+		for (Integer hasPartnership : sexual_contact_last_12_months.keySet()) {
+			int[][] partner_hist = sexual_contact_last_12_months.get(hasPartnership);
 			if (partner_hist != null) {
 				partner_hist[(currentTime + 1) % partner_hist.length] = null;
 			}
