@@ -37,13 +37,12 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 																	// 204 160, 162, 164, 166, 224, 225 };
 
 	protected static final int STAGE_ID_JUST_TREATED = -2;
-	protected static final int STAGE_ID_NON_VIABLE = 3;
+	protected static final int STAGE_ID_NON_VIABLE = 3;	
 
 	protected float[][] prob_non_viabile_from_treatment; // new float[num_inf][num_site];
 	protected float[][] dur_adj_non_viable_from_treatment; // new float[num_inf][num_site];
 
 	protected RandomGenerator rng_viability;
-	protected HashMap<String, Integer> pre_treatment_duration;
 	protected int[] cumul_treatment_non_viable = new int[NUM_GENDER * NUM_INF];
 
 	private static final String SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE = "SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE";
@@ -68,7 +67,6 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 			}
 		}
 
-		pre_treatment_duration = new HashMap<>();
 		Arrays.fill(cumul_treatment_non_viable, 0);
 	}
 
@@ -115,56 +113,52 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 			common_parameter_val[i] = common_parameter_val_obj[i].doubleValue();
 		}
 
-		return super.loadOptParamter(parameter_settings, point, seedInfectNum, display_only);
+		return super.loadOptParamter(common_parameter_name.toArray(new String[common_parameter_name.size()]),
+				common_parameter_val, seedInfectNum, display_only);
+	}
+
+	@Override
+	protected boolean isValidInfectionTargetSite(int inf_id, int tar_site, int[][] tar_infection_stages) {		
+		return super.isValidInfectionTargetSite(inf_id, tar_site, tar_infection_stages)
+				|| tar_infection_stages[inf_id][tar_site] == STAGE_ID_NON_VIABLE;
 	}
 
 	@Override
 	protected void applyTreatment(int currentTime, int infId, int pid, int[][] inf_stage) {
 		int[][] infection_switch = map_infection_stage_switch.get(pid);
-
-		boolean hasNonViableOnly = true;
-		for (int s = 0; s < num_site; s++) {
-			if (inf_stage[infId][s] != AbstractIndividualInterface.INFECT_S
-					&& prob_non_viabile_from_treatment[infId][s] > 0) {
-				String key = String.format("%d,%d,%d", pid, infId, s);
-				pre_treatment_duration.put(key, infection_switch[infId][s]);
-			}
-			hasNonViableOnly &= inf_stage[infId][s] == STAGE_ID_NON_VIABLE;
-		}
-
-		if (hasNonViableOnly) {
-			int gI = getGenderType(pid);
-			cumul_treatment_non_viable[gI * NUM_GENDER + infId]++;
-		}
-
-		super.applyTreatment(currentTime, infId, pid, inf_stage);
-	}
-
-	@Override
-	protected int[] handleNoNextStage(Integer pid, int infection_id, int site_id, int current_infection_stage,
-			int current_time) {
-
-		int[] outcome = null; // {next_stage, duration}
-
-		if (current_infection_stage == STAGE_ID_JUST_TREATED
-				&& prob_non_viabile_from_treatment[infection_id][site_id] > 0) {
-			if (rng_viability.nextFloat() < prob_non_viabile_from_treatment[infection_id][site_id]) {
-				int next_stage = STAGE_ID_NON_VIABLE;
-				String key = String.format("%d,%d,%d", pid, infection_id, site_id);
-				Integer current_infection_state_switch_at = pre_treatment_duration.remove(key);
-				if (current_infection_state_switch_at != null) {
-					int non_viable_until = current_time + Math.round((current_infection_state_switch_at - current_time)
-							* dur_adj_non_viable_from_treatment[infection_id][site_id]);
-					outcome = new int[] { next_stage, non_viable_until };
+		boolean hasInfectiousPreTreatment = false;
+		int[] becomeNonViableUtil = new int[num_site];
+		for (int siteId = 0; siteId < num_site; siteId++) {						
+			boolean is_infectious_stage = (lookupTable_infection_infectious_stages[infId][siteId] & 1 << inf_stage[infId][siteId]) != 0;			
+			hasInfectiousPreTreatment |= is_infectious_stage;
+			if (is_infectious_stage && prob_non_viabile_from_treatment[infId][siteId] > 0) {
+				// Check if possible to turn viable to non-viable through treatment
+				int preTreatmentDur = infection_switch[infId][siteId];
+				if (rng_viability.nextFloat() < prob_non_viabile_from_treatment[infId][siteId]) {
+					int non_viable_until = currentTime + Math
+							.round((preTreatmentDur - currentTime) * dur_adj_non_viable_from_treatment[infId][siteId]);
+					becomeNonViableUtil[siteId] = non_viable_until;
 				}
 			}
 		}
 
-		if (outcome == null) {
-			return super.handleNoNextStage(pid, infection_id, site_id, current_infection_stage, current_time);
-		} else {
-			return outcome;
+		if (!hasInfectiousPreTreatment) {
+			cumul_treatment_non_viable[getGenderType(pid) * NUM_GENDER + infId]++;
 		}
+
+		super.applyTreatment(currentTime, infId, pid, inf_stage);
+
+		// Set non-viable infection post treatment
+		for (int siteId = 0; siteId < num_site; siteId++) {
+			if (becomeNonViableUtil[siteId] > 0) {
+				inf_stage[infId][siteId] = STAGE_ID_NON_VIABLE;
+				updateInfectStageChangeSchedule(pid, infId, siteId, becomeNonViableUtil[siteId], currentTime + 1);
+				updateInfectionStage(pid, infId, siteId, STAGE_ID_NON_VIABLE, 
+						currentTime, inf_stage, infection_switch, 
+						becomeNonViableUtil[siteId]- currentTime);
+			}
+		}
+
 	}
 
 	@Override
