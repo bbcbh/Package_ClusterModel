@@ -12,7 +12,6 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
@@ -35,17 +34,18 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	// "Infected_" + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_SITE
 	private static final int[] COL_SEL_INF_GENDER_SITE_AT = null; // new int[] { 64, 65, 192, 194, 196, 198, 200, 202,
 																	// 204 160, 162, 164, 166, 224, 225 };
-
-	protected static final int STAGE_ID_JUST_TREATED = -2;
-	protected static final int STAGE_ID_NON_VIABLE = 3;	
+	
+	protected static final int[][] STAGE_ID_NON_VIABLE = new int[][]{ null, new int[] {3,3,3,3}, new int[] {3,3,3,3}};	
 
 	protected float[][] prob_non_viabile_from_treatment; // new float[num_inf][num_site];
 	protected float[][] dur_adj_non_viable_from_treatment; // new float[num_inf][num_site];
 
 	protected RandomGenerator rng_viability;
 	protected int[] cumul_treatment_non_viable = new int[NUM_GENDER * NUM_INF];
+	protected int[] cumul_treatment_non_viable_site = new int[NUM_GENDER * NUM_INF *NUM_SITE];
 
 	private static final String SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE = "SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE";
+	private static final String SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE_SITE = "SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE_SITE";
 
 	public static final String PROP_PROB_NON_VIABLE_TREATMENT = "PROP_PROB_NON_VIABLE_TREATMENT";
 	public static final String PROP_DUR_ADJ_NON_VIABLE_TREATMENT = "PROP_DUR_ADJ_NON_VIABLE_TREATMENT";
@@ -68,6 +68,7 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		}
 
 		Arrays.fill(cumul_treatment_non_viable, 0);
+		Arrays.fill(cumul_treatment_non_viable_site, 0);
 	}
 
 	@Override
@@ -120,7 +121,8 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	@Override
 	protected boolean isValidInfectionTargetSite(int inf_id, int tar_site, int[][] tar_infection_stages) {		
 		return super.isValidInfectionTargetSite(inf_id, tar_site, tar_infection_stages)
-				|| tar_infection_stages[inf_id][tar_site] == STAGE_ID_NON_VIABLE;
+				||  ((STAGE_ID_NON_VIABLE[inf_id] != null) && 
+						(tar_infection_stages[inf_id][tar_site] ==  STAGE_ID_NON_VIABLE[inf_id][tar_site]));
 	}
 
 	@Override
@@ -129,7 +131,7 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		boolean hasInfectiousPreTreatment = false;
 		int[] becomeNonViableUtil = new int[num_site];
 		for (int siteId = 0; siteId < num_site; siteId++) {						
-			boolean is_infectious_stage = (lookupTable_infection_infectious_stages[infId][siteId] & 1 << inf_stage[infId][siteId]) != 0;			
+			boolean is_infectious_stage = (lookupTable_infection_infectious_stages[infId][siteId] & (1 << inf_stage[infId][siteId])) != 0;			
 			hasInfectiousPreTreatment |= is_infectious_stage;
 			if (is_infectious_stage && prob_non_viabile_from_treatment[infId][siteId] > 0) {
 				// Check if possible to turn viable to non-viable through treatment
@@ -140,10 +142,14 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 					becomeNonViableUtil[siteId] = non_viable_until;
 				}
 			}
+			
+			if(!is_infectious_stage) {
+				cumul_treatment_non_viable_site[infId * NUM_GENDER *NUM_SITE + getGenderType(pid) * NUM_SITE + siteId]++; 
+			}
 		}
 
 		if (!hasInfectiousPreTreatment) {
-			cumul_treatment_non_viable[getGenderType(pid) * NUM_GENDER + infId]++;
+			cumul_treatment_non_viable[infId * NUM_GENDER + getGenderType(pid)]++;
 		}
 
 		super.applyTreatment(currentTime, infId, pid, inf_stage);
@@ -151,9 +157,9 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		// Set non-viable infection post treatment
 		for (int siteId = 0; siteId < num_site; siteId++) {
 			if (becomeNonViableUtil[siteId] > 0) {
-				inf_stage[infId][siteId] = STAGE_ID_NON_VIABLE;
+				inf_stage[infId][siteId] =  STAGE_ID_NON_VIABLE[infId][siteId];
 				updateInfectStageChangeSchedule(pid, infId, siteId, becomeNonViableUtil[siteId], currentTime + 1);
-				updateInfectionStage(pid, infId, siteId, STAGE_ID_NON_VIABLE, 
+				updateInfectionStage(pid, infId, siteId, STAGE_ID_NON_VIABLE[infId][siteId], 
 						currentTime, inf_stage, infection_switch, 
 						becomeNonViableUtil[siteId]- currentTime);
 			}
@@ -161,18 +167,26 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void postTimeStep(int currentTime) {
 		super.postTimeStep(currentTime);
-		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {
-			@SuppressWarnings("unchecked")
-			HashMap<Integer, int[]> countMap = (HashMap<Integer, int[]>) sim_output
+		if (currentTime % nUM_TIME_STEPS_PER_SNAP == 0) {			
+			HashMap<Integer, int[]> countMap;			
+			countMap = (HashMap<Integer, int[]>) sim_output
 					.get(SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE);
 			if (countMap == null) {
 				countMap = new HashMap<>();
 				sim_output.put(SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE, countMap);
 			}
-			countMap.put(currentTime, Arrays.copyOf(cumul_treatment_non_viable, cumul_treatment_non_viable.length));
+			countMap.put(currentTime, Arrays.copyOf(cumul_treatment_non_viable, cumul_treatment_non_viable.length));						
+			countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE_SITE);
+			if (countMap == null) {
+				countMap = new HashMap<>();
+				sim_output.put(SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE_SITE, countMap);
+			}
+			countMap.put(currentTime, Arrays.copyOf(cumul_treatment_non_viable_site, cumul_treatment_non_viable_site.length));			
+			
 		}
 	}
 
@@ -186,8 +200,13 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE);
 		if (countMap != null) {
 			fileName = String.format(filePrefix + "Treatment_Non_Viable_%d_%d.csv", cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER },
-					COL_SEL_INF_GENDER);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER }, COL_SEL_INF_GENDER);
+		}
+		
+		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE_SITE);
+		if (countMap != null) {
+			fileName = String.format(filePrefix + "Treatment_Non_Viable_Site_%d_%d.csv", cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "Inf_%d_Gender_%d_Site_%d", new int[] { NUM_INF, NUM_GENDER, NUM_SITE }, COL_SEL_INF_GENDER_SITE);
 		}
 
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
