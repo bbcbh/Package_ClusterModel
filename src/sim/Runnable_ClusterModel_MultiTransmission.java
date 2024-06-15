@@ -721,7 +721,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 														} else {
 															for (int siteId = 0; siteId < NUM_SITE
 																	&& newInfection; siteId++) {
-																newInfection &= tar_infection_stages[inf_id][siteId] == AbstractIndividualInterface.INFECT_S;
+																newInfection &= isValidInfectionTargetSite(inf_id, siteId, tar_infection_stages); 																		
+																		//tar_infection_stages[inf_id][siteId] == AbstractIndividualInterface.INFECT_S;
 															}
 														}
 														if (newInfection) {
@@ -739,9 +740,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 														updateInfectStageChangeSchedule(pid_inf_tar, inf_id, tar_site,
 																currentTime + 1,
-																tar_infection_state_switch[inf_id][tar_site]);
+																tar_infection_state_switch[inf_id][tar_site]);														
+													}else {
+														simulate_non_transmission_act(currentTime, inf_id, pid_inf_src,
+																pid_inf_tar, src_site, tar_site);														
 
-													} // End of successful transmission
+													} // End of determining transmission
 												} // End of possible transmission check
 											} // End of checking target site as susceptible
 										} // End of infectious src site
@@ -971,6 +975,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Post simulation
 		postSimulation();
 
+	}
+
+	protected void simulate_non_transmission_act(int currentTime, int inf_id, 
+			Integer pid_inf_src, int pid_inf_tar,
+			int src_site, int tar_site) {
+		//  Do nothing by default
+		
 	}
 
 	protected boolean isValidInfectionTargetSite(int inf_id, int tar_site, int[][] tar_infection_stages) {

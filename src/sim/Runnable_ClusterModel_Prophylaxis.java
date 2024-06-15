@@ -450,7 +450,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	}
 
 	@Override
-	public ArrayList<Integer> loadOptParamter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
+	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
 			boolean display_only) {
 
 		ArrayList<String> common_parameter_name = new ArrayList<>();
@@ -493,7 +493,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			common_parameter_val[i] = common_parameter_val_obj[i].doubleValue();
 		}
 
-		return super.loadOptParamter(common_parameter_name.toArray(new String[common_parameter_name.size()]),
+		return super.loadOptParameter(common_parameter_name.toArray(new String[common_parameter_name.size()]),
 				common_parameter_val, seedInfectNum, display_only);
 	}
 

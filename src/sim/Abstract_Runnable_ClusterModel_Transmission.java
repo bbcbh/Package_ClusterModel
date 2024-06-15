@@ -412,7 +412,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		return sim_output;
 	}
 
-	public ArrayList<Integer> loadOptParamter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
+	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
 			boolean display_only) {
 		return Optimisation_Factory.setOptParamInRunnable_Direct(this, parameter_settings, point, seedInfectNum,
 				display_only);
