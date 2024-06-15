@@ -131,7 +131,8 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		boolean hasInfectiousPreTreatment = false;
 		int[] becomeNonViableUtil = new int[num_site];
 		for (int siteId = 0; siteId < num_site; siteId++) {						
-			boolean is_infectious_stage = (lookupTable_infection_infectious_stages[infId][siteId] & (1 << inf_stage[infId][siteId])) != 0;			
+			boolean is_infectious_stage = (inf_stage[infId][siteId] >= 0) 
+					&& (lookupTable_infection_infectious_stages[infId][siteId] & (1 << inf_stage[infId][siteId])) != 0;			
 			hasInfectiousPreTreatment |= is_infectious_stage;
 			if (is_infectious_stage && prob_non_viabile_from_treatment[infId][siteId] > 0) {
 				// Check if possible to turn viable to non-viable through treatment
@@ -199,7 +200,7 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		// Non-viable treatment
 		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE);
 		if (countMap != null) {
-			fileName = String.format(filePrefix + "Treatment_Non_Viable_%d_%d.csv", cMAP_SEED, sIM_SEED);
+			fileName = String.format(filePrefix + "Treatment_Non_Viable_Person_%d_%d.csv", cMAP_SEED, sIM_SEED);
 			printCountMap(countMap, fileName, "Inf_%d_Gender_%d", new int[] { NUM_INF, NUM_GENDER }, COL_SEL_INF_GENDER);
 		}
 		
