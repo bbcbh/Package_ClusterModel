@@ -3,6 +3,7 @@ package sim;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,20 +43,16 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	protected float[][] prob_non_viabile_from_treatment; // new float[num_inf][num_site];
 	protected float[][] dur_adj_non_viable_from_treatment; // new float[num_inf][num_site];
 
-	protected float[][] prob_non_viabile_from_transmission; // new float[num_inf][num_site];
-	protected float[][] dur_adj_non_viable_from_transmission; // new float[num_inf][num_site];
+	protected float[][][] prob_non_viabile_from_transmission; // new float[num_inf][num_site_from][num_site_to];
+	protected float[][][] dur_adj_non_viable_from_transmission; // new float[num_inf][num_site]{parameter};
 
 	protected RandomGenerator rng_viability;
 	protected int[] cumul_treatment_non_viable = new int[NUM_GENDER * NUM_INF];
 	protected int[] cumul_treatment_non_viable_site = new int[NUM_GENDER * NUM_INF * NUM_SITE];
 	protected int[] cumul_treatment_non_infected_site = new int[NUM_GENDER * NUM_INF * NUM_SITE];
 
-	private String[] optParameter_optionsHeader = new String[] { PROP_PROB_NON_VIABLE_TREATMENT,
-			PROP_DUR_ADJ_NON_VIABLE_TREATMENT, PROP_PROB_NON_VIABLE_TRANSMISSION,
-			PROP_DUR_ADJ_NON_VIABLE_TRANSMISSION };
-	private float[][][] optParameter_optionsTar = new float[][][] { prob_non_viabile_from_treatment,
-			dur_adj_non_viable_from_treatment, prob_non_viabile_from_transmission,
-			dur_adj_non_viable_from_transmission };
+	private final String[] optParameter_optionsHeader;
+	private final Object[] optParameter_optionsTar;
 
 	private static final String SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE = "SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE";
 	private static final String SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE_SITE = "SIM_OUTPUT_KEY_TREATMENT_NON_VIABLE_SITE";
@@ -72,27 +69,36 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		rng_viability = new MersenneTwisterRandomGenerator(sim_seed);
 
 		String defaultStr = Arrays.deepToString(new float[num_inf][num_site]);
+
 		prob_non_viabile_from_treatment = (float[][]) PropValUtils
 				.propStrToObject(prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
 		dur_adj_non_viable_from_treatment = (float[][]) PropValUtils
 				.propStrToObject(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
 
-		prob_non_viabile_from_transmission = (float[][]) PropValUtils
-				.propStrToObject(prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
-		dur_adj_non_viable_from_transmission = (float[][]) PropValUtils
-				.propStrToObject(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT, defaultStr), float[][].class);
+		defaultStr = Arrays.deepToString(new float[num_inf][num_site][num_site]);
+		prob_non_viabile_from_transmission = (float[][][]) PropValUtils
+				.propStrToObject(prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT, defaultStr), float[][][].class);
+		defaultStr = Arrays.deepToString(new float[num_inf][num_site][2]);
+		dur_adj_non_viable_from_transmission = (float[][][]) PropValUtils
+				.propStrToObject(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT, defaultStr), float[][][].class);
 
 		for (int i = 0; i < num_inf; i++) {
 			for (int s = 0; s < num_site; s++) {
 				prob_non_viabile_from_treatment[i][s] = 0;
 				dur_adj_non_viable_from_treatment[i][s] = 1;
-				prob_non_viabile_from_transmission[i][s] = 0;
-				dur_adj_non_viable_from_transmission[i][s] = 0;
+				Arrays.fill(prob_non_viabile_from_transmission[i][s], 0);
+				Arrays.fill(dur_adj_non_viable_from_transmission[i][s], 0);
 			}
 		}
 
 		Arrays.fill(cumul_treatment_non_viable, 0);
 		Arrays.fill(cumul_treatment_non_viable_site, 0);
+
+		optParameter_optionsHeader = new String[] { PROP_PROB_NON_VIABLE_TREATMENT, PROP_DUR_ADJ_NON_VIABLE_TREATMENT,
+				PROP_PROB_NON_VIABLE_TRANSMISSION, PROP_DUR_ADJ_NON_VIABLE_TRANSMISSION };
+
+		optParameter_optionsTar = new Object[] { prob_non_viabile_from_treatment, dur_adj_non_viable_from_treatment,
+				prob_non_viabile_from_transmission, dur_adj_non_viable_from_transmission };
 	}
 
 	@Override
@@ -104,7 +110,7 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 
 		for (int i = 0; i < parameter_settings.length; i++) {
 			String header = null;
-			float[][] target = null;
+			Object target = null;
 			for (int j = 0; j < optParameter_optionsHeader.length; j++) {
 				if (parameter_settings[i].startsWith(optParameter_optionsHeader[j])) {
 					header = optParameter_optionsHeader[j];
@@ -112,17 +118,28 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 				}
 			}
 			if (header != null && target != null) {
-				Matcher m = Pattern.compile(header + "_(\\d+)_(\\d+)").matcher(parameter_settings[i]);
-				if (m.matches()) {
-					int inf = Integer.parseInt(m.group(1));
-					int site = Integer.parseInt(m.group(2));
-					target[inf][site] = (float) point[i];
+				Matcher m;
+				if (target instanceof float[][]) {
+					m = Pattern.compile(header + "_(\\d+)_(\\d+)").matcher(parameter_settings[i]);
+					if (m.matches()) {
+						int inf = Integer.parseInt(m.group(1));
+						int site = Integer.parseInt(m.group(2));
+						((float[][]) target)[inf][site] = (float) point[i];
+					}
+				} else if (target instanceof float[][][]) {
+					m = Pattern.compile(header + "_(\\d+)_(\\d+)_(\\d+)").matcher(parameter_settings[i]);
+					if (m.matches()) {
+						((float[][][]) target)[Integer.parseInt(m.group(1))][Integer.parseInt(m.group(2))][Integer
+								.parseInt(m.group(3))] = (float) point[i];
+					}
+
+				} else {
+					System.err.printf("Warning: Opt parameter for %s type mismatch. Value ignored.\n", header);
 				}
 			} else {
 				common_parameter_name.add(parameter_settings[i]);
 				common_parameter_value.add(point[i]);
 			}
-
 		}
 
 		Double[] common_parameter_val_obj = common_parameter_value.toArray(new Double[common_parameter_value.size()]);
@@ -137,29 +154,36 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	}
 
 	@Override
-	protected void simulate_non_transmission_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
+	protected void simulate_transmission_failed_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
 			int src_site, int tar_site) {
-		// TODO: Non-viable from transmission
-		super.simulate_non_transmission_act(currentTime, inf_id, pid_inf_src, pid_inf_tar, src_site, tar_site);
-		if (prob_non_viabile_from_transmission[inf_id][src_site]
-				* prob_non_viabile_from_transmission[inf_id][tar_site] > 0) {
-			if (rng_viability.nextFloat() < prob_non_viabile_from_transmission[inf_id][src_site]
-					* prob_non_viabile_from_transmission[inf_id][tar_site]) {
+		// Non-viable from transmission
+		super.simulate_transmission_failed_act(currentTime, inf_id, pid_inf_src, pid_inf_tar, src_site, tar_site);
+		if (prob_non_viabile_from_transmission[inf_id][src_site][tar_site] > 0) {
+			if (rng_viability.nextFloat() < prob_non_viabile_from_transmission[inf_id][src_site][tar_site]) {
+				int non_via_duration_range = Math.round(dur_adj_non_viable_from_transmission[inf_id][tar_site][1]
+						- dur_adj_non_viable_from_transmission[inf_id][tar_site][0]);
 				int non_viable_until = currentTime
-						+ rng_viability.nextInt(Math.round(dur_adj_non_viable_from_transmission[inf_id][tar_site]));
+						+ Math.round(dur_adj_non_viable_from_transmission[inf_id][tar_site][0])
+						+ (non_via_duration_range > 0 ? rng_viability.nextInt(non_via_duration_range) : 0);
 
 				if (non_viable_until > currentTime) {
-					int[][] inf_stage = map_currrent_infection_stage.get(pid_inf_tar);
+					int[][] inf_stage = map_currrent_infection_stage.get(pid_inf_tar);					
 					if (inf_stage == null) {
 						inf_stage = new int[NUM_INF][NUM_SITE];
 						for (int[] stage_by_infection : inf_stage) {
 							Arrays.fill(stage_by_infection, AbstractIndividualInterface.INFECT_S);
 						}
-						map_currrent_infection_stage.put(pid_inf_tar, inf_stage);
-					}
+						map_currrent_infection_stage.put(pid_inf_tar, inf_stage);																		
+					}					
+					int[][] infection_state_switch = map_infection_stage_switch.get(pid_inf_tar);
+					if (infection_state_switch == null) {
+						infection_state_switch = new int[NUM_INF][NUM_SITE];
+						map_infection_stage_switch.put(pid_inf_tar, infection_state_switch);
+					}										
+					
 					inf_stage[inf_id][tar_site] = STAGE_ID_NON_VIABLE[inf_id][tar_site];
 					updateInfectionStage(pid_inf_tar, inf_id, tar_site, STAGE_ID_NON_VIABLE[inf_id][tar_site],
-							currentTime, inf_stage, map_infection_stage_switch.get(pid_inf_tar),
+							currentTime, inf_stage, infection_state_switch,
 							non_viable_until - currentTime);
 				}
 
