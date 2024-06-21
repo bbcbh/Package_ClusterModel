@@ -24,6 +24,7 @@ import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
 import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
+import org.apache.commons.math3.exception.OutOfRangeException;
 
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
@@ -37,6 +38,7 @@ import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
 import sim.Simulation_ClusterModelTransmission;
 import util.PropValUtils;
+import util.Util_7Z_CSV_Entry_Extract_Callable;
 
 public class OptTrendFittingFunction extends OptFittingFunction {
 
@@ -148,7 +150,9 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String OPT_TREND_OUTPUT_PREFIX_OFFSET = "Offset  = ";
 
 	public static final String OPT_SUMMARY_FILE = "Opt_Summary.csv";
+	public static final String OPT_SUMMARY_UNIQUE_FILE = "Opt_Summary_Unique.csv";
 	public static final String OPT_SUMMARY_TREND_FILE = "Opt_Summary_Trend_%d.csv";
+	public static final String OPT_SUMMARY_TREND_UNIQUE_FILE = "Opt_Summary_Trend_%d_Unique.csv";
 
 	public OptTrendFittingFunction(File baseDir, Properties prop, ContactMap[] baseCMaps, long[] baseCMapSeeds,
 			long[] sim_seeds, HashMap<String, double[][]> target_trend_collection, double[][] trend_time_range,
@@ -276,6 +280,123 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		System.out.println(outMsg);
 
 		return best_fitting_sq_sum;
+	}
+
+	public static void extractUniqueTrendResults(File version_baseDir, File[] trend_file)
+			throws FileNotFoundException, IOException {
+		UnivariateInterpolator interpolator = new LinearInterpolator();
+	
+		String[] param_summary = util.Util_7Z_CSV_Entry_Extract_Callable
+				.extracted_lines_from_text(new File(version_baseDir, OPT_SUMMARY_FILE));
+	
+		String[] param_summary_unique = util.Util_7Z_CSV_Entry_Extract_Callable
+				.extracted_lines_from_text(new File(version_baseDir, OPT_SUMMARY_UNIQUE_FILE));
+	
+		for (int trendPt = 0; trendPt < trend_file.length; trendPt++) {
+			// Key = Parameter, Value = Sq Sum
+			HashMap<String, ArrayList<Double>> trendValueCollection = new HashMap<>();
+			String[] trend_values = util.Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(new File(
+					version_baseDir, String.format(OPT_SUMMARY_TREND_FILE, trendPt + 1)));
+	
+			String[] trend_setting = util.Util_7Z_CSV_Entry_Extract_Callable
+					.extracted_lines_from_text(trend_file[trendPt]);
+	
+			int fitFrom = 0;
+			float weight = 0;
+			ArrayList<Double> t_val = new ArrayList<>();
+			ArrayList<Double> y_val = new ArrayList<>();
+			for (String line : trend_setting) {
+				String[] line_sp = line.split(",");
+				if (line_sp[0].equals(OPT_TREND_INPUT_KEY_FITFROM)) {
+					fitFrom = Integer.parseInt(line_sp[1]);
+				} else if (line_sp[0].equals(OPT_TREND_INPUT_KEY_WEIGHT)) {
+					weight = Float.parseFloat(line_sp[1]);
+				} else {
+					if (Pattern.matches("^\\d+$", line_sp[0])) {
+						t_val.add(Double.parseDouble(line_sp[0]));
+						y_val.add(Double.parseDouble(line_sp[1]));
+					}
+				}
+			}
+			double[][] trend_tar_val = new double[2][t_val.size()];
+			for (int i = 0; i < t_val.size(); i++) {
+				trend_tar_val[0][i] = t_val.get(i) + fitFrom;
+				trend_tar_val[1][i] = y_val.get(i);
+			}
+	
+			UnivariateFunction interpolation_target = interpolator.interpolate(trend_tar_val[0], trend_tar_val[1]);
+			String[] row, param_str;
+			double[][] trend_sim_val;
+			String param_key;
+			int num_param = 0;
+	
+			for (int p = 1; p < param_summary.length; p++) {
+				row = param_summary[p].split(",");
+				param_str = Arrays.copyOfRange(row, 4, row.length);
+				num_param = param_str.length;
+				param_key = Arrays.toString(param_str);
+				ArrayList<Double> sq_sum = trendValueCollection.get(param_key);
+	
+				if (sq_sum == null) {
+					sq_sum = new ArrayList<>();
+					trendValueCollection.put(param_key, sq_sum);
+				}
+				row = trend_values[p].split(",");
+	
+				trend_sim_val = new double[2][row.length / 2];
+				for (int c = 0; c < row.length / 2; c++) {
+					trend_sim_val[0][c] = Double.parseDouble(row[c]);
+					trend_sim_val[1][c] = Double.parseDouble(row[row.length / 2 + c]);
+				}
+	
+				UnivariateFunction interpolation_sim = interpolator.interpolate(trend_sim_val[0], trend_sim_val[1]);
+	
+				double sq_sum_val = 0;
+	
+				for (int t = (int) trend_tar_val[0][0]; t <= trend_tar_val[0][trend_tar_val[0].length
+						- 1]; t += AbstractIndividualInterface.ONE_YEAR_INT) {
+					double sim_val;
+					try {
+						sim_val = interpolation_sim.value(t);
+						if (weight < 0) {
+							sim_val -= interpolation_sim.value(t - AbstractIndividualInterface.ONE_YEAR_INT);
+						}
+					} catch (OutOfRangeException ex) {
+						
+						sim_val = 0;
+					}
+	
+					sq_sum_val += Math.pow(sim_val - interpolation_target.value(t), 2);
+				}
+				sq_sum.add(sq_sum_val);
+			}
+	
+			// Printing of result
+			PrintWriter trend_unique_summary = new PrintWriter(new File(version_baseDir,
+					String.format(OPT_SUMMARY_TREND_UNIQUE_FILE, trendPt+1)));
+	
+			trend_unique_summary.print("Param");
+			for (int i = 0; i < num_param; i++) {
+				trend_unique_summary.print(",");
+			}
+			trend_unique_summary.println("Sq_Sum");
+	
+			for (int p = 1; p < param_summary_unique.length; p++) {
+				row = param_summary_unique[p].split(",");
+				param_str = Arrays.copyOfRange(row, 4, row.length);
+				param_key = Arrays.toString(param_str);
+	
+				trend_unique_summary.print(param_key.substring(1, param_key.length() - 1));
+				ArrayList<Double> sq_sum = trendValueCollection.get(param_key);
+				for (double sq_sum_val : sq_sum) {
+					trend_unique_summary.print(",");
+					trend_unique_summary.print(sq_sum_val);
+				}
+				trend_unique_summary.println();
+			}
+			trend_unique_summary.close();
+	
+		}
 	}
 
 	public static void combineOptTrendResults(ArrayList<File> baseDirsArr, File combinedBaseDir)
@@ -525,6 +646,10 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		PrintWriter pWri_summary = new PrintWriter(new File(basedir, OPT_SUMMARY_FILE));
 		pWri_summary.println("Residue,CMapSeed,SimSeed,Dir,Param");
 
+		PrintWriter pWri_summary_unique = new PrintWriter(new File(basedir, OPT_SUMMARY_UNIQUE_FILE));
+		pWri_summary_unique.println("Residue,CMapSeed,SimSeed,Dir,Param");
+		ArrayList<String> printed_entries = new ArrayList<>();
+
 		PrintWriter[] pWri_trend = null;
 
 		for (Object[] val : resultsTrendCollections) {
@@ -536,6 +661,19 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 				pWri_summary.print(param[s]);
 			}
 			pWri_summary.println();
+
+			String paramStr = Arrays.toString(param);
+			int r = Collections.binarySearch(printed_entries, paramStr);
+			if (r < 0) {
+				pWri_summary_unique.printf("%f,%d,%d,%s", (Double) val[0], (Long) val[1], (Long) val[2],
+						((File) val[val.length - 1]).getParentFile().getName());
+				for (int s = 0; s < param.length; s++) {
+					pWri_summary_unique.print(',');
+					pWri_summary_unique.print(param[s]);
+				}
+				pWri_summary_unique.println();
+				printed_entries.add(~r, paramStr);
+			}
 
 			String[] trends = (String[]) val[5];
 			int offset = ((Long) val[3]).intValue();
@@ -579,6 +717,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		}
 
 		pWri_summary.close();
+		pWri_summary_unique.close();
 		if (pWri_trend != null) {
 
 			for (PrintWriter pWri : pWri_trend) {
@@ -1244,38 +1383,39 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								str_disp[t_pt].append(',');
 								str_disp[t_pt].append(newVal);
 
-							}							
-							
-							double sampleTime = target_t[0];
-							
-							UnivariateFunction model_value_interpol = interpolator.interpolate(model_t, model_y);											
+							}
 
-							while(sampleTime <= target_t[target_t.length-1]) {
-								double trend_y_val = interpolation[trend_target_pt].value(sampleTime);								
+							double sampleTime = target_t[0];
+
+							UnivariateFunction model_value_interpol = interpolator.interpolate(model_t, model_y);
+
+							while (sampleTime <= target_t[target_t.length - 1]) {
+								double trend_y_val = interpolation[trend_target_pt].value(sampleTime);
 								double model_y_val = Double.POSITIVE_INFINITY;
-								
+
 								if (model_t[0] <= sampleTime && sampleTime <= model_t[model_t.length - 1]) {
-									model_y_val = model_value_interpol.value(sampleTime);									
+									model_y_val = model_value_interpol.value(sampleTime);
 									if (weight[trend_target_pt] < 0) {
 										// Offset from previous time step
 										if (sampleTime - AbstractIndividualInterface.ONE_YEAR_INT >= model_t[0]) {
-											model_y_val = model_y_val - model_value_interpol.value(sampleTime - AbstractIndividualInterface.ONE_YEAR_INT);
+											model_y_val = model_y_val - model_value_interpol
+													.value(sampleTime - AbstractIndividualInterface.ONE_YEAR_INT);
 										} else {
 											System.err.printf(
 													"Warning: Negative weight (%f) for prior to time %d not available.\n",
 													weight[trend_target_pt], model_t[0]);
 											model_y_val = Double.POSITIVE_INFINITY;
 										}
-									}									
-								}else {
-									// Out of range								
-									model_y_val = 0;																																						
+									}
+								} else {
+									// Out of range
+									model_y_val = 0;
 								}
-								
+
 								bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt])
 										* Math.pow(model_y_val - trend_y_val, 2);
-								
-								sampleTime+= AbstractIndividualInterface.ONE_YEAR_INT;
+
+								sampleTime += AbstractIndividualInterface.ONE_YEAR_INT;
 							}
 
 						}
