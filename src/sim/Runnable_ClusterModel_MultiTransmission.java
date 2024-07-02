@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.math3.distribution.RealDistribution;
 
+import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import relationship.ContactMap;
@@ -235,6 +236,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		Arrays.fill(seek_test_rate, 1);
 	}
 
+	@Override
 	public void refreshField(int fieldId, boolean clearAll) {
 		double[][] field = null;
 
@@ -396,8 +398,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				Integer[] target_stages = map_target_stage.keySet().toArray(new Integer[map_target_stage.size()]);
 				Arrays.sort(target_stages);
 				double prob_sum = 0;
-				for (int i = 0; i < target_stages.length; i++) {
-					prob_sum += map_target_stage.get(target_stages[i]).doubleValue();
+				for (Integer target_stage : target_stages) {
+					prob_sum += map_target_stage.get(target_stage).doubleValue();
 				}
 				double cumul_p = 0;
 				for (int i = 0; i < target_stages.length; i++) {
@@ -721,7 +723,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 														} else {
 															for (int siteId = 0; siteId < NUM_SITE
 																	&& newInfection; siteId++) {
-																newInfection &= isValidInfectionTargetSite(inf_id, siteId, tar_infection_stages); 																		
+																newInfection &= isValidInfectionTargetSite(inf_id, siteId, tar_infection_stages);
 																		//tar_infection_stages[inf_id][siteId] == AbstractIndividualInterface.INFECT_S;
 															}
 														}
@@ -740,10 +742,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 														updateInfectStageChangeSchedule(pid_inf_tar, inf_id, tar_site,
 																currentTime + 1,
-																tar_infection_state_switch[inf_id][tar_site]);														
+																tar_infection_state_switch[inf_id][tar_site]);
 													}else {
 														simulate_transmission_failed_act(currentTime, inf_id, pid_inf_src,
-																pid_inf_tar, src_site, tar_site);														
+																pid_inf_tar, src_site, tar_site);
 
 													} // End of determining transmission
 												} // End of possible transmission check
@@ -977,11 +979,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	}
 
-	protected void simulate_transmission_failed_act(int currentTime, int inf_id, 
+	protected void simulate_transmission_failed_act(int currentTime, int inf_id,
 			Integer pid_inf_src, int pid_inf_tar,
 			int src_site, int tar_site) {
 		//  Do nothing by default
-		
+
 	}
 
 	protected boolean isValidInfectionTargetSite(int inf_id, int tar_site, int[][] tar_infection_stages) {
@@ -1169,6 +1171,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		test_rate_index_map.clear();
 	}
 
+	@Override
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
 
 		int riskCat;
@@ -1706,6 +1709,50 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 		}
+	}
+
+	@Override
+	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
+			boolean display_only){
+		ArrayList<Integer> field_to_update = new ArrayList<>();
+		for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
+			String param_setting = parameter_settings[param_arr_index];
+			param_setting = param_setting.replaceAll("\\s", "");
+			String[] param_setting_arr = param_setting.split("_");
+			int param_name_index = Integer.parseInt(param_setting_arr[0]);
+			int field_id = param_name_index - Optimisation_Factory.RUNNABLE_OFFSET;
+
+			if (field_id >= 0) { // Runnable field
+				Object val = getRunnable_fields()[field_id];
+				if (val != null) {
+					int setting_level = 1;
+					Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
+				}
+
+				int pt = Collections.binarySearch(field_to_update, field_id);
+				if (pt < 0) {
+					field_to_update.add(~pt, field_id);
+				}
+			} else {
+				// Seed infection replacement
+				int i_lvl = 1;
+				int j_lvl = 2;
+				for (int i = 0; i < seedInfectNum.length; i++) {
+					int inc_index = Integer.parseInt(param_setting_arr[i_lvl]);
+					if ((inc_index & 1 << i) != 0) {
+						for (int j = 0; j < seedInfectNum[i].length; j++) {
+							inc_index = Integer.parseInt(param_setting_arr[j_lvl]);
+							if ((inc_index & 1 << j) != 0) {
+								seedInfectNum[i][j] = (int) Math.round(point[param_arr_index]);
+							}
+						}
+					}
+				}
+				System.out.printf("Seed infection replacement to %s\n", Arrays.deepToString(seedInfectNum));
+			}
+		}
+
+		return field_to_update;
 	}
 
 }

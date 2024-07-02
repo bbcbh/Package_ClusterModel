@@ -13,6 +13,7 @@ import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
+import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import population.person.Person_Bridging_Pop;
@@ -2171,6 +2172,208 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			System.err.printf("Warning: refreshField option for fieldId=%d not set.\n", fieldId);
 		}
 
+	}
+
+	public static ArrayList<Integer> setOptParamInSingleTransmissionRunnable(
+			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
+			boolean display_only) {
+	
+		HashMap<Integer, Object> modified_param = new HashMap<>();
+		ArrayList<Integer> field_to_update = new ArrayList<>();
+	
+		if (parameter_settings == null || parameter_settings.length != point.length) {
+			// Backward compatibility.
+			System.out.println("Warning Parameter setting not used as it mismatches with number or parameters.");
+			Runnable_ClusterModel_Transmission.setOptParamInSingleTransmissionRunnable(target_runnable, point, display_only);
+		} else {
+			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
+				String param_setting = parameter_settings[param_arr_index];
+				param_setting = param_setting.replaceAll("\\s", "");
+				String[] param_setting_arr = param_setting.split("_");
+				int param_name_index = Integer.parseInt(param_setting_arr[0]);
+				int field_id = param_name_index - Optimisation_Factory.RUNNABLE_OFFSET;
+				Object val = target_runnable.getRunnable_fields()[field_id];
+				if (val != null) {
+					int setting_level = 1;
+					switch (field_id) {
+					default:
+						Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
+	
+					}
+					// Special modification for
+					int pt = Collections.binarySearch(field_to_update, field_id);
+					if (pt < 0) {
+						field_to_update.add(~pt, field_id);
+					}
+	
+					modified_param.put(param_name_index, val);
+	
+				} else {
+					System.err.printf("Setting of parameter not supported (wrong param number of %d?). Exiting.\n",
+							param_name_index);
+	
+				}
+			}
+	
+			if (display_only) {
+				System.out.println("Opt. parameter display:");
+				Integer[] param = modified_param.keySet().toArray(new Integer[modified_param.size()]);
+				Arrays.sort(param);
+				for (Integer pI : param) {
+					System.out.printf("POP_PROP_INIT_PREFIX_%d:\n", pI);
+					Object val = modified_param.get(pI);
+					System.out.println(PropValUtils.objectToPropStr(val, val.getClass()));
+					System.out.println();
+				}
+				System.exit(0);
+	
+			}
+	
+		}
+		return field_to_update;
+	
+	}
+	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
+			boolean display_only){
+		return Runnable_ClusterModel_Transmission.setOptParamInSingleTransmissionRunnable(this, parameter_settings, point,
+				display_only);
+	}
+
+	public static void setOptParamInSingleTransmissionRunnable(
+			Abstract_Runnable_ClusterModel_Transmission target_runnable, double[] point, boolean display_only) {
+		double[][][] transmission_rate = (double[][][]) target_runnable
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
+	
+		double[] sym_test_rate = (double[]) target_runnable
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
+	
+		double[][] inf_dur = (double[][]) target_runnable
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
+	
+		float[][] sym_rate = (float[][]) target_runnable
+				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
+	
+		switch (point.length) {
+		case 8:
+			// TRANS_P2R, TRANS_R2P
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[0];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+			// TRANS_P2O, TRANS_O2P
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+			// TRANS_R2O, TRANS_O2R
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[5];
+			// TRANS_O2O
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
+	
+			// SYM_TEST_PERIOD
+			sym_test_rate[0] = point[7];
+			// Adjust SD based on ratio from mean
+			sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
+	
+			break;
+		case 10:
+		case 14:
+		case 15:
+		case 16:
+			double org_mean;
+			// TRANS_P2V, TRANS_V2P
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][0] = point[0];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][1] = 0;
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[1];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_VAGINA][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][1] = 0;
+			// TRANS_P2R, TRANS_R2P
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[3];
+			// TRANS_P2O, TRANS_O2P
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[4];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS][0] = point[5];
+			// TRANS_R2O, TRANS_O2R
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_RECTUM][0] = point[7];
+			// TRANS_O2O
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
+			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[8];
+			// SYM_TEST_PERIOD
+			org_mean = sym_test_rate[0];
+			sym_test_rate[0] = point[9];
+			// Adjust SD based on ratio from mean
+			sym_test_rate[1] = (point[9] / org_mean) * sym_test_rate[1];
+	
+			if (point.length >= 14) {
+				// Duration by site
+				for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
+					org_mean = inf_dur[s][0];
+					inf_dur[s][0] = point[s + 10];
+					// Adjust SD based on ratio from mean
+					inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
+				}
+	
+				// Sym test adjustment for hetrosexual male
+				if (point.length >= 15) {
+					// Backward compatibility to single mean-sd option
+					if (sym_test_rate.length < 2 * Population_Bridging.LENGTH_GENDER) {
+						sym_test_rate = Arrays.copyOf(sym_test_rate,
+								sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
+						target_runnable
+								.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
+						for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+							sym_test_rate[2 * g] = sym_test_rate[0];
+							sym_test_rate[2 * g + 1] = sym_test_rate[1];
+						}
+					}
+	
+					// Hetro_male
+					sym_test_rate[2] = point[14];
+					sym_test_rate[3] = (point[14] / sym_test_rate[0]) * sym_test_rate[1];
+	
+				}
+	
+				// Sym rate for urethral infection for male
+				if (point.length >= 16) {
+					for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+						sym_rate[g][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS] = (float) point[15];
+					}
+				}
+			}
+	
+			break;
+	
+		default:
+			System.err.printf("Optimisation: Parameter interpretation %s not defined. Exiting...\n",
+					Arrays.toString(point));
+			System.exit(-1);
+	
+		}
+	
+		if (display_only) {
+			System.out.println("Opt. parameter display:");
+	
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE");
+			System.out.println(Arrays.deepToString(transmission_rate));
+			System.out.println();
+	
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD");
+			System.out.println(Arrays.deepToString(inf_dur));
+			System.out.println();
+	
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_SYM_RATE");
+			System.out.println(Arrays.deepToString(sym_rate));
+			System.out.println();
+	
+			System.out.println("RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM");
+			System.out.println(Arrays.toString(sym_test_rate));
+			System.out.println();
+	
+			System.out.println("Opt. parameter display completed.");
+			System.exit(0);
+		}
 	}
 
 }

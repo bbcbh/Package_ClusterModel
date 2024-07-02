@@ -632,7 +632,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 			ContactMap cMap = baseContactMapMapping.get(baseContactMapSeed);
 			for (Integer v : cMap.vertexSet()) {
-				int g = Runnable_ClusterModel_Transmission.getGenderType(v, cumulative_pop_composition);
+				int g = Abstract_Runnable_ClusterModel_Transmission.getGenderType(v, cumulative_pop_composition);
 				personStat[g].add(v);
 			}
 
@@ -782,9 +782,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					popType = ""; // Default
 				}
 				if(Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					runnable[s] = new Runnable_ClusterModel_Viability(baseContactMapSeed, seed, 
+					runnable[s] = new Runnable_ClusterModel_Viability(baseContactMapSeed, seed,
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
-					
+
 				}else if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
@@ -820,7 +820,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				for (int f = 0; f < Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD; f++) {
-					if (simFields[ent_offset + f] != null) {						
+					if (simFields[ent_offset + f] != null) {
 						// To ensure the simField is a fresh copy
 						Object field_to_clone = PropValUtils.propStrToObject(
 								PropValUtils.objectToPropStr(simFields[ent_offset + f], simFieldClass[ent_offset + f]),
@@ -856,12 +856,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 						ArrayList<Integer> field_to_update = runnable[s].loadOptParameter(preGenParamKey, pt,
 								seedInfectNum, false);
-
-						/*
-						 * ArrayList<Integer> field_to_update =
-						 * Optimisation_Factory.setOptParamInRunnable_Direct(runnable[s],
-						 * preGenParamKey, pt, seedInfectNum, false);
-						 */
 
 						if (loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 							String transform_str = loadedProperties
@@ -1426,10 +1420,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			SevenZArchiveEntry entry;
 			FileInputStream fIn;
 
-			for (int fI = 0; fI < files_list.length; fI++) {
-				entry = outputZip.createArchiveEntry(files_list[fI], files_list[fI].getName());
+			for (File element : files_list) {
+				entry = outputZip.createArchiveEntry(element, element.getName());
 				outputZip.putArchiveEntry(entry);
-				fIn = new FileInputStream(files_list[fI]);
+				fIn = new FileInputStream(element);
 				outputZip.write(fIn);
 				outputZip.closeArchiveEntry();
 				fIn.close();
@@ -1631,13 +1625,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				HashMap<Long, ContactMap> cMap_Map = new HashMap<>();
 
 				if (preGenClusterMap.length == 1 || Runtime.getRuntime().availableProcessors() == 1) {
-					for (int i = 0; i < preGenClusterMap.length; i++) {
+					for (File element : preGenClusterMap) {
 						System.out.printf("Loading (in series) on ContactMap located at %s.\n",
-								preGenClusterMap[i].getAbsolutePath());
-						Matcher m = Pattern.compile(REGEX_STR).matcher(preGenClusterMap[i].getName());
+								element.getAbsolutePath());
+						Matcher m = Pattern.compile(REGEX_STR).matcher(element.getName());
 						m.matches();
 						long cMap_seed = Long.parseLong(m.group(1));
-						ContactMap cMap = extractedCMapfromFile(preGenClusterMap[i]);
+						ContactMap cMap = extractedCMapfromFile(element);
 						cMap_Map.put(cMap_seed, cMap);
 					}
 
@@ -1660,7 +1654,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 						final File mapFile = preGenClusterMap[i];
 
-						Callable<ContactMap> extractThread = new Callable<ContactMap>() {
+						Callable<ContactMap> extractThread = new Callable<>() {
 							@Override
 							public ContactMap call() throws Exception {
 								return extractedCMapfromFile(mapFile);

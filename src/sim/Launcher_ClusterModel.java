@@ -56,13 +56,13 @@ public class Launcher_ClusterModel {
 				analysis.setBaseDir(dir);
 				System.out.printf("=== %s ===\n", dir.getName());
 				if (args.length > 2) {
-					analysis.setSkipAnalysis(Integer.parseInt(args[2]));					
+					analysis.setSkipAnalysis(Integer.parseInt(args[2]));
 					if(args.length > 4) {
 						analysis.setIncl_range(
 								new int[] {Integer.parseInt(args[3]), Integer.parseInt(args[4])});
 					}
-					
-					
+
+
 				}
 				analysis.analyse_outputs();
 			} else if ("-analyse_rx".equals(flag)) {
@@ -87,7 +87,7 @@ public class Launcher_ClusterModel {
 						if (args.length > 3) {
 							analysis.setSkipAnalysis(Integer.parseInt(args[3]));
 						}
-						analysis.analyse_outputs();						
+						analysis.analyse_outputs();
 					}
 					System.out.printf("%d directories analysed.\n", candidateDir.length);
 				}
@@ -96,7 +96,7 @@ public class Launcher_ClusterModel {
 					System.out.printf(
 							"Usage: java %s -analyse_trend RESULT_DIRECTORY TREND_DIRECTORY\n");
 					System.exit(0);
-				}else {				
+				}else {
 					Util_Analyse_ClusterModel_Transmission_Output.extractTrendResults(new File(args[1]), new File(args[2]));
 				}
 
@@ -134,10 +134,10 @@ public class Launcher_ClusterModel {
 				if(args.length < 4) {
 					System.out.printf("Usage: java %s -genRiskGrp CMAP_DIR RISKGRP_CAT NUM_THREAD\n");
 					System.exit(0);
-				}else {					
-					Util_RiskGrpAllocation.generateRiskGrpAllocationByRiskCat(new File(args[1]), 
+				}else {
+					Util_RiskGrpAllocation.generateRiskGrpAllocationByRiskCat(new File(args[1]),
 							(float[][]) PropValUtils.propStrToObject(args[2], float[][].class), Integer.parseInt(args[3]));
-				}								
+				}
 
 			} else if ("-batch".equals(flag)) {
 				File commands = new File(args[1]);

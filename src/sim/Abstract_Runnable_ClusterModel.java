@@ -20,7 +20,6 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 
 	protected String runnableId = null;
 	protected File baseDir = null;
-	
 
 	// Edge format in contact map: {p1, p2, start time_1, duration_1, ...}
 	// CONTACT_MAP_EDGE_DURATION = -1 -> Removal
@@ -30,7 +29,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 	public static final int CONTACT_MAP_EDGE_START_TIME = CONTACT_MAP_EDGE_P2 + 1;
 	public static final int CONTACT_MAP_EDGE_DURATION = CONTACT_MAP_EDGE_START_TIME + 1;
 	public static final int LENGTH_CONTACT_MAP_EDGE = CONTACT_MAP_EDGE_DURATION + 1;
-	
+
 	// Edge format in transmission map
 	public static final int TRANS_MAP_EDGE_INFECTIOUS = 0;
 	public static final int TRANS_MAP_EDGE_SUSCEPTIBLE = TRANS_MAP_EDGE_INFECTIOUS + 1;
@@ -51,7 +50,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 	}
 
 	public abstract Object[] getRunnable_fields();	
-	
+
 
 	public static ContactMap generateContactMapAcrossTimeRange(ContactMap baseMap, int[] time_range) {
 		if (baseMap == null) {
@@ -76,10 +75,9 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		}
 	}
 
-	public static boolean isEdgeBetweenTimeRange(Integer[] e, int[] time_range) {		
+	public static boolean isEdgeBetweenTimeRange(Integer[] e, int[] time_range) {
 		int eStart = e[CONTACT_MAP_EDGE_START_TIME];
-		int eEnd = e[CONTACT_MAP_EDGE_START_TIME]
-				+ e[CONTACT_MAP_EDGE_DURATION];
+		int eEnd = e[CONTACT_MAP_EDGE_START_TIME] + e[CONTACT_MAP_EDGE_DURATION];
 		return eStart < time_range[1] && eEnd >= time_range[0];
 	}
 
@@ -98,10 +96,10 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 
 				pWri.close();
 				reader.close();
-				ContactMap map = ContactMap.ContactMapFromFullString(cMap_str.toString());				
-				System.out.printf("Contact map read from %s. Time required = %.3fs\n", cMap_file.getName(), 
-						(System.currentTimeMillis() - tic) / 1000f);								
-				
+				ContactMap map = ContactMap.ContactMapFromFullString(cMap_str.toString());
+				System.out.printf("Contact map read from %s. Time required = %.3fs\n", cMap_file.getName(),
+						(System.currentTimeMillis() - tic) / 1000f);
+
 				return map;
 			}
 
@@ -128,7 +126,7 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 				for (Integer[] ent : tMap.edgeSet()) {
 					int key = Collections.binarySearch(edges, ent, edge_cmp);
 					if (key >= 0) {
-						System.err.printf("Warning from Transmission Map #%d: Edge %s already in list. Edge skipped.\n", 
+						System.err.printf("Warning from Transmission Map #%d: Edge %s already in list. Edge skipped.\n",
 								tMap.getId(), Arrays.toString(ent));
 					} else {
 						edges.add(~key, ent);
@@ -160,8 +158,9 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 						int key = Collections.binarySearch(edges, e, edge_cmp);
 
 						if (key >= 0) {
-							//System.err.printf("Warning from ContactMap #%d: Edge %s from %s already in list. Edge skipped.\n",
-							//		cMap.getId(), Arrays.toString(e), Arrays.toString(ent));
+							// System.err.printf("Warning from ContactMap #%d: Edge %s from %s already in
+							// list. Edge skipped.\n",
+							// cMap.getId(), Arrays.toString(e), Arrays.toString(ent));
 						} else {
 							edges.add(~key, e);
 						}
@@ -263,9 +262,5 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 		};
 		return edge_cmp;
 	}
-	
-	
-	
-	
 
 }

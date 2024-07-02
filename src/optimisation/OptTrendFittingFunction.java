@@ -34,11 +34,11 @@ import sim.Abstract_Runnable_ClusterModel_Transmission;
 import sim.Runnable_ClusterModel_ContactMap_Generation;
 import sim.Runnable_ClusterModel_MultiTransmission;
 import sim.Runnable_ClusterModel_Transmission;
+import sim.Runnable_ClusterModel_Viability;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
 import sim.Simulation_ClusterModelTransmission;
 import util.PropValUtils;
-import util.Util_7Z_CSV_Entry_Extract_Callable;
 
 public class OptTrendFittingFunction extends OptFittingFunction {
 
@@ -69,6 +69,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String ARGS_CMAP = "ARGS_CMAP";
 	public static final String ARGS_PREV_RESULTS = "ARGS_PREV_RESULTS";
 	public static final String ARGS_VERBOSE = "ARGS_VERBOSE";
+	public static final String ARGS_SEEDLIST = "ARGS_SEEDLIST";
 
 	// POP_PROP_OPT_PARAM_FIT_SETTING
 	// Format: String[] { popPropInitPrefix_IncIndices_... , ...}
@@ -285,22 +286,22 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static void extractUniqueTrendResults(File version_baseDir, File[] trend_file)
 			throws FileNotFoundException, IOException {
 		UnivariateInterpolator interpolator = new LinearInterpolator();
-	
+
 		String[] param_summary = util.Util_7Z_CSV_Entry_Extract_Callable
 				.extracted_lines_from_text(new File(version_baseDir, OPT_SUMMARY_FILE));
-	
+
 		String[] param_summary_unique = util.Util_7Z_CSV_Entry_Extract_Callable
 				.extracted_lines_from_text(new File(version_baseDir, OPT_SUMMARY_UNIQUE_FILE));
-	
+
 		for (int trendPt = 0; trendPt < trend_file.length; trendPt++) {
 			// Key = Parameter, Value = Sq Sum
 			HashMap<String, ArrayList<Double>> trendValueCollection = new HashMap<>();
-			String[] trend_values = util.Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(new File(
-					version_baseDir, String.format(OPT_SUMMARY_TREND_FILE, trendPt + 1)));
-	
+			String[] trend_values = util.Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(
+					new File(version_baseDir, String.format(OPT_SUMMARY_TREND_FILE, trendPt + 1)));
+
 			String[] trend_setting = util.Util_7Z_CSV_Entry_Extract_Callable
 					.extracted_lines_from_text(trend_file[trendPt]);
-	
+
 			int fitFrom = 0;
 			float weight = 0;
 			ArrayList<Double> t_val = new ArrayList<>();
@@ -323,36 +324,36 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 				trend_tar_val[0][i] = t_val.get(i) + fitFrom;
 				trend_tar_val[1][i] = y_val.get(i);
 			}
-	
+
 			UnivariateFunction interpolation_target = interpolator.interpolate(trend_tar_val[0], trend_tar_val[1]);
 			String[] row, param_str;
 			double[][] trend_sim_val;
 			String param_key;
 			int num_param = 0;
-	
+
 			for (int p = 1; p < param_summary.length; p++) {
 				row = param_summary[p].split(",");
 				param_str = Arrays.copyOfRange(row, 4, row.length);
 				num_param = param_str.length;
 				param_key = Arrays.toString(param_str);
 				ArrayList<Double> sq_sum = trendValueCollection.get(param_key);
-	
+
 				if (sq_sum == null) {
 					sq_sum = new ArrayList<>();
 					trendValueCollection.put(param_key, sq_sum);
 				}
 				row = trend_values[p].split(",");
-	
+
 				trend_sim_val = new double[2][row.length / 2];
 				for (int c = 0; c < row.length / 2; c++) {
 					trend_sim_val[0][c] = Double.parseDouble(row[c]);
 					trend_sim_val[1][c] = Double.parseDouble(row[row.length / 2 + c]);
 				}
-	
+
 				UnivariateFunction interpolation_sim = interpolator.interpolate(trend_sim_val[0], trend_sim_val[1]);
-	
+
 				double sq_sum_val = 0;
-	
+
 				for (int t = (int) trend_tar_val[0][0]; t <= trend_tar_val[0][trend_tar_val[0].length
 						- 1]; t += AbstractIndividualInterface.ONE_YEAR_INT) {
 					double sim_val;
@@ -362,30 +363,30 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 							sim_val -= interpolation_sim.value(t - AbstractIndividualInterface.ONE_YEAR_INT);
 						}
 					} catch (OutOfRangeException ex) {
-						
+
 						sim_val = 0;
 					}
-	
+
 					sq_sum_val += Math.pow(sim_val - interpolation_target.value(t), 2);
 				}
 				sq_sum.add(sq_sum_val);
 			}
-	
+
 			// Printing of result
-			PrintWriter trend_unique_summary = new PrintWriter(new File(version_baseDir,
-					String.format(OPT_SUMMARY_TREND_UNIQUE_FILE, trendPt+1)));
-	
+			PrintWriter trend_unique_summary = new PrintWriter(
+					new File(version_baseDir, String.format(OPT_SUMMARY_TREND_UNIQUE_FILE, trendPt + 1)));
+
 			trend_unique_summary.print("Param");
 			for (int i = 0; i < num_param; i++) {
 				trend_unique_summary.print(",");
 			}
 			trend_unique_summary.println("Sq_Sum");
-	
+
 			for (int p = 1; p < param_summary_unique.length; p++) {
 				row = param_summary_unique[p].split(",");
 				param_str = Arrays.copyOfRange(row, 4, row.length);
 				param_key = Arrays.toString(param_str);
-	
+
 				trend_unique_summary.print(param_key.substring(1, param_key.length() - 1));
 				ArrayList<Double> sq_sum = trendValueCollection.get(param_key);
 				for (double sq_sum_val : sq_sum) {
@@ -395,7 +396,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 				trend_unique_summary.println();
 			}
 			trend_unique_summary.close();
-	
+
 		}
 	}
 
@@ -482,8 +483,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			}
 
 			reader_summary.close();
-			for (int t = 0; t < reader_trends.length; t++) {
-				reader_trends[t].close();
+			for (BufferedReader reader_trend : reader_trends) {
+				reader_trend.close();
 			}
 		}
 
@@ -557,7 +558,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		// double residue, long cMapSeed, long simSeed, long offset, String[] param_str,
 		// String[] trends, File trendFile
 		ArrayList<Object[]> resultsTrendCollections = new ArrayList<>();
-		final Comparator<Object[]> resultTrendCollectionsComp = new Comparator<Object[]>() {
+		final Comparator<Object[]> resultTrendCollectionsComp = new Comparator<>() {
 			@Override
 			public int compare(Object[] o1, Object[] o2) {
 				int r = 0;
@@ -653,23 +654,23 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		PrintWriter[] pWri_trend = null;
 
 		for (Object[] val : resultsTrendCollections) {
-			pWri_summary.printf("%f,%d,%d,%s", (Double) val[0], (Long) val[1], (Long) val[2],
+			pWri_summary.printf("%f,%d,%d,%s", val[0], val[1], val[2],
 					((File) val[val.length - 1]).getParentFile().getName());
 			String[] param = (String[]) val[4];
-			for (int s = 0; s < param.length; s++) {
+			for (String element : param) {
 				pWri_summary.print(',');
-				pWri_summary.print(param[s]);
+				pWri_summary.print(element);
 			}
 			pWri_summary.println();
 
 			String paramStr = Arrays.toString(param);
 			int r = Collections.binarySearch(printed_entries, paramStr);
 			if (r < 0) {
-				pWri_summary_unique.printf("%f,%d,%d,%s", (Double) val[0], (Long) val[1], (Long) val[2],
+				pWri_summary_unique.printf("%f,%d,%d,%s", val[0], val[1], val[2],
 						((File) val[val.length - 1]).getParentFile().getName());
-				for (int s = 0; s < param.length; s++) {
+				for (String element : param) {
 					pWri_summary_unique.print(',');
-					pWri_summary_unique.print(param[s]);
+					pWri_summary_unique.print(element);
 				}
 				pWri_summary_unique.println();
 				printed_entries.add(~r, paramStr);
@@ -702,8 +703,8 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 				pWri_trend[v].print(timeline.toString());
 			}
 
-			for (int t = 0; t < trends.length; t++) {
-				String[] ent = trends[t].split(",");
+			for (String trend : trends) {
+				String[] ent = trend.split(",");
 				for (int v = 1; v < ent.length; v++) {
 					pWri_trend[v].print(',');
 					pWri_trend[v].print(ent[v]);
@@ -887,7 +888,33 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 		String popType = (String) prop.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
-		boolean isMultiTrans = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches();
+		boolean isMultiTrans = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()
+				|| Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType).matches();
+
+		HashMap<String, ArrayList<String[]>> seedListParameter = new HashMap<>();
+		File seedFile = (File) args.get(OptTrendFittingFunction.ARGS_SEEDLIST);
+		if (seedFile != null && seedFile.exists()) {
+			try {
+				BufferedReader reader = new BufferedReader(new FileReader(seedFile));
+				String[] headerline = reader.readLine().split(","); // Header
+				String line;
+				while ((line = reader.readLine()) != null) {
+					String[] line_sp = line.split(",");
+					String key = String.format("%d,%d", Long.parseLong(line_sp[0]), Long.parseLong(line_sp[1]));
+					ArrayList<String[]> ent = seedListParameter.get(key);
+					if (ent == null) {
+						ent = new ArrayList<>();
+						ent.add(Arrays.copyOfRange(headerline, 2, headerline.length));
+						seedListParameter.put(key, ent);
+					}
+					ent.add(Arrays.copyOfRange(line_sp, 2, headerline.length));
+				}
+				reader.close();
+			} catch (IOException e) {
+				System.err.printf("Warning: Error in reading seed file %s.", seedFile.getAbsolutePath());
+			}
+
+		}
 
 		for (ContactMap c : cMap) {
 			for (int r = 0; r < NUM_SIM_PER_MAP; r++) {
@@ -916,14 +943,32 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 					if (isMultiTrans) {
 						Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
-						m.matches();
-						runnable[rId] = new Runnable_ClusterModel_MultiTransmission(cMap_seed[cMap_id], sim_seed,
-								POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP, Integer.parseInt(m.group(1)),
-								Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3))) {
-							protected void postSimulation() {
-								// Do nothing
+						if (m.matches()) {
+							runnable[rId] = new Runnable_ClusterModel_MultiTransmission(cMap_seed[cMap_id], sim_seed,
+									POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP, Integer.parseInt(m.group(1)),
+									Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3))) {
+								@Override
+								protected void postSimulation() {
+									// Do nothing
+								}
+							};
+						} else {
+							m = Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType);
+							if (m.matches()) {
+								runnable[rId] = new Runnable_ClusterModel_Viability(cMap_seed[cMap_id], sim_seed, c,
+										prop) {
+									@Override
+									protected void postSimulation() {
+										// Do nothing
+									}
+								};
 							}
-						};
+						}
+						if (runnable[rId] == null) {
+							System.err.printf("Error: Null runnable for Optimisation of PROP_POP_TYPE of %s\n.",
+									popType);
+							System.exit(-1);
+						}
 
 					} else {
 						runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[cMap_id], sim_seed,
@@ -945,6 +990,20 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 					runnable[rId].setSimSetting(simSetting);
 					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, SEED_INFECTION, c == null);
+
+					ArrayList<String[]> seedListParam = seedListParameter
+							.get(String.format("%d,%d", cMap_seed[cMap_id], sim_seed));
+
+					if (seedListParam != null && seedListParam.size() > 1) {
+						String[] param_def = seedListParam.get(0);
+						String[] param_val_str = seedListParam.remove(1);
+						double[] param_val = new double[param_val_str.length];
+						for (int i = 0; i < param_val.length; i++) {
+							param_val[i] = Double.parseDouble(param_val_str[i]);
+						}
+						runnable[rId].loadOptParameter(param_def, param_val, SEED_INFECTION, c==null);
+					}
+
 					runnable[rId].initialse();
 
 					File riskGrpDir = baseDir;
@@ -1025,6 +1084,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			int[] last_target_time = new int[num_target_trend];
 			UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
 			String[][] trend_target_key_split = new String[num_target_trend][];
+			Pattern pattern_trend_type_composite = Pattern.compile("\\[(.*),(.*),(\\d+)\\]");
 			Pattern pattern_trend_type = Pattern.compile("(.*)_C(-?\\d+)");
 
 			for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
@@ -1052,87 +1112,140 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 					for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
 						String trend_type = trend_target_key_split[trend_target_pt][OptTrendFittingFunction.OPT_TREND_MAP_KEY_TYPE];
-						Matcher trend_matcher = pattern_trend_type.matcher(trend_type);
 
-						if (trend_matcher.matches()) {
-							try {
+						Matcher trend_matcher_composite = pattern_trend_type_composite.matcher(trend_type);
+						String[] trend_type_arr;
+						int trend_operation = -1;
+
+						if (trend_matcher_composite.matches()) {
+							trend_type_arr = new String[] { trend_matcher_composite.group(1),
+									trend_matcher_composite.group(2) };
+							trend_operation = Integer.parseInt(trend_matcher_composite.group(3));
+						} else {
+							trend_type_arr = new String[] { trend_type };
+						}
+
+						Integer[] sim_time = null;
+						double[][] model_val = new double[2][];
+
+						for (String trend_key : trend_type_arr) {
+							Matcher trend_matcher = pattern_trend_type.matcher(trend_key);
+							if (trend_matcher.matches()) {
 								HashMap<Integer, int[]> countMap = (HashMap<Integer, int[]>) runnable[r].getSim_output()
 										.get(trend_matcher.group(1));
-								Integer[] sim_time = countMap.keySet().toArray(new Integer[countMap.size()]);
-								Arrays.sort(sim_time);
-								if (str_disp == null) {
-									str_disp = new StringBuilder[sim_time.length];
-								}
 								int col_number = Integer.parseInt(trend_matcher.group(2));
 
-								double[][] model_val = new double[2][sim_time.length];
-								// Print output
+								if (sim_time == null) {
+									sim_time = countMap.keySet().toArray(new Integer[countMap.size()]);
+									Arrays.sort(sim_time);
+									if (str_disp == null) {
+										str_disp = new StringBuilder[sim_time.length];
+									}
+									model_val = new double[2][sim_time.length];
+									for (int mP = 0; mP < model_val.length; mP++) {
+										model_val[mP] = new double[sim_time.length];
+										Arrays.fill(model_val[mP], Double.NaN);
+									}
+								}
 								for (int i = 0; i < str_disp.length; i++) {
-									if (str_disp[i] == null) {
-										str_disp[i] = new StringBuilder();
-										str_disp[i].append(sim_time[i]);
-									}
 									model_val[0][i] = sim_time[i];
-									model_val[1][i] = countMap.get(sim_time[i])[Math.abs(col_number)];
-									str_disp[i].append(',');
-									str_disp[i].append(model_val[1][i]);
-								}
-								UnivariateFunction model_interpolation = interpolator.interpolate(model_val[0],
-										model_val[1]);
+									double single_model_val = countMap.get(sim_time[i])[Math.abs(col_number)];
 
-								double offset = 0;
-								if (col_number < 0) {
-									int pt = Arrays.binarySearch(sim_time, first_target_time[trend_target_pt]);
-									if (pt < 0) {
-										System.err.printf(
-												"Warning: offset time %d not found in countMap of time range = %s. Average of neighbouring value used.\n",
-												first_target_time[trend_target_pt], Arrays.deepToString(sim_time));
-										offset = ((countMap.get(sim_time[~pt - 1]))[Math.abs(col_number)]
-												+ (countMap.get(sim_time[~pt]))[Math.abs(col_number)]) / 2;
-									} else {
-										offset = (countMap.get(sim_time[pt]))[Math.abs(col_number)];
-									}
-								}
-
-								int sample_time = Math.max(minFitFrom, first_target_time[trend_target_pt]);
-								while (sample_time <= last_target_time[trend_target_pt]) {
-									double sim_y;
-									if (sample_time >= model_val[0][0]
-											&& sample_time <= model_val[0][model_val[0].length - 1]) {
-
-										sim_y = model_interpolation.value(sample_time);
-										if (weight[trend_target_pt] < 0) {
-											// Offset from previous time step
-											if (sample_time
-													- AbstractIndividualInterface.ONE_YEAR_INT >= model_val[0][0]) {
-												offset += model_interpolation
-														.value(sample_time - AbstractIndividualInterface.ONE_YEAR_INT);
-											} else {
-												System.err.printf(
-														"Warning: Negative weight (%f) for prior to time step %d not available. Offset of %f used instead\n",
-														weight[trend_target_pt], sample_time, offset);
-											}
+									double offset = 0;
+									if (col_number < 0) {
+										int pt = Arrays.binarySearch(sim_time, first_target_time[trend_target_pt]);
+										if (pt < 0) {
+											System.err.printf(
+													"Warning: offset time %d not found in countMap of time range = %s. Average of neighbouring value used.\n",
+													first_target_time[trend_target_pt], Arrays.deepToString(sim_time));
+											offset = ((countMap.get(sim_time[~pt - 1]))[Math.abs(col_number)]
+													+ (countMap.get(sim_time[~pt]))[Math.abs(col_number)]) / 2;
+										} else {
+											offset = (countMap.get(sim_time[pt]))[Math.abs(col_number)];
 										}
-									} else {
-										// Outside model range - assume to be zero
-										sim_y = 0;
 									}
-									bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt]) * Math.pow(
-											(sim_y - offset) - interpolation[trend_target_pt].value(sample_time), 2);
 
-									sample_time += AbstractIndividualInterface.ONE_YEAR_INT;
+									if (weight[trend_target_pt] < 0) {
+										if (countMap.containsKey((sim_time[i - 1]))) {
+											offset += countMap.get(sim_time[i - 1])[Math.abs(col_number)];
+										} else {
+											offset = Double.NaN;
+										}
+									}
+
+									single_model_val -= offset;
+
+									if (model_val[1][i] == Double.NaN) {
+										model_val[1][i] = single_model_val;
+									} else {
+										switch (trend_operation) {
+										case 0:
+											model_val[1][i] += single_model_val;
+											break;
+										case 1:
+											model_val[1][i] -= single_model_val;
+											break;
+										case 2:
+											model_val[1][i] *= single_model_val;
+											break;
+										case 3:
+											model_val[1][i] /= single_model_val;
+											break;
+										default:
+											model_val[1][i] = single_model_val;
+
+										}
+									}
 								}
 
-							} catch (NullPointerException | ArrayIndexOutOfBoundsException ex) {
-								System.err.printf(
-										"Warning: Exception encountered for trend type %s, fitting ignored.\n",
-										trend_type);
-								ex.printStackTrace(System.err);
+							} else {
+								System.err.printf("Warning: Ill formed trend type %s, fitting ignored.\n", trend_type);
+							}
+						}
+
+						try {
+							// Remove N/A model pair
+							int first_valid_row = 0;
+
+							// Print output
+							for (int i = 0; i < str_disp.length; i++) {
+								if (str_disp[i] == null) {
+									str_disp[i] = new StringBuilder();
+									str_disp[i].append(model_val[0][i]);
+								}
+								str_disp[i].append(',');
+								str_disp[i].append(model_val[1][i]);
+								if (model_val[1][i] == Double.NaN) {
+									first_valid_row++;
+								}
+							}
+							if (first_valid_row != 0) {
+								model_val[0] = Arrays.copyOfRange(model_val[0], first_valid_row, model_val[0].length);
+								model_val[1] = Arrays.copyOfRange(model_val[1], first_valid_row, model_val[1].length);
+							}
+							UnivariateFunction model_interpolation = interpolator.interpolate(model_val[0],
+									model_val[1]);
+							int sample_time = Math.max(minFitFrom, first_target_time[trend_target_pt]);
+							while (sample_time <= last_target_time[trend_target_pt]) {
+								double sim_y;
+								if (sample_time >= model_val[0][0]
+										&& sample_time <= model_val[0][model_val[0].length - 1]) {
+									sim_y = model_interpolation.value(sample_time);
+								} else {
+									// Outside model range - assume to be zero
+									sim_y = 0;
+								}
+								bestResidue_by_runnable[r] += Math.abs(weight[trend_target_pt])
+										* Math.pow((sim_y) - interpolation[trend_target_pt].value(sample_time), 2);
+								sample_time += AbstractIndividualInterface.ONE_YEAR_INT;
 							}
 
-						} else {
-							System.err.printf("Warning: Ill formed trend type %s, fitting ignored.\n", trend_type);
+						} catch (NullPointerException | ArrayIndexOutOfBoundsException ex) {
+							System.err.printf("Warning: Exception encountered for trend type %s, fitting ignored.\n",
+									trend_type);
+							ex.printStackTrace(System.err);
 						}
+
 					}
 
 					// Display trends

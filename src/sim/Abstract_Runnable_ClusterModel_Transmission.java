@@ -14,7 +14,6 @@ import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
-import optimisation.Optimisation_Factory;
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
@@ -202,8 +201,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		};
 
 	}
-	
-	
+
+
 
 	protected static AbstractRealDistribution generateGammaDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
@@ -224,7 +223,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-	
+
 
 	protected static AbstractRealDistribution generateBetaDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
@@ -245,7 +244,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-	
+
 
 	protected static AbstractRealDistribution generateUniformDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
@@ -255,7 +254,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-	
+
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
 		this.edges_list = edges_list;
@@ -412,10 +411,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		return sim_output;
 	}
 
-	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
-			boolean display_only) {
-		return Optimisation_Factory.setOptParamInRunnable_Direct(this, parameter_settings, point, seedInfectNum,
-				display_only);
-	}
+	public abstract ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
+			boolean display_only);
 
 }

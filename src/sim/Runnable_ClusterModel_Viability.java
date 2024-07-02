@@ -166,20 +166,20 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 						+ (non_via_duration_range > 0 ? rng_viability.nextInt(non_via_duration_range) : 0);
 
 				if (non_viable_until > currentTime) {
-					int[][] inf_stage = map_currrent_infection_stage.get(pid_inf_tar);					
+					int[][] inf_stage = map_currrent_infection_stage.get(pid_inf_tar);
 					if (inf_stage == null) {
 						inf_stage = new int[NUM_INF][NUM_SITE];
 						for (int[] stage_by_infection : inf_stage) {
 							Arrays.fill(stage_by_infection, AbstractIndividualInterface.INFECT_S);
 						}
-						map_currrent_infection_stage.put(pid_inf_tar, inf_stage);																		
-					}					
+						map_currrent_infection_stage.put(pid_inf_tar, inf_stage);
+					}
 					int[][] infection_state_switch = map_infection_stage_switch.get(pid_inf_tar);
 					if (infection_state_switch == null) {
 						infection_state_switch = new int[NUM_INF][NUM_SITE];
 						map_infection_stage_switch.put(pid_inf_tar, infection_state_switch);
-					}										
-					
+					}
+
 					inf_stage[inf_id][tar_site] = STAGE_ID_NON_VIABLE[inf_id][tar_site];
 					updateInfectionStage(pid_inf_tar, inf_id, tar_site, STAGE_ID_NON_VIABLE[inf_id][tar_site],
 							currentTime, inf_stage, infection_state_switch,
@@ -276,6 +276,7 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 		}
 	}
 
+	@Override
 	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
 		String key, fileName;
@@ -413,10 +414,10 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 				for (Integer time : timeArr) {
 					HashMap<String, Integer> ent = infected_site_stage_count.get(time);
 					pWri.print(time);
-					for (int i = 0; i < col_names.size(); i++) {
+					for (String[] col_name : col_names) {
 						pWri.print(',');
-						String ckey = String.format("%s,%s,%s", col_names.get(i)[0], col_names.get(i)[1],
-								col_names.get(i)[2]);
+						String ckey = String.format("%s,%s,%s", col_name[0], col_name[1],
+								col_name[2]);
 						Integer val = ent.get(ckey);
 						if (val == null) {
 							val = 0;
