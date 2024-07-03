@@ -1084,7 +1084,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			int[] last_target_time = new int[num_target_trend];
 			UnivariateFunction[] interpolation = new PolynomialSplineFunction[num_target_trend];
 			String[][] trend_target_key_split = new String[num_target_trend][];
-			Pattern pattern_trend_type_composite = Pattern.compile("\\[(.*),(.*),(\\d+)\\]");
+			Pattern pattern_trend_type_composite = Pattern.compile("\\[(.*) (.*) (\\d+)\\]");
 			Pattern pattern_trend_type = Pattern.compile("(.*)_C(-?\\d+)");
 
 			for (int trend_target_pt = 0; trend_target_pt < num_target_trend; trend_target_pt++) {
@@ -1166,7 +1166,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 									}
 
 									if (weight[trend_target_pt] < 0) {
-										if (countMap.containsKey((sim_time[i - 1]))) {
+										if (i >0 && countMap.containsKey((sim_time[i - 1]))) {
 											offset += countMap.get(sim_time[i - 1])[Math.abs(col_number)];
 										} else {
 											offset = Double.NaN;
@@ -1175,7 +1175,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 									single_model_val -= offset;
 
-									if (model_val[1][i] == Double.NaN) {
+									if (Double.isNaN(model_val[1][i])) {
 										model_val[1][i] = single_model_val;
 									} else {
 										switch (trend_operation) {
@@ -1215,7 +1215,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								}
 								str_disp[i].append(',');
 								str_disp[i].append(model_val[1][i]);
-								if (model_val[1][i] == Double.NaN) {
+								if (Double.isNaN(model_val[1][i])) {
 									first_valid_row++;
 								}
 							}
