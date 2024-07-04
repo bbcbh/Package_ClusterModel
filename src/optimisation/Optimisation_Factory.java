@@ -9,6 +9,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3231,10 +3232,10 @@ public class Optimisation_Factory {
 
 	public static void recursiveRunnableFieldReplace(Object runnableField, int param_index, double[] param_val_all,
 			String[] param_setting_all, int setting_level) {
-		int arraySel = Integer.parseInt(param_setting_all[setting_level]);
-
+		
+		BigInteger arraySel = new BigInteger(param_setting_all[setting_level]);		
 		double offset = 0;
-
+		
 		if (runnableField instanceof int[] || runnableField instanceof float[] || runnableField instanceof double[]) {
 			Matcher m = OptTrendFittingFunction.POP_PROP_OPT_PARAM_FIT_SETTING_DIFF_FORMAT
 					.matcher(param_setting_all[param_setting_all.length - 1]);
@@ -3246,21 +3247,21 @@ public class Optimisation_Factory {
 			if (runnableField instanceof int[]) {
 				int[] val_int_array = (int[]) runnableField;
 				for (int i = 0; i < val_int_array.length; i++) {
-					if ((arraySel & 1 << i) != 0) {
+					if (arraySel.testBit(i)) {
 						val_int_array[i] = (int) Math.round(offset + param_val_all[param_index]);
 					}
 				}
 			} else if (runnableField instanceof float[]) {
 				float[] val_float_array = (float[]) runnableField;
 				for (int i = 0; i < val_float_array.length; i++) {
-					if ((arraySel & 1 << i) != 0) {
+					if (arraySel.testBit(i)) {
 						val_float_array[i] = (float) (offset + param_val_all[param_index]);
 					}
 				}
 			} else if (runnableField instanceof double[]) {
 				double[] val_double_array = (double[]) runnableField;
 				for (int i = 0; i < val_double_array.length; i++) {
-					if ((arraySel & 1 << i) != 0) {
+					if (arraySel.testBit(i)) {
 						val_double_array[i] = offset + param_val_all[param_index];
 					}
 				}
@@ -3270,7 +3271,7 @@ public class Optimisation_Factory {
 			if (runnableField.getClass().isArray()) {
 				Object[] obj_array = (Object[]) runnableField;
 				for (int i = 0; i < obj_array.length; i++) {
-					if ((arraySel & 1 << i) != 0) {
+					if (arraySel.testBit(i)) {
 						recursiveRunnableFieldReplace(obj_array[i], param_index, param_val_all, param_setting_all,
 								setting_level + 1);
 
