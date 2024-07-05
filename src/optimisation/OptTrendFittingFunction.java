@@ -1150,7 +1150,6 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								for (int i = 0; i < str_disp.length; i++) {
 									model_val[0][i] = sim_time[i];
 									double single_model_val = countMap.get(sim_time[i])[Math.abs(col_number)];
-
 									double offset = 0;
 									if (col_number < 0) {
 										int pt = Arrays.binarySearch(sim_time, first_target_time[trend_target_pt]);

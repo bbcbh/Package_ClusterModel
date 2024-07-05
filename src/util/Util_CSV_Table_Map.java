@@ -163,7 +163,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 	private static String concatStr(String[] splitedStr) {
 		StringBuilder res = new StringBuilder();
 		for (String hE : splitedStr) {
-			if (!res.isEmpty()) {
+			if (res.length()>0) {
 				res.append(',');
 			}
 			res.append(hE);
