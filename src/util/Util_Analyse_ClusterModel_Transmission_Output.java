@@ -113,7 +113,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 
 		if (propFile.isFile()) {
 			for (int z = 0; z < ZIP_FILES_LIST.length; z++) {
-				String zipFileName = ZIP_FILES_LIST[z];
+				String zipFileName = ZIP_FILES_LIST[z];								
 				String stat_filename_format = STAT_FILEFORMAT[z];
 				boolean isCumul = CUMUL_DATA[z];
 

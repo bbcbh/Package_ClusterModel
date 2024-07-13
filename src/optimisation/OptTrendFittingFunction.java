@@ -31,6 +31,7 @@ import population.Population_Bridging;
 import random.RandomGenerator;
 import relationship.ContactMap;
 import sim.Abstract_Runnable_ClusterModel_Transmission;
+import sim.Runnable_ClusterModel_Bali;
 import sim.Runnable_ClusterModel_ContactMap_Generation;
 import sim.Runnable_ClusterModel_MultiTransmission;
 import sim.Runnable_ClusterModel_Transmission;
@@ -154,6 +155,14 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static final String OPT_SUMMARY_UNIQUE_FILE = "Opt_Summary_Unique.csv";
 	public static final String OPT_SUMMARY_TREND_FILE = "Opt_Summary_Trend_%d.csv";
 	public static final String OPT_SUMMARY_TREND_UNIQUE_FILE = "Opt_Summary_Trend_%d_Unique.csv";
+
+	private static final Pattern[] pattern_multi_trans = new Pattern[] {
+			Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN,
+			Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN, Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN };
+
+	private static final int pattern_multi_trans_index_base = 0;
+	private static final int pattern_multi_trans_index_viability = pattern_multi_trans_index_base + 1;
+	private static final int pattern_multi_trans_index_Bali = pattern_multi_trans_index_viability + 1;
 
 	public OptTrendFittingFunction(File baseDir, Properties prop, ContactMap[] baseCMaps, long[] baseCMapSeeds,
 			long[] sim_seeds, HashMap<String, double[][]> target_trend_collection, double[][] trend_time_range,
@@ -816,7 +825,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 	public static double[] calculate_residue_opt_trend(double[] point, HashMap<String, Object> args,
 			HashMap<String, Object> outputMap, final int NUM_THREADS) {
 
-		ContactMap[] cMap = (ContactMap[]) args.get(OptTrendFittingFunction.ARGS_CMAP);
+		ContactMap[] cMapArr = (ContactMap[]) args.get(OptTrendFittingFunction.ARGS_CMAP);
 		long[] cMap_seed = (long[]) args.get(OptTrendFittingFunction.ARGS_CMAP_SEED);
 		long[] sim_seeds = (long[]) args.get(OptTrendFittingFunction.ARGS_SIM_SEED);
 		int NUM_SIM_PER_MAP = sim_seeds.length;
@@ -824,7 +833,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 		boolean verbose = args.containsKey(OptTrendFittingFunction.ARGS_VERBOSE) ? true : false;
 
 		double[] bestResidue_by_runnable;
-		bestResidue_by_runnable = new double[cMap.length * NUM_SIM_PER_MAP];
+		bestResidue_by_runnable = new double[cMapArr.length * NUM_SIM_PER_MAP];
 		Arrays.fill(bestResidue_by_runnable, Double.NaN);
 
 		// From args
@@ -888,8 +897,12 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 		String popType = (String) prop.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
-		boolean isMultiTrans = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()
-				|| Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType).matches();
+		int multipTrans_index = -1;
+		for (int i = 0; i < pattern_multi_trans.length || multipTrans_index < 0; i++) {
+			if (pattern_multi_trans[i].matcher(popType).matches()) {
+				multipTrans_index = i;
+			}
+		}
 
 		HashMap<String, ArrayList<String[]>> seedListParameter = new HashMap<>();
 		File seedFile = (File) args.get(OptTrendFittingFunction.ARGS_SEEDLIST);
@@ -916,7 +929,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 		}
 
-		for (ContactMap c : cMap) {
+		for (ContactMap cMap : cMapArr) {
 			for (int r = 0; r < NUM_SIM_PER_MAP; r++) {
 				long sim_seed = sim_seeds[r];
 				if (result_lookup != null) {
@@ -941,29 +954,38 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 								Arrays.toString(point));
 					}
 
-					if (isMultiTrans) {
-						Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
-						if (m.matches()) {
+					if (multipTrans_index >= 0) {
+						switch (multipTrans_index) {
+						case pattern_multi_trans_index_viability:
+							runnable[rId] = new Runnable_ClusterModel_Viability(cMap_seed[cMap_id], sim_seed, cMap, prop) {
+								@Override
+								protected void postSimulation() {
+									// Do nothing
+								}
+							};
+							break;
+						case pattern_multi_trans_index_Bali:
+							runnable[rId] = new Runnable_ClusterModel_Bali(cMap_seed[cMap_id], sim_seed,
+									POP_COMPOSITION, cMap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP) {
+								@Override
+								protected void postSimulation() {
+									// Do nothing
+								}						};
+							break;
+						case pattern_multi_trans_index_base:
+						default:
+							Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
 							runnable[rId] = new Runnable_ClusterModel_MultiTransmission(cMap_seed[cMap_id], sim_seed,
-									POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP, Integer.parseInt(m.group(1)),
+									POP_COMPOSITION, cMap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP, Integer.parseInt(m.group(1)),
 									Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3))) {
 								@Override
 								protected void postSimulation() {
 									// Do nothing
 								}
 							};
-						} else {
-							m = Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType);
-							if (m.matches()) {
-								runnable[rId] = new Runnable_ClusterModel_Viability(cMap_seed[cMap_id], sim_seed, c,
-										prop) {
-									@Override
-									protected void postSimulation() {
-										// Do nothing
-									}
-								};
-							}
+
 						}
+
 						if (runnable[rId] == null) {
 							System.err.printf("Error: Null runnable for Optimisation of PROP_POP_TYPE of %s\n.",
 									popType);
@@ -972,7 +994,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 
 					} else {
 						runnable[rId] = new Runnable_ClusterModel_Transmission(cMap_seed[cMap_id], sim_seed,
-								POP_COMPOSITION, c, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
+								POP_COMPOSITION, cMap, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
 					}
 
 					runnable[rId].setBaseDir(baseDir);
@@ -989,7 +1011,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 					}
 
 					runnable[rId].setSimSetting(simSetting);
-					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, SEED_INFECTION, c == null);
+					Optimisation_Factory.setOptParamInRunnable(runnable[rId], prop, point, SEED_INFECTION, cMap == null);
 
 					ArrayList<String[]> seedListParam = seedListParameter
 							.get(String.format("%d,%d", cMap_seed[cMap_id], sim_seed));
@@ -1001,7 +1023,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 						for (int i = 0; i < param_val.length; i++) {
 							param_val[i] = Double.parseDouble(param_val_str[i]);
 						}
-						runnable[rId].loadOptParameter(param_def, param_val, SEED_INFECTION, c==null);
+						runnable[rId].loadOptParameter(param_def, param_val, SEED_INFECTION, cMap == null);
 					}
 
 					runnable[rId].initialse();
@@ -1071,7 +1093,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 			}
 		}
 
-		if (isMultiTrans) {
+		if (multipTrans_index >= 0) {
 			// Set up fitting target
 			int num_target_trend = target_trend_collection.size();
 			String[] trend_target_key = target_trend_collection.keySet().toArray(new String[num_target_trend]);
@@ -1165,7 +1187,7 @@ public class OptTrendFittingFunction extends OptFittingFunction {
 									}
 
 									if (weight[trend_target_pt] < 0) {
-										if (i >0 && countMap.containsKey((sim_time[i - 1]))) {
+										if (i > 0 && countMap.containsKey((sim_time[i - 1]))) {
 											offset += countMap.get(sim_time[i - 1])[Math.abs(col_number)];
 										} else {
 											offset = Double.NaN;

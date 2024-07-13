@@ -376,7 +376,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						dist_stage_period[inf_id][site] = Arrays.copyOf(dist_stage_period[inf_id][site],
 								stage_id_to + 1);
 					}
-					if (param.length == 1) {
+					if (param.length == 1 || Double.isNaN(param[1])) {
 						dist_stage_period[inf_id][site][stage_id_to] = generateNonDistribution(stage_dist, param);
 					} else {
 						if (param[1] < 0) {
