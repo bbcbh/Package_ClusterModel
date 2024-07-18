@@ -34,8 +34,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	private static final int UPTAKE_DX_STI = UPTAKE_DX_TP + 1;
 	private static final int UPTAKE_PARTNERS = UPTAKE_DX_STI + 1;
 	private static final int UPTAKE_PARTNERS_LIMIT = UPTAKE_PARTNERS + 1;
-	private static final int UPTAKE_EXCL_PERIOD_UPTAKE = UPTAKE_PARTNERS_LIMIT + 1;
-	private static final int UPTAKE_EXCL_PERIOD_NON_UPTAKE = UPTAKE_EXCL_PERIOD_UPTAKE + 1;
+	private static final int UPTAKE_RATE_INDIVDUAL_ADJ_UPTAKE = UPTAKE_PARTNERS_LIMIT + 1;
+	private static final int UPTAKE_RATE_INDIVDUAL_ADJ_NON_UPTAKE = UPTAKE_RATE_INDIVDUAL_ADJ_UPTAKE + 1;
 
 	protected RandomGenerator rng_PEP;
 	protected double[] prophylaxis_persistence_adherence;
@@ -43,8 +43,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	protected HashMap<Integer, int[]> dx_last_12_months;
 	protected HashMap<Integer, int[][]> sexual_contact_last_12_months;
 
-	protected HashMap<Integer, Integer> pep_uptake_exculsive_period;
-	private RealDistribution[] dist_exculsive_period = new RealDistribution[2];
+	protected HashMap<Integer, Float> pep_uptake_individual_rate_adj;
 
 	public static final String PROP_PEP_PERSISTENCE_ADHERENCE = "PROP_PEP_PERSISTENCE_ADHERENCE";
 	public static final String PROP_PEP_UPTAKE = "PROP_PEP_UPTAKE";
@@ -73,7 +72,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		rng_PEP = new MersenneTwisterRandomGenerator(sim_seed);
 		dx_last_12_months = new HashMap<>();
 		sexual_contact_last_12_months = new HashMap<>();
-		pep_uptake_exculsive_period = new HashMap<>();
+		pep_uptake_individual_rate_adj = new HashMap<>();
 
 		double[] persistence = Arrays.copyOf(prophylaxis_persistence_adherence, 2);
 
@@ -153,94 +152,88 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			boolean allocatePEP = false;
 			boolean offeredPEP = false;
 
-			if (!pep_uptake_exculsive_period.containsKey(pid) || pep_uptake_exculsive_period.get(pid) < currentTime) {
+			float individual_uptake_rate_adj = 1;
 
-				// Risk group based PEP
-				if (!allocatePEP && prophylaxis_uptake[UPTAKE_HIV_PrEP] > 0) {
-					if (!allocatePEP && risk_cat_map.get(pid).intValue() == 0
-							|| risk_cat_map.get(pid).intValue() == 1) {
-						offeredPEP |= true;
-						allocatePEP |= prophylaxis_uptake[UPTAKE_HIV_PrEP] >= 1
-								|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_HIV_PrEP];
-					}
-				}
-
-				// Treatment rate based PEP
-				if (!allocatePEP && (prophylaxis_uptake[UPTAKE_DX_TP] > 0 || prophylaxis_uptake[UPTAKE_DX_STI] > 0)) {
-					int[] dx_hist = dx_last_12_months.get(pid);
-					if (dx_hist != null) {
-						int current_dx = dx_hist[currentTime % dx_hist.length];
-						if (current_dx != 0) { // Has a positive dx today
-							// Has TP DX
-							if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_TP] > 0 && ((current_dx & 1) != 0)) {
-								offeredPEP |= true;
-								allocatePEP |= prophylaxis_uptake[UPTAKE_DX_TP] >= 1
-										|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_DX_TP];
-							}
-							// Check for STI DX
-							if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_STI] > 0) {
-								int num_dx_12_month_any = 0;
-								for (int i = 0; i < dx_hist.length && !(num_dx_12_month_any > PEP_AVAIL_ANY_STI); i++) {
-									if (dx_hist[i] != 0) {
-										num_dx_12_month_any++;
-									}
-								}
-								if (num_dx_12_month_any > PEP_AVAIL_ANY_STI) {
-									offeredPEP |= true;
-									allocatePEP |= prophylaxis_uptake[UPTAKE_DX_STI] >= 1
-											|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_DX_STI];
-								}
-							}
-						}
-					}
-				} // End of treatment based PEP
-
-				// Partner based PEP
-				if (!allocatePEP && prophylaxis_uptake[UPTAKE_PARTNERS] > 0) {
-					int[][] partner_hist = sexual_contact_last_12_months.get(pid);
-					if (partner_hist != null) {
-						ArrayList<Integer> partnerList = new ArrayList<>();
-						for (int i = 0; i < partner_hist.length; i++) {
-							if (partner_hist[i] != null) {
-								for (Integer part : partner_hist[i]) {
-									int pt = Collections.binarySearch(partnerList, part);
-									if (pt < 0) {
-										partnerList.add(~pt, part);
-									}
-								}
-							}
-						}
-						if (partnerList.size() > prophylaxis_uptake[UPTAKE_PARTNERS_LIMIT]) {
-							offeredPEP |= true;
-							allocatePEP |= prophylaxis_uptake[UPTAKE_PARTNERS] >= 1
-									|| rng_PEP.nextFloat() < prophylaxis_uptake[UPTAKE_PARTNERS];
-						}
-					}
-				}
-
-				if (allocatePEP) {
-					allocateProphylaxis(currentTime, pid);
-					if (prophylaxis_uptake[UPTAKE_EXCL_PERIOD_UPTAKE] > 0) {						
-						if(dist_exculsive_period[0] == null) {
-							double[] param = new double[2];
-							Arrays.fill(param, prophylaxis_uptake[UPTAKE_EXCL_PERIOD_UPTAKE]);							
-							dist_exculsive_period[0] = generateGammaDistribution(rng_PEP, param);
-						}
-						pep_uptake_exculsive_period.put(pid,  (int) Math.round( currentTime + dist_exculsive_period[0].sample()));												
-					}
-				} else {
-					if (offeredPEP && prophylaxis_uptake[UPTAKE_EXCL_PERIOD_NON_UPTAKE] > 0) {
-						if(dist_exculsive_period[1] == null) {
-							double[] param = new double[2];
-							Arrays.fill(param, prophylaxis_uptake[UPTAKE_EXCL_PERIOD_NON_UPTAKE]);							
-							dist_exculsive_period[1] = generateGammaDistribution(rng_PEP, param);
-						}
-						pep_uptake_exculsive_period.put(pid, (int) Math.round( currentTime + dist_exculsive_period[1].sample()));	
-
-					}
-				}
-
+			if (pep_uptake_individual_rate_adj.containsKey(pid)) {
+				individual_uptake_rate_adj = pep_uptake_individual_rate_adj.get(pid);
 			}
+
+			// Risk group based PEP
+			if (!allocatePEP && prophylaxis_uptake[UPTAKE_HIV_PrEP] > 0) {
+				if (!allocatePEP && risk_cat_map.get(pid).intValue() == 0 || risk_cat_map.get(pid).intValue() == 1) {
+					offeredPEP |= true;
+					allocatePEP |= prophylaxis_uptake[UPTAKE_HIV_PrEP] >= 1
+							|| rng_PEP.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_HIV_PrEP];
+				}
+			}
+
+			// Treatment rate based PEP
+			if (!allocatePEP && (prophylaxis_uptake[UPTAKE_DX_TP] > 0 || prophylaxis_uptake[UPTAKE_DX_STI] > 0)) {
+				int[] dx_hist = dx_last_12_months.get(pid);
+				if (dx_hist != null) {
+					int current_dx = dx_hist[currentTime % dx_hist.length];
+					if (current_dx != 0) { // Has a positive dx today
+						// Has TP DX
+						if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_TP] > 0 && ((current_dx & 1) != 0)) {
+							offeredPEP |= true;
+							allocatePEP |= prophylaxis_uptake[UPTAKE_DX_TP] >= 1 || rng_PEP
+									.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_DX_TP];
+						}
+						// Check for STI DX
+						if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_STI] > 0) {
+							int num_dx_12_month_any = 0;
+							for (int i = 0; i < dx_hist.length && !(num_dx_12_month_any > PEP_AVAIL_ANY_STI); i++) {
+								if (dx_hist[i] != 0) {
+									num_dx_12_month_any++;
+								}
+							}
+							if (num_dx_12_month_any > PEP_AVAIL_ANY_STI) {
+								offeredPEP |= true;
+								allocatePEP |= prophylaxis_uptake[UPTAKE_DX_STI] >= 1 || rng_PEP
+										.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_DX_STI];
+							}
+						}
+					}
+				}
+			} // End of treatment based PEP
+
+			// Partner based PEP
+			if (!allocatePEP && prophylaxis_uptake[UPTAKE_PARTNERS] > 0) {
+				int[][] partner_hist = sexual_contact_last_12_months.get(pid);
+				if (partner_hist != null) {
+					ArrayList<Integer> partnerList = new ArrayList<>();
+					for (int i = 0; i < partner_hist.length; i++) {
+						if (partner_hist[i] != null) {
+							for (Integer part : partner_hist[i]) {
+								int pt = Collections.binarySearch(partnerList, part);
+								if (pt < 0) {
+									partnerList.add(~pt, part);
+								}
+							}
+						}
+					}
+					if (partnerList.size() > prophylaxis_uptake[UPTAKE_PARTNERS_LIMIT]) {
+						offeredPEP |= true;
+						allocatePEP |= prophylaxis_uptake[UPTAKE_PARTNERS] >= 1 || rng_PEP
+								.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_PARTNERS];
+					}
+				}
+			}
+
+			if (allocatePEP) {
+				allocateProphylaxis(currentTime, pid);
+				if (prophylaxis_uptake[UPTAKE_RATE_INDIVDUAL_ADJ_UPTAKE] > 0) {
+					pep_uptake_individual_rate_adj.put(pid,
+							individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_RATE_INDIVDUAL_ADJ_UPTAKE]);
+				}
+			} else {
+				if (offeredPEP && prophylaxis_uptake[UPTAKE_RATE_INDIVDUAL_ADJ_NON_UPTAKE] > 0) {
+					pep_uptake_individual_rate_adj.put(pid,
+							individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_RATE_INDIVDUAL_ADJ_NON_UPTAKE]);
+
+				}
+			}
+
 		}
 
 	}
