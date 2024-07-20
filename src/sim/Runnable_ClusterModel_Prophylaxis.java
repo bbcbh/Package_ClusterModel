@@ -153,6 +153,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			boolean offeredPEP = false;
 
 			float individual_uptake_rate_adj = 1;
+			float pAlloc;
 
 			if (pep_uptake_individual_rate_adj.containsKey(pid)) {
 				individual_uptake_rate_adj = pep_uptake_individual_rate_adj.get(pid);
@@ -161,9 +162,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			// Risk group based PEP
 			if (!allocatePEP && prophylaxis_uptake[UPTAKE_HIV_PrEP] > 0) {
 				if (!allocatePEP && risk_cat_map.get(pid).intValue() == 0 || risk_cat_map.get(pid).intValue() == 1) {
+					pAlloc = individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_HIV_PrEP];
 					offeredPEP |= true;
-					allocatePEP |= prophylaxis_uptake[UPTAKE_HIV_PrEP] >= 1
-							|| rng_PEP.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_HIV_PrEP];
+					allocatePEP |= pAlloc >= 1 || rng_PEP.nextFloat() < pAlloc;
 				}
 			}
 
@@ -175,9 +176,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 					if (current_dx != 0) { // Has a positive dx today
 						// Has TP DX
 						if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_TP] > 0 && ((current_dx & 1) != 0)) {
+							pAlloc = individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_DX_TP];
 							offeredPEP |= true;
-							allocatePEP |= prophylaxis_uptake[UPTAKE_DX_TP] >= 1 || rng_PEP
-									.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_DX_TP];
+							allocatePEP |= pAlloc >= 1 || rng_PEP.nextFloat() < pAlloc;
 						}
 						// Check for STI DX
 						if (!allocatePEP && prophylaxis_uptake[UPTAKE_DX_STI] > 0) {
@@ -188,9 +189,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 								}
 							}
 							if (num_dx_12_month_any > PEP_AVAIL_ANY_STI) {
+								pAlloc = individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_DX_STI];
 								offeredPEP |= true;
-								allocatePEP |= prophylaxis_uptake[UPTAKE_DX_STI] >= 1 || rng_PEP
-										.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_DX_STI];
+								allocatePEP |= pAlloc >= 1 || rng_PEP.nextFloat() < pAlloc;
 							}
 						}
 					}
@@ -213,9 +214,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 						}
 					}
 					if (partnerList.size() > prophylaxis_uptake[UPTAKE_PARTNERS_LIMIT]) {
+						pAlloc = individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_PARTNERS];
 						offeredPEP |= true;
-						allocatePEP |= prophylaxis_uptake[UPTAKE_PARTNERS] >= 1 || rng_PEP
-								.nextFloat() < individual_uptake_rate_adj * prophylaxis_uptake[UPTAKE_PARTNERS];
+						allocatePEP |= pAlloc >= 1 || rng_PEP.nextFloat() < pAlloc;
 					}
 				}
 			}
