@@ -503,11 +503,17 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		sim_output = new HashMap<>();
 
-		risk_cat_map = new HashMap<>();
-		test_rate_index_map = new HashMap<>();
+		if (risk_cat_map == null) {
+			risk_cat_map = new HashMap<>();
+		}
 
-		propSwitch_map = new HashMap<>();
+		if (test_rate_index_map == null) {
+			test_rate_index_map = new HashMap<>();
+		}
 
+		if (propSwitch_map == null) {
+			propSwitch_map = new HashMap<>();
+		}
 	}
 
 	@Override
@@ -723,8 +729,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 														} else {
 															for (int siteId = 0; siteId < NUM_SITE
 																	&& newInfection; siteId++) {
-																newInfection &= isValidInfectionTargetSite(inf_id, siteId, tar_infection_stages);
-																		//tar_infection_stages[inf_id][siteId] == AbstractIndividualInterface.INFECT_S;
+																newInfection &= isValidInfectionTargetSite(inf_id,
+																		siteId, tar_infection_stages);
+																// tar_infection_stages[inf_id][siteId] ==
+																// AbstractIndividualInterface.INFECT_S;
 															}
 														}
 														if (newInfection) {
@@ -743,9 +751,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 														updateInfectStageChangeSchedule(pid_inf_tar, inf_id, tar_site,
 																currentTime + 1,
 																tar_infection_state_switch[inf_id][tar_site]);
-													}else {
-														simulate_transmission_failed_act(currentTime, inf_id, pid_inf_src,
-																pid_inf_tar, src_site, tar_site);
+													} else {
+														simulate_transmission_failed_act(currentTime, inf_id,
+																pid_inf_src, pid_inf_tar, src_site, tar_site);
 
 													} // End of determining transmission
 												} // End of possible transmission check
@@ -979,10 +987,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	}
 
-	protected void simulate_transmission_failed_act(int currentTime, int inf_id,
-			Integer pid_inf_src, int pid_inf_tar,
+	protected void simulate_transmission_failed_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
 			int src_site, int tar_site) {
-		//  Do nothing by default
+		// Do nothing by default
 
 	}
 
@@ -1425,7 +1432,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						counter++;
 					}
 
-					if (print_progress != null) {
+					if (print_progress != null && num_inf_added > 0) {
 						print_progress.printf("Time = %d. Inf #%d candidate = %d. # added = %d.\n", time, inf_id,
 								candidate.size(), num_inf_added);
 					}
@@ -1713,7 +1720,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	@Override
 	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
-			boolean display_only){
+			boolean display_only) {
 		ArrayList<Integer> field_to_update = new ArrayList<>();
 		for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 			String param_setting = parameter_settings[param_arr_index];
@@ -1726,7 +1733,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				Object val = getRunnable_fields()[field_id];
 				if (val != null) {
 					int setting_level = 1;
-					Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
+					Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr,
+							setting_level);
 				}
 
 				int pt = Collections.binarySearch(field_to_update, field_id);

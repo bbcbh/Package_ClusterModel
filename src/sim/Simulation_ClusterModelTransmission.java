@@ -31,6 +31,10 @@ import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
 import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.math3.distribution.IntegerDistribution;
+import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.apache.commons.math3.exception.NumberIsTooLargeException;
+import org.apache.commons.math3.exception.OutOfRangeException;
 
 import optimisation.OptTrendFittingFunction;
 import optimisation.Optimisation_Factory;
@@ -123,6 +127,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
 	public static final String POP_PROP_SWITCH_PREFIX = "SWITCH_%d_";
 	public static final String POP_PROP_SWITCH_AT = "PROP_SIM_SWITCH_AT";
+	public static final String POP_PROP_SWITCH_AT_FREQ = "PROP_SIM_SWITCH_AT_FREQ";
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map = new HashMap<>();
 
 	// Sim setting to indicates what type of simulation need to be run.
@@ -320,6 +325,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		int[] switchTime = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT),
 				int[].class);
 
+		float[] switchTime_Freq = null;
+		if (prop_switch.containsKey(POP_PROP_SWITCH_AT_FREQ)) {
+			switchTime_Freq = (float[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT_FREQ),
+					float[].class);
+		}
+
 		int num_snap = 1;
 		int num_time_steps_per_snap = 1;
 
@@ -333,27 +344,140 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		int maxTime = num_snap * num_time_steps_per_snap;
+		
+		RandomGenerator rng = null;
+		
+		if (prop_switch.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
+			long baseSeed = Long.parseLong(prop_switch
+					.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));			
+			rng = new MersenneTwisterRandomGenerator(baseSeed);
+		}
+		
 
 		HashMap<Integer, String> ent = null;
 		for (int sI = 0; sI < switchTime.length; sI++) {
 			int sTime = switchTime[sI];
 
-			if (sTime > 0) {
+			if (sTime > 0) {				
 				String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
-
-				for (Object key : prop_switch.keySet()) {
-					String keyStr = key.toString();
-					if (keyStr.startsWith(switch_prefix)) {
-						Integer runnableKey = Integer
-								.parseInt(keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
-						ent = propSwitch_map.get(sTime);
-						if (ent == null) {
-							ent = new HashMap<>();
-							propSwitch_map.put(sTime, ent);
+				
+				if (switchTime_Freq == null || switchTime_Freq[sI] <= 0) {
+					
+					for (Object key : prop_switch.keySet()) {
+						String keyStr = key.toString();
+						if (keyStr.startsWith(switch_prefix)) {
+							Integer runnableKey = Integer
+									.parseInt(keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
+							ent = propSwitch_map.get(sTime);
+							if (ent == null) {
+								ent = new HashMap<>();
+								propSwitch_map.put(sTime, ent);
+							}
+							ent.put(runnableKey, prop_switch.getProperty(keyStr));
 						}
-						ent.put(runnableKey, prop_switch.getProperty(keyStr));
 					}
+				} else {
+					
+					int startTime = sTime;
+					IntegerDistribution timeGapDist;					
+					if(rng != null) {												
+						timeGapDist = new PoissonDistribution(rng, switchTime_Freq[sI],
+								PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);						
+					}else {
+						int val = (int) switchTime_Freq[sI];
+						timeGapDist = new IntegerDistribution() {							
+							@Override
+							public double probability(int x) {								
+								return x == val? 0:1;
+							}
+							
+							@Override
+							public boolean isSupportConnected() {								
+								return false;
+							}
+							
+							@Override
+							public int getSupportUpperBound() {								
+								return 0;
+							}
+							
+							@Override
+							public int getSupportLowerBound() {								
+								return 0;
+							}
+							
+							@Override
+							public double getNumericalVariance() {								
+								return 0;
+							}
+							
+							@Override
+							public double getNumericalMean() {								
+								return val;
+							}
+							
+							@Override
+							public double cumulativeProbability(int x) {								
+								return  x < val? 0:1;
+							}
+
+							@Override
+							public double cumulativeProbability(int x0, int x1) throws NumberIsTooLargeException {																
+								return cumulativeProbability(x1) - cumulativeProbability(x0);
+							}
+
+							@Override
+							public int inverseCumulativeProbability(double p) throws OutOfRangeException {								
+								return 0;
+							}
+
+							@Override
+							public void reseedRandomGenerator(long seed) {						
+								
+							}
+
+							@Override
+							public int sample() {								
+								return val;
+							}
+
+							@Override
+							public int[] sample(int sampleSize) {
+								int[] res = new int[sampleSize];
+								Arrays.fill(res, val);
+								return res;
+							}
+						};
+					}
+					
+					while(startTime < maxTime) {
+						startTime += timeGapDist.sample();						
+						for (Object key : prop_switch.keySet()) {
+							String keyStr = key.toString();
+							if (keyStr.startsWith(switch_prefix)) {
+								Integer runnableKey = Integer
+										.parseInt(keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
+								ent = propSwitch_map.get(startTime);
+								if (ent == null) {
+									ent = new HashMap<>();
+									propSwitch_map.put(startTime, ent);
+								}
+								ent.put(runnableKey, prop_switch.getProperty(keyStr));
+							}
+						}
+						
+						
+						
+					}
+					
+					
+					
+					
+					
+					
+
 				}
+
 			} else if (ent != null) {
 				int entTime = switchTime[sI - 1] + -sTime;
 				while (entTime < maxTime + -sTime) {
@@ -781,11 +905,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				if (popType == null) {
 					popType = ""; // Default
 				}
-				if(Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+				if (Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					runnable[s] = new Runnable_ClusterModel_Viability(baseContactMapSeed, seed,
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
 
-				}else if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+				} else if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
 					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
 							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
 				} else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
