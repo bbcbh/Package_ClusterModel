@@ -128,6 +128,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String POP_PROP_SWITCH_PREFIX = "SWITCH_%d_";
 	public static final String POP_PROP_SWITCH_AT = "PROP_SIM_SWITCH_AT";
 	public static final String POP_PROP_SWITCH_AT_FREQ = "PROP_SIM_SWITCH_AT_FREQ";
+	public static final String POP_PROP_SWITCH_AT_FREQ_END = "POP_PROP_SWITCH_AT_FREQ_END"; 
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map = new HashMap<>();
 
 	// Sim setting to indicates what type of simulation need to be run.
@@ -326,10 +327,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				int[].class);
 
 		float[] switchTime_Freq = null;
+		int[] switchTime_Freq_End = null;
 		if (prop_switch.containsKey(POP_PROP_SWITCH_AT_FREQ)) {
 			switchTime_Freq = (float[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT_FREQ),
 					float[].class);
 		}
+		if(prop_switch.containsKey(POP_PROP_SWITCH_AT_FREQ_END)) {
+			switchTime_Freq_End = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT_FREQ_END), 
+					int[].class);
+		}
+		
+		
 
 		int num_snap = 1;
 		int num_time_steps_per_snap = 1;
@@ -450,7 +458,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						};
 					}
 					
-					while(startTime < maxTime) {
+					int freq_end = maxTime;
+					
+					if(switchTime_Freq_End != null && sI < switchTime_Freq_End.length) {
+						freq_end = switchTime_Freq_End[sI];
+					}
+					
+					while(startTime < freq_end) {
 						startTime += timeGapDist.sample();						
 						for (Object key : prop_switch.keySet()) {
 							String keyStr = key.toString();
