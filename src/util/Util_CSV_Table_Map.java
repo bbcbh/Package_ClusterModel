@@ -20,10 +20,9 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 	private String[] header;
 	private ArrayList<Integer> time_pt;
 	boolean isCumulative = false;
-	
-	
+
 	public Util_CSV_Table_Map(String[] headerRow) {
-		this(concatStr(headerRow));		
+		this(concatStr(headerRow));
 	}
 
 	public Util_CSV_Table_Map(String headerRow) {
@@ -60,10 +59,10 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 		}
 
 	}
-	
+
 	public void addRow(String[] csv_line_sp) {
 		addRow(concatStr(csv_line_sp));
-	}	
+	}
 
 	public void addRow(String csv_line) {
 		String[] entry = csv_line.split(",");
@@ -89,6 +88,8 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 		Percentile per = new Percentile();
 		str.append("Time, N, Mean, Median, Q1, Q3\n");
 
+		boolean hasData = false;
+
 		double[] pre_row = null;
 		for (Integer time : time_pt) {
 			String map_key = String.format("%d,%d", time, colNum);
@@ -98,8 +99,9 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 				int p = 0;
 				for (Double d : map_values) {
 					val[p] = d.doubleValue();
+					hasData |= val[p] != 0;					
 					p++;
-				}
+				}																	
 				if (!isCumulative) {
 					per.setData(val);
 				} else {
@@ -111,7 +113,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 							double currentVal = val[i];
 							val[i] = val[i] - pre_row[i];
 							pre_row[i] = currentVal;
-						}
+						}																						
 						per.setData(val);
 					}
 				}
@@ -137,11 +139,14 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 			}
 		}
 
-		return str.toString();
+		if (hasData) {
+			return str.toString();
+		} else {
+			return null;
+		}
 	}
 
-	public void printSummaryFile(String summaryFileFormat, File baseDir)
-			throws FileNotFoundException {
+	public void printSummaryFile(String summaryFileFormat, File baseDir) throws FileNotFoundException {
 		String dirName = summaryFileFormat;
 		int subIndex = summaryFileFormat.indexOf("_%s");
 		if (subIndex > 0) {
@@ -149,21 +154,23 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 		}
 		File resultsDir = new File(baseDir, dirName);
 		resultsDir.mkdirs();
-	
+
 		String[] headers = getHeader();
 		for (int s = 1; s < headers.length; s++) {
 			String summary = displayStat(s);
-			File summaryFile = new File(resultsDir, String.format(summaryFileFormat, headers[s]));
-			PrintWriter pWri = new PrintWriter(summaryFile);
-			pWri.println(summary);
-			pWri.close();
+			if (summary != null) {
+				File summaryFile = new File(resultsDir, String.format(summaryFileFormat, headers[s]));
+				PrintWriter pWri = new PrintWriter(summaryFile);
+				pWri.println(summary);
+				pWri.close();
+			}
 		}
 	}
 
 	private static String concatStr(String[] splitedStr) {
 		StringBuilder res = new StringBuilder();
 		for (String hE : splitedStr) {
-			if (res.length()>0) {
+			if (res.length() > 0) {
 				res.append(',');
 			}
 			res.append(hE);
@@ -195,7 +202,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 						infection_history_count_map.put(key, history_map_count_ent);
 					}
 
-					ArrayList<Long> history_map_dur_map_ent = infection_history_duration_map.get(key);					
+					ArrayList<Long> history_map_dur_map_ent = infection_history_duration_map.get(key);
 					if (history_map_dur_map_ent == null) {
 						history_map_dur_map_ent = new ArrayList<>();
 						infection_history_duration_map.put(key, history_map_dur_map_ent);
@@ -203,14 +210,15 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 						history_map_dur_map_ent.add(0l);
 						history_map_dur_map_ent.add(0l);
 					}
-					
-					ArrayList<Long> history_map_dur_map_treatment_ent = infection_history_duration_map.get(key_treatment);					
+
+					ArrayList<Long> history_map_dur_map_treatment_ent = infection_history_duration_map
+							.get(key_treatment);
 					if (history_map_dur_map_treatment_ent == null) {
 						history_map_dur_map_treatment_ent = new ArrayList<>();
 						infection_history_duration_map.put(key_treatment, history_map_dur_map_treatment_ent);
 						history_map_dur_map_treatment_ent.add(0l);
 						history_map_dur_map_treatment_ent.add(0l);
-					}									
+					}
 
 					ArrayList<Integer> history_map_interval_map_ent = inf_history_interval_map.get(key);
 					if (history_map_interval_map_ent == null) {
@@ -231,16 +239,18 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 								history_map_dur_map_ent.set(0, history_map_dur_map_ent.get(0) + 1);
 								history_map_dur_map_ent.set(1, history_map_dur_map_ent.get(1) + dur);
 								history_map_dur_map_ent.add((long) dur);
-								
-								if(Integer.parseInt(entries[i + 1]) < 0) {
-									history_map_dur_map_treatment_ent.set(0, history_map_dur_map_treatment_ent.get(0) + 1);
-									history_map_dur_map_treatment_ent.set(1, history_map_dur_map_treatment_ent.get(1) + dur);
+
+								if (Integer.parseInt(entries[i + 1]) < 0) {
+									history_map_dur_map_treatment_ent.set(0,
+											history_map_dur_map_treatment_ent.get(0) + 1);
+									history_map_dur_map_treatment_ent.set(1,
+											history_map_dur_map_treatment_ent.get(1) + dur);
 									history_map_dur_map_treatment_ent.add((long) dur);
 								}
-								
+
 							}
 							if (lastInfectionTimeStamp > 0) {
-								history_map_interval_map_ent.add(inf_start - lastInfectionTimeStamp);								
+								history_map_interval_map_ent.add(inf_start - lastInfectionTimeStamp);
 							}
 							lastInfectionTimeStamp = inf_start;
 						}

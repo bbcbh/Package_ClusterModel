@@ -128,7 +128,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String POP_PROP_SWITCH_PREFIX = "SWITCH_%d_";
 	public static final String POP_PROP_SWITCH_AT = "PROP_SIM_SWITCH_AT";
 	public static final String POP_PROP_SWITCH_AT_FREQ = "PROP_SIM_SWITCH_AT_FREQ";
-	public static final String POP_PROP_SWITCH_AT_FREQ_END = "POP_PROP_SWITCH_AT_FREQ_END"; 
+	public static final String POP_PROP_SWITCH_AT_FREQ_END = "POP_PROP_SWITCH_AT_FREQ_END";
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map = new HashMap<>();
 
 	// Sim setting to indicates what type of simulation need to be run.
@@ -332,12 +332,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			switchTime_Freq = (float[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT_FREQ),
 					float[].class);
 		}
-		if(prop_switch.containsKey(POP_PROP_SWITCH_AT_FREQ_END)) {
-			switchTime_Freq_End = (int[]) PropValUtils.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT_FREQ_END), 
-					int[].class);
+		if (prop_switch.containsKey(POP_PROP_SWITCH_AT_FREQ_END)) {
+			switchTime_Freq_End = (int[]) PropValUtils
+					.propStrToObject(prop_switch.getProperty(POP_PROP_SWITCH_AT_FREQ_END), int[].class);
 		}
-		
-		
 
 		int num_snap = 1;
 		int num_time_steps_per_snap = 1;
@@ -352,25 +350,24 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		int maxTime = num_snap * num_time_steps_per_snap;
-		
+
 		RandomGenerator rng = null;
-		
+
 		if (prop_switch.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED])) {
-			long baseSeed = Long.parseLong(prop_switch
-					.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));			
+			long baseSeed = Long.parseLong(
+					prop_switch.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
 			rng = new MersenneTwisterRandomGenerator(baseSeed);
 		}
-		
 
 		HashMap<Integer, String> ent = null;
 		for (int sI = 0; sI < switchTime.length; sI++) {
 			int sTime = switchTime[sI];
 
-			if (sTime > 0) {				
+			if (sTime > 0) {
 				String switch_prefix = String.format(POP_PROP_SWITCH_PREFIX, sI);
-				
+
 				if (switchTime_Freq == null || switchTime_Freq[sI] <= 0) {
-					
+
 					for (Object key : prop_switch.keySet()) {
 						String keyStr = key.toString();
 						if (keyStr.startsWith(switch_prefix)) {
@@ -385,67 +382,67 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						}
 					}
 				} else {
-					
+
 					int startTime = sTime;
-					IntegerDistribution timeGapDist;					
-					if(rng != null) {												
+					IntegerDistribution timeGapDist;
+					if (rng != null) {
 						timeGapDist = new PoissonDistribution(rng, switchTime_Freq[sI],
-								PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);						
-					}else {
+								PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
+					} else {
 						int val = (int) switchTime_Freq[sI];
-						timeGapDist = new IntegerDistribution() {							
+						timeGapDist = new IntegerDistribution() {
 							@Override
-							public double probability(int x) {								
-								return x == val? 0:1;
-							}
-							
-							@Override
-							public boolean isSupportConnected() {								
-								return false;
-							}
-							
-							@Override
-							public int getSupportUpperBound() {								
-								return 0;
-							}
-							
-							@Override
-							public int getSupportLowerBound() {								
-								return 0;
-							}
-							
-							@Override
-							public double getNumericalVariance() {								
-								return 0;
-							}
-							
-							@Override
-							public double getNumericalMean() {								
-								return val;
-							}
-							
-							@Override
-							public double cumulativeProbability(int x) {								
-								return  x < val? 0:1;
+							public double probability(int x) {
+								return x == val ? 0 : 1;
 							}
 
 							@Override
-							public double cumulativeProbability(int x0, int x1) throws NumberIsTooLargeException {																
+							public boolean isSupportConnected() {
+								return false;
+							}
+
+							@Override
+							public int getSupportUpperBound() {
+								return 0;
+							}
+
+							@Override
+							public int getSupportLowerBound() {
+								return 0;
+							}
+
+							@Override
+							public double getNumericalVariance() {
+								return 0;
+							}
+
+							@Override
+							public double getNumericalMean() {
+								return val;
+							}
+
+							@Override
+							public double cumulativeProbability(int x) {
+								return x < val ? 0 : 1;
+							}
+
+							@Override
+							public double cumulativeProbability(int x0, int x1) throws NumberIsTooLargeException {
 								return cumulativeProbability(x1) - cumulativeProbability(x0);
 							}
 
 							@Override
-							public int inverseCumulativeProbability(double p) throws OutOfRangeException {								
+							public int inverseCumulativeProbability(double p) throws OutOfRangeException {
 								return 0;
 							}
 
 							@Override
-							public void reseedRandomGenerator(long seed) {						
-								
+							public void reseedRandomGenerator(long seed) {
+
 							}
 
 							@Override
-							public int sample() {								
+							public int sample() {
 								return val;
 							}
 
@@ -457,20 +454,20 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							}
 						};
 					}
-					
+
 					int freq_end = maxTime;
-					
-					if(switchTime_Freq_End != null && sI < switchTime_Freq_End.length) {
+
+					if (switchTime_Freq_End != null && sI < switchTime_Freq_End.length) {
 						freq_end = switchTime_Freq_End[sI];
 					}
-					
-					while(startTime < freq_end) {
-						startTime += timeGapDist.sample();						
+
+					while (startTime < freq_end) {
+						startTime += timeGapDist.sample();
 						for (Object key : prop_switch.keySet()) {
 							String keyStr = key.toString();
 							if (keyStr.startsWith(switch_prefix)) {
-								Integer runnableKey = Integer
-										.parseInt(keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
+								Integer runnableKey = Integer.parseInt(
+										keyStr.substring(switch_prefix.length() + POP_PROP_INIT_PREFIX.length()));
 								ent = propSwitch_map.get(startTime);
 								if (ent == null) {
 									ent = new HashMap<>();
@@ -479,16 +476,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 								ent.put(runnableKey, prop_switch.getProperty(keyStr));
 							}
 						}
-						
-						
-						
+
 					}
-					
-					
-					
-					
-					
-					
 
 				}
 
