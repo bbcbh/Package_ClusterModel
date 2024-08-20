@@ -47,9 +47,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 	public static final String PROP_PEP_PERSISTENCE_ADHERENCE = "PROP_PEP_PERSISTENCE_ADHERENCE";
 	public static final String PROP_PEP_UPTAKE = "PROP_PEP_UPTAKE";
-	
-	
-	
+
 	protected static final int PEP_AVAIL_ANY_STI = 1; // More than once (including current)
 
 	// FILENAME_PREVALENCE_PERSON, FILENAME_CUMUL_INCIDENCE_PERSON
@@ -65,7 +63,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	private static final String SIM_OUTPUT_KEY_PEP_COVERAGE = "SIM_OUTPUT_PEP_COVERAGE";
 	// ent: Ever PEP, Currently on PEP, # script offered
 	protected int count_PEP_OFFERED = 0;
-	
+	protected int count_PEP_USED = 0;
 
 	public Runnable_ClusterModel_Prophylaxis(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop) {
 		super(cMap_seed, sim_seed, base_cMap, prop, num_inf, num_site, num_act);
@@ -138,6 +136,25 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 							contact_hist[recIndec] = Arrays.copyOf(contact_hist[recIndec],
 									contact_hist[recIndec].length + 1);
 							contact_hist[recIndec][contact_hist[recIndec].length - 1] = partnerId;
+						}
+
+						for (int pId : partners) {
+							int[] prop_rec = prophylaxis_record.get(pId);
+							if (prop_rec != null) {
+								if (Math.abs(prop_rec[PROPHYLAXIS_REC_LAST_USE_AT]) != currentTime) { // if time < 0,
+																										// then PrEP is
+																										// not used
+									double adherence = prophylaxis_persistence_adherence[prophylaxis_persistence_adherence.length
+											- 1];
+									prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = (adherence >= 1
+											|| rng_PEP.nextDouble() < adherence) ? currentTime : -currentTime;
+
+									if (prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] == currentTime) {
+										count_PEP_USED++;
+									}
+								}
+
+							}
 						}
 
 					}
@@ -283,8 +300,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 				pep_coverage = new HashMap<>();
 				sim_output.put(SIM_OUTPUT_KEY_PEP_COVERAGE, pep_coverage);
 			}
-			int[] stat = new int[3]; // Ever PEP, Currently on PEP, # script offered
-			stat[0] = prophylaxis_record.size();			
+			int[] stat = new int[4]; // Ever PEP, Currently on PEP, # script offered, PEP used
+			stat[0] = prophylaxis_record.size();
 			for (int pid : prophylaxis_record.keySet()) {
 				int[] prop_rec = prophylaxis_record.get(pid);
 				if (prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] > currentTime) {
@@ -293,6 +310,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 			}
 			stat[2] = count_PEP_OFFERED;
+			stat[3] = count_PEP_USED;
 			pep_coverage.put(currentTime, stat);
 
 		}
@@ -310,7 +328,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = 0;
 		prop_rec[PROPHYLAXIS_REC_DOSAGE] = Integer.MAX_VALUE; // Infinite in this model
 		prop_rec[PROPHYLAXIS_REC_PROTECT_UNTIL] = currentTime + (int) Math.round(persistenceDist.sample());
-		
+
 		count_PEP_OFFERED++;
 	}
 
@@ -324,6 +342,10 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 				prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = (adherence >= 1 || rng_PEP.nextDouble() < adherence)
 						? currentTime
 						: -currentTime;
+
+				if (prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] == currentTime) {
+					count_PEP_USED++;
+				}
 			}
 		}
 
