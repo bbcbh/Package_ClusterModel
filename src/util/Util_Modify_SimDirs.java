@@ -344,7 +344,8 @@ public class Util_Modify_SimDirs {
 				Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP.replaceAll("%d",
 						"(-{0,1}\\\\d+)"), },
 				new String[] { "Seed_List.csv.zip", "Seed_List(_\\d+).csv", },
-				new String[] { "simSpecificSwitch.prop.zip", "simSpecificSwitch(_\\d+).prop",}
+				new String[] { "simSpecificSwitch.prop.zip", "simSpecificSwitch(_\\d+).prop",},	
+				new String[] { "dx_Bali.prop.zip", "dx_Bali(_\\d+).prop",},
 		};
 
 		Arrays.sort(ignoreAttr);
