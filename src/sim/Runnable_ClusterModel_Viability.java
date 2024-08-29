@@ -76,17 +76,25 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 
 		defaultStr = Arrays.deepToString(new float[num_inf][num_site][num_site]);
 		prob_non_viabile_from_transmission = (float[][][]) PropValUtils
-				.propStrToObject(prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT, defaultStr), float[][][].class);
+				.propStrToObject(prop.getProperty(PROP_PROB_NON_VIABLE_TRANSMISSION, defaultStr), float[][][].class);
 		defaultStr = Arrays.deepToString(new float[num_inf][num_site][2]);
 		dur_adj_non_viable_from_transmission = (float[][][]) PropValUtils
-				.propStrToObject(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT, defaultStr), float[][][].class);
+				.propStrToObject(prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TRANSMISSION, defaultStr), float[][][].class);
 
 		for (int i = 0; i < num_inf; i++) {
 			for (int s = 0; s < num_site; s++) {
-				prob_non_viabile_from_treatment[i][s] = 0;
-				dur_adj_non_viable_from_treatment[i][s] = 1;
-				Arrays.fill(prob_non_viabile_from_transmission[i][s], 0);
-				Arrays.fill(dur_adj_non_viable_from_transmission[i][s], 0);
+				if (prop.getProperty(PROP_PROB_NON_VIABLE_TREATMENT) == null) {
+					prob_non_viabile_from_treatment[i][s] = 0;
+				}
+				if (prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TREATMENT) == null) {
+					dur_adj_non_viable_from_treatment[i][s] = 1;
+				}
+				if (prop.getProperty(PROP_PROB_NON_VIABLE_TRANSMISSION) == null) {
+					Arrays.fill(prob_non_viabile_from_transmission[i][s], 0);
+				}
+				if (prop.getProperty(PROP_DUR_ADJ_NON_VIABLE_TRANSMISSION) == null) {
+					Arrays.fill(dur_adj_non_viable_from_transmission[i][s], 0);
+				}
 			}
 		}
 
@@ -182,8 +190,7 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 
 					inf_stage[inf_id][tar_site] = STAGE_ID_NON_VIABLE[inf_id][tar_site];
 					updateInfectionStage(pid_inf_tar, inf_id, tar_site, STAGE_ID_NON_VIABLE[inf_id][tar_site],
-							currentTime, inf_stage, infection_state_switch,
-							non_viable_until - currentTime);
+							currentTime, inf_stage, infection_state_switch, non_viable_until - currentTime);
 				}
 
 			}
@@ -416,8 +423,7 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 					pWri.print(time);
 					for (String[] col_name : col_names) {
 						pWri.print(',');
-						String ckey = String.format("%s,%s,%s", col_name[0], col_name[1],
-								col_name[2]);
+						String ckey = String.format("%s,%s,%s", col_name[0], col_name[1], col_name[2]);
 						Integer val = ent.get(ckey);
 						if (val == null) {
 							val = 0;
