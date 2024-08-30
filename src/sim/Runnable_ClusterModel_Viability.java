@@ -236,9 +236,9 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 
 		if (!hasInfectiousPreTreatment) {
 			cumul_treatment_non_viable[infId * NUM_GENDER + getGenderType(pid)]++;
+		}else {
+			super.applyTreatment(currentTime, infId, pid, inf_stage);
 		}
-
-		super.applyTreatment(currentTime, infId, pid, inf_stage);
 
 		// Set non-viable infection post treatment
 		for (int siteId = 0; siteId < num_site; siteId++) {
