@@ -107,8 +107,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 					Arrays.sort(partners);
 					String key = Arrays.toString(partners);
 					int[] hasActed = acted_today.get(key);
-					boolean acted = false;
-					if (hasActed == null) {
+					boolean acted = false;					
+					if (hasActed == null) { // Only count if acts between partnership is not included previously   
 						hasActed = new int[NUM_ACT];
 						for (int a = 0; a < NUM_ACT; a++) {
 							double[] fieldEntry = table_act_frequency[a][getGenderType(partners[0])][getGenderType(
@@ -118,48 +118,53 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 							}
 						}
 						acted_today.put(key, hasActed);
-					}
-					for (int a = 0; a < NUM_ACT && !acted; a++) {
-						acted |= hasActed[a] != 0;
-					}
-					if (acted) {
-						int recIndec = currentTime % AbstractIndividualInterface.ONE_YEAR_INT;
-						int partnerId = partners[0].equals(pid) ? partners[1] : partners[0];
-						int[][] contact_hist = sexual_contact_last_12_months.get(pid);
-						if (contact_hist == null) {
-							contact_hist = new int[AbstractIndividualInterface.ONE_YEAR_INT][];
-							sexual_contact_last_12_months.put(pid, contact_hist);
+
+						for (int a = 0; a < NUM_ACT && !acted; a++) {
+							acted |= hasActed[a] != 0;
 						}
-						if (contact_hist[recIndec] == null) {
-							contact_hist[recIndec] = new int[] { partnerId };
-						} else {
-							contact_hist[recIndec] = Arrays.copyOf(contact_hist[recIndec],
-									contact_hist[recIndec].length + 1);
-							contact_hist[recIndec][contact_hist[recIndec].length - 1] = partnerId;
-						}
-
-						for (int pId : partners) {
-							int[] prop_rec = prophylaxis_record.get(pId);
-							if (prop_rec != null) {
-								if (Math.abs(prop_rec[PROPHYLAXIS_REC_LAST_USE_AT]) != currentTime) { // if time < 0,
-																										// then PrEP is
-																										// not used
-									double adherence = prophylaxis_persistence_adherence[prophylaxis_persistence_adherence.length
-											- 1];
-									prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = (adherence >= 1
-											|| rng_PEP.nextDouble() < adherence) ? currentTime : -currentTime;
-
-									if (prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] == currentTime) {
-										count_PEP_USED++;
-									}
-								}
-
+						if (acted) {
+							int recIndec = currentTime % AbstractIndividualInterface.ONE_YEAR_INT;
+							int partnerId = partners[0].equals(pid) ? partners[1] : partners[0];
+							int[][] contact_hist = sexual_contact_last_12_months.get(pid);
+							if (contact_hist == null) {
+								contact_hist = new int[AbstractIndividualInterface.ONE_YEAR_INT][];
+								sexual_contact_last_12_months.put(pid, contact_hist);
 							}
-						}
+							if (contact_hist[recIndec] == null) {
+								contact_hist[recIndec] = new int[] { partnerId };
+							} else {
+								contact_hist[recIndec] = Arrays.copyOf(contact_hist[recIndec],
+										contact_hist[recIndec].length + 1);
+								contact_hist[recIndec][contact_hist[recIndec].length - 1] = partnerId;
+							}
 
+							for (int pId : partners) {
+								int[] prop_rec = prophylaxis_record.get(pId);
+								if (prop_rec != null) {
+									if (Math.abs(prop_rec[PROPHYLAXIS_REC_LAST_USE_AT]) != currentTime) { // if time <
+																											// 0,
+																											// then PrEP
+																											// is
+																											// not used
+										double adherence = prophylaxis_persistence_adherence[prophylaxis_persistence_adherence.length
+												- 1];
+										prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] = (adherence >= 1
+												|| rng_PEP.nextDouble() < adherence) ? currentTime : -currentTime;
+
+										if (prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] == currentTime) {
+											count_PEP_USED++;
+										}
+									}
+
+								}
+							}
+
+						}
 					}
+
 				}
-			}
+
+			} // End of for (Integer pid : cMap.vertexSet()) {
 
 		}
 	}

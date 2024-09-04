@@ -18,9 +18,9 @@ import util.Util_Compare_ClusterModel_Transmission_Output;
 import util.Util_RiskGrpAllocation;
 
 public class Launcher_ClusterModel {
-
+	
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
-
+		
 		final String USAGE_INFO = String.format(
 				"Usage: java %s <-gen, -trans, -opt, -opt_trend, -optGA, -analyse, -analyse_trend, -analyse_map, -combine_map, -compare -genRiskGrp> PROP_FILE_DIRECTORY <...>\n"
 						+ " or\tjava %s <-analyse_rx,  -clean_up_rx> FILE_DIRECTORY PATTERN <...>"
