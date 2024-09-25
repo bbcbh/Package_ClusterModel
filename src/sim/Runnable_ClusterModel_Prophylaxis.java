@@ -369,7 +369,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_PEP_COVERAGE);
 		if (countMap != null) {
 			fileName = String.format(filePrefix + "PEP_Stat_%d_%d.csv", cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "PEP_User_Type_%d", new int[] { 3 });
+			printCountMap(countMap, fileName, "PEP_User_Type_%d", new int[] { 4 });
 		}
 
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
