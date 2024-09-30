@@ -24,6 +24,8 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 	public static final String PROP_PEP_START_AT = "PROP_PEP_START_AT";
 	public static final String PROP_PEP_DURATION_PER_DOSE = "PROP_PEP_DURATION_PER_DOSE";
 	public static final String PROP_PEP_EFFICACY = "PROP_PEP_EFFICACY";
+	
+	public static final int SIM_SETTING_KEY_GEN_PEP_USGAGE_RECORD = Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY + 1;
 
 	public Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis(long cMap_seed, long sim_seed,
 			ContactMap base_cMap, Properties prop, int num_inf, int num_site, int num_act) {
