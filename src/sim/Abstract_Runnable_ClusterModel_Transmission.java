@@ -76,10 +76,17 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected int simSetting = 1;
 	protected RandomGenerator RNG;
 	protected ArrayList<Integer[]> edges_list;
+
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
+	public static final int PROPSWITCH_MAP_TRIM_EDGE_BY_DURATION_INDEX = -1;
+
 	protected transient HashMap<Integer, Integer> risk_cat_map;
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
+
+	protected float[][] cMap_Trim_Edge_By_Duration_Setting = null;
+	private static final int cMAP_TRIM_EDGE_BY_DURATION_DUR_LIST = 0;
+	private static final int cMAP_TRIM_EDGE_BY_DURATION_PROB_LIST = cMAP_TRIM_EDGE_BY_DURATION_DUR_LIST + 1;
 
 	protected static final String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
 			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
@@ -202,8 +209,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	}
 
-
-
 	protected static AbstractRealDistribution generateGammaDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
 			// For Gamma distribution
@@ -222,8 +227,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 		}
 	}
-
-
 
 	protected static AbstractRealDistribution generateBetaDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
@@ -244,8 +247,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-
-
 	protected static AbstractRealDistribution generateUniformDistribution(RandomGenerator RNG, double[] input) {
 		if (input[1] != 0) {
 			return new UniformRealDistribution(RNG, input[0], input[1]);
@@ -254,14 +255,24 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-
-
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
 		this.edges_list = edges_list;
 	}
 
 	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
 		this.propSwitch_map = propSwitch_map;
+	}
+
+	protected void loadExtraPropSwitchSetting(Integer index, String entry) {
+		switch (index.intValue()) {
+		case PROPSWITCH_MAP_TRIM_EDGE_BY_DURATION_INDEX:
+			cMap_Trim_Edge_By_Duration_Setting = entry.trim().length() > 0
+					? (float[][]) PropValUtils.propStrToObject(entry, float[][].class)
+					: null;
+			break;
+		default:
+			System.err.printf("Warning: Index of %d in simSpecificSwitch.prop not supported.\n", index);
+		}
 	}
 
 	public int getGenderType(Integer personId) {
@@ -376,26 +387,42 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		// Add new edges and update removal schedule
 		while (edges_array_pt < edges_array.length
 				&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-
+			boolean addEdge = cMap_Trim_Edge_By_Duration_Setting == null;
 			Integer[] edge = edges_array[edges_array_pt];
-			Integer expireAt = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
-					+ Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1);
 
-			toRemove = edgesToRemove.get(expireAt);
-			if (toRemove == null) {
-				toRemove = new ArrayList<>();
-				edgesToRemove.put(expireAt, toRemove);
-			}
-			toRemove.add(edge);
-
-			for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
-					Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
-				if (!cMap.containsVertex(edge[index])) {
-					cMap.addVertex(edge[index]);
+			if (cMap_Trim_Edge_By_Duration_Setting != null) {
+				// TODO: Check implementation for duration adjustment
+				int index = Arrays.binarySearch(cMap_Trim_Edge_By_Duration_Setting[cMAP_TRIM_EDGE_BY_DURATION_DUR_LIST],
+						Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1));
+				if (index < 0) {
+					index = ~index;
+				}
+				addEdge = index >= cMap_Trim_Edge_By_Duration_Setting[cMAP_TRIM_EDGE_BY_DURATION_PROB_LIST].length;
+				if (!addEdge) {
+					float exclProb = cMap_Trim_Edge_By_Duration_Setting[cMAP_TRIM_EDGE_BY_DURATION_PROB_LIST][index];
+					addEdge = exclProb >= 1 ? true : RNG.nextFloat() < exclProb;
 				}
 			}
+			if (addEdge) {
+				Integer expireAt = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
+						+ Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1);
 
-			addPartnership(cMap, edge);
+				toRemove = edgesToRemove.get(expireAt);
+				if (toRemove == null) {
+					toRemove = new ArrayList<>();
+					edgesToRemove.put(expireAt, toRemove);
+				}
+				toRemove.add(edge);
+
+				for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+						Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
+					if (!cMap.containsVertex(edge[index])) {
+						cMap.addVertex(edge[index]);
+					}
+				}
+
+				addPartnership(cMap, edge);
+			}
 
 			edges_array_pt++;
 		}
@@ -411,7 +438,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		return sim_output;
 	}
 
-	public abstract ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
-			boolean display_only);
+	public abstract ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point,
+			int[][] seedInfectNum, boolean display_only);
 
 }

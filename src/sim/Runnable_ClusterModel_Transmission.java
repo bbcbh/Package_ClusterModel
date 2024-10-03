@@ -359,7 +359,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			for (int st = 0; st < tranmissionMatrix[sf].length; st++) {
 				double[] param = tranParm[sf][st];
 				if (param != null) {
-					tranmissionMatrix[sf][st] = generateBetaDistribution(RNG,param);
+					tranmissionMatrix[sf][st] = generateBetaDistribution(RNG, param);
 				}
 			}
 		}
@@ -369,7 +369,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD];
 		for (int s = 0; s < infectious_period.length; s++) {
 			if (durParam[s] != null) {
-				infectious_period[s] = generateGammaDistribution(RNG,durParam[s]);
+				infectious_period[s] = generateGammaDistribution(RNG, durParam[s]);
 			} else {
 				infectious_period[s] = null;
 			}
@@ -393,7 +393,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		double[] sought_test_param = (double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 
 		if (sought_test_param.length == 2) {
-			RealDistribution dist = generateGammaDistribution(RNG,sought_test_param);
+			RealDistribution dist = generateGammaDistribution(RNG, sought_test_param);
 			for (int g = 0; g < sym_test_period_by_gender.length; g++) {
 				sym_test_period_by_gender[g] = dist;
 			}
@@ -442,9 +442,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 			for (int s = 0; s < LENGTH_SITE; s++) {
 				if (non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_PROB] > 0) {
-					non_viable_inf_by_contact_duration[g][s] = generateGammaDistribution(RNG, new double[] {
-							non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN],
-							non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_SD] });
+					non_viable_inf_by_contact_duration[g][s] = generateGammaDistribution(RNG,
+							new double[] {
+									non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN],
+									non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_DURATION_SD] });
 				}
 				if (non_viable_infection_setting[g][s][NON_VIABILITY_RECOVERY_INDUDCED_PROB] > 0) {
 					non_viable_inf_by_recovery_duration[g][s] = generateGammaDistribution(RNG,
@@ -850,8 +851,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
 					for (Integer switch_index : switch_ent.keySet()) {
 						String str_obj = switch_ent.get(switch_index);
-						getRunnable_fields()[switch_index - RUNNABLE_OFFSET] = PropValUtils.propStrToObject(str_obj,
-								getRunnable_fields()[switch_index - RUNNABLE_OFFSET].getClass());
+						if (switch_index < 0) {
+							loadExtraPropSwitchSetting(switch_index, str_obj);
+						} else {
+							getRunnable_fields()[switch_index - RUNNABLE_OFFSET] = PropValUtils.propStrToObject(str_obj,
+									getRunnable_fields()[switch_index - RUNNABLE_OFFSET].getClass());
+						}
 					}
 					switchTimeIndex++;
 				}
@@ -2113,7 +2118,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		switch (fieldId) {
 		case RUNNABLE_FIELD_TRANSMISSION_SYM_RATE:
 		case RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ:
-			// Do nothing  - refer to field directly
+			// Do nothing - refer to field directly
 			break;
 		case RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
 		case RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD:
@@ -2121,7 +2126,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			double[][] incParam = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_STAGE_PERIOD];
 			for (int s = 0; s < infectious_period.length; s++) {
 				if (durParam[s] != null) {
-					infectious_period[s] = generateGammaDistribution(RNG,durParam[s]);
+					infectious_period[s] = generateGammaDistribution(RNG, durParam[s]);
 				} else {
 					infectious_period[s] = null;
 				}
@@ -2151,11 +2156,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 			}
 			break;
-		
+
 		case RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM:
 			double[] sought_test_param = (double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 			if (sought_test_param.length == 2) {
-				RealDistribution dist = generateGammaDistribution(RNG,sought_test_param);
+				RealDistribution dist = generateGammaDistribution(RNG, sought_test_param);
 				for (int g = 0; g < sym_test_period_by_gender.length; g++) {
 					sym_test_period_by_gender[g] = dist;
 				}
@@ -2177,14 +2182,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static ArrayList<Integer> setOptParamInSingleTransmissionRunnable(
 			Abstract_Runnable_ClusterModel_Transmission target_runnable, String[] parameter_settings, double[] point,
 			boolean display_only) {
-	
+
 		HashMap<Integer, Object> modified_param = new HashMap<>();
 		ArrayList<Integer> field_to_update = new ArrayList<>();
-	
+
 		if (parameter_settings == null || parameter_settings.length != point.length) {
 			// Backward compatibility.
 			System.out.println("Warning Parameter setting not used as it mismatches with number or parameters.");
-			Runnable_ClusterModel_Transmission.setOptParamInSingleTransmissionRunnable(target_runnable, point, display_only);
+			Runnable_ClusterModel_Transmission.setOptParamInSingleTransmissionRunnable(target_runnable, point,
+					display_only);
 		} else {
 			for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 				String param_setting = parameter_settings[param_arr_index];
@@ -2197,24 +2203,25 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					int setting_level = 1;
 					switch (field_id) {
 					default:
-						Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr, setting_level);
-	
+						Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point,
+								param_setting_arr, setting_level);
+
 					}
 					// Special modification for
 					int pt = Collections.binarySearch(field_to_update, field_id);
 					if (pt < 0) {
 						field_to_update.add(~pt, field_id);
 					}
-	
+
 					modified_param.put(param_name_index, val);
-	
+
 				} else {
 					System.err.printf("Setting of parameter not supported (wrong param number of %d?). Exiting.\n",
 							param_name_index);
-	
+
 				}
 			}
-	
+
 			if (display_only) {
 				System.out.println("Opt. parameter display:");
 				Integer[] param = modified_param.keySet().toArray(new Integer[modified_param.size()]);
@@ -2226,33 +2233,34 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					System.out.println();
 				}
 				System.exit(0);
-	
+
 			}
-	
+
 		}
 		return field_to_update;
-	
+
 	}
+
 	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
-			boolean display_only){
-		return Runnable_ClusterModel_Transmission.setOptParamInSingleTransmissionRunnable(this, parameter_settings, point,
-				display_only);
+			boolean display_only) {
+		return Runnable_ClusterModel_Transmission.setOptParamInSingleTransmissionRunnable(this, parameter_settings,
+				point, display_only);
 	}
 
 	public static void setOptParamInSingleTransmissionRunnable(
 			Abstract_Runnable_ClusterModel_Transmission target_runnable, double[] point, boolean display_only) {
 		double[][][] transmission_rate = (double[][][]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
-	
+
 		double[] sym_test_rate = (double[]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
-	
+
 		double[][] inf_dur = (double[][]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD];
-	
+
 		float[][] sym_rate = (float[][]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SYM_RATE];
-	
+
 		switch (point.length) {
 		case 8:
 			// TRANS_P2R, TRANS_R2P
@@ -2269,12 +2277,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			// TRANS_O2O
 			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX] = new double[2];
 			transmission_rate[Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][Abstract_Runnable_ClusterModel_Transmission.SITE_OROPHARYNX][0] = point[6];
-	
+
 			// SYM_TEST_PERIOD
 			sym_test_rate[0] = point[7];
 			// Adjust SD based on ratio from mean
 			sym_test_rate[1] = (point[7] / 3) * 0.86 * Math.sqrt(3 * 0.86 * 0.86);
-	
+
 			break;
 		case 10:
 		case 14:
@@ -2305,7 +2313,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			sym_test_rate[0] = point[9];
 			// Adjust SD based on ratio from mean
 			sym_test_rate[1] = (point[9] / org_mean) * sym_test_rate[1];
-	
+
 			if (point.length >= 14) {
 				// Duration by site
 				for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
@@ -2314,7 +2322,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					// Adjust SD based on ratio from mean
 					inf_dur[s][1] = (inf_dur[s][0] / org_mean) * inf_dur[s][1];
 				}
-	
+
 				// Sym test adjustment for hetrosexual male
 				if (point.length >= 15) {
 					// Backward compatibility to single mean-sd option
@@ -2328,13 +2336,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							sym_test_rate[2 * g + 1] = sym_test_rate[1];
 						}
 					}
-	
+
 					// Hetro_male
 					sym_test_rate[2] = point[14];
 					sym_test_rate[3] = (point[14] / sym_test_rate[0]) * sym_test_rate[1];
-	
+
 				}
-	
+
 				// Sym rate for urethral infection for male
 				if (point.length >= 16) {
 					for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
@@ -2342,35 +2350,35 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					}
 				}
 			}
-	
+
 			break;
-	
+
 		default:
 			System.err.printf("Optimisation: Parameter interpretation %s not defined. Exiting...\n",
 					Arrays.toString(point));
 			System.exit(-1);
-	
+
 		}
-	
+
 		if (display_only) {
 			System.out.println("Opt. parameter display:");
-	
+
 			System.out.println("RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE");
 			System.out.println(Arrays.deepToString(transmission_rate));
 			System.out.println();
-	
+
 			System.out.println("RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD");
 			System.out.println(Arrays.deepToString(inf_dur));
 			System.out.println();
-	
+
 			System.out.println("RUNNABLE_FIELD_TRANSMISSION_SYM_RATE");
 			System.out.println(Arrays.deepToString(sym_rate));
 			System.out.println();
-	
+
 			System.out.println("RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM");
 			System.out.println(Arrays.toString(sym_test_rate));
 			System.out.println();
-	
+
 			System.out.println("Opt. parameter display completed.");
 			System.exit(0);
 		}

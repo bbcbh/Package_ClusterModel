@@ -561,24 +561,29 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
 				for (Integer switch_index : switch_ent.keySet()) {
 					String str_obj = switch_ent.get(switch_index);
-					int fieldId = switch_index - RUNNABLE_OFFSET;
-					if (fieldId >= 0) {
-						getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
-								getRunnable_fields()[fieldId].getClass());
-						refreshField(fieldId, false);
+					if (switch_index < 0) {
+						loadExtraPropSwitchSetting(switch_index, str_obj);
 					} else {
-						final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-								+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-								+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
-						// Field defined outside runnable
-						switch (switch_index) {
-						case sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION:
-							int[][] num_infected = (int[][]) PropValUtils.propStrToObject(switch_ent.get(switch_index),
-									int[][].class);
-							allocateSeedInfection(num_infected, currentTime);
-							break;
-						default:
-							System.err.printf("Warning: switch to field_id of %d not supported.\n", fieldId);
+
+						int fieldId = switch_index - RUNNABLE_OFFSET;
+						if (fieldId >= 0) {
+							getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
+									getRunnable_fields()[fieldId].getClass());
+							refreshField(fieldId, false);
+						} else {
+							final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+									+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+									+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+							// Field defined outside runnable
+							switch (switch_index) {
+							case sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION:
+								int[][] num_infected = (int[][]) PropValUtils
+										.propStrToObject(switch_ent.get(switch_index), int[][].class);
+								allocateSeedInfection(num_infected, currentTime);
+								break;
+							default:
+								System.err.printf("Warning: switch to field_id of %d not supported.\n", fieldId);
+							}
 						}
 					}
 				}
