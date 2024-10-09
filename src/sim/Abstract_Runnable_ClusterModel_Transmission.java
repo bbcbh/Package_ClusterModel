@@ -78,15 +78,15 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected ArrayList<Integer[]> edges_list;
 
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
-	public static final int PROPSWITCH_MAP_TRIM_EDGE_BY_DURATION_INDEX = -1;
+	public static final int PROPSWITCH_MAP_KEPT_EDGE_BY_DURATION_INDEX = -1;
 
 	protected transient HashMap<Integer, Integer> risk_cat_map;
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
 
-	protected float[][] cMap_Trim_Edge_By_Duration_Setting = null;
-	private static final int cMAP_TRIM_EDGE_BY_DURATION_DUR_LIST = 0;
-	private static final int cMAP_TRIM_EDGE_BY_DURATION_PROB_LIST = cMAP_TRIM_EDGE_BY_DURATION_DUR_LIST + 1;
+	protected float[][] cMap_Kept_Edge_By_Duration_Setting = null;
+	private static final int cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST = 0;
+	private static final int cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST = cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST + 1;
 
 	protected static final String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
 			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
@@ -265,8 +265,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	protected void loadExtraPropSwitchSetting(Integer index, String entry) {
 		switch (index.intValue()) {
-		case PROPSWITCH_MAP_TRIM_EDGE_BY_DURATION_INDEX:
-			cMap_Trim_Edge_By_Duration_Setting = entry.trim().length() > 0
+		case PROPSWITCH_MAP_KEPT_EDGE_BY_DURATION_INDEX:
+			cMap_Kept_Edge_By_Duration_Setting = entry.trim().length() > 0
 					? (float[][]) PropValUtils.propStrToObject(entry, float[][].class)
 					: null;
 			break;
@@ -387,20 +387,21 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		// Add new edges and update removal schedule
 		while (edges_array_pt < edges_array.length
 				&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-			boolean addEdge = cMap_Trim_Edge_By_Duration_Setting == null;
+			boolean addEdge = cMap_Kept_Edge_By_Duration_Setting == null;
 			Integer[] edge = edges_array[edges_array_pt];
 
-			if (cMap_Trim_Edge_By_Duration_Setting != null) {
-				// TODO: Check implementation for duration adjustment
-				int index = Arrays.binarySearch(cMap_Trim_Edge_By_Duration_Setting[cMAP_TRIM_EDGE_BY_DURATION_DUR_LIST],
+			if (cMap_Kept_Edge_By_Duration_Setting != null) {				
+				int index = Arrays.binarySearch(cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST],
 						Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1));
 				if (index < 0) {
 					index = ~index;
 				}
-				addEdge = index >= cMap_Trim_Edge_By_Duration_Setting[cMAP_TRIM_EDGE_BY_DURATION_PROB_LIST].length;
+				addEdge = index >= cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST].length;
 				if (!addEdge) {
-					float exclProb = cMap_Trim_Edge_By_Duration_Setting[cMAP_TRIM_EDGE_BY_DURATION_PROB_LIST][index];
-					addEdge = exclProb >= 1 ? true : RNG.nextFloat() < exclProb;
+					float keptEdgeProb = cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST][index];
+					if(keptEdgeProb > 0) {
+						addEdge = keptEdgeProb >= 1 ? true : RNG.nextFloat() < keptEdgeProb;
+					}
 				}
 			}
 			if (addEdge) {
