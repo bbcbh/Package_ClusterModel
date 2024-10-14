@@ -752,10 +752,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 															map_infection_stage_switch.put(pid_inf_tar,
 																	tar_infection_state_switch);
 														}
-
 														updateInfectStageChangeSchedule(pid_inf_tar, inf_id, tar_site,
 																currentTime + 1,
-																tar_infection_state_switch[inf_id][tar_site]);
+																tar_infection_state_switch[inf_id][tar_site]);																
+														simulate_transmission_success_act(currentTime, inf_id,
+																pid_inf_src, pid_inf_tar, src_site, tar_site);
 													} else {
 														simulate_transmission_failed_act(currentTime, inf_id,
 																pid_inf_src, pid_inf_tar, src_site, tar_site);
@@ -993,6 +994,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	}
 
 	protected void simulate_transmission_failed_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
+			int src_site, int tar_site) {
+		// Do nothing by default
+
+	}
+	
+	protected void simulate_transmission_success_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
 			int src_site, int tar_site) {
 		// Do nothing by default
 

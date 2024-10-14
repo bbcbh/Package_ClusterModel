@@ -17,7 +17,6 @@ import org.apache.commons.math3.distribution.RealDistribution;
 
 import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
-import random.RandomGenerator;
 import relationship.ContactMap;
 import util.PropValUtils;
 
@@ -38,7 +37,6 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	private static final int UPTAKE_RATE_INDIVDUAL_ADJ_UPTAKE = UPTAKE_PARTNERS_LIMIT + 1;
 	private static final int UPTAKE_RATE_INDIVDUAL_ADJ_NON_UPTAKE = UPTAKE_RATE_INDIVDUAL_ADJ_UPTAKE + 1;
 
-	protected RandomGenerator rng_PEP;
 	protected double[] prophylaxis_persistence_adherence;
 	protected float[] prophylaxis_uptake;
 	protected HashMap<Integer, int[]> dx_last_12_months;
@@ -75,7 +73,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 				.propStrToObject(prop.getProperty(PROP_PEP_PERSISTENCE_ADHERENCE, "[0,0,1]"), double[].class);
 		prophylaxis_uptake = (float[]) PropValUtils
 				.propStrToObject(prop.getProperty(PROP_PEP_UPTAKE, "[0.0,0.0,0.0,0.0,0.0,0.0,0.0]"), float[].class);
-		rng_PEP = new MersenneTwisterRandomGenerator(sim_seed);
+		
 		dx_last_12_months = new HashMap<>();
 		sexual_contact_last_12_months = new HashMap<>();
 		pep_uptake_individual_rate_adj = new HashMap<>();
@@ -349,6 +347,10 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 		count_PEP_OFFERED++;
 	}
+	
+	
+
+	
 
 	@Override
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
