@@ -330,7 +330,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			stat[4] = count_PEP_USED_EFFECTIVE;
 			pep_coverage.put(currentTime, stat);
 
-			if (!prophylaxis_resist_profile.isEmpty()) {
+			if (!prophylaxis_efficacy_adjust.isEmpty()) {
 				@SuppressWarnings("unchecked")
 				HashMap<Integer, int[]> pep_resist_by_inf_site = (HashMap<Integer, int[]>) sim_output
 						.get(SIM_OUTPUT_KEY_PEP_RESIST_PROFILE);
@@ -339,25 +339,30 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 					sim_output.put(SIM_OUTPUT_KEY_PEP_RESIST_PROFILE, pep_resist_by_inf_site);
 				}
 
-				int[] count_pep_resist = new int[2 * NUM_INF * NUM_SITE];
+				int[] count_pep_resist = new int[3 * NUM_INF * NUM_SITE];
 
 				for (int i = 0; i < NUM_INF; i++) {
 					for (int s = 0; s < NUM_SITE; s++) {
-						String key = String.format("%d,%d", i, s);
-						ArrayList<Integer> res = map_currently_infectious.get(key);
+						ArrayList<Integer> res = map_currently_infectious.get(String.format("%d,%d", i, s));
 						if (res != null) {
 							count_pep_resist[i * NUM_SITE + s] = res.size();
+							for (Integer inf_pid : res) {															
+								// 0 = Resist to DoxyPEP, 1 = Sensitive to DoxyPEP
+								Integer pep_efficiency_adj = prophylaxis_efficacy_adjust
+										.get(String.format("%d,%d,%d", i, inf_pid, s));
+								if (pep_efficiency_adj != null) {
+									int offset = NUM_INF * NUM_SITE;
+									if (pep_efficiency_adj < 1) {
+										offset *= 2;
+									}
+									count_pep_resist[offset + i * NUM_SITE + s]++;
+								}
+							}
 						}
 
 					}
 				}
 
-				float[][] pep_resist_all = generateCurrentPopulationInfectiousResistProfile();
-				for (float[] ent : pep_resist_all) {
-					if (ent[ent.length - 1] < 1) {
-						count_pep_resist[(NUM_INF * NUM_SITE) + ((int) ent[0]) * NUM_SITE + ((int) ent[1])]++;
-					}
-				}
 				pep_resist_by_inf_site.put(currentTime, count_pep_resist);
 			}
 
@@ -429,8 +434,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		// PEP resist
 		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_PEP_RESIST_PROFILE);
 		if (countMap != null) {
-			fileName = String.format(filePrefix + "PEP_RESIST_%d_%d.csv", cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "PEP_RESIST_Stat_%d_INF_%d_SITE_%d", new int[] {2, NUM_INF, NUM_SITE });
+			fileName = String.format(filePrefix + "PEP_Resist_Profile_%d_%d.csv", cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "PEP_ResistId_%d_Inf_%d_Site_%d", new int[] { 3, NUM_INF, NUM_SITE }, 
+					new int[] {5,6,7,17,18,19,29,30,31});
 		}
 
 		if ((simSetting

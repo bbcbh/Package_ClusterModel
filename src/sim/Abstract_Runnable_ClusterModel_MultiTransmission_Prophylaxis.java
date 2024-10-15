@@ -1,10 +1,6 @@
 package sim;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Map.Entry;
 import java.util.Properties;
 
 import person.AbstractIndividualInterface;
@@ -21,7 +17,7 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 	protected int prophylaxis_starts_at = -1;
 
 	protected transient HashMap<Integer, int[]> prophylaxis_record;
-	protected transient HashMap<String, Float> prophylaxis_resist_profile; // key="INF,ID,SITE"
+	protected transient HashMap<String, Integer> prophylaxis_efficacy_adjust; // key="INF,ID,SITE"
 	protected RandomGenerator rng_PEP;
 
 	protected static final int PROPHYLAXIS_REC_LAST_OFFER_AT = 0;
@@ -59,45 +55,12 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 				num_act);
 	}
 
-	public float[][] generateCurrentPopulationInfectiousResistProfile() {
-		ArrayList<float[]> res = new ArrayList<float[]>();		
-		
-		for (Entry<String, Float> valSet : prophylaxis_resist_profile.entrySet()) {
-			String[] profileEnt = valSet.getKey().split(","); // src = 
-															  //  String.format("%d,%d,%d", infection_id, pid,site_id);
-			int inf = Integer.parseInt(profileEnt[0]);
-			int pid = Integer.parseInt(profileEnt[1]);
-			int site = Integer.parseInt(profileEnt[2]);
-			int[][] inf_stage_all = map_currrent_infection_stage.get(pid);
-
-			if (inf_stage_all == null) {
-				System.err.printf("Warning: infection stage for #%d not found "
-						+ "despite having prophylaxis_resist_profile of %s\n", pid, valSet.toString());
-			} else {
-				float[] ent = new float[] { inf, site, pid, inf_stage_all[inf][site], valSet.getValue()};
-				int pt = Collections.binarySearch(res, ent, new Comparator<float[]>() {
-					@Override
-					public int compare(float[] o1, float[] o2) {
-						int res = 0;
-						int pt = 0;						
-						while(res == 0 && pt < o1.length) {
-							res = Float.compare(o1[pt], o2[pt]);
-							pt++;
-						}											
-						return res;
-					}
-				});				
-				res.add(~pt, ent);
-			}
-		}
-		return res.toArray(new float[0][]);
-	}
 
 	@Override
 	public void initialse() {
 		super.initialse();
 		prophylaxis_record = new HashMap<>();
-		prophylaxis_resist_profile = new HashMap<>();
+		prophylaxis_efficacy_adjust = new HashMap<>();
 	}
 
 	@Override
@@ -105,11 +68,11 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 			int current_time, int[][] current_stage_arr, int[][] infection_state_switch, int state_duration_preset) {
 		int res = super.updateInfectionStage(pid, infection_id, site_id, current_infection_stage, current_time,
 				current_stage_arr, infection_state_switch, state_duration_preset);
-		if (!prophylaxis_resist_profile.isEmpty()) {
+		if (!prophylaxis_efficacy_adjust.isEmpty()) {
 			// Update doxy-pep resistence profile if needed
 			if (infection_state_switch[infection_id][site_id] == AbstractIndividualInterface.INFECT_S) {
 				String key_resist_profile = String.format("%d,%d,%d", infection_id, pid, site_id);
-				prophylaxis_resist_profile.remove(key_resist_profile);
+				prophylaxis_efficacy_adjust.remove(key_resist_profile);
 			}
 		}
 		return res;
@@ -119,12 +82,12 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 	protected void simulate_transmission_success_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
 			int src_site, int tar_site) {
 		super.simulate_transmission_success_act(currentTime, inf_id, pid_inf_src, pid_inf_tar, src_site, tar_site);
-		if (!prophylaxis_resist_profile.isEmpty()) {
-			String key_resist_profile_src = String.format("%d,%d,%d", inf_id, pid_inf_src, src_site);
-			Float val = prophylaxis_resist_profile.get(key_resist_profile_src);
+		if (!prophylaxis_efficacy_adjust.isEmpty()) {
+			String key_prop_efficacy_adj_src = String.format("%d,%d,%d", inf_id, pid_inf_src, src_site);
+			Integer val = prophylaxis_efficacy_adjust.get(key_prop_efficacy_adj_src);
 			if (val != null) {
-				String key_resist_profile_tar = String.format("%d,%d,%d", inf_id, pid_inf_tar, tar_site);
-				prophylaxis_resist_profile.put(key_resist_profile_tar, val.floatValue());
+				String key_prop_efficacy_adj_tar = String.format("%d,%d,%d", inf_id, pid_inf_tar, tar_site);
+				prophylaxis_efficacy_adjust.put(key_prop_efficacy_adj_tar, val.intValue());
 			}
 		}
 	}
@@ -142,14 +105,15 @@ public class Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis
 						: prophylaxis_efficacy[inf_id * NUM_SITE + tar_site];
 
 				// Implementation of negative prophylaxis_efficacy_adjusted
+				// 0 = Resist to DoxyPEP, 1 = Sensitive to DoxyPEP
 				if (prophylaxis_efficacy_adjusted < 0) {
-					String key_resist_profile = String.format("%d,%d,%d", inf_id, pid_inf_src, src_site);
-					Float val = prophylaxis_resist_profile.get(key_resist_profile);
+					String key_prop_efficacy_adj = String.format("%d,%d,%d", inf_id, pid_inf_src, src_site);
+					Integer val = prophylaxis_efficacy_adjust.get(key_prop_efficacy_adj);
 					if (val == null) {
-						val = rng_PEP.nextFloat() < -prophylaxis_efficacy_adjusted ? 1f : 0f;
-						prophylaxis_resist_profile.put(key_resist_profile, val);
+						val = rng_PEP.nextFloat() < -prophylaxis_efficacy_adjusted ? 1 : 0;
+						prophylaxis_efficacy_adjust.put(key_prop_efficacy_adj, val);
 					}
-					prophylaxis_efficacy_adjusted *= val.floatValue();
+					prophylaxis_efficacy_adjusted = val;
 				}
 
 				if (prop_rec[PROPHYLAXIS_REC_LAST_USE_AT] == currentTime) {
