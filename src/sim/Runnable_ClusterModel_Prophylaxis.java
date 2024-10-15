@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 import org.apache.commons.math3.distribution.RealDistribution;
 
 import person.AbstractIndividualInterface;
-import random.MersenneTwisterRandomGenerator;
 import relationship.ContactMap;
 import util.PropValUtils;
 
@@ -60,6 +59,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	private static final int[] COL_SEL_INF_GENDER_SITE_AT = null; // new int[] { 64, 65, 192, 194, 196, 198, 200, 202,
 																	// 204 160, 162, 164, 166, 224, 225 };
 
+	private static final String SIM_OUTPUT_KEY_PEP_RESIST_PROFILE = "SIM_OUTPUT_KEY_PEP_RESIST_PROFILE";
 	private static final String SIM_OUTPUT_KEY_PEP_COVERAGE = "SIM_OUTPUT_PEP_COVERAGE";
 	// ent: Ever PEP, Currently on PEP, # script offered
 	protected int count_PEP_OFFERED = 0;
@@ -73,7 +73,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 				.propStrToObject(prop.getProperty(PROP_PEP_PERSISTENCE_ADHERENCE, "[0,0,1]"), double[].class);
 		prophylaxis_uptake = (float[]) PropValUtils
 				.propStrToObject(prop.getProperty(PROP_PEP_UPTAKE, "[0.0,0.0,0.0,0.0,0.0,0.0,0.0]"), float[].class);
-		
+
 		dx_last_12_months = new HashMap<>();
 		sexual_contact_last_12_months = new HashMap<>();
 		pep_uptake_individual_rate_adj = new HashMap<>();
@@ -96,8 +96,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	protected void simulate_non_infectious_act(int currentTime, ContactMap cMap, HashMap<String, int[]> acted_today) {
 		super.simulate_non_infectious_act(currentTime, cMap, acted_today);
 
-		if (this.prophylaxis_starts_at > 0  && 
-				currentTime > prophylaxis_starts_at - AbstractIndividualInterface.ONE_YEAR_INT) {
+		if (this.prophylaxis_starts_at > 0
+				&& currentTime > prophylaxis_starts_at - AbstractIndividualInterface.ONE_YEAR_INT) {
 
 			// Update act status for all
 			// (only called if PEP is offered based on act history)
@@ -315,7 +315,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 				pep_coverage = new HashMap<>();
 				sim_output.put(SIM_OUTPUT_KEY_PEP_COVERAGE, pep_coverage);
 			}
-			int[] stat = new int[5]; // Ever PEP, Currently on PEP, # script offered, PEP used (any), PEP used (effective)
+			int[] stat = new int[5]; // Ever PEP, Currently on PEP, # script offered, PEP used (any), PEP used
+										// (effective)
 			stat[0] = prophylaxis_record.size();
 			for (int pid : prophylaxis_record.keySet()) {
 				int[] prop_rec = prophylaxis_record.get(pid);
@@ -328,6 +329,37 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			stat[3] = count_PEP_USED;
 			stat[4] = count_PEP_USED_EFFECTIVE;
 			pep_coverage.put(currentTime, stat);
+
+			if (!prophylaxis_resist_profile.isEmpty()) {
+				@SuppressWarnings("unchecked")
+				HashMap<Integer, int[]> pep_resist_by_inf_site = (HashMap<Integer, int[]>) sim_output
+						.get(SIM_OUTPUT_KEY_PEP_RESIST_PROFILE);
+				if (pep_resist_by_inf_site == null) {
+					pep_resist_by_inf_site = new HashMap<>();
+					sim_output.put(SIM_OUTPUT_KEY_PEP_RESIST_PROFILE, pep_resist_by_inf_site);
+				}
+
+				int[] count_pep_resist = new int[2 * NUM_INF * NUM_SITE];
+
+				for (int i = 0; i < NUM_INF; i++) {
+					for (int s = 0; s < NUM_SITE; s++) {
+						String key = String.format("%d,%d", i, s);
+						ArrayList<Integer> res = map_currently_infectious.get(key);
+						if (res != null) {
+							count_pep_resist[i * NUM_SITE + s] = res.size();
+						}
+
+					}
+				}
+
+				float[][] pep_resist_all = generateCurrentPopulationInfectiousResistProfile();
+				for (float[] ent : pep_resist_all) {
+					if (ent[ent.length - 1] < 1) {
+						count_pep_resist[(NUM_INF * NUM_SITE) + ((int) ent[0]) * NUM_SITE + ((int) ent[1])]++;
+					}
+				}
+				pep_resist_by_inf_site.put(currentTime, count_pep_resist);
+			}
 
 		}
 
@@ -347,10 +379,6 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 
 		count_PEP_OFFERED++;
 	}
-	
-	
-
-	
 
 	@Override
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
@@ -373,7 +401,7 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 						}
 						ent.add(currentTime);
 					}
-					
+
 					count_PEP_USED_EFFECTIVE++;
 					count_PEP_USED++;
 				}
@@ -398,12 +426,19 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 			printCountMap(countMap, fileName, "PEP_User_Type_%d", new int[] { 5 });
 		}
 
+		// PEP resist
+		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_PEP_RESIST_PROFILE);
+		if (countMap != null) {
+			fileName = String.format(filePrefix + "PEP_RESIST_%d_%d.csv", cMAP_SEED, sIM_SEED);
+			printCountMap(countMap, fileName, "PEP_RESIST_Stat_%d_INF_%d_SITE_%d", new int[] {2, NUM_INF, NUM_SITE });
+		}
+
 		if ((simSetting
 				& 1 << Abstract_Runnable_ClusterModel_MultiTransmission_Prophylaxis.SIM_SETTING_KEY_GEN_PEP_USGAGE_RECORD) != 0) {
 			if (!pep_usage_record.isEmpty()) {
 				fileName = String.format(filePrefix + "PEP_Usage_Record_%d_%d.csv", cMAP_SEED, sIM_SEED);
 				try {
-					PrintWriter pWri = new PrintWriter(new java.io.File(baseDir,fileName));
+					PrintWriter pWri = new PrintWriter(new java.io.File(baseDir, fileName));
 					pWri.println("PID,TIME_PEP_TAKEN");
 					for (Entry<Integer, ArrayList<Integer>> valSet : pep_usage_record.entrySet()) {
 						pWri.print(valSet.getKey());
