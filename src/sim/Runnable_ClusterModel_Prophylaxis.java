@@ -435,8 +435,8 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 		countMap = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_KEY_PEP_RESIST_PROFILE);
 		if (countMap != null) {
 			fileName = String.format(filePrefix + "PEP_Resist_Profile_%d_%d.csv", cMAP_SEED, sIM_SEED);
-			printCountMap(countMap, fileName, "PEP_ResistId_%d_Inf_%d_Site_%d", new int[] { 3, NUM_INF, NUM_SITE }, 
-					new int[] {5,6,7,17,18,19,29,30,31});
+			printCountMap(countMap, fileName, "PEP_ResistId_%d_Inf_%d_Site_%d", new int[] { 3, NUM_INF, NUM_SITE });
+			// NG only: new int[] {5,6,7,17,18,19,29,30,31}
 		}
 
 		if ((simSetting

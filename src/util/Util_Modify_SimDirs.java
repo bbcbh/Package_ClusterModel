@@ -123,11 +123,10 @@ public class Util_Modify_SimDirs {
 							: new File(target_dirs_base,
 									String.format("%s_Extra_%d", target_dir_name_format, seedFile_num));
 					tarDir.mkdirs();
-				}else {
+				} else {
 					// Group all seed list in same folder
 					tarDir = target_dirs_base;
 				}
-				
 
 				lastSeedFile = new File(tarDir, String.format(seedFileName, seedFile_num));
 
@@ -328,6 +327,63 @@ public class Util_Modify_SimDirs {
 		System.out.printf("Splited seed file generated at %s.\n", target_dirs_base.getAbsolutePath());
 	}
 
+	public static void generateUniqueZip(File tarDirPath, String zip_file_name, Pattern match_pattern)
+			throws IOException {
+
+		File[] targetDirs = tarDirPath.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return pathname.isDirectory();
+			}
+		});
+
+		ArrayList<String> includedFilename = new ArrayList<>();
+		ArrayList<File> toBeRemoved = new ArrayList<>();
+		ArrayList<File> toBeAdded = new ArrayList<>();
+
+		for (File tarDir : targetDirs) {
+			File[] zip_candidates = tarDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return match_pattern.matcher(pathname.getName()).matches();
+				}
+			});
+			for (File zipCandidate : zip_candidates) {
+				int pt = Collections.binarySearch(includedFilename, zipCandidate.getName());
+				if (pt < 0) {
+					includedFilename.add(~pt, zipCandidate.getName());
+
+					toBeAdded.add(zipCandidate);
+
+				}
+				toBeRemoved.add(zipCandidate);
+			}
+		}
+		File zip_tar_file = new File(tarDirPath, zip_file_name);
+
+		if (toBeAdded.size() > 0) {
+			SevenZOutputFile outputZip = new SevenZOutputFile(zip_tar_file);
+			SevenZArchiveEntry entry;
+			FileInputStream fIn;
+			for (File addFile : toBeAdded) {
+				entry = outputZip.createArchiveEntry(addFile, addFile.getName());
+				outputZip.putArchiveEntry(entry);
+				fIn = new FileInputStream(addFile);
+				outputZip.write(fIn);
+				outputZip.closeArchiveEntry();
+				fIn.close();
+			}
+			outputZip.close();
+		}
+
+		for (File rmFile : toBeRemoved) {
+			Files.delete(rmFile.toPath());
+		}
+		System.out.printf("%d files removed, with %d files add to %s.\n", toBeRemoved.size(),
+				includedFilename.size(), zip_tar_file.getName());
+
+	}
+
 	/**
 	 * Combine simulation outputs directory
 	 * 
@@ -335,6 +391,7 @@ public class Util_Modify_SimDirs {
 	 * @param extraDir   Directory where extra directories are stored
 	 * @throws IOException
 	 * @throws FileNotFoundException
+	 * 
 	 */
 	public static void combineSimOutput(File tarDirPath, File extraDir) throws IOException, FileNotFoundException {
 
@@ -344,9 +401,8 @@ public class Util_Modify_SimDirs {
 				Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP.replaceAll("%d",
 						"(-{0,1}\\\\d+)"), },
 				new String[] { "Seed_List.csv.zip", "Seed_List(_\\d+).csv", },
-				new String[] { "simSpecificSwitch.prop.zip", "simSpecificSwitch(_\\d+).prop",},	
-				new String[] { "dx_Bali.prop.zip", "dx_Bali(_\\d+).prop",},
-		};
+				new String[] { "simSpecificSwitch.prop.zip", "simSpecificSwitch(_\\d+).prop", },
+				new String[] { "dx_Bali.prop.zip", "dx_Bali(_\\d+).prop", }, };
 
 		Arrays.sort(ignoreAttr);
 
