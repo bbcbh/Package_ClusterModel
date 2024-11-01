@@ -379,7 +379,9 @@ public class Util_Modify_SimDirs {
 		for (File rmFile : toBeRemoved) {
 			Files.delete(rmFile.toPath());
 		}
-		System.out.printf("%d files removed, with %d files add to %s.\n", toBeRemoved.size(),
+		System.out.printf("Generating unique zip for %s completed. %d files removed, with %d files add to %s.\n",
+				tarDirPath.getAbsolutePath(),
+				toBeRemoved.size(),
 				includedFilename.size(), zip_tar_file.getName());
 
 	}

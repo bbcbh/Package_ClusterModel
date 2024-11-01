@@ -190,9 +190,14 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile) throws IOException {
 		return extractedLinesFrom7Zip(zipFile, new HashMap<String, ArrayList<String[]>>());
 	}
-
+	
 	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile,
 			HashMap<String, ArrayList<String[]>> zip_ent) throws IOException {
+		return extractedLinesFrom7Zip(zipFile, zip_ent, null);
+	}
+
+	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile,
+			HashMap<String, ArrayList<String[]>> zip_ent, Pattern keyPattern) throws IOException {
 		SevenZFile inputZip = new SevenZFile(zipFile);
 		SevenZArchiveEntry inputEnt;
 
@@ -212,7 +217,24 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 					lines.add(line.split(","));
 				}
 			}
-			zip_ent.put(file_name, lines);
+			
+			
+			String key = file_name;
+			if(keyPattern != null) {
+				Matcher m = keyPattern.matcher(file_name);
+				if(m.find()) {
+					if(m.groupCount() > 0) {
+						key = m.group(1);						
+					}else {
+						System.err.print("extractedLinesFrom7Zip: Matcher has no group - using filename as key instead.\n");
+					}
+				}else {
+					//System.err.printf("extractedLinesFrom7Zip: File entries %s does not match with pattern "
+					//		+ "- using filename as key instead.\n", file_name);
+				}
+			}			
+			
+			zip_ent.put(key, lines);
 		}
 		inputZip.close();
 		return zip_ent;

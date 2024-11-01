@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 import optimisation.Optimisation_Factory;
 import util.PropValUtils;
-import util.Util_Analyse_ClusterModel_Transmission_Output;
+import util.Util_Analyse_ClusterModel_Transmission_Output_Combined;
 import util.Util_Analyse_ContactMap_Outputs;
 import util.Util_Combine_ContactMap;
 import util.Util_Compare_ClusterModel_Transmission_Output;
@@ -51,7 +51,7 @@ public class Launcher_ClusterModel {
 			} else if ("-optGA".equals(flag)) {
 				Optimisation_Factory.stable_prevalence_by_tranmission_fit_GA(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-analyse".equals(flag)) {
-				Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
+				Util_Analyse_ClusterModel_Transmission_Output_Combined analysis = new Util_Analyse_ClusterModel_Transmission_Output_Combined();
 				File dir = new File(args[1]);
 				analysis.setBaseDir(dir);
 				System.out.printf("=== %s ===\n", dir.getName());
@@ -82,7 +82,7 @@ public class Launcher_ClusterModel {
 					System.out.printf("Number of diretories to be analyse = %d\n", candidateDir.length);
 					for (File dir : candidateDir) {
 						System.out.printf("=== %s ===\n", dir.getName());
-						Util_Analyse_ClusterModel_Transmission_Output analysis = new Util_Analyse_ClusterModel_Transmission_Output();
+						Util_Analyse_ClusterModel_Transmission_Output_Combined analysis = new Util_Analyse_ClusterModel_Transmission_Output_Combined();
 						analysis.setBaseDir(dir);
 						if (args.length > 3) {
 							analysis.setSkipAnalysis(Integer.parseInt(args[3]));
@@ -97,7 +97,7 @@ public class Launcher_ClusterModel {
 							"Usage: java %s -analyse_trend RESULT_DIRECTORY TREND_DIRECTORY\n");
 					System.exit(0);
 				}else {
-					Util_Analyse_ClusterModel_Transmission_Output.extractTrendResults(new File(args[1]), new File(args[2]));
+					Util_Analyse_ClusterModel_Transmission_Output_Combined.extractTrendResults(new File(args[1]), new File(args[2]));
 				}
 
 			} else if ("-analyse_map".equals(flag)) {
@@ -110,7 +110,7 @@ public class Launcher_ClusterModel {
 			} else if ("-compare".equals(flag)) {
 				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-clean_up".equals(flag)) {
-				Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(new File(args[1]));
+				Util_Analyse_ClusterModel_Transmission_Output_Combined.cleanUpOutputDir(new File(args[1]));
 			} else if ("-clean_up_rx".equals(flag)) {
 				File baseDir = new File(args[1]);
 				if (args.length < 2) {
@@ -126,7 +126,7 @@ public class Launcher_ClusterModel {
 					});
 					System.out.printf("Number of diretories to be clean up = %d\n", candidateDir.length);
 					for (File dir : candidateDir) {
-						Util_Analyse_ClusterModel_Transmission_Output.cleanUpOutputDir(dir);
+						Util_Analyse_ClusterModel_Transmission_Output_Combined.cleanUpOutputDir(dir);
 					}
 					System.out.printf("%d directories clean up.\n", candidateDir.length);
 				}

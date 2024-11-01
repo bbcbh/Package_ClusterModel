@@ -37,7 +37,7 @@ import sim.Abstract_Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelTransmission;
 
-public class Util_Analyse_ClusterModel_Transmission_Output {
+public class Util_Analyse_ClusterModel_Transmission_Output_Combined {
 
 	private File baseDir;
 	private int[] incl_range = new int[] { 2920, 4745 }; // 5 years
@@ -77,11 +77,11 @@ public class Util_Analyse_ClusterModel_Transmission_Output {
 	public final static int rISK_GRP_MAP_INDEX_NUM_NOTIF = rISK_GRP_MAP_INDEX_NUM_INC + 1;
 	public final static int rISK_GRP_MAP_LENGTH = rISK_GRP_MAP_INDEX_NUM_NOTIF + 1;
 
-	public Util_Analyse_ClusterModel_Transmission_Output() {
+	public Util_Analyse_ClusterModel_Transmission_Output_Combined() {
 
 	}
 
-	public Util_Analyse_ClusterModel_Transmission_Output(
+	public Util_Analyse_ClusterModel_Transmission_Output_Combined(
 			String[] zipFileFormats, String[] summaryFileFormat, boolean[] isCumulData) {
 		super();
 		ZIP_FILES_LIST = zipFileFormats;
