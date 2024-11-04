@@ -23,7 +23,7 @@ public class Util_MultDirs_Results {
 			}
 		});
 
-		int sucCounters = 0;
+		int sucCounters = 0;		
 
 		for (File dir : dir_to_move) {
 			String dirName = dir.getName();
@@ -31,14 +31,19 @@ public class Util_MultDirs_Results {
 
 			// Regenerate new target path until it is new
 			int counter = 1;
-			while (targetPath.exists() && counter < 100) {
-				String org_dir = dirName;
-				dirName = dirName.replaceFirst("\\d+", String.format("%02d", counter));
-				if (org_dir.equals(dirName)) { // No number
-					dirName = String.format("%s_%s", dirName, String.format("%02d", counter));
-				}
+			String org_dir = dirName;
+			
+			Matcher m = Pattern.compile("\\d+").matcher(dirName);
+			m.find();
+			int str_length = m.end() - m.start();
+			
+			while (targetPath.exists() && counter < 100) {													
+				dirName = dirName.replaceFirst("\\d+", String.format("%0" + str_length + "d", counter));				
 				targetPath = new File(combinedDir, dirName);
 				counter++;
+			}			
+			if (org_dir.equals(dirName)) { // No number
+				dirName = String.format("%s_%s", dirName, String.format("%02d", counter));
 			}
 
 			if (!targetPath.exists()) {

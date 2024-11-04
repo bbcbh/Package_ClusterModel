@@ -63,7 +63,7 @@ public abstract class Util_Select_Sim_By_Residue {
 				pWri_summary.print(',');
 				pWri_summary.print("In target range");
 				for (int i = 0; i < residue_val.length; i++) {
-					pWri_summary.print(String.format(",Outputcome_%d", i));
+					pWri_summary.print(String.format(",Outcome_%d", i));
 				}
 				pWri_summary.println();
 			}
