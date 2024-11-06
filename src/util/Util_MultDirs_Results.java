@@ -37,7 +37,7 @@ public class Util_MultDirs_Results {
 			m.find();
 			int str_length = m.end() - m.start();
 			
-			while (targetPath.exists() && counter < 100) {													
+			while (targetPath.exists()) {													
 				dirName = dirName.replaceFirst("\\d+", String.format("%0" + str_length + "d", counter));				
 				targetPath = new File(combinedDir, dirName);
 				counter++;
