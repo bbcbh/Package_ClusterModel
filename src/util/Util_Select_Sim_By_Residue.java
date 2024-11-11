@@ -23,23 +23,23 @@ public abstract class Util_Select_Sim_By_Residue {
 
 	public abstract HashMap<String, double[]> generateResidueMapping(); // Key= DirectoryName:SeedList_Number Val=
 																		// value of interest (or residue)
-	public static void printOrderedParamList(File baseDir,
-			ArrayList<String> ordered_keys,	ArrayList<Double> ordered_residue_val,
-			ArrayList<String> inRangeKeyArray,
+
+	public static void printOrderedParamList(File baseDir, ArrayList<String> ordered_keys,
+			ArrayList<Double> ordered_residue_val, ArrayList<String> inRangeKeyArray,
 			HashMap<String, double[]> residue_mapping, File paramListSummaryFile)
 			throws FileNotFoundException, IOException {
 		PrintWriter pWri_summary = null;
 		HashMap<String, String[]> extract_seedList = new HashMap<>();
 		int pt = 0;
+
+		double lastResidue = Double.NaN;
+		ArrayList<String> sameResidueParamList = new ArrayList<>();
+
 		for (String key : ordered_keys) {
 			Double residue = ordered_residue_val.get(pt);
 			String[] key_sp = key.split(":");
 			String dir_name = key_sp[0];
 			int seedNum = Integer.parseInt(key_sp[1]);
-			if(seedNum == 0) {
-				int k = 1;
-			}
-				
 
 			String[] extract_seed = extract_seedList.get(dir_name);
 			double[] residue_val = residue_mapping.get(key);
@@ -68,19 +68,35 @@ public abstract class Util_Select_Sim_By_Residue {
 				pWri_summary.println();
 			}
 
-			pWri_summary.print(extract_seed[seedNum+1]); // Seed starts at line 1
-			pWri_summary.print(',');
-			pWri_summary.print(',');
-			pWri_summary.print(key);
-			pWri_summary.print(',');
-			pWri_summary.print(residue);
-			pWri_summary.print(',');
-			pWri_summary.print(Collections.binarySearch(inRangeKeyArray, key) >=0);
-			for (int i = 0; i < residue_val.length; i++) {
-				pWri_summary.print(',');
-				pWri_summary.print(residue_val[i]);
+			boolean addNewRow = !residue.equals(lastResidue);
+			
+			if(addNewRow) {
+				lastResidue = residue;
+				sameResidueParamList.clear();
+			}			
+		
+			int sameResiduePt = Collections.binarySearch(sameResidueParamList, extract_seed[seedNum + 1]);
+			if(sameResiduePt < 0) {
+				addNewRow |= sameResiduePt < 0; // Same residue but difference parameter value.		
+				sameResidueParamList.add(~sameResiduePt, extract_seed[seedNum + 1]);
 			}
-			pWri_summary.println();
+			
+			if (addNewRow) {						
+				pWri_summary.print(extract_seed[seedNum + 1]); // Seed starts at line 1
+				pWri_summary.print(',');
+				pWri_summary.print(',');
+				pWri_summary.print(key);
+				pWri_summary.print(',');
+				pWri_summary.print(residue);
+				pWri_summary.print(',');
+				pWri_summary.print(Collections.binarySearch(inRangeKeyArray, key) >= 0);
+				for (int i = 0; i < residue_val.length; i++) {
+					pWri_summary.print(',');
+					pWri_summary.print(residue_val[i]);
+				}
+				pWri_summary.println();
+
+			}
 			pt++;
 		}
 		pWri_summary.close();
@@ -112,7 +128,7 @@ public abstract class Util_Select_Sim_By_Residue {
 			String key = ent.getKey();
 			double residue = 0;
 			boolean inRange = true;
-			
+
 			for (int i = 0; i < data.length && !Double.isNaN(residue); i++) {
 				if (residue_target_range[i] != null && residue_weight[i] != 0) {
 					inRange &= residue_target_range[i].length == 1
@@ -132,10 +148,10 @@ public abstract class Util_Select_Sim_By_Residue {
 					inRangeKeyArr.add(key);
 				}
 			}
-		}		
-		
+		}
+
 		Collections.sort(inRangeKeyArr);
-					
+
 		return inRangeKeyArr;
 	}
 
