@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,7 +38,7 @@ import sim.Simulation_ClusterModelTransmission;
  * Miscellaneous helper code to modify (i.e. combine, generate) multiple
  * simulation directories
  */
-public class Util_Modify_SimDirs {
+public class Util_SimulationDirectoryModifications {
 
 	public static HashMap<File, Integer> generateSeedFilesFromOptSummary(File optSummaryFile, File target_dirs_base,
 			String target_dir_name_format, int numParam, int numParamSetToIncl_Max, int numParamPerSeedList_Max,
@@ -595,6 +596,50 @@ public class Util_Modify_SimDirs {
 			}
 
 		}
+	}
+	
+	/**
+	 * Extract lines from seed files, either from CSV or zip 
+	 * @param seedFiles
+	 * @return 
+	 * @throws IOException
+	 * @throws FileNotFoundException
+	 */
+
+	public static ArrayList<String[]> extractSeedFilesEntries(File[] seedFiles)
+			throws IOException, FileNotFoundException {
+		ArrayList<String[]> seedFileTxtArray = new ArrayList<>();
+	
+		for (File seedFile : seedFiles) {
+			if (seedFile.exists()) {
+				if (seedFile.getName().endsWith(".zip")) {
+					HashMap<String, ArrayList<String[]>> entMap = util.Util_7Z_CSV_Entry_Extract_Callable
+							.extractedLinesFrom7Zip(seedFile);
+					for (Entry<String, ArrayList<String[]>> ent : entMap.entrySet()) {
+						String[] lines;
+						ArrayList<String[]> src = ent.getValue();
+						lines = new String[src.size()];
+						for (int lineNum = 0; lineNum < lines.length; lineNum++) {
+							StringBuilder line_builder = new StringBuilder();
+							String[] lineEnt = src.get(lineNum);
+							for (int j = 0; j < lineEnt.length; j++) {
+								if (j != 0) {
+									line_builder.append(',');
+								}
+								line_builder.append(lineEnt[j]);
+							}
+							lines[lineNum] = line_builder.toString();
+						}
+						seedFileTxtArray.add(lines);
+					}
+				} else {
+					String[] lines;
+					lines = util.Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(seedFile);
+					seedFileTxtArray.add(lines);
+				}
+			}
+		}
+		return seedFileTxtArray;
 	}
 
 }
