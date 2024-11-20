@@ -113,12 +113,12 @@ public class Util_MultDirs_Results {
 
 	}
 
-	public static void extractedResultFromMultiDirs(File result_dir_base, Pattern pattern_dir_select,
+	public static void printExtractedResultFromMultiDirs(File result_dir_base, Pattern pattern_dir_select,
 			String[] compareFilePrefix, int[][] col_sel_all) throws IOException, FileNotFoundException {
-		extractedResultFromMultiDirs(result_dir_base, pattern_dir_select, compareFilePrefix, col_sel_all, null);
+		printExtractedResultFromMultiDirs(result_dir_base, pattern_dir_select, compareFilePrefix, col_sel_all, null);
 	}
 
-	public static void extractedResultFromMultiDirs(File result_dir_base, Pattern pattern_dir_select,
+	public static void printExtractedResultFromMultiDirs(File result_dir_base, Pattern pattern_dir_select,
 			String[] compareFilePrefix, int[][] col_sel_all, String[] param_list_order)
 			throws IOException, FileNotFoundException {
 		HashMap<String, PrintWriter> pWri_collection = new HashMap<>(); // Key: file_prefex_col_number
@@ -132,39 +132,11 @@ public class Util_MultDirs_Results {
 			}
 		});
 
-		for (int pId = 0; pId < compareFilePrefix.length; pId++) {
-			HashMap<String, HashMap<String, ArrayList<String[]>>> resMapByDirectory = new HashMap<>();
+		for (int pId = 0; pId < compareFilePrefix.length; pId++) {			
 			final String prefix = compareFilePrefix[pId];
-
-			for (File result_dir : result_dirs) {
-
-				File[] res_file = result_dir.listFiles(new FileFilter() {
-					@Override
-					public boolean accept(File pathname) {
-						return pathname.getName().startsWith(prefix)
-								|| Pattern.matches("\\[.*\\]" + prefix + "_.*.csv", pathname.getName());
-					}
-				});
-				HashMap<String, ArrayList<String[]>> resMap = new HashMap<>();
-				Pattern keyPattern = Pattern.compile("\\[Seed_List.csv,(\\d+)\\].*");
-
-				for (File f : res_file) {
-					if (f.getName().endsWith("7z")) {
-						resMap = util.Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(f, resMap, keyPattern);
-					} else {
-						String[] lines = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(f);
-						ArrayList<String[]> line_arr = new ArrayList<>();
-						for (String s : lines) {
-							line_arr.add(s.split(","));
-						}
-
-						Matcher m = keyPattern.matcher(f.getName());
-						m.find();
-						resMap.put(m.group(1), line_arr);
-					}
-				}
-				resMapByDirectory.put(result_dir.getName(), resMap);
-			}
+			
+			HashMap<String, HashMap<String, ArrayList<String[]>>> resMapByDirectory = extractedResultsFromResultDirs(
+					result_dirs, prefix);
 
 			String[] order_key_list = param_list_order;
 
@@ -216,6 +188,54 @@ public class Util_MultDirs_Results {
 		for (PrintWriter pWri : pWri_collection.values()) {
 			pWri.close();
 		}
+	}
+	
+	
+	public static HashMap<String, HashMap<String, ArrayList<String[]>>> extractedResultsFromSimDirBase(File simDirBase, final String result_file_prefix) 
+			throws IOException {			
+		File[] simDirs = simDirBase.listFiles(new FileFilter() {			
+			@Override
+			public boolean accept(File pathname) {				
+				return pathname.isDirectory();
+			}
+		});				
+		return extractedResultsFromResultDirs(simDirs,result_file_prefix);
+	}	
+	
+	private static HashMap<String, HashMap<String, ArrayList<String[]>>> extractedResultsFromResultDirs(File[] result_dirs,
+			final String result_file_prefix) throws IOException, FileNotFoundException {
+		
+		HashMap<String, HashMap<String, ArrayList<String[]>>> resMapByDirectory = new HashMap<>();
+		for (File result_dir : result_dirs) {
+
+			File[] res_file = result_dir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pathname.getName().startsWith(result_file_prefix)
+							|| Pattern.matches("\\[.*\\]" + result_file_prefix + "_.*.csv", pathname.getName());
+				}
+			});
+			HashMap<String, ArrayList<String[]>> resMap = new HashMap<>();
+			Pattern keyPattern = Pattern.compile("\\[Seed_List.csv,(\\d+)\\].*");
+
+			for (File f : res_file) {
+				if (f.getName().endsWith("7z")) {
+					resMap = util.Util_7Z_CSV_Entry_Extract_Callable.extractedLinesFrom7Zip(f, resMap, keyPattern);
+				} else {
+					String[] lines = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(f);
+					ArrayList<String[]> line_arr = new ArrayList<>();
+					for (String s : lines) {
+						line_arr.add(s.split(","));
+					}
+
+					Matcher m = keyPattern.matcher(f.getName());
+					m.find();
+					resMap.put(m.group(1), line_arr);
+				}
+			}
+			resMapByDirectory.put(result_dir.getName(), resMap);
+		}
+		return resMapByDirectory;
 	}
 
 }
