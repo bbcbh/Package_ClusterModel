@@ -2125,6 +2125,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		switch (fieldId) {
 		case RUNNABLE_FIELD_TRANSMISSION_SYM_RATE:
 		case RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ:
+		case RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES:
 			// Do nothing - refer to field directly
 			break;
 		case RUNNABLE_FIELD_TRANSMISSION_INFECTIOUS_PERIOD:
@@ -2181,7 +2182,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 			break;
 		default:
-			System.err.printf("Warning: refreshField option for fieldId=%d not set.\n", fieldId);
+			System.err.printf("Warning: refreshField option for fieldId = %d are set directly at runnable field.\n", fieldId);
 		}
 
 	}
