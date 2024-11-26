@@ -30,7 +30,7 @@ public class Test_PostSim_Analysis_Viability_Resample_By_Residue {
 		Pattern directory_pattern =
 				//Pattern.compile("MSM_Viability_Baseline_Resample_\\d\\d\\d_\\d\\d\\d"); // Version 1 only
 				//Pattern.compile("MSM_Viability_Baseline_Resample_Directed_.*"); // Direct only
-				Pattern.compile("MSM_Viability_Baseline_Resample_.*"); // All
+				Pattern.compile("MSM_Viability_Baseline_.*"); // All
 
 		File paramListSummaryFile = new File(baseDir, "Extract_ParamListSummary");
 		paramListSummaryFile.mkdirs();

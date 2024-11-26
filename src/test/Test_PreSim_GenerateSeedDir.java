@@ -45,13 +45,15 @@ public class Test_PreSim_GenerateSeedDir {
 		final int PROP_TYPE_OPT_MSM = PROP_TYPE_OPT_BALI + 1;
 		final int PROP_TYPE_OPT_MSM_VIABILITY = PROP_TYPE_OPT_MSM + 1;
 
-		int propType = PROP_TYPE_SIM_MSM_VIABILITY;
+		int propType = PROP_TYPE_SIM;
 
 		String[] cMap_seedCopy_name = new String[] {}; // new String[] { "RiskGrp_Map_%s.csv" };
 		File[] direct_copy = null;
 
 		long rng_seed = 22519122707291119l;
 		int extra_seed = 0;
+		int seedOffset = 0;
+
 
 		switch (propType) {
 		case PROP_TYPE_OPT_MSM:
@@ -155,8 +157,8 @@ public class Test_PreSim_GenerateSeedDir {
 			numDirPerMap = 5;
 			break;
 		case PROP_TYPE_SIM_MSM_VIABILITY:
-			extra_seed = 19;
-			int seedOffset = 0;
+			extra_seed = 39;
+			seedOffset = 20;
 			outputDirName = String.format("MSM_Viability_Baseline_All_%03d",extra_seed-seedOffset);
 			idLine_str = "#PBS -N MSM_VTB"+ (extra_seed-seedOffset)+"_%02d";
 			templateDir = new File(
@@ -287,9 +289,10 @@ public class Test_PreSim_GenerateSeedDir {
 			break;
 		case PROP_TYPE_SIM:
 		default:
-			extra_seed = 9;
-			outputDirName = String.format("Baseline_Split_%d", extra_seed);
-			idLine_str = String.format("#PBS -N SIM_S%d_%%03d", extra_seed);
+			extra_seed = 39;
+			seedOffset = 20;
+			outputDirName = String.format("Baseline_TestRate_Fit_Split_%02d", extra_seed-seedOffset);
+			idLine_str = String.format("#PBS -N SIM_TR%d_%%02d", extra_seed-seedOffset);
 			templateDir = new File(
 					"C:\\Users\\bhui\\Documents\\Java_Test\\Prop_Template\\SimClusterModel_Transmission_Sim");
 			sourcePBS = new File(
@@ -306,6 +309,8 @@ public class Test_PreSim_GenerateSeedDir {
 					+ ",16_8_2_1,16_8_4_1,16_8_8_1" // O->P, O->R, O->O
 					+ ",17_2_1,17_1_1,17_4_1,17_8_1" // Duration: penile, vaginal, rectal, orophargneal
 					+ ",19_14_2" // Sym Seek MSM
+					+ ",21_1_1_1, 21_2_1_1" // 1-Testing rate female, 1-Testing rate hetro male
+					+ ",21_12_12_1" // 1-Test rate LR MSM
 					+ "";
 
 			paramStr = "" + "0.818008,0.504899,0.346279" // P->V, V->P, P->R
@@ -313,7 +318,8 @@ public class Test_PreSim_GenerateSeedDir {
 					+ ",0.007013,0.024413,0.004015" // O->P, O->R, O->O
 					+ ",174.890750,235.528853,127.899082,78.581497" // Duration: penile, vaginal, rectal, phargneal
 					+ ",0.523049" // Sym Seek MSM
-					+ "";
+					+ ",0.830,0.927" // 1-Test rate female, 1-test rate hetro male
+					+ ",0.375";      // 1-Test rate LR MSM 
 
 
 			// Usage: Pre-define range: new double[][] { new double[] { min_range, max_range
@@ -330,6 +336,9 @@ public class Test_PreSim_GenerateSeedDir {
 					new double[] { 6, 0, 1, 3 }, // O->P
 					new double[] { 7, 0, 1, 3 }, // O->R
 					new double[] { 8, 0, 0.01 }, // O->O
+					new double[] { 14, 1-0.20, 1-0.10}, // 1-Testing rate female 
+					new double[] { 15, 1, 1.1, 14}, // 1-Testing rate hetro male
+					new double[] { 16, 0.30, 0.45}, // 1-Test rate LR MSM 
 					new double[] { -1, 0.10, -1 } };
 			numSimPerDir = 16;
 			numDirPerMap = 7;
