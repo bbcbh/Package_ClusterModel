@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.InvalidPropertiesFormatException;
 import java.util.regex.Pattern;
 
-import optimisation.Optimisation_Factory;
 import util.PropValUtils;
 import util.Util_Analyse_ClusterModel_Transmission_Output_Combined;
 import util.Util_Analyse_ContactMap_Outputs;
@@ -18,11 +17,11 @@ import util.Util_Compare_ClusterModel_Transmission_Output;
 import util.Util_RiskGrpAllocation;
 
 public class Launcher_ClusterModel {
-	
+
 	public static void main(String[] args) throws InvalidPropertiesFormatException, IOException, InterruptedException {
-		
+
 		final String USAGE_INFO = String.format(
-				"Usage: java %s <-gen, -trans, -opt, -opt_trend, -optGA, -analyse, -analyse_trend, -analyse_map, -combine_map, -compare -genRiskGrp> PROP_FILE_DIRECTORY <...>\n"
+				"Usage: java %s <-gen, -trans, -analyse,  -analyse_map, -combine_map, -compare -genRiskGrp> PROP_FILE_DIRECTORY <...>\n"
 						+ " or\tjava %s <-analyse_rx,  -clean_up_rx> FILE_DIRECTORY PATTERN <...>"
 						+ " or\tjava %s <-batch> COMMAND_AS_TEXT",
 				Launcher_ClusterModel.class.getName(), Launcher_ClusterModel.class.getName(),
@@ -37,19 +36,6 @@ public class Launcher_ClusterModel {
 				Simulation_ClusterModelGeneration.launch(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-trans".equals(flag)) {
 				Simulation_ClusterModelTransmission.launch(Arrays.copyOfRange(args, 1, args.length));
-			} else if ("-opt".equals(flag)) {
-				Optimisation_Factory
-						.stable_prevalence_by_tranmission_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
-			} else if ("-opt_trend".equals(flag)) {
-				Optimisation_Factory.trend_fit_Simplex(Arrays.copyOfRange(args, 1, args.length));
-			} else if ("-opt_trend_bayesian".equals(flag)) {
-				Optimisation_Factory.trend_fit_Bayesian(Arrays.copyOfRange(args, 1, args.length));
-			} else if ("-opt_trend_bayesian_fs".equals(flag)) {
-				Optimisation_Factory.trend_fit_Bayesian_fs(Arrays.copyOfRange(args, 1, args.length));
-			} else if ("-opt_trend_fs".equals(flag)) {
-				Optimisation_Factory.trend_fit_Simplex_fs(Arrays.copyOfRange(args, 1, args.length));
-			} else if ("-optGA".equals(flag)) {
-				Optimisation_Factory.stable_prevalence_by_tranmission_fit_GA(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-analyse".equals(flag)) {
 				Util_Analyse_ClusterModel_Transmission_Output_Combined analysis = new Util_Analyse_ClusterModel_Transmission_Output_Combined();
 				File dir = new File(args[1]);
@@ -57,19 +43,16 @@ public class Launcher_ClusterModel {
 				System.out.printf("=== %s ===\n", dir.getName());
 				if (args.length > 2) {
 					analysis.setSkipAnalysis(Integer.parseInt(args[2]));
-					if(args.length > 4) {
-						analysis.setIncl_range(
-								new int[] {Integer.parseInt(args[3]), Integer.parseInt(args[4])});
+					if (args.length > 4) {
+						analysis.setIncl_range(new int[] { Integer.parseInt(args[3]), Integer.parseInt(args[4]) });
 					}
-
 
 				}
 				analysis.analyse_outputs();
 			} else if ("-analyse_rx".equals(flag)) {
 				File baseDir = new File(args[1]);
 				if (args.length < 2) {
-					System.out.printf(
-							"Usage: java %s -analyse_rx FILE_DIRECTORY PATTERN [skip_analysis_int]\n");
+					System.out.printf("Usage: java %s -analyse_rx FILE_DIRECTORY PATTERN [skip_analysis_int]\n");
 					System.exit(0);
 				} else {
 					Pattern dirPattern = Pattern.compile(args[2]);
@@ -91,15 +74,6 @@ public class Launcher_ClusterModel {
 					}
 					System.out.printf("%d directories analysed.\n", candidateDir.length);
 				}
-			} else if ("-analyse_trend".equals(flag)) {
-				if(args.length < 2) {
-					System.out.printf(
-							"Usage: java %s -analyse_trend RESULT_DIRECTORY TREND_DIRECTORY\n");
-					System.exit(0);
-				}else {
-					Util_Analyse_ClusterModel_Transmission_Output_Combined.extractTrendResults(new File(args[1]), new File(args[2]));
-				}
-
 			} else if ("-analyse_map".equals(flag)) {
 				Util_Analyse_ContactMap_Outputs analysis = new Util_Analyse_ContactMap_Outputs(args[1],
 						Integer.parseInt(args[2]), Integer.parseInt(args[3]));
@@ -131,12 +105,13 @@ public class Launcher_ClusterModel {
 					System.out.printf("%d directories clean up.\n", candidateDir.length);
 				}
 			} else if ("-genRiskGrp".equals(flag)) {
-				if(args.length < 4) {
+				if (args.length < 4) {
 					System.out.printf("Usage: java %s -genRiskGrp CMAP_DIR RISKGRP_CAT NUM_THREAD\n");
 					System.exit(0);
-				}else {
+				} else {
 					Util_RiskGrpAllocation.generateRiskGrpAllocationByRiskCat(new File(args[1]),
-							(float[][]) PropValUtils.propStrToObject(args[2], float[][].class), Integer.parseInt(args[3]));
+							(float[][]) PropValUtils.propStrToObject(args[2], float[][].class),
+							Integer.parseInt(args[3]));
 				}
 
 			} else if ("-batch".equals(flag)) {

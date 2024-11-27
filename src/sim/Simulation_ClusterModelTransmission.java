@@ -36,7 +36,7 @@ import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.exception.OutOfRangeException;
 
-import optimisation.OptTrendFittingFunction;
+import optimisation.OptFittingFunction;
 import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
 import population.Population_Bridging;
@@ -984,9 +984,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						ArrayList<Integer> field_to_update = runnable[s].loadOptParameter(preGenParamKey, pt,
 								seedInfectNum, false);
 
-						if (loadedProperties.containsKey(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
+						if (loadedProperties.containsKey(OptFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 							String transform_str = loadedProperties
-									.getProperty(OptTrendFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
+									.getProperty(OptFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
 									.replaceAll("\\s", "");
 							if (transform_str.length() > 0) {
 								HashMap<String, Double> param_map = new HashMap<>();

@@ -3,39 +3,4 @@ Main-Class: sim.Launcher_ClusterModel
 Class-Path: . ClusterModel_lib/commons-math3-3.6.1.jar ClusterModel_lib/
  jgrapht-core-1.5.1.jar ClusterModel_lib/jheaps-0.13.jar ClusterModel_li
  b/jgrapht-ext-1.5.1.jar ClusterModel_lib/jgraphx-4.1.0.jar ClusterModel
- _lib/commons-compress-1.21.jar ClusterModel_lib/commons-io-2.11.0.jar C
- lusterModel_lib/xz-1.9.jar ClusterModel_lib/smile-core-3.0.2.jar Cluste
- rModel_lib/smile-base-3.0.2.jar ClusterModel_lib/parso-2.0.14.jar Clust
- erModel_lib/commons-csv-1.10.0.jar ClusterModel_lib/slf4j-api-2.0.7.jar
-  ClusterModel_lib/javacpp-platform-1.5.9.jar ClusterModel_lib/javacpp-1
- .5.9.jar ClusterModel_lib/javacpp-1.5.9-android-arm.jar ClusterModel_li
- b/javacpp-1.5.9-android-arm64.jar ClusterModel_lib/javacpp-1.5.9-androi
- d-x86.jar ClusterModel_lib/javacpp-1.5.9-android-x86_64.jar ClusterMode
- l_lib/javacpp-1.5.9-ios-arm64.jar ClusterModel_lib/javacpp-1.5.9-ios-x8
- 6_64.jar ClusterModel_lib/javacpp-1.5.9-linux-armhf.jar ClusterModel_li
- b/javacpp-1.5.9-linux-arm64.jar ClusterModel_lib/javacpp-1.5.9-linux-pp
- c64le.jar ClusterModel_lib/javacpp-1.5.9-linux-x86.jar ClusterModel_lib
- /javacpp-1.5.9-linux-x86_64.jar ClusterModel_lib/javacpp-1.5.9-macosx-a
- rm64.jar ClusterModel_lib/javacpp-1.5.9-macosx-x86_64.jar ClusterModel_
- lib/javacpp-1.5.9-windows-x86.jar ClusterModel_lib/javacpp-1.5.9-window
- s-x86_64.jar ClusterModel_lib/openblas-platform-0.3.23-1.5.9.jar Cluste
- rModel_lib/openblas-0.3.23-1.5.9.jar ClusterModel_lib/openblas-0.3.23-1
- .5.9-android-arm.jar ClusterModel_lib/openblas-0.3.23-1.5.9-android-arm
- 64.jar ClusterModel_lib/openblas-0.3.23-1.5.9-android-x86.jar ClusterMo
- del_lib/openblas-0.3.23-1.5.9-android-x86_64.jar ClusterModel_lib/openb
- las-0.3.23-1.5.9-ios-arm64.jar ClusterModel_lib/openblas-0.3.23-1.5.9-i
- os-x86_64.jar ClusterModel_lib/openblas-0.3.23-1.5.9-linux-x86.jar Clus
- terModel_lib/openblas-0.3.23-1.5.9-linux-x86_64.jar ClusterModel_lib/op
- enblas-0.3.23-1.5.9-linux-armhf.jar ClusterModel_lib/openblas-0.3.23-1.
- 5.9-linux-arm64.jar ClusterModel_lib/openblas-0.3.23-1.5.9-linux-ppc64l
- e.jar ClusterModel_lib/openblas-0.3.23-1.5.9-macosx-arm64.jar ClusterMo
- del_lib/openblas-0.3.23-1.5.9-macosx-x86_64.jar ClusterModel_lib/openbl
- as-0.3.23-1.5.9-windows-x86.jar ClusterModel_lib/openblas-0.3.23-1.5.9-
- windows-x86_64.jar ClusterModel_lib/arpack-ng-platform-3.9.0-1.5.9.jar 
- ClusterModel_lib/arpack-ng-3.9.0-1.5.9.jar ClusterModel_lib/arpack-ng-3
- .9.0-1.5.9-linux-x86.jar ClusterModel_lib/arpack-ng-3.9.0-1.5.9-linux-x
- 86_64.jar ClusterModel_lib/arpack-ng-3.9.0-1.5.9-linux-armhf.jar Cluste
- rModel_lib/arpack-ng-3.9.0-1.5.9-linux-arm64.jar ClusterModel_lib/arpac
- k-ng-3.9.0-1.5.9-linux-ppc64le.jar ClusterModel_lib/arpack-ng-3.9.0-1.5
- .9-macosx-x86_64.jar ClusterModel_lib/arpack-ng-3.9.0-1.5.9-windows-x86
- .jar ClusterModel_lib/arpack-ng-3.9.0-1.5.9-windows-x86_64.jar
+ _lib/commons-compress-1.21.jar ClusterModel_lib/commons-io-2.11.0.jar
