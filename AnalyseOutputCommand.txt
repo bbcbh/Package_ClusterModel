@@ -1,7 +1,0 @@
-// Analyse Max = 1023
--analyse "C:\Users\bhui\Documents\Java_Test\Baseline_Split\SimClusterModel_Transmission_Baseline" 712
-//-analyse_rx "C:\Users\bhui\OneDrive - UNSW\Bridging_model\SimClusterModel_Transmission\Current\Adherence" SimClusterModel_Transmission_.*
-//-analyse_trend "C:\Users\bhui\OneDrive - UNSW\Bridging_model\SimClusterModel_Transmission\Current\SimClusterModel_Transmission_V000_B000_Uptake_BAS_00_D00"  "C:\Users\bhui\OneDrive - UNSW\Bridging_model\SimClusterModel_Opt_Trend\FittingTarget"
-//-compare C:\Users\bhui\Documents\FTP\ClusterModel\SimClusterModel_Viability_MSM_VT_Se095\ SimClusterModel_Viability_MSM_VT_Sp_000 [[],[3],[],[7],[],[],[6]] -fulldata
-//-clean_up "C:\Users\bhui\Desktop\Test\SimClusterModel_Transmission_V000_B000_Uptake_BAS_00_D00"
-//-clean_up_rx "C:\Users\bhui\Documents\FTP\NOM_B" SimClusterModel_Transmission_.*
