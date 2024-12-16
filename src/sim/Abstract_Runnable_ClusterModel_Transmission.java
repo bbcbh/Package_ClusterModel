@@ -99,6 +99,9 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
 
 	protected Properties baseProp; // From simSpecificSim.prop
+	
+	protected Integer[][] non_map_edges_store = null;
+	private int NON_MAP_EDGES_STORE_PT = 0;		
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
@@ -139,6 +142,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	public void setBaseProp(Properties sim_prop) {
 		this.baseProp = sim_prop;
+	}
+	
+	public void setNonMapEdgeStore(int size) {
+		this.non_map_edges_store = new Integer[size][];
 	}
 
 	public abstract void allocateSeedInfection(int[][] num_infected_count, int time);
@@ -532,6 +539,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 					for (int tar_g = 0; tar_g < num_non_map_seeker.length; tar_g++) {
 						if (((1 << tar_g) & non_mapped_encounter_target_gender[seek_g]) > 0) {
 							if (tar_pos < candidate_id[tar_g].size()) {
+								num_non_map_seeker[tar_g]--;
 								candidate_id[tar_g].remove(tar_pos - pos_offset);
 								break;
 							} else {
@@ -546,6 +554,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				}
 				// Remove seeker
 				candidate_id[seek_g].remove(seek_pos);
+				num_non_map_seeker[seek_g]--;
 				seek_g = genderToSeekNonMapEdge(num_non_map_seeker);
 			}
 
@@ -564,15 +573,29 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 						cMap.addVertex(nm_edge[index]);
 					}
 				}
-				addPartnership(cMap, nm_edge);
-
-				// TODO: Print/Store NM edge information
-
+				addPartnership(cMap, nm_edge);				
+				
+				addNonMapEdgeStore(nm_edge);
 			}
 
 		}
 
 		return edges_array_pt;
+	}
+	
+	private void addNonMapEdgeStore(Integer[] nm_edge) {
+		if(non_map_edges_store != null) {
+			non_map_edges_store[NON_MAP_EDGES_STORE_PT] = nm_edge;
+			NON_MAP_EDGES_STORE_PT++;			
+			if(NON_MAP_EDGES_STORE_PT > non_map_edges_store.length) {				
+				exportNonMapEdgeStore();				
+				NON_MAP_EDGES_STORE_PT = 0;				
+			}						
+		}
+	}
+	
+	protected void exportNonMapEdgeStore() {
+		// Do nothing by default;
 	}
 
 	private int genderToSeekNonMapEdge(int[] num_non_map_seeker) {
