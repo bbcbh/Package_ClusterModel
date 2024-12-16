@@ -561,30 +561,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
 				for (Integer switch_index : switch_ent.keySet()) {
 					String str_obj = switch_ent.get(switch_index);
-					if (switch_index < 0) {
-						loadExtraPropSwitchSetting(switch_index, str_obj);
-					} else {
 
-						int fieldId = switch_index - RUNNABLE_OFFSET;
-						if (fieldId >= 0) {
-							getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
-									getRunnable_fields()[fieldId].getClass());
-							refreshField(fieldId, false);
-						} else {
-							final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-									+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-									+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
-							// Field defined outside runnable
-							switch (switch_index) {
-							case sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION:
-								int[][] num_infected = (int[][]) PropValUtils
-										.propStrToObject(switch_ent.get(switch_index), int[][].class);
-								allocateSeedInfection(num_infected, currentTime);
-								break;
-							default:
-								System.err.printf("Warning: switch to field_id of %d not supported.\n", fieldId);
-							}
-						}
+					int fieldId = switch_index - RUNNABLE_OFFSET;
+					if (fieldId < 0) {
+						loadNonRunnableFieldSetting(switch_index, str_obj, currentTime);
+					} else {
+						getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
+								getRunnable_fields()[fieldId].getClass());
+						refreshField(fieldId, false);
 					}
 				}
 				switchTimeIndex++;
@@ -754,7 +738,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 														}
 														updateInfectStageChangeSchedule(pid_inf_tar, inf_id, tar_site,
 																currentTime + 1,
-																tar_infection_state_switch[inf_id][tar_site]);																
+																tar_infection_state_switch[inf_id][tar_site]);
 														simulate_transmission_success_act(currentTime, inf_id,
 																pid_inf_src, pid_inf_tar, src_site, tar_site);
 													} else {
@@ -998,7 +982,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Do nothing by default
 
 	}
-	
+
 	protected void simulate_transmission_success_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
 			int src_site, int tar_site) {
 		// Do nothing by default
@@ -1733,6 +1717,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	@Override
 	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
 			boolean display_only) {
+		
+		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+		
 		ArrayList<Integer> field_to_update = new ArrayList<>();
 		for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 			String param_setting = parameter_settings[param_arr_index];
@@ -1753,7 +1742,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				if (pt < 0) {
 					field_to_update.add(~pt, field_id);
 				}
-			} else {
+			} else if(param_name_index == sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION){
 				// Seed infection replacement
 				int i_lvl = 1;
 				int j_lvl = 2;
@@ -1769,6 +1758,24 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					}
 				}
 				System.out.printf("Seed infection replacement to %s\n", Arrays.deepToString(seedInfectNum));
+			} else {
+				String prop_str = (String) getSim_prop()
+						.get(String.format("POP_PROP_INIT_PREFIX_%d", param_name_index));
+				String prop_class = (String) getSim_prop()
+						.get(String.format("POP_PROP_INIT_PREFIX_CLASS_%d", param_name_index));
+				try {
+					Object val = util.PropValUtils.propStrToObject(prop_str, Class.forName(prop_class));
+					int setting_level = 1;
+					Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point,
+							param_setting_arr, setting_level);
+
+					getSim_prop().put(String.format("POP_PROP_INIT_PREFIX_%d", param_name_index),
+							util.PropValUtils.objectToPropStr(val, Class.forName(prop_class)));
+
+				} catch (ClassNotFoundException ex) {
+					ex.printStackTrace(System.err);
+
+				}
 			}
 		}
 

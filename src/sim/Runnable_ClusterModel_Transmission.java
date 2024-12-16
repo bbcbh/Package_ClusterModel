@@ -836,15 +836,19 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
 					for (Integer switch_index : switch_ent.keySet()) {
 						String str_obj = switch_ent.get(switch_index);
-						if (switch_index < 0) {
-							loadExtraPropSwitchSetting(switch_index, str_obj);
+
+						int fieldId = switch_index - RUNNABLE_OFFSET;
+						if (fieldId < 0) {
+							loadNonRunnableFieldSetting(switch_index, str_obj, currentTime);
 						} else {
-							getRunnable_fields()[switch_index - RUNNABLE_OFFSET] = PropValUtils.propStrToObject(str_obj,
-									getRunnable_fields()[switch_index - RUNNABLE_OFFSET].getClass());
+							getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
+									getRunnable_fields()[fieldId].getClass());
+							refreshField(fieldId, false);
+
 						}
 					}
 					switchTimeIndex++;
-					
+
 					vaccine_one_off_at = setOneOffVaccineSetting(vaccine_one_off_rate, vaccine_one_off_at);
 				}
 
@@ -2182,7 +2186,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			}
 			break;
 		default:
-			System.err.printf("Warning: refreshField option for fieldId = %d are set directly at runnable field.\n", fieldId);
+			System.err.printf("Warning: refreshField option for fieldId = %d are set directly at runnable field.\n",
+					fieldId);
 		}
 
 	}
@@ -2206,26 +2211,47 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				String[] param_setting_arr = param_setting.split("_");
 				int param_name_index = Integer.parseInt(param_setting_arr[0]);
 				int field_id = param_name_index - Optimisation_Factory.RUNNABLE_OFFSET;
-				Object val = target_runnable.getRunnable_fields()[field_id];
-				if (val != null) {
-					int setting_level = 1;
-					switch (field_id) {
-					default:
+				if (field_id >= 0) {
+					Object val = target_runnable.getRunnable_fields()[field_id];
+					if (val != null) {
+						int setting_level = 1;
+						switch (field_id) {
+						default:
+							Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point,
+									param_setting_arr, setting_level);
+
+						}
+						// Special modification for
+						int pt = Collections.binarySearch(field_to_update, field_id);
+						if (pt < 0) {
+							field_to_update.add(~pt, field_id);
+						}
+
+						modified_param.put(param_name_index, val);
+
+					} else {
+						System.err.printf("Setting of parameter not supported (wrong param number of %d?). Exiting.\n",
+								param_name_index);
+
+					}
+				} else {
+					String prop_str = (String) target_runnable.getSim_prop()
+							.get(String.format("POP_PROP_INIT_PREFIX_%d", param_name_index));
+					String prop_class = (String) target_runnable.getSim_prop()
+							.get(String.format("POP_PROP_INIT_PREFIX_CLASS_%d", param_name_index));
+					try {
+						Object val = util.PropValUtils.propStrToObject(prop_str, Class.forName(prop_class));
+						int setting_level = 1;
 						Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point,
 								param_setting_arr, setting_level);
 
-					}
-					// Special modification for
-					int pt = Collections.binarySearch(field_to_update, field_id);
-					if (pt < 0) {
-						field_to_update.add(~pt, field_id);
-					}
+						target_runnable.getSim_prop().put(String.format("POP_PROP_INIT_PREFIX_%d", param_name_index),
+								util.PropValUtils.objectToPropStr(val, Class.forName(prop_class)));
 
-					modified_param.put(param_name_index, val);
+					} catch (ClassNotFoundException ex) {
+						ex.printStackTrace(System.err);
 
-				} else {
-					System.err.printf("Setting of parameter not supported (wrong param number of %d?). Exiting.\n",
-							param_name_index);
+					}
 
 				}
 			}

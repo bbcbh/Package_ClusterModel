@@ -933,9 +933,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							num_snap);
 				}
 				runnable[s].setBaseDir(baseDir);
+				runnable[s].setBaseProp(loadedProperties);
 				runnable[s].setEdges_list(edge_list_map.get(baseContactMapSeed));
 				runnable[s].setSimSetting(simSetting);
 				runnable[s].setPropSwitch_map(propSwitch_map);
+				
 
 				if (printProgress) {
 					runnable[s].setPrint_progress(System.out);

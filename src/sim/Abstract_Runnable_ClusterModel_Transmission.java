@@ -78,18 +78,27 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected ArrayList<Integer[]> edges_list;
 
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
-	public static final int PROPSWITCH_MAP_KEPT_EDGE_BY_DURATION_INDEX = -1;
 
 	protected transient HashMap<Integer, Integer> risk_cat_map;
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
 
+	// Format:
+	// float[][] { edge_duration_to_be_kept, kept_probability }, or empty string to
+	// set back to default
+	public static final int PROPSWITCH_MAP_KEPT_EDGE_BY_DURATION_INDEX = -1;
+
 	protected float[][] cMap_Kept_Edge_By_Duration_Setting = null;
+	protected int[] non_mapped_encounter_max = null;
+	protected int[] non_mapped_encounter_target_gender = null;
+
 	private static final int cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST = 0;
 	private static final int cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST = cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST + 1;
 
 	protected static final String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
 			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+
+	protected Properties baseProp; // From simSpecificSim.prop
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
@@ -98,6 +107,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				(int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey), int[].class), base_cMap,
 				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])),
 				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])));
+
+		this.baseProp = prop;
 	}
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] pop_composition,
@@ -121,6 +132,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	}
 
 	public abstract void initialse();
+
+	public Properties getSim_prop() {
+		return baseProp;
+	}
+
+	public void setBaseProp(Properties sim_prop) {
+		this.baseProp = sim_prop;
+	}
 
 	public abstract void allocateSeedInfection(int[][] num_infected_count, int time);
 
@@ -263,8 +282,20 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		this.propSwitch_map = propSwitch_map;
 	}
 
-	protected void loadExtraPropSwitchSetting(Integer index, String entry) {
+	protected void loadNonRunnableFieldSetting(Integer index, String entry, int loadTime) {
+		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		switch (index.intValue()) {
+		case Population_Bridging.FIELD_PARTNER_TYPE_PROB:
+			// Reset
+			non_mapped_encounter_max = null;
+			non_mapped_encounter_target_gender = null;
+			break;
+		case sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION:
+			int[][] num_infected = (int[][]) PropValUtils.propStrToObject(entry, int[][].class);
+			allocateSeedInfection(num_infected, loadTime);
+			break;
 		case PROPSWITCH_MAP_KEPT_EDGE_BY_DURATION_INDEX:
 			cMap_Kept_Edge_By_Duration_Setting = entry.trim().length() > 0
 					? (float[][]) PropValUtils.propStrToObject(entry, float[][].class)
@@ -390,7 +421,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			boolean addEdge = cMap_Kept_Edge_By_Duration_Setting == null;
 			Integer[] edge = edges_array[edges_array_pt];
 
-			if (cMap_Kept_Edge_By_Duration_Setting != null) {				
+			if (cMap_Kept_Edge_By_Duration_Setting != null) {
 				int index = Arrays.binarySearch(cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST],
 						Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1));
 				if (index < 0) {
@@ -399,7 +430,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				addEdge = index >= cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST].length;
 				if (!addEdge) {
 					float keptEdgeProb = cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST][index];
-					if(keptEdgeProb > 0) {
+					if (keptEdgeProb > 0) {
 						addEdge = keptEdgeProb >= 1 ? true : RNG.nextFloat() < keptEdgeProb;
 					}
 				}
@@ -427,7 +458,134 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 			edges_array_pt++;
 		}
+
+		// Initialise non-mapped encounter
+		if (non_mapped_encounter_max == null) {
+			non_mapped_encounter_max = new int[cUMULATIVE_POP_COMPOSITION.length];
+			non_mapped_encounter_target_gender = new int[cUMULATIVE_POP_COMPOSITION.length];
+
+			float[][] prop_ent = (float[][]) util.PropValUtils.propStrToObject(
+					getSim_prop().getProperty(
+							String.format("POP_PROP_INIT_PREFIX_%d", Population_Bridging.FIELD_PARTNER_TYPE_PROB)),
+					float[][].class);
+
+			for (int g = 0; g < cUMULATIVE_POP_COMPOSITION.length; g++) {
+				float[] ent = prop_ent[g];
+				int grpSize = cUMULATIVE_POP_COMPOSITION[g];
+				if (g > 0) {
+					grpSize -= cUMULATIVE_POP_COMPOSITION[g - 1];
+				}
+				if (ent.length > Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB) {
+					non_mapped_encounter_max[g] = ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB] < 1
+							? Math.round(ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB] * grpSize)
+							: (int) ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB];
+					non_mapped_encounter_target_gender[g] = (int) ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER];
+				}
+			}
+		}
+
+		int[] num_non_map_seeker = Arrays.copyOf(non_mapped_encounter_max, non_mapped_encounter_max.length);
+		int seek_g = genderToSeekNonMapEdge(num_non_map_seeker);
+
+		if (seek_g < num_non_map_seeker.length) {
+			// Seeking non-mapped casual partnership
+			@SuppressWarnings("unchecked")
+			ArrayList<Integer>[] candidate_id = new ArrayList[cUMULATIVE_POP_COMPOSITION.length];
+			int id = 1;
+			for (int g = 0; g < candidate_id.length; g++) {
+				candidate_id[g] = new ArrayList<Integer>();
+				while (id <= cUMULATIVE_POP_COMPOSITION[g]) {
+					candidate_id[g].add(id);
+					id++;
+				}
+			}
+
+			ArrayList<Integer[]> non_map_edge_to_add_array = new ArrayList<Integer[]>();
+
+			while (seek_g < num_non_map_seeker.length) {
+				ArrayList<Integer> tarList = new ArrayList<Integer>();
+				for (int tar_g = 0; tar_g < num_non_map_seeker.length; tar_g++) {
+					if (((1 << tar_g) &  non_mapped_encounter_target_gender[seek_g]) > 0) {
+						tarList.addAll(candidate_id[tar_g]);
+					}
+				}
+
+				int seek_pos = RNG.nextInt(candidate_id[seek_g].size());
+				int seek_id = candidate_id[seek_g].get(seek_pos);
+
+				Integer[] non_map_edge_to_add = null;
+
+				while (non_map_edge_to_add == null && !tarList.isEmpty()) {
+					int tar_pos = RNG.nextInt(tarList.size());
+					int tar_id = tarList.get(tar_pos);
+
+					int p1 = Math.min(seek_id, tar_id);
+					int p2 = p1 == seek_id ? tar_id : seek_id;
+
+					if (seek_id != tar_id && !cMap.containsEdge(p1, p2)) {
+						non_map_edge_to_add = new Integer[] { p1, p2, currentTime, 1 };
+					}
+
+					// Remove target
+					tarList.remove(tar_pos);
+					int pos_offset = 0;
+					for (int tar_g = 0; tar_g < num_non_map_seeker.length; tar_g++) {
+						if (((1 << tar_g) & non_mapped_encounter_target_gender[seek_g]) > 0) {
+							if (tar_pos < candidate_id[tar_g].size()) {
+								candidate_id[tar_g].remove(tar_pos - pos_offset);
+								break;
+							} else {
+								pos_offset += candidate_id[tar_g].size();
+							}
+						}
+
+					}
+				}
+				if (non_map_edge_to_add != null) {
+					non_map_edge_to_add_array.add(non_map_edge_to_add);
+				}
+				// Remove seeker
+				candidate_id[seek_g].remove(seek_pos);
+				seek_g = genderToSeekNonMapEdge(num_non_map_seeker);
+			}
+
+			// Adding of non-map edge
+			for (Integer[] nm_edge : non_map_edge_to_add_array) {
+				toRemove = edgesToRemove.get(currentTime + 1);
+				if (toRemove == null) {
+					toRemove = new ArrayList<>();
+					edgesToRemove.put(currentTime + 1, toRemove);
+				}
+				toRemove.add(nm_edge);
+
+				for (int index : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+						Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
+					if (!cMap.containsVertex(nm_edge[index])) {
+						cMap.addVertex(nm_edge[index]);
+					}
+				}
+				addPartnership(cMap, nm_edge);
+
+				// TODO: Print/Store NM edge information
+
+			}
+
+		}
+
 		return edges_array_pt;
+	}
+
+	private int genderToSeekNonMapEdge(int[] num_non_map_seeker) {
+		for (int seek_g = 0; seek_g < num_non_map_seeker.length; seek_g++) {
+			if (num_non_map_seeker[seek_g] > 0) {
+				for (int tar_g = 0; tar_g < num_non_map_seeker.length; tar_g++) {
+					if (((1 << tar_g) & non_mapped_encounter_target_gender[seek_g]) > 0) {
+						return seek_g;
+					}
+				}
+			}
+		}
+		return num_non_map_seeker.length;
 	}
 
 	protected void addPartnership(ContactMap cMap, Integer[] edge) {

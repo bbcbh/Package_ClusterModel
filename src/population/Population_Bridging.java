@@ -103,6 +103,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int PARTNER_TYPE_INDEX_REG_ONLY = 0;
 	public static final int PARTNER_TYPE_INDEX_CAS_ONLY = PARTNER_TYPE_INDEX_REG_ONLY + 1;
 	public static final int PARTNER_TYPE_ASSORTATIVITY = PARTNER_TYPE_INDEX_CAS_ONLY + 1;
+	public static final int PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB = PARTNER_TYPE_ASSORTATIVITY + 1;
+	public static final int PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER = PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB + 1;
 
 	public static final int GENDER_FEMALE = 0;
 	public static final int GENDER_HETRO_MALE = GENDER_FEMALE + 1;
@@ -115,8 +117,6 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int RELMAP_HETRO = 0;
 	public static final int RELMAP_MSM = 1;
 	public static final int LENGTH_RELMAP = 2;
-
-
 
 	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 
