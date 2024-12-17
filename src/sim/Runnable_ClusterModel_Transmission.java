@@ -2418,4 +2418,20 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 	}
 
+	@Override
+	protected int non_map_edge_candidate_type(Integer pid) {
+		// Identified based on infectiousness
+		
+		for(int s = 0; s < currently_infectious.length; s++) {
+			int pt  = Collections.binarySearch(currently_infectious[s], pid);			
+			if(pt >=0) {
+				return 1 << NM_EDGE_SEEKER;
+			}			
+		}
+		return 1 << NM_EDGE_TARGET;
+		
+	}
+	
+	
+
 }
