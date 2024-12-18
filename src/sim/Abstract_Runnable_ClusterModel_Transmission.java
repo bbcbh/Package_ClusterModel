@@ -13,12 +13,14 @@ import java.util.Properties;
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
+import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
+import util.ArrayUtilsRandomGenerator;
 import util.PropValUtils;
 
 public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstract_Runnable_ClusterModel {
@@ -88,10 +90,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	// float[][] { edge_duration_to_be_kept, kept_probability }, or empty string to
 	// set back to default
 	public static final int PROPSWITCH_MAP_KEPT_EDGE_BY_DURATION_INDEX = -1;
-
 	protected float[][] cMap_Kept_Edge_By_Duration_Setting = null;
-	protected float[] non_mapped_encounter_prob = null;
-	protected int[] non_mapped_encounter_target_gender = null;
 
 	private static final int cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST = 0;
 	private static final int cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST = cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST + 1;
@@ -101,9 +100,17 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	protected Properties baseProp; // From simSpecificSim.prop
 
+	// Non_mapped encounter
+	// To be initialise during updateCMap
+	protected float[] non_mapped_encounter_prob = null;
+	protected int[] non_mapped_encounter_target_gender = null;
+	protected ArrayList<Integer>[] non_map_candidate_id_seeker = null;
+	protected ArrayList<Integer>[] non_map_candidate_id_target = null;
 	protected Integer[][] non_map_edges_store = null;
+
 	private int NON_MAP_EDGES_STORE_PT = 0;
 	private RandomGenerator RNG_NM = null;
+	private PoissonDistribution[] dist_nm_candidate = null;
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
@@ -491,105 +498,44 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			}
 			if (!hasProb) {
 				non_mapped_encounter_prob = new float[0]; // 0-length = not used
+			} else {
+				init_non_mapped_encounter_list();
 			}
 		}
 
 		if (non_mapped_encounter_prob.length > 0) {
 			int[] num_non_map_seeker = new int[non_mapped_encounter_prob.length];
-
-			// Seeking non-mapped casual partnership
-			@SuppressWarnings("unchecked")
-			ArrayList<Integer>[] candidate_id_target = new ArrayList[cUMULATIVE_POP_COMPOSITION.length];
-			@SuppressWarnings("unchecked")
-			ArrayList<Integer>[] candidate_id_seeker = new ArrayList[cUMULATIVE_POP_COMPOSITION.length];
-
-			int id = 1;
-			for (int g = 0; g < cUMULATIVE_POP_COMPOSITION.length; g++) {
-				candidate_id_seeker[g] = new ArrayList<Integer>();
-				candidate_id_target[g] = new ArrayList<Integer>();
-				while (id <= cUMULATIVE_POP_COMPOSITION[g]) {
-					if (non_mapped_encounter_prob[g] > 0) {
-						int nm_candidate_type = non_map_edge_candidate_type(id);
-						if ((nm_candidate_type & 1 << NM_EDGE_SEEKER) != 0) {
-							candidate_id_seeker[g].add(id);
-						} else if ((nm_candidate_type & 1 << NM_EDGE_TARGET) != 0) {
-							candidate_id_target[g].add(id);
-						}
-					}
-					id++;
-				}
-			}
-
 			for (int g = 0; g < num_non_map_seeker.length; g++) {
-				num_non_map_seeker[g] = Math.round(non_mapped_encounter_prob[g] * candidate_id_seeker[g].size());
-			}
-
-			ArrayList<Integer[]> non_map_edge_to_add_array = new ArrayList<Integer[]>();
-
-			int seek_g = genderToSeekNonMapEdge(num_non_map_seeker);
-			int seek_g_pre = -1;
-			ArrayList<Integer> tarList = null;
-
-			while (seek_g < num_non_map_seeker.length) {
-				if (seek_g != seek_g_pre) {
-					tarList = new ArrayList<Integer>();
-					for (int tar_g = 0; tar_g < num_non_map_seeker.length; tar_g++) {
-						if (((1 << tar_g) & non_mapped_encounter_target_gender[seek_g]) > 0) {
-							tarList.addAll(candidate_id_target[tar_g]);
-						}
-					}
-					seek_g_pre = seek_g;
+				if (dist_nm_candidate[g] != null) {
+					num_non_map_seeker[g] = dist_nm_candidate[g].sample();
 				}
-
-				int seek_pos = RNG_NM.nextInt(candidate_id_seeker[seek_g].size());
-				int seek_id = candidate_id_seeker[seek_g].get(seek_pos);
-
-				Integer[] non_map_edge_to_add = null;
-
-				while (non_map_edge_to_add == null && !tarList.isEmpty()) {
-					int tar_pos = RNG_NM.nextInt(tarList.size());
-					int tar_id = tarList.get(tar_pos);
-
-					int p1 = Math.min(seek_id, tar_id);
-					int p2 = p1 == seek_id ? tar_id : seek_id;
-
-					if (seek_id != tar_id && !cMap.containsEdge(p1, p2)) {
-						non_map_edge_to_add = new Integer[] { p1, p2, currentTime, 1 };
-					}
-
-					// Remove target
-					tarList.remove(tar_pos);
-					int pos_offset = 0;
-					for (int tar_g = 0; tar_g < num_non_map_seeker.length; tar_g++) {
-						if (((1 << tar_g) & non_mapped_encounter_target_gender[seek_g]) > 0) {
-							if (tar_pos < candidate_id_target[tar_g].size()) {
-								candidate_id_target[tar_g].remove(tar_pos - pos_offset);
-								int pt = Collections.binarySearch(candidate_id_seeker[tar_g], tar_id);
-								if (pt >= 0) {
-									candidate_id_seeker[tar_g].remove(pt);
-								}
-								break;
-							} else {
-								pos_offset += candidate_id_target[tar_g].size();
+			}
+			ArrayList<Integer[]> non_map_edge_to_add_array = new ArrayList<Integer[]>();
+			for (int seek_g = 0; seek_g < num_non_map_seeker.length; seek_g++) {
+				if (num_non_map_seeker[seek_g] > 0) {
+					int num_to_seek = Math.min(num_non_map_seeker[seek_g], Math.min(
+							non_map_candidate_id_seeker[seek_g].size(), non_map_candidate_id_target[seek_g].size()));
+					if (num_to_seek > 0) {
+						int[] nm_seeker_index = ArrayUtilsRandomGenerator.randomSelectIndex(num_to_seek, 0,
+								non_map_candidate_id_seeker[seek_g].size(), RNG_NM);
+						int[] nm_target_index = ArrayUtilsRandomGenerator.randomSelectIndex(num_to_seek, 0,
+								non_map_candidate_id_seeker[seek_g].size(), RNG_NM);
+						if (num_to_seek > 1) {
+							ArrayUtilsRandomGenerator.shuffleArray(nm_seeker_index, RNG_NM);
+							ArrayUtilsRandomGenerator.shuffleArray(nm_target_index, RNG_NM);
+						}
+						for (int p = 0; p < num_to_seek; p++) {
+							int seeker_id = non_map_candidate_id_seeker[seek_g].get(nm_seeker_index[p]);
+							int target_id = non_map_candidate_id_target[seek_g].get(nm_target_index[p]);
+							int p1 = Math.min(seeker_id, target_id);
+							int p2 = p1 == seeker_id ? target_id : seeker_id;
+							if (seeker_id != target_id && !cMap.containsEdge(p1, p2)) {
+								non_map_edge_to_add_array.add(new Integer[] { p1, p2, currentTime, 1 });
 							}
 						}
-
 					}
 				}
-				if (non_map_edge_to_add != null) {
-					non_map_edge_to_add_array.add(non_map_edge_to_add);
-				}
-				// Remove seeker
-				candidate_id_seeker[seek_g].remove(seek_pos);
-				int pt = Collections.binarySearch(candidate_id_target[seek_g], seek_id);
-				if (pt >= 0) {
-					candidate_id_target[seek_g].remove(pt);
-				}
-				num_non_map_seeker[seek_g]--;
-
-				seek_g = genderToSeekNonMapEdge(num_non_map_seeker);
 			}
-
 			// Adding of non-map edge
 			for (Integer[] nm_edge : non_map_edge_to_add_array) {
 				toRemove = edgesToRemove.get(currentTime + 1);
@@ -626,30 +572,39 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-	protected static final int NM_EDGE_SEEKER = 0;
-	protected static final int NM_EDGE_TARGET = 1;
+	@SuppressWarnings("unchecked")
+	protected void init_non_mapped_encounter_list() {
 
-	protected int non_map_edge_candidate_type(Integer pid) {
-		// Default - any
-		System.err.println("Warning: Default non_map_edge_candidate_type (which include everyone) used!");
-		return 1 << NM_EDGE_SEEKER | 1 << NM_EDGE_TARGET;
+		// Seeking non-mapped casual partnership
+		non_map_candidate_id_target = new ArrayList[cUMULATIVE_POP_COMPOSITION.length];
+		non_map_candidate_id_seeker = new ArrayList[cUMULATIVE_POP_COMPOSITION.length];
+		dist_nm_candidate = new PoissonDistribution[cUMULATIVE_POP_COMPOSITION.length];
+
+		for (int seeker_g = 0; seeker_g < cUMULATIVE_POP_COMPOSITION.length; seeker_g++) {
+			if (non_mapped_encounter_prob[seeker_g] > 0) {
+				non_map_candidate_id_seeker[seeker_g] = new ArrayList<Integer>();
+				non_map_candidate_id_target[seeker_g] = new ArrayList<Integer>();
+				int id = 1;
+				while (id <= cUMULATIVE_POP_COMPOSITION[cUMULATIVE_POP_COMPOSITION.length - 1]) {
+					int gender_type = getGenderType(id);
+					if (gender_type == seeker_g) {
+						non_map_candidate_id_seeker[seeker_g].add(id);
+					}
+					if (((1 << gender_type) & non_mapped_encounter_target_gender[seeker_g]) > 0) {
+						non_map_candidate_id_target[seeker_g].add(id);
+					}
+					id++;
+				}
+				dist_nm_candidate[seeker_g] = new PoissonDistribution(RNG_NM,
+						non_mapped_encounter_prob[seeker_g] * non_map_candidate_id_seeker[seeker_g].size(),
+						PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
+			}
+		}
+
 	}
 
 	protected void exportNonMapEdgeStore() {
 		// Do nothing by default;
-	}
-
-	private int genderToSeekNonMapEdge(int[] num_non_map_seeker) {
-		for (int seek_g = 0; seek_g < num_non_map_seeker.length; seek_g++) {
-			if (num_non_map_seeker[seek_g] > 0) {
-				for (int tar_g = 0; tar_g < num_non_map_seeker.length; tar_g++) {
-					if (((1 << tar_g) & non_mapped_encounter_target_gender[seek_g]) > 0) {
-						return seek_g;
-					}
-				}
-			}
-		}
-		return num_non_map_seeker.length;
 	}
 
 	protected void addPartnership(ContactMap cMap, Integer[] edge) {
