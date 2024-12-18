@@ -6,13 +6,13 @@ import java.io.FileReader;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Properties;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
+import org.apache.commons.math3.distribution.IntegerDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
@@ -107,10 +107,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected ArrayList<Integer>[] non_map_candidate_id_seeker = null;
 	protected ArrayList<Integer>[] non_map_candidate_id_target = null;
 	protected Integer[][] non_map_edges_store = null;
+	protected RandomGenerator RNG_NM = null;
+	protected IntegerDistribution[] dist_nm_candidate = null;
 
 	private int NON_MAP_EDGES_STORE_PT = 0;
-	private RandomGenerator RNG_NM = null;
-	private PoissonDistribution[] dist_nm_candidate = null;
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
@@ -504,38 +504,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 
 		if (non_mapped_encounter_prob.length > 0) {
-			int[] num_non_map_seeker = new int[non_mapped_encounter_prob.length];
-			for (int g = 0; g < num_non_map_seeker.length; g++) {
-				if (dist_nm_candidate[g] != null) {
-					num_non_map_seeker[g] = dist_nm_candidate[g].sample();
-				}
-			}
-			ArrayList<Integer[]> non_map_edge_to_add_array = new ArrayList<Integer[]>();
-			for (int seek_g = 0; seek_g < num_non_map_seeker.length; seek_g++) {
-				if (num_non_map_seeker[seek_g] > 0) {
-					int num_to_seek = Math.min(num_non_map_seeker[seek_g], Math.min(
-							non_map_candidate_id_seeker[seek_g].size(), non_map_candidate_id_target[seek_g].size()));
-					if (num_to_seek > 0) {
-						int[] nm_seeker_index = ArrayUtilsRandomGenerator.randomSelectIndex(num_to_seek, 0,
-								non_map_candidate_id_seeker[seek_g].size(), RNG_NM);
-						int[] nm_target_index = ArrayUtilsRandomGenerator.randomSelectIndex(num_to_seek, 0,
-								non_map_candidate_id_seeker[seek_g].size(), RNG_NM);
-						if (num_to_seek > 1) {
-							ArrayUtilsRandomGenerator.shuffleArray(nm_seeker_index, RNG_NM);
-							ArrayUtilsRandomGenerator.shuffleArray(nm_target_index, RNG_NM);
-						}
-						for (int p = 0; p < num_to_seek; p++) {
-							int seeker_id = non_map_candidate_id_seeker[seek_g].get(nm_seeker_index[p]);
-							int target_id = non_map_candidate_id_target[seek_g].get(nm_target_index[p]);
-							int p1 = Math.min(seeker_id, target_id);
-							int p2 = p1 == seeker_id ? target_id : seeker_id;
-							if (seeker_id != target_id && !cMap.containsEdge(p1, p2)) {
-								non_map_edge_to_add_array.add(new Integer[] { p1, p2, currentTime, 1 });
-							}
-						}
-					}
-				}
-			}
+			ArrayList<Integer[]> non_map_edge_to_add_array = form_non_mapped_edges(cMap, currentTime);
+
 			// Adding of non-map edge
 			for (Integer[] nm_edge : non_map_edge_to_add_array) {
 				toRemove = edgesToRemove.get(currentTime + 1);
@@ -561,15 +531,53 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		return edges_array_pt;
 	}
 
-	private void addNonMapEdgeStore(Integer[] nm_edge) {
-		if (non_map_edges_store != null) {
-			non_map_edges_store[NON_MAP_EDGES_STORE_PT] = nm_edge;
-			NON_MAP_EDGES_STORE_PT++;
-			if (NON_MAP_EDGES_STORE_PT > non_map_edges_store.length) {
-				exportNonMapEdgeStore();
-				NON_MAP_EDGES_STORE_PT = 0;
+	protected void addPartnership(ContactMap cMap, Integer[] edge) {
+		cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+				edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
+	}
+
+	public HashMap<String, Object> getSim_output() {
+		return sim_output;
+	}
+
+	public abstract ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point,
+			int[][] seedInfectNum, boolean display_only);
+
+	protected ArrayList<Integer[]> form_non_mapped_edges(ContactMap cMap, int currentTime) {
+		ArrayList<Integer[]> non_map_edge_to_add_array = new ArrayList<Integer[]>();
+		int[] num_non_map_seeker = new int[non_mapped_encounter_prob.length];
+		for (int g = 0; g < num_non_map_seeker.length; g++) {
+			if (dist_nm_candidate[g] != null) {
+				num_non_map_seeker[g] = dist_nm_candidate[g].sample();
 			}
 		}
+
+		for (int seek_g = 0; seek_g < num_non_map_seeker.length; seek_g++) {
+			if (num_non_map_seeker[seek_g] > 0) {
+				int num_to_seek = Math.min(num_non_map_seeker[seek_g], Math
+						.min(non_map_candidate_id_seeker[seek_g].size(), non_map_candidate_id_target[seek_g].size()));
+				if (num_to_seek > 0) {
+					int[] nm_seeker_index = ArrayUtilsRandomGenerator.randomSelectIndex(num_to_seek, 0,
+							non_map_candidate_id_seeker[seek_g].size(), RNG_NM);
+					int[] nm_target_index = ArrayUtilsRandomGenerator.randomSelectIndex(num_to_seek, 0,
+							non_map_candidate_id_seeker[seek_g].size(), RNG_NM);
+					if (num_to_seek > 1) {
+						ArrayUtilsRandomGenerator.shuffleArray(nm_seeker_index, RNG_NM);
+						ArrayUtilsRandomGenerator.shuffleArray(nm_target_index, RNG_NM);
+					}
+					for (int p = 0; p < num_to_seek; p++) {
+						int seeker_id = non_map_candidate_id_seeker[seek_g].get(nm_seeker_index[p]);
+						int target_id = non_map_candidate_id_target[seek_g].get(nm_target_index[p]);
+						int p1 = Math.min(seeker_id, target_id);
+						int p2 = p1 == seeker_id ? target_id : seeker_id;
+						if (seeker_id != target_id && !cMap.containsEdge(p1, p2)) {
+							non_map_edge_to_add_array.add(new Integer[] { p1, p2, currentTime, 1 });
+						}
+					}
+				}
+			}
+		}
+		return non_map_edge_to_add_array;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -578,7 +586,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		// Seeking non-mapped casual partnership
 		non_map_candidate_id_target = new ArrayList[cUMULATIVE_POP_COMPOSITION.length];
 		non_map_candidate_id_seeker = new ArrayList[cUMULATIVE_POP_COMPOSITION.length];
-		dist_nm_candidate = new PoissonDistribution[cUMULATIVE_POP_COMPOSITION.length];
+		dist_nm_candidate = new IntegerDistribution[cUMULATIVE_POP_COMPOSITION.length];
 
 		for (int seeker_g = 0; seeker_g < cUMULATIVE_POP_COMPOSITION.length; seeker_g++) {
 			if (non_mapped_encounter_prob[seeker_g] > 0) {
@@ -607,16 +615,15 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		// Do nothing by default;
 	}
 
-	protected void addPartnership(ContactMap cMap, Integer[] edge) {
-		cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
-				edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
+	private void addNonMapEdgeStore(Integer[] nm_edge) {
+		if (non_map_edges_store != null) {
+			non_map_edges_store[NON_MAP_EDGES_STORE_PT] = nm_edge;
+			NON_MAP_EDGES_STORE_PT++;
+			if (NON_MAP_EDGES_STORE_PT > non_map_edges_store.length) {
+				exportNonMapEdgeStore();
+				NON_MAP_EDGES_STORE_PT = 0;
+			}
+		}
 	}
-
-	public HashMap<String, Object> getSim_output() {
-		return sim_output;
-	}
-
-	public abstract ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point,
-			int[][] seedInfectNum, boolean display_only);
 
 }

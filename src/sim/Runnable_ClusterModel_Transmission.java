@@ -338,6 +338,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	private static final int ACT_SPECIFIC_USAGE_REG_INDEX = ACT_SPECIFIC_CONDOM_EFFICACY_INDEX + 1;
 	private static final int ACT_SPECIFIC_USAGE_CAS_INDEX = ACT_SPECIFIC_USAGE_REG_INDEX + 1;
 
+	// Non_mapped encounter
+	protected ArrayList<Integer>[] non_map_candidate_id_seeker_inf = null;
+	protected ArrayList<Integer>[] non_map_candidate_id_target_inf = null;
+
 	public Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] POP_COMPOSITION,
 			ContactMap BASE_CONTACT_MAP, int NUM_TIME_STEPS_PER_SNAP, int NUM_SNAP) {
 		super(cMap_seed, sim_seed, POP_COMPOSITION, BASE_CONTACT_MAP, NUM_TIME_STEPS_PER_SNAP, NUM_SNAP);
@@ -2418,6 +2422,31 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 	}
 
+	// Override to include infectious seeker and non-infectious only
 	
+	/*
+	@Override
+	protected ArrayList<Integer[]> formNonMappedEdges(ContactMap cMap, int currentTime) {
+		ArrayList<Integer[]> srcList = super.formNonMappedEdges(cMap, currentTime);
+		ArrayList<Integer[]> filter_list = new ArrayList<>();
+		for (Integer[] entry : srcList) {
+			boolean p1_inf = isInfectious(entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
+			boolean p2_inf = isInfectious(entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
 
+			if ((p1_inf && !p2_inf) || (!p1_inf && p2_inf)) {
+				filter_list.add(entry);
+			}
+		}
+		return filter_list;
+	}
+
+	private boolean isInfectious(Integer pid) {
+		for (ArrayList<Integer> inf_site : currently_infectious) {
+			if (Collections.binarySearch(inf_site, pid) >= 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+   */
 }
