@@ -286,6 +286,8 @@ public class Runnable_ClusterModel_Viability extends Runnable_ClusterModel_Multi
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void postSimulation() {
+		super.postSimulation();
+		
 		String key, fileName;
 		HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();

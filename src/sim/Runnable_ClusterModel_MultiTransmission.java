@@ -1091,13 +1091,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 		}
-	}
+	}		
 
-	protected void postSimulation() {
-		System.out.printf("Warning. %s.postSimulation() not set or overwritten.\n", this.getClass().getName());
-		// Do nothing - but could be overwritten by subclasses
+	@Override
+	protected void postSimulation() {	
+		super.postSimulation();		
+		System.out.printf("Warning. %s.postSimulation() not set or overwritten.\n", this.getClass().getName());		
 	}
-
+	
 	public void printCountMap(HashMap<Integer, int[]> countMap, String fileName, String headerFormat, int[] dimension) {
 		printCountMap(countMap, fileName, headerFormat, dimension, null);
 	}

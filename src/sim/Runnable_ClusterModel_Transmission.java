@@ -1779,8 +1779,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	 * Procedure that are called after simulations. *
 	 * 
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("unchecked")	
 	protected void postSimulation(Object[] simulation_store) {
+		super.postSimulation();	
 
 		HashMap<Integer, int[][]> count_map;
 		HashMap<Integer, int[]> count_map_by_person;

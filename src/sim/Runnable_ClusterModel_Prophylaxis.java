@@ -419,7 +419,9 @@ public class Runnable_ClusterModel_Prophylaxis extends Abstract_Runnable_Cluster
 	}
 
 	@SuppressWarnings("unchecked")
+	@Override
 	protected void postSimulation() {
+		super.postSimulation();
 		String key, fileName;
 		HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();

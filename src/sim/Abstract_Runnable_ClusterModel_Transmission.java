@@ -3,7 +3,10 @@ package sim;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -106,11 +109,16 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected int[] non_mapped_encounter_target_gender = null;
 	protected ArrayList<Integer>[] non_map_candidate_id_seeker = null;
 	protected ArrayList<Integer>[] non_map_candidate_id_target = null;
+
+	protected ArrayList<String[]> non_map_edges_pre_gen = null;
+	protected int non_map_edges_pre_gen_last_edge_pt = 0;	
+
 	protected Integer[][] non_map_edges_store = null;
 	protected RandomGenerator RNG_NM = null;
 	protected IntegerDistribution[] dist_nm_candidate = null;
 
 	private int NON_MAP_EDGES_STORE_PT = 0;
+	private int NON_MAP_EDGES_STORE_MAX = 100000;
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
@@ -152,10 +160,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	public void setBaseProp(Properties sim_prop) {
 		this.baseProp = sim_prop;
-	}
-
-	public void setNonMapEdgeStore(int size) {
-		this.non_map_edges_store = new Integer[size][];
 	}
 
 	public abstract void allocateSeedInfection(int[][] num_infected_count, int time);
@@ -499,12 +503,69 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			if (!hasProb) {
 				non_mapped_encounter_prob = new float[0]; // 0-length = not used
 			} else {
-				init_non_mapped_encounter_list();
+				// Direct file
+				String fName = String.format(Simulation_ClusterModelTransmission.FILENAME_NON_MAPPED_ENCOUNTER,
+						cMAP_SEED, sIM_SEED);
+				File preGenFile = new File(baseDir, fName);
+
+				if (preGenFile.exists()) {
+					try {
+						BufferedReader reader = new BufferedReader(new FileReader(preGenFile));
+						non_map_edges_pre_gen = new ArrayList<>();
+						String line;
+						while ((line = reader.readLine()) != null) {
+							non_map_edges_pre_gen.add(line.split(","));
+						}
+						reader.close();
+					} catch (IOException e) {
+						e.printStackTrace(System.err);
+						non_map_edges_pre_gen = null;
+					}
+				}
+				// Zip file
+				String fNameZip = fName.replace(String.format("_%d.csv", sIM_SEED), ".csv.7z");
+				preGenFile = new File(baseDir, fNameZip);
+				if (preGenFile.exists()) {
+					try {
+						HashMap<String, ArrayList<String[]>> entMap = util.Util_7Z_CSV_Entry_Extract_Callable
+								.extractedLinesFrom7Zip(preGenFile);
+						non_map_edges_pre_gen = entMap.get(fName);
+					} catch (IOException e) {
+						e.printStackTrace(System.err);
+						non_map_edges_pre_gen = null;
+					}
+				}
+				if (non_map_edges_pre_gen == null) {
+					init_non_mapped_encounter_list();
+				}
 			}
 		}
 
 		if (non_mapped_encounter_prob.length > 0) {
-			ArrayList<Integer[]> non_map_edge_to_add_array = form_non_mapped_edges(cMap, currentTime);
+			ArrayList<Integer[]> non_map_edge_to_add_array;
+			if (non_map_edges_pre_gen != null) {
+				non_map_edge_to_add_array = new ArrayList<>();				
+				while (non_map_edges_pre_gen_last_edge_pt < non_map_edges_pre_gen.size()) {					
+					String[] edge_s = non_map_edges_pre_gen.get(non_map_edges_pre_gen_last_edge_pt);
+					int non_map_edges_pre_gen_last_edge_time = Integer
+							.parseInt(edge_s[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+					
+					if(non_map_edges_pre_gen_last_edge_time > currentTime) {
+						break;
+					}
+					// Check if the last edge match with current time
+					if (non_map_edges_pre_gen_last_edge_time == currentTime) {						
+						Integer[] edge = new Integer[edge_s.length];						
+						for (int s = 0; s < edge_s.length; s++) {
+							edge[s] = Integer.valueOf(edge_s[s]);
+						}
+						non_map_edge_to_add_array.add(edge);
+					}					
+					non_map_edges_pre_gen_last_edge_pt++;																	
+				}
+			} else {
+				non_map_edge_to_add_array = form_non_mapped_edges(cMap, currentTime);
+			}
 
 			// Adding of non-map edge
 			for (Integer[] nm_edge : non_map_edge_to_add_array) {
@@ -551,7 +612,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				num_non_map_seeker[g] = dist_nm_candidate[g].sample();
 			}
 		}
-
 		for (int seek_g = 0; seek_g < num_non_map_seeker.length; seek_g++) {
 			if (num_non_map_seeker[seek_g] > 0) {
 				int num_to_seek = Math.min(num_non_map_seeker[seek_g], Math
@@ -609,21 +669,53 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			}
 		}
 
+		if ((getSimSetting()
+				& 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_NON_MAPPED_ENCOUNTER) != 0) {
+			non_map_edges_store = new Integer[NON_MAP_EDGES_STORE_MAX][];
+		}
+
 	}
 
 	protected void exportNonMapEdgeStore() {
-		// Do nothing by default;
+		if (non_map_edges_store != null) {
+			String fName = String.format(Simulation_ClusterModelTransmission.FILENAME_NON_MAPPED_ENCOUNTER, cMAP_SEED,
+					sIM_SEED);
+			PrintWriter pWri;
+			try {
+				pWri = new PrintWriter(new FileWriter(new File(baseDir, fName), true));
+				for (int i = 0; i < NON_MAP_EDGES_STORE_PT; i++) {
+					Integer[] edges = non_map_edges_store[i];
+					boolean first_ent = true;
+					for (Integer edge : edges) {
+						if (!first_ent) {
+							pWri.print(',');
+						} else {
+							first_ent = false;
+						}
+						pWri.print(edge);
+					}
+					pWri.println();
+				}
+				pWri.close();				
+				NON_MAP_EDGES_STORE_PT = 0;
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+			}
+		}		
 	}
 
 	private void addNonMapEdgeStore(Integer[] nm_edge) {
 		if (non_map_edges_store != null) {
 			non_map_edges_store[NON_MAP_EDGES_STORE_PT] = nm_edge;
 			NON_MAP_EDGES_STORE_PT++;
-			if (NON_MAP_EDGES_STORE_PT > non_map_edges_store.length) {
+			if (NON_MAP_EDGES_STORE_PT >= non_map_edges_store.length) {
 				exportNonMapEdgeStore();
-				NON_MAP_EDGES_STORE_PT = 0;
+				
 			}
 		}
 	}
 
+	protected void postSimulation() {
+		exportNonMapEdgeStore();
+	}
 }

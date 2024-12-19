@@ -87,6 +87,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_ALL_TRANSMISSION_CMAP = "All_transmap_%d_%d.csv";
 	public static final String FILENAME_VACCINE_COVERAGE = "Vaccine_coverage_%d_%d.csv";
 	public static final String FILENAME_VACCINE_COVERAGE_PERSON = "Vaccine_coverage_Person_%d_%d.csv";
+	public static final String FILENAME_NON_MAPPED_ENCOUNTER = "Non_mapped_encounter_%d_%d.csv";
 
 	public static final String FILENAME_INDEX_CASE_LIST_ZIP = FILENAME_INDEX_CASE_LIST.replaceFirst("_%d", "") + ".7z";
 	public static final String FILENAME_PREVALENCE_SITE_ZIP = FILENAME_PREVALENCE_SITE.replaceFirst("_%d", "") + ".7z";
@@ -144,6 +145,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
 	public static final int SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE = SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE + 1;
 	public static final int SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY = SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE + 1;
+	public static final int SIM_SETTING_KEY_GEN_NON_MAPPED_ENCOUNTER = SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY+1; 
 
 	public static final String PROP_CONTACT_MAP_LOC = "PROP_CONTACT_MAP_LOC";
 
