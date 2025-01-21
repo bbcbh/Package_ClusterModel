@@ -111,7 +111,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected ArrayList<Integer>[] non_map_candidate_id_target = null;
 
 	protected ArrayList<String[]> non_map_edges_pre_gen = null;
-	protected int non_map_edges_pre_gen_last_edge_pt = 0;	
+	protected int non_map_edges_pre_gen_last_edge_pt = 0;
 
 	protected Integer[][] non_map_edges_store = null;
 	protected RandomGenerator RNG_NM = null;
@@ -484,20 +484,21 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		if (non_mapped_encounter_prob == null) {
 			non_mapped_encounter_prob = new float[cUMULATIVE_POP_COMPOSITION.length];
 			non_mapped_encounter_target_gender = new int[cUMULATIVE_POP_COMPOSITION.length];
-
-			float[][] prop_ent = (float[][]) util.PropValUtils.propStrToObject(
-					getSim_prop().getProperty(
-							String.format("POP_PROP_INIT_PREFIX_%d", Population_Bridging.FIELD_PARTNER_TYPE_PROB)),
-					float[][].class);
-
 			boolean hasProb = false;
 
-			for (int g = 0; g < cUMULATIVE_POP_COMPOSITION.length; g++) {
-				float[] ent = prop_ent[g];
-				if (ent.length > Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB) {
-					non_mapped_encounter_prob[g] = ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB];
-					non_mapped_encounter_target_gender[g] = (int) ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER];
-					hasProb |= non_mapped_encounter_prob[g] > 0;
+			// Only valid if it is defined in the prop file
+			String prop_ent_str = getSim_prop()
+					.getProperty(String.format("POP_PROP_INIT_PREFIX_%d", Population_Bridging.FIELD_PARTNER_TYPE_PROB));
+
+			if (prop_ent_str != null) {
+				float[][] prop_ent = (float[][]) util.PropValUtils.propStrToObject(prop_ent_str, float[][].class);
+				for (int g = 0; g < cUMULATIVE_POP_COMPOSITION.length; g++) {
+					float[] ent = prop_ent[g];
+					if (ent.length > Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB) {
+						non_mapped_encounter_prob[g] = ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB];
+						non_mapped_encounter_target_gender[g] = (int) ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER];
+						hasProb |= non_mapped_encounter_prob[g] > 0;
+					}
 				}
 			}
 			if (!hasProb) {
@@ -544,24 +545,24 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		if (non_mapped_encounter_prob.length > 0) {
 			ArrayList<Integer[]> non_map_edge_to_add_array;
 			if (non_map_edges_pre_gen != null) {
-				non_map_edge_to_add_array = new ArrayList<>();				
-				while (non_map_edges_pre_gen_last_edge_pt < non_map_edges_pre_gen.size()) {					
+				non_map_edge_to_add_array = new ArrayList<>();
+				while (non_map_edges_pre_gen_last_edge_pt < non_map_edges_pre_gen.size()) {
 					String[] edge_s = non_map_edges_pre_gen.get(non_map_edges_pre_gen_last_edge_pt);
 					int non_map_edges_pre_gen_last_edge_time = Integer
 							.parseInt(edge_s[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
-					
-					if(non_map_edges_pre_gen_last_edge_time > currentTime) {
+
+					if (non_map_edges_pre_gen_last_edge_time > currentTime) {
 						break;
 					}
 					// Check if the last edge match with current time
-					if (non_map_edges_pre_gen_last_edge_time == currentTime) {						
-						Integer[] edge = new Integer[edge_s.length];						
+					if (non_map_edges_pre_gen_last_edge_time == currentTime) {
+						Integer[] edge = new Integer[edge_s.length];
 						for (int s = 0; s < edge_s.length; s++) {
 							edge[s] = Integer.valueOf(edge_s[s]);
 						}
 						non_map_edge_to_add_array.add(edge);
-					}					
-					non_map_edges_pre_gen_last_edge_pt++;																	
+					}
+					non_map_edges_pre_gen_last_edge_pt++;
 				}
 			} else {
 				non_map_edge_to_add_array = form_non_mapped_edges(cMap, currentTime);
@@ -696,12 +697,12 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 					}
 					pWri.println();
 				}
-				pWri.close();				
+				pWri.close();
 				NON_MAP_EDGES_STORE_PT = 0;
 			} catch (IOException e) {
 				e.printStackTrace(System.err);
 			}
-		}		
+		}
 	}
 
 	private void addNonMapEdgeStore(Integer[] nm_edge) {
@@ -710,7 +711,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			NON_MAP_EDGES_STORE_PT++;
 			if (NON_MAP_EDGES_STORE_PT >= non_map_edges_store.length) {
 				exportNonMapEdgeStore();
-				
+
 			}
 		}
 	}
