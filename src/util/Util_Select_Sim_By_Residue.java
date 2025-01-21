@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -48,7 +49,28 @@ public abstract class Util_Select_Sim_By_Residue {
 				File seedFile = new File(baseDir, dir_name);
 				seedFile = new File(seedFile, "Seed_List.csv");
 				extract_seed = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(seedFile);
+
 				extract_seedList.put(dir_name, extract_seed);
+
+				// Check for header length consistency
+				if (extract_seed.length > 1) {
+					int seedLength = extract_seed[1].split(",").length;
+					String[] extract_seed_ext = Arrays.copyOf(extract_seed[0].split(","), seedLength);
+
+					StringBuilder str = null;
+					for (int i = 0; i < extract_seed_ext.length; i++) {
+						if (str == null) {
+							str = new StringBuilder();
+						} else {
+							str.append(',');
+						}
+						str.append(extract_seed_ext[i]);
+					}
+
+					extract_seed[0] = str.toString();
+
+				}
+
 			}
 
 			if (pWri_summary == null) {
@@ -69,19 +91,19 @@ public abstract class Util_Select_Sim_By_Residue {
 			}
 
 			boolean addNewRow = !residue.equals(lastResidue);
-			
-			if(addNewRow) {
+
+			if (addNewRow) {
 				lastResidue = residue;
 				sameResidueParamList.clear();
-			}			
-		
+			}
+
 			int sameResiduePt = Collections.binarySearch(sameResidueParamList, extract_seed[seedNum + 1]);
-			if(sameResiduePt < 0) {
-				addNewRow |= sameResiduePt < 0; // Same residue but difference parameter value.		
+			if (sameResiduePt < 0) {
+				addNewRow |= sameResiduePt < 0; // Same residue but difference parameter value.
 				sameResidueParamList.add(~sameResiduePt, extract_seed[seedNum + 1]);
 			}
-			
-			if (addNewRow) {						
+
+			if (addNewRow) {
 				pWri_summary.print(extract_seed[seedNum + 1]); // Seed starts at line 1
 				pWri_summary.print(',');
 				pWri_summary.print(',');
