@@ -861,7 +861,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
 				simTotalFromMap += preGenSimSeedMap.get(baseContactMapSeed).size();
 			}
-			numSim = Math.max(numSim, simTotalFromMap);
+			numSim = Math.min(numSim, simTotalFromMap);
 		}
 
 		boolean useParallel = numThreads > 1 && numSim > 1;

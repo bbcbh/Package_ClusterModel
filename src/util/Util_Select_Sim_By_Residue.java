@@ -179,6 +179,12 @@ public abstract class Util_Select_Sim_By_Residue {
 
 	public static HashMap<String, ArrayList<String[]>> combineResultMapping(File[] resFileList)
 			throws IOException, FileNotFoundException {
+		return combineResultMapping(resFileList, false);
+
+	}
+
+	public static HashMap<String, ArrayList<String[]>> combineResultMapping(File[] resFileList, boolean incl_all)
+			throws IOException, FileNotFoundException {
 		File[] files = resFileList;
 		Pattern keyPattern = Pattern.compile("\\[Seed_List.csv,(\\d+)\\].*");
 
@@ -198,6 +204,22 @@ public abstract class Util_Select_Sim_By_Residue {
 				entMap.put(m.group(1), line_arr);
 			}
 		}
+
+		if (!incl_all) {
+			ArrayList<String> non_matched = new ArrayList<>();
+			for (String key : entMap.keySet()) {
+				if (!Pattern.matches("\\d+", key)) {
+					non_matched.add(key);
+				}
+			}
+			for (String key : non_matched) {
+				System.err.printf("Warning: Key %s not matched with default format and is removed from reuslt format\n",
+						key);
+				entMap.remove(key);
+			}
+
+		}
+
 		return entMap;
 	}
 
