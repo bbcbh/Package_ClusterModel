@@ -12,6 +12,9 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.math3.analysis.UnivariateFunction;
+import org.apache.commons.math3.analysis.interpolation.UnivariateInterpolator;
+
 public abstract class Util_Select_Sim_By_Residue {
 
 	protected File baseDir;
@@ -24,6 +27,23 @@ public abstract class Util_Select_Sim_By_Residue {
 
 	public abstract HashMap<String, double[]> generateResidueMapping(); // Key= DirectoryName:SeedList_Number Val=
 																		// value of interest (or residue)
+
+	public static UnivariateFunction extractedWeightedInterpolateFunction(UnivariateInterpolator polator,
+			double[] dist_val) {
+		Arrays.sort(dist_val);		
+		if(Double.isNaN(dist_val[dist_val.length-1])) {
+			return null;
+		}
+		
+		double[] x_val = new double[dist_val.length];
+		for (int x = 1; x < dist_val.length; x++) {
+			x_val[x] = x_val[x - 1] + 1.0 / dist_val.length;
+		}
+		x_val[x_val.length - 1] = 1;
+		
+		UnivariateFunction resFunc = polator.interpolate(x_val, dist_val);
+		return resFunc;
+	}
 
 	public static void printOrderedParamList(File baseDir, ArrayList<String> ordered_keys,
 			ArrayList<Double> ordered_residue_val, ArrayList<String> inRangeKeyArray,

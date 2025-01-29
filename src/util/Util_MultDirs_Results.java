@@ -5,17 +5,25 @@ import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.FileUtils;
+
 public class Util_MultDirs_Results {
 
 	public static int combineResultDirectories(File combinedDir, File inputDir) {
+		return combineResultDirectories(combinedDir, inputDir, false, null);
+	}	
+	
+	public static int combineResultDirectories(File combinedDir, File inputDir, boolean copyDirs, FileFilter dirSel) {
 		File[] dir_to_move = inputDir.listFiles(new FileFilter() {
 			@Override
 			public boolean accept(File pathname) {
@@ -23,46 +31,99 @@ public class Util_MultDirs_Results {
 			}
 		});
 
-		int sucCounters = 0;		
+		File excl_file = new File(combinedDir, "excl_dir.csv");
+		int sucCounters = 0;
+
+		String[] excl_dir_ent = new String[0];
+
+		if (excl_file.exists()) {
+			try {
+				excl_dir_ent = util.Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(excl_file);
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+			}
+			for (int i = 1; i < excl_dir_ent.length; i++) {
+				// Get source
+				excl_dir_ent[i] = (excl_dir_ent[i].split(","))[0];
+			}
+			Arrays.sort(excl_dir_ent);
+		}
+
+		PrintWriter gen_excl_list = null;
+
+		if (copyDirs) {
+			try {
+				boolean printHeader = excl_file.exists();
+				gen_excl_list = new PrintWriter(new FileWriter(excl_file, true));
+				if (!printHeader) {
+					gen_excl_list.println("Src_dir,Tar_dir_name");
+				}
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+				gen_excl_list = null;
+			}
+		}
 
 		for (File dir : dir_to_move) {
 			String dirName = dir.getName();
-			File targetPath = new File(combinedDir, dirName);
-
-			// Regenerate new target path until it is new
-			int counter = 1;
-			String org_dir = dirName;
-			
-			Matcher m = Pattern.compile("\\d+").matcher(dirName);
-			m.find();
-			int str_length = m.end() - m.start();
-			
-			while (targetPath.exists()) {													
-				dirName = dirName.replaceFirst("\\d+", String.format("%0" + str_length + "d", counter));				
-				targetPath = new File(combinedDir, dirName);
-				counter++;
-			}			
-			if (org_dir.equals(dirName)) { // No number
-				dirName = String.format("%s_%s", dirName, String.format("%02d", counter));
-			}
-
-			if (!targetPath.exists()) {
-				try {
-					Files.move(dir.toPath(), targetPath.toPath(), StandardCopyOption.ATOMIC_MOVE);
-					sucCounters++;
-				} catch (Exception e) {
-					e.printStackTrace(System.err);
-				}
+			if (Arrays.binarySearch(excl_dir_ent, dir.getAbsolutePath()) >= 0) {
+				// System.out.printf("%s excluded as defined in %s.\n", dir.getName(),
+				// excl_file.getName());
 			} else {
-				System.err.printf("combineResultDirectories: Cannot found a new name for %s. Diretory NOT moved.\n",
-						dir.getAbsolutePath());
+				if (dirSel == null || (dirSel != null && dirSel.accept(dir))) {
+					File targetPath = new File(combinedDir, dirName);
+					// Regenerate new target path until it is new
+					int counter = 1;
+					String org_dir = dirName;
 
+					Matcher m = Pattern.compile("\\d+").matcher(dirName);
+					m.find();
+					int str_length = m.end() - m.start();
+
+					while (targetPath.exists()) {
+						dirName = dirName.replaceFirst("\\d+", String.format("%0" + str_length + "d", counter));
+						targetPath = new File(combinedDir, dirName);
+						counter++;
+					}
+					if (org_dir.equals(dirName)) { // No number
+						dirName = String.format("%s_%s", dirName, String.format("%02d", counter));
+					}
+
+					if (!targetPath.exists()) {
+						try {
+							if (!copyDirs) {
+								Files.move(dir.toPath(), targetPath.toPath(), StandardCopyOption.ATOMIC_MOVE);
+							} else {
+								FileUtils.copyDirectory(dir, targetPath);
+
+								if (gen_excl_list != null) {
+									gen_excl_list.println(
+											String.format("%s,%s", dir.getAbsolutePath(), targetPath.getName()));
+								}
+							}
+							sucCounters++;
+						} catch (Exception e) {
+							e.printStackTrace(System.err);
+						}
+					} else {
+						System.err.printf(
+								"combineResultDirectories: Cannot found a new name for %s. Diretory NOT moved.\n",
+								dir.getAbsolutePath());
+
+					}
+				} else {
+					// System.out.printf("%s excluded due to dirSel filter.\n", dir.getName());
+
+				}
 			}
 
 		}
-		
+
+		if (gen_excl_list != null) {
+			gen_excl_list.close();
+		}
+
 		return sucCounters;
-		
 
 	}
 
@@ -132,9 +193,9 @@ public class Util_MultDirs_Results {
 			}
 		});
 
-		for (int pId = 0; pId < compareFilePrefix.length; pId++) {			
+		for (int pId = 0; pId < compareFilePrefix.length; pId++) {
 			final String prefix = compareFilePrefix[pId];
-			
+
 			HashMap<String, HashMap<String, ArrayList<String[]>>> resMapByDirectory = extractedResultsFromResultDirs(
 					result_dirs, prefix);
 
@@ -189,22 +250,21 @@ public class Util_MultDirs_Results {
 			pWri.close();
 		}
 	}
-	
-	
-	public static HashMap<String, HashMap<String, ArrayList<String[]>>> extractedResultsFromSimDirBase(File simDirBase, final String result_file_prefix) 
-			throws IOException {			
-		File[] simDirs = simDirBase.listFiles(new FileFilter() {			
+
+	public static HashMap<String, HashMap<String, ArrayList<String[]>>> extractedResultsFromSimDirBase(File simDirBase,
+			final String result_file_prefix) throws IOException {
+		File[] simDirs = simDirBase.listFiles(new FileFilter() {
 			@Override
-			public boolean accept(File pathname) {				
+			public boolean accept(File pathname) {
 				return pathname.isDirectory();
 			}
-		});				
-		return extractedResultsFromResultDirs(simDirs,result_file_prefix);
-	}	
-	
-	private static HashMap<String, HashMap<String, ArrayList<String[]>>> extractedResultsFromResultDirs(File[] result_dirs,
-			final String result_file_prefix) throws IOException, FileNotFoundException {
-		
+		});
+		return extractedResultsFromResultDirs(simDirs, result_file_prefix);
+	}
+
+	private static HashMap<String, HashMap<String, ArrayList<String[]>>> extractedResultsFromResultDirs(
+			File[] result_dirs, final String result_file_prefix) throws IOException, FileNotFoundException {
+
 		HashMap<String, HashMap<String, ArrayList<String[]>>> resMapByDirectory = new HashMap<>();
 		for (File result_dir : result_dirs) {
 
