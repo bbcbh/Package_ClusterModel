@@ -58,7 +58,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ 1;
 	protected static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-			+ +Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+			+ +Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
@@ -306,7 +306,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected void loadNonRunnableFieldSetting(Integer index, String entry, int loadTime) {
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		switch (index.intValue()) {
 		case Population_Bridging.FIELD_PARTNER_TYPE_PROB:
 			// Reset

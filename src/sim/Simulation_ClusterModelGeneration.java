@@ -36,7 +36,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public static final String POP_PROP_INIT_PREFIX_CLASS = "POP_PROP_INIT_PREFIX_CLASS_";
 
 	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
-			+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD];
+			+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
 
 	protected File baseDir = null;
@@ -44,21 +44,20 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	protected Properties loadedProperties = null; // From .prop file, if any
 	protected ArrayList<Long> skipSeeds = null;
 	protected ArrayList<Long> useSeeds = null;
-	//protected transient Map<Long, ContactMap[]> contactMapSet = null;
-	protected transient Map<Long, Runnable_ClusterModel_ContactMap_Generation> runnablesMap = null;
+	// protected transient Map<Long, ContactMap[]> contactMapSet = null;
+	protected transient Map<Long, Abstract_Runnable_ClusterModel_ContactMap_Generation> runnablesMap = null;
 
 	protected boolean printOutput = false;
-	protected boolean space_save  = false;
+	protected boolean space_save = false;
 
 	public static final String FILENAME_FORMAT_ALL_CMAP = "All_ContactMap_%d_%d.csv";
 	public static final String FILENAME_FORMAT_OUTPUT = "Output_%d.txt";
-	
+
 	public static final String ARG_PRINTOUTPUT = "-printOutput";
 	public static final String ARG_USE_EXIST_POP = "-useExistingPop";
 	public static final String ARG_SPACE_SAVE = "-space_save";
 	public static final String ARG_PRE_SEED = "-preSeed=";
-	
-	
+
 	public void setSpaceSave(boolean space_save) {
 		this.space_save = space_save;
 	}
@@ -80,7 +79,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public Simulation_ClusterModelGeneration() {
 
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		for (int i = 0; i < simFields.length; i++) {
 			// All simulation levels
 			if (i >= sim_offset) {
@@ -90,15 +89,13 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		}
 	}
 
-	public Map<Long, Runnable_ClusterModel_ContactMap_Generation> getRunnables() {
+	public Map<Long, Abstract_Runnable_ClusterModel_ContactMap_Generation> getRunnables() {
 		return runnablesMap;
 	}
 
 	/*
-	public Map<Long, ContactMap[]> getContactMapSet() {
-		return contactMapSet;
-	}
-	*/
+	 * public Map<Long, ContactMap[]> getContactMapSet() { return contactMapSet; }
+	 */
 
 	@Override
 	public void loadProperties(Properties prop) {
@@ -205,8 +202,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		int numInPool = 0;
 		long tic = System.currentTimeMillis();
 
-		Runnable_ClusterModel_ContactMap_Generation[] runnables = new Runnable_ClusterModel_ContactMap_Generation[numSim];
-		runnablesMap = new HashMap<Long, Runnable_ClusterModel_ContactMap_Generation>();
+		Abstract_Runnable_ClusterModel_ContactMap_Generation[] runnables = new Abstract_Runnable_ClusterModel_ContactMap_Generation[numSim];
+		runnablesMap = new HashMap<Long, Abstract_Runnable_ClusterModel_ContactMap_Generation>();
 
 		if (useSeeds != null) {
 			numSim = useSeeds.size();
@@ -217,13 +214,13 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 			if (useSeeds != null) {
 				popSeed = useSeeds.get(i);
-			} else {				
+			} else {
 				popSeed = rngBase.nextLong();
 			}
 
 			if (skipSeeds == null || Collections.binarySearch(skipSeeds, popSeed) < 0) {
 
-				Population_Bridging population;
+				Population_Bridging population = null;
 
 				if (Population_Bridging_Scheduled.class.getName().equals(
 						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
@@ -231,33 +228,45 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					((Population_Bridging_Scheduled) population).setSpace_save(space_save);
 				} else if (Population_Bridging_NetworkDensity.class.getName().equals(
 						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
-					
 					population = new Population_Bridging_NetworkDensity(popSeed);
 					((Population_Bridging_NetworkDensity) population).setSpace_save(space_save);
-					
 
 				} else {
-					population = new Population_Bridging(popSeed);
+					population = null;
 				}
-				for (int f = 0; f < Population_Bridging.LENGTH_FIELDS_BRIDGING_POP; f++) {
-					if (simFields[f] != null) {
-						population.getFields()[f] = simFields[f];
-					}
-				}
-				
-				
 
-				Runnable_ClusterModel_ContactMap_Generation r = new Runnable_ClusterModel_ContactMap_Generation();
+				Abstract_Runnable_ClusterModel_ContactMap_Generation r;
+
+				if (population != null) {
+					for (int f = 0; f < Population_Bridging.LENGTH_FIELDS_BRIDGING_POP; f++) {
+						if (simFields[f] != null) {
+							population.getFields()[f] = simFields[f];
+						}
+					}
+					r = new Runnable_ClusterModel_ContactMap_Generation_BridgingPop(population.getSeed());
+					((Runnable_ClusterModel_ContactMap_Generation_BridgingPop) r).setPopulation(population);
+				} else {										
+					String popType = loadedProperties
+							.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
+
+					if ("MutiMap".equals(popType)) {
+						r = new Runnable_ClusterModel_ContactMap_Generation_MultiMap(popSeed);
+
+					} else {												
+						r = null;
+						System.err.printf("Error: GenMap Pop type <%s> not defined. Exiting.\n");						
+						System.exit(-1);
+					}
+
+				}
 
 				runnables[i] = r;
-				r.setPopulation(population);
-
 				r.setNumSnaps(numSnap);
 				r.setSnapFreq(snapFreq);
 				r.setBaseDir(baseDir);
 				population.setBaseDir(baseDir);
 
-				for (int f = 0; f < Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
+				for (int f = 0; f < Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
 					if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
 							+ f] != null) {
 						r.getRunnable_fields()[f] = simFields[f + LENGTH_SIM_MAP_GEN_FIELD
@@ -265,7 +274,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					}
 				}
 
-				runnablesMap.put(r.getPopulation().getSeed(), r);
+				runnablesMap.put(popSeed, r);
 
 				if (printOutput) {
 					PrintStream[] outputPS;
@@ -278,12 +287,11 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					} else {
 						outputPS = new PrintStream[1];
 					}
-					File outputFile = new File(baseDir,
-							String.format(FILENAME_FORMAT_OUTPUT, r.getPopulation().getSeed()));
+					File outputFile = new File(baseDir, String.format(FILENAME_FORMAT_OUTPUT, r.getMapSeed()));
 					FileOutputStream fOut = new FileOutputStream(outputFile, true);
 					outputPS[0] = new PrintStream(fOut);
 
-					outputPS[0].println(String.format("Seed = %d", r.getPopulation().getSeed()));
+					outputPS[0].println(String.format("Seed = %d", r.getMapSeed()));
 					runnables[i].setPrintStatus(outputPS);
 				}
 
@@ -305,9 +313,9 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 						System.gc();
 					}
 				}
-				
-				runnables[i] =  null; // Free up memory?
-				
+
+				runnables[i] = null; // Free up memory?
+
 			} else {
 				showStrStatus(String.format("Contact cluster with seed of %d skipped", popSeed));
 			}
@@ -322,17 +330,14 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 			executor = null;
 			System.gc();
 		}
-		
-		
-		/*
-		contactMapSet = new HashMap<Long, ContactMap[]>();
 
-		for (int r = 0; r < runnables.length; r++) {
-			if (runnables[r] != null) {
-				contactMapSet.put(runnables[r].getPopulation().getSeed(), runnables[r].getGen_cMap());
-			}
-		}
-		*/
+		/*
+		 * contactMapSet = new HashMap<Long, ContactMap[]>();
+		 * 
+		 * for (int r = 0; r < runnables.length; r++) { if (runnables[r] != null) {
+		 * contactMapSet.put(runnables[r].getPopulation().getSeed(),
+		 * runnables[r].getGen_cMap()); } }
+		 */
 
 		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
 	}
@@ -364,16 +369,16 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				if (args[i].equals(ARG_USE_EXIST_POP)) {
 					useExistingPop = true;
 				}
-				if(args[i].equals(ARG_SPACE_SAVE)) {
+				if (args[i].equals(ARG_SPACE_SAVE)) {
 					space_save = true;
 				}
-				if(args[i].startsWith(ARG_PRE_SEED)) {
+				if (args[i].startsWith(ARG_PRE_SEED)) {
 					String[] arg_seeds = args[i].substring(ARG_PRE_SEED.length()).split(",");
-					for(String arg_s : arg_seeds) {
-						preSeedList.add(Long.parseLong(arg_s));						
-					}												
+					for (String arg_s : arg_seeds) {
+						preSeedList.add(Long.parseLong(arg_s));
+					}
 				}
-				
+
 			}
 
 		} else {
@@ -424,7 +429,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 				if (useExistingPop) {
 					ArrayList<Long> useSeeds = new ArrayList<>();
-					final String regEx_PopSnap = Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME
+					final String regEx_PopSnap = Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME
 							.replaceAll("%d", "(0|-{0,1}(?!0)\\\\d+)");
 					final Pattern pattern_pop_snap = Pattern.compile(regEx_PopSnap);
 
@@ -441,17 +446,17 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 						if (m.matches()) {
 							long seed = Long.parseLong(m.group(1));
 							useSeeds.add(seed);
-							System.out.printf("Attempt to continue population of seed #%d located at %s\n",
-									seed, existPop.getName());
+							System.out.printf("Attempt to continue population of seed #%d located at %s\n", seed,
+									existPop.getName());
 						}
 					}
 					sim.setUseSeeds(useSeeds);
 				}
-				
-				if(!preSeedList.isEmpty()) {
+
+				if (!preSeedList.isEmpty()) {
 					sim.setUseSeeds(preSeedList);
 				}
-				
+
 				sim.generateOneResultSet();
 
 			}

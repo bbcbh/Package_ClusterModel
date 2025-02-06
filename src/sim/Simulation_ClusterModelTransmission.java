@@ -161,7 +161,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-			+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+			+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ LENGTH_SIM_MAP_TRANSMISSION_FIELD
 			+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
@@ -169,7 +169,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public Simulation_ClusterModelTransmission() {
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		for (int i = 0; i < simFields.length; i++) {
 			// All simulation levels
 			if (i >= sim_offset && (i - sim_offset) < DEFAULT_BRIDGING_MAP_TRANS_SIM_FIELDS.length) {
@@ -581,7 +581,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD;
 
 		final int ent_offset = sim_offset + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
@@ -657,7 +657,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		int[] contactMapTimeRange = (int[]) simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
 
 		int[] cumulative_pop_composition = new int[pop_composition.length];
 		int pop_offset = 0;
@@ -1268,7 +1268,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	private void reallocateRiskGrp(long baseContactMapSeed) {
 		final int ent_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 		final String popCompositionKey = POP_PROP_INIT_PREFIX

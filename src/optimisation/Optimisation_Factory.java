@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 import population.Population_Bridging;
 import sim.Abstract_Runnable_ClusterModel_Transmission;
-import sim.Runnable_ClusterModel_ContactMap_Generation;
+import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
 import sim.Simulation_ClusterModelGeneration;
 import sim.Simulation_ClusterModelTransmission;
 
@@ -21,7 +21,7 @@ public class Optimisation_Factory {
 	public static final String OPT_OUTPUT_PREFIX_RESIDUE = "Residue = ";
 	public static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 	public static void recursiveRunnableFieldReplace(Object runnableField, int param_index, double[] param_val_all,

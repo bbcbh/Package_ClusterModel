@@ -1721,7 +1721,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-				+ Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		
 		ArrayList<Integer> field_to_update = new ArrayList<>();
 		for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {

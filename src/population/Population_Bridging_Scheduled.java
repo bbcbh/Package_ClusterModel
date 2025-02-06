@@ -36,7 +36,7 @@ import person.AbstractIndividualInterface;
 import population.person.Person_Bridging_Pop;
 import relationship.ContactMap;
 import relationship.RelationshipMap;
-import sim.Runnable_ClusterModel_ContactMap_Generation;
+import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
 import sim.Simulation_ClusterModelGeneration;
 
 public class Population_Bridging_Scheduled extends Population_Bridging {
@@ -775,7 +775,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 			final String oldProgressFile_prefix = String.format(FORMAT_FORM_PARTNERSHIP_PROGRESS_PREFIX, getSeed());
 			final String oldExportPop_prefix = String
-					.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME_PRRFIX, getSeed());
+					.format(Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME_PRRFIX, getSeed());
 
 			// Delete old export file
 			File[] oldExportFile = baseDir.listFiles(new FileFilter() {
@@ -785,7 +785,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					boolean isOldFile = pathname.getName().startsWith(oldProgressFile_prefix);
 
 					isOldFile |= !pathname.getName()
-							.equals(String.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME,
+							.equals(String.format(Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME,
 									getSeed(), getGlobalTime()))
 							&& pathname.getName().startsWith(oldExportPop_prefix);
 
@@ -987,7 +987,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				try {
 					File tempFile = null;
 					File exportPopFile = new File(baseDir,
-							String.format(Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME, getSeed(),
+							String.format(Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME, getSeed(),
 									getGlobalTime()));
 
 					if (exportPopFile.isFile()) {

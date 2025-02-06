@@ -18,56 +18,17 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 
-import person.AbstractIndividualInterface;
 import population.Population_Bridging;
 import population.Population_Bridging_Scheduled;
 import relationship.ContactMap;
 
-public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnable_ClusterModel {
-
-	public static final Object[] DEFAULT_RUNNABLE_MAP_GEN_FIELDS = {
-			// RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE
-			new int[] { 30, 30 + AbstractIndividualInterface.ONE_YEAR_INT },
-			// RUNNABLE_FILED_EXPORT_FREQ - in milliseconds
-			-1l,
-
-	};
-
-	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE = 0;
-	public static final int RUNNABLE_FILED_EXPORT_FREQ = RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE + 1;
-	public static final int LENGTH_RUNNABLE_MAP_GEN_FIELD = RUNNABLE_FILED_EXPORT_FREQ + 1;
-
-	public static final String EXPORT_POP_FILENAME_PRRFIX = "EXPORT_POP_%d";
-	public static final String EXPORT_POP_FILENAME = EXPORT_POP_FILENAME_PRRFIX+ "_%d.obj";
+public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
+		extends Abstract_Runnable_ClusterModel_ContactMap_Generation {
 
 	private Population_Bridging population;
-	private int numSnaps;
-	private int snapFreq;
-	private Object[] runnable_fields = new Object[LENGTH_RUNNABLE_MAP_GEN_FIELD];
-	private ContactMap[] gen_cMap = null;
-	private PrintStream[] printStatus = null;
 
-	public Runnable_ClusterModel_ContactMap_Generation() {
-		super();
-		for (int i = 0; i < DEFAULT_RUNNABLE_MAP_GEN_FIELDS.length; i++) {
-			runnable_fields[i] = DEFAULT_RUNNABLE_MAP_GEN_FIELDS[i];
-		}
-	}
-
-	public void setNumSnaps(int numSnaps) {
-		this.numSnaps = numSnaps;
-	}
-
-	public ContactMap[] getGen_cMap() {
-		return gen_cMap;
-	}
-
-	public void setSnapFreq(int snapFreq) {
-		this.snapFreq = snapFreq;
-	}
-
-	public void setPrintStatus(PrintStream[] printStatus) {
-		this.printStatus = printStatus;
+	public Runnable_ClusterModel_ContactMap_Generation_BridgingPop(long mapSeed) {
+		super(mapSeed);
 	}
 
 	public Population_Bridging getPopulation() {
@@ -78,11 +39,47 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 		this.population = population;
 	}
 
-	@Override
-	public Object[] getRunnable_fields() {
-		return runnable_fields;
+	private void exportPopSnap(long snapTime) {		
+		try {			
+	
+			File exportFile = new File(baseDir,
+					String.format(EXPORT_POP_FILENAME, population.getSeed(), population.getGlobalTime()));
+	
+			if (!exportFile.exists()) {
+				ObjectOutputStream outStream = new ObjectOutputStream(
+						new BufferedOutputStream(new FileOutputStream(exportFile)));
+				population.encodePopToStream(outStream);
+				outStream.close();
+	
+				// Remove old snapshot file
+	
+				String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
+				final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
+	
+				File[] oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return pathname.getName().startsWith(fileCheckPrefix) && !pathname.equals(exportFile);
+					}
+				});
+	
+				for (File df : oldPopulationSnapFiles) {
+					
+					try {
+						Files.delete(df.toPath());
+					} catch (Exception e) {
+						System.err.printf("Error in deleteing %s. Skipped deleted", df.toPath().toString());
+					}
+				}
+			}
+	
+		} catch (IOException ex) {
+			ex.printStackTrace(System.err);
+	
+		}
 	}
-
+	
+	
 	@Override
 	public void run() {
 
@@ -309,46 +306,6 @@ public class Runnable_ClusterModel_ContactMap_Generation extends Abstract_Runnab
 			}
 		}
 
-	}
-
-	private void exportPopSnap(long snapTime) {		
-		try {			
-
-			File exportFile = new File(baseDir,
-					String.format(EXPORT_POP_FILENAME, population.getSeed(), population.getGlobalTime()));
-
-			if (!exportFile.exists()) {
-				ObjectOutputStream outStream = new ObjectOutputStream(
-						new BufferedOutputStream(new FileOutputStream(exportFile)));
-				population.encodePopToStream(outStream);
-				outStream.close();
-
-				// Remove old snapshot file
-
-				String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
-				final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
-
-				File[] oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
-					@Override
-					public boolean accept(File pathname) {
-						return pathname.getName().startsWith(fileCheckPrefix) && !pathname.equals(exportFile);
-					}
-				});
-
-				for (File df : oldPopulationSnapFiles) {
-					
-					try {
-						Files.delete(df.toPath());
-					} catch (Exception e) {
-						System.err.printf("Error in deleteing %s. Skipped deleted", df.toPath().toString());
-					}
-				}
-			}
-
-		} catch (IOException ex) {
-			ex.printStackTrace(System.err);
-
-		}
 	}
 
 }

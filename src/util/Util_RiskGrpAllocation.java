@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 import population.Population_Bridging;
 import relationship.ContactMap;
-import sim.Runnable_ClusterModel_ContactMap_Generation;
+import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
 import sim.Simulation_ClusterModelTransmission;
@@ -99,7 +99,7 @@ public class Util_RiskGrpAllocation {
 		final String time_rangeKey = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX
 				+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 						+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-						+ Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
+						+ Abstract_Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
 
 		int[] map_time_range = (int[]) PropValUtils.propStrToObject(prop.getProperty(time_rangeKey), int[].class);
 
