@@ -267,7 +267,10 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				if (population != null) {
 					population.setBaseDir(baseDir);
 				}
+				
+				r.setRunnable_fields(simFields);
 
+				/*
 				for (int f = 0; f < Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
 					if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
 							+ f] != null) {
@@ -275,6 +278,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 								+ Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
 					}
 				}
+				*/
 
 				runnablesMap.put(popSeed, r);
 

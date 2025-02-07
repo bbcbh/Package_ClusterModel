@@ -62,6 +62,8 @@ public abstract class Abstract_Runnable_ClusterModel_ContactMap_Generation exten
 	@Override
 	public Object[] getRunnable_fields() {
 		return runnable_fields;
-	}	
+	}
+	
+	public abstract void setRunnable_fields(Object[] simFields);
 
 }

@@ -25,14 +25,14 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		extends Abstract_Runnable_ClusterModel_ContactMap_Generation {
 
 	// Runnable fields
-	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP = LENGTH_RUNNABLE_MAP_GEN_FIELD;
+	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP = Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP
 			+ 1;
 
 	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST
 			+ 1;
 
-	public static final int LENGTH_RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP
+	public static final int LENGTH_RUNNABLE_MAP_GEN_FIELD = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP
 			+ 1;
 
 	public static final Object[] DEFAULT_RUNNABLE_MAP_GEN_MULTIMAP_FIELDS = {
@@ -74,10 +74,11 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	public Runnable_ClusterModel_ContactMap_Generation_MultiMap(long mapSeed) {
 		super(mapSeed);
 
-		Object[] newFields = Arrays.copyOf(runnable_fields, LENGTH_RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP);
+		Object[] newFields = Arrays.copyOf(runnable_fields, LENGTH_RUNNABLE_MAP_GEN_FIELD);
 
-		for (int i = LENGTH_RUNNABLE_MAP_GEN_FIELD; i < LENGTH_RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP; i++) {
-			newFields[i] = DEFAULT_RUNNABLE_MAP_GEN_MULTIMAP_FIELDS[i - LENGTH_RUNNABLE_MAP_GEN_FIELD];
+		for (int i = Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; i < LENGTH_RUNNABLE_MAP_GEN_FIELD; i++) {
+			newFields[i] = DEFAULT_RUNNABLE_MAP_GEN_MULTIMAP_FIELDS[i
+					- Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD];
 		}
 
 		runnable_fields = newFields;
@@ -351,6 +352,16 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 			genMapFile = new File(baseDir, inputFilename);
 		}
 		return genMapFile;
+	}
+
+	@Override
+	public void setRunnable_fields(Object[] simFields) {
+		for (int f = 0; f < LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
+			if (simFields[Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD + f] != null) {
+				getRunnable_fields()[f] = simFields[f + Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD];
+			}
+		}
+
 	}
 
 }

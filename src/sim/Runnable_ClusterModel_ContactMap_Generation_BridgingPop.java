@@ -39,32 +39,32 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 		this.population = population;
 	}
 
-	private void exportPopSnap(long snapTime) {		
-		try {			
-	
+	private void exportPopSnap(long snapTime) {
+		try {
+
 			File exportFile = new File(baseDir,
 					String.format(EXPORT_POP_FILENAME, population.getSeed(), population.getGlobalTime()));
-	
+
 			if (!exportFile.exists()) {
 				ObjectOutputStream outStream = new ObjectOutputStream(
 						new BufferedOutputStream(new FileOutputStream(exportFile)));
 				population.encodePopToStream(outStream);
 				outStream.close();
-	
+
 				// Remove old snapshot file
-	
+
 				String fileCheck = String.format(EXPORT_POP_FILENAME, population.getSeed(), 0);
 				final String fileCheckPrefix = fileCheck.substring(0, fileCheck.indexOf('.') - 1);
-	
+
 				File[] oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
 					@Override
 					public boolean accept(File pathname) {
 						return pathname.getName().startsWith(fileCheckPrefix) && !pathname.equals(exportFile);
 					}
 				});
-	
+
 				for (File df : oldPopulationSnapFiles) {
-					
+
 					try {
 						Files.delete(df.toPath());
 					} catch (Exception e) {
@@ -72,14 +72,13 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 					}
 				}
 			}
-	
+
 		} catch (IOException ex) {
 			ex.printStackTrace(System.err);
-	
+
 		}
 	}
-	
-	
+
 	@Override
 	public void run() {
 
@@ -114,7 +113,6 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 					gen_cMap[i] = new ContactMap();
 				}
 			}
-			
 
 			if (population instanceof Population_Bridging_Scheduled) {
 				((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
@@ -176,25 +174,26 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 					}
 
 					snapPop.setBaseDir(baseDir);
-					this.setPopulation(snapPop);					
+					this.setPopulation(snapPop);
 					objIn.close();
 					output.append(String.format(" SUCCESS, with global time set at %d.", population.getGlobalTime()));
 					skipTimeUntil = population.getGlobalTime();
 					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
-					
+
 					if (population instanceof Population_Bridging_Scheduled) {
-						((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
+						((Population_Bridging_Scheduled) population)
+								.setExport_period_form_partnership_progress(exportFreq);
 					}
-					
-					if(contactMapValidRange[0] < population.getGlobalTime()
-							&&  population.getGlobalTime() < contactMapValidRange[1]) {
-						for(int i = 0; i < gen_cMap.length; i++) {
-							if(gen_cMap[i] == null) {
+
+					if (contactMapValidRange[0] < population.getGlobalTime()
+							&& population.getGlobalTime() < contactMapValidRange[1]) {
+						for (int i = 0; i < gen_cMap.length; i++) {
+							if (gen_cMap[i] == null) {
 								gen_cMap[i] = new ContactMap();
 							}
 						}
-					}									
-					
+					}
+
 					popFileloaded = true;
 
 				} catch (Exception e) {
@@ -219,7 +218,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 						gen_cMap[i] = new ContactMap();
 					}
 				}
-				
+
 				if (population instanceof Population_Bridging_Scheduled) {
 					((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
 				}
@@ -233,7 +232,6 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 		}
 
 		long lastExportTime = System.currentTimeMillis();
-
 
 		int stepCount = 0;
 
@@ -252,15 +250,14 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 
 					}
 					population.advanceTimeStep(1);
-					
-										
+
 					boolean exportPop = true;
-					
-					if(population instanceof  population.Population_Bridging_Scheduled) {
+
+					if (population instanceof population.Population_Bridging_Scheduled) {
 						exportPop &= !((Population_Bridging_Scheduled) population).isSpace_save();
-					}																		
-					
-					if (exportFreq > 0 && exportPop) {																							
+					}
+
+					if (exportFreq > 0 && exportPop) {
 						long snapTime = System.currentTimeMillis();
 						if (snapTime - lastExportTime > exportFreq) {
 							exportPopSnap(snapTime);
@@ -281,13 +278,13 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 		}
 
 		if (baseDir != null) {
-			
+
 			boolean exportPop = true;
-			
-			if(population instanceof  population.Population_Bridging_Scheduled) {
+
+			if (population instanceof population.Population_Bridging_Scheduled) {
 				exportPop &= !((Population_Bridging_Scheduled) population).isSpace_save();
-			}	
-			if(exportPop) {
+			}
+			if (exportPop) {
 				exportPopSnap(System.currentTimeMillis());
 			}
 
@@ -303,6 +300,18 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 		if (printStatus != null) {
 			for (PrintStream out : printStatus) {
 				out.close();
+			}
+		}
+
+	}
+
+	@Override
+	public void setRunnable_fields(Object[] simFields) {
+		for (int f = 0; f < Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
+			if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+					+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD + f] != null) {
+				getRunnable_fields()[f] = simFields[f + Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+						+ Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
 			}
 		}
 
