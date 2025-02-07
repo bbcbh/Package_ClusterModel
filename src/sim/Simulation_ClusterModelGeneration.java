@@ -245,16 +245,16 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 					}
 					r = new Runnable_ClusterModel_ContactMap_Generation_BridgingPop(population.getSeed());
 					((Runnable_ClusterModel_ContactMap_Generation_BridgingPop) r).setPopulation(population);
-				} else {										
+				} else {
 					String popType = loadedProperties
 							.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
 					if ("MutiMap".equals(popType)) {
 						r = new Runnable_ClusterModel_ContactMap_Generation_MultiMap(popSeed);
 
-					} else {												
+					} else {
 						r = null;
-						System.err.printf("Error: GenMap Pop type <%s> not defined. Exiting.\n");						
+						System.err.printf("Error: GenMap Pop type <%s> not defined. Exiting.\n");
 						System.exit(-1);
 					}
 
@@ -264,7 +264,9 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				r.setNumSnaps(numSnap);
 				r.setSnapFreq(snapFreq);
 				r.setBaseDir(baseDir);
-				population.setBaseDir(baseDir);
+				if (population != null) {
+					population.setBaseDir(baseDir);
+				}
 
 				for (int f = 0; f < Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
 					if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD

@@ -27,7 +27,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	// Runnable fields
 	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP = LENGTH_RUNNABLE_MAP_GEN_FIELD;
 	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP
-			+ 1 + 1;
+			+ 1;
 
 	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST
 			+ 1;
@@ -42,9 +42,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 			// double[GRP_NUMBER]{dist}
 			new double[][] { new double[] { 18 * AbstractIndividualInterface.ONE_YEAR_INT,
 					34 * AbstractIndividualInterface.ONE_YEAR_INT, 0, 1 }, },
-
 			// RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP
-
 			new double[][] { new double[] { 1, 1, 1, 1, 0.7, 0.7, -2.8 }, },
 
 	};
