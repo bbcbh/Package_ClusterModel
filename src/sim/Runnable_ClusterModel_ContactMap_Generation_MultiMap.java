@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -169,13 +170,14 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 				int gen_map_freq = (int) map_setting[MAPSETTING_FREQ];
 
 				if ((popTime - contactMapValidRange[0]) >= gen_map_freq
-						&& (popTime - contactMapValidRange[0]) % gen_map_freq == 0) {
+						&& (popTime - contactMapValidRange[0]) % gen_map_freq == 0) {										
 
 					ArrayList<int[]> partnership_added = new ArrayList<>();
 
 					int map_type = (int) map_setting[MAPSETTING_MAP_TYPE];
 					int grp_index_p1 = (int) map_setting[MAPSETTING_GRP_INDEX_P1];
 					int grp_index_p2 = (int) map_setting[MAPSETTING_GRP_INDEX_P2];
+					long tic = System.currentTimeMillis();
 
 					// Assume minimum casual of 1 in last month, or 1 day duration for reg
 					// partnership
@@ -205,7 +207,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 								// Filter out those already within regular partnership
 								for (Integer pid : active_by_grp) {
 									int reg_part_until = (int) population.get(pid)[POP_INDEX_HAS_REG_PARTNER_UNTIL];
-									if (reg_part_until > popTime - gen_map_freq * snap_dur) {
+									if (reg_part_until > popTime - gen_map_freq) {
 										numSelectP1--;
 										numSelectP2--;
 									}
@@ -296,6 +298,19 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 						}
 						pWri.close();
+						
+						
+						
+						if(printStatus != null) {
+							for (PrintStream out : printStatus) {
+								out.printf("RelMap #%d generated with %d new partnerships added. Time req. = %.3f seconds\n",										
+										map_type, partnership_added.size(),
+										(System.currentTimeMillis() - tic) / 1000f);
+							}
+						}
+						
+						
+						
 					} catch (IOException ex) {
 						ex.printStackTrace(System.err);
 					}
