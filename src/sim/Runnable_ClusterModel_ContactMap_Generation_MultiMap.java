@@ -43,7 +43,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 			new double[][] { new double[] { 18 * AbstractIndividualInterface.ONE_YEAR_INT,
 					34 * AbstractIndividualInterface.ONE_YEAR_INT, 0, 1 }, },
 			// RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP
-			new double[][] { new double[] { 1, 1, 1, 1, 0.7, 0.7, -2.8 }, },
+			new double[][] { new double[] { 1, 30, 1, 1, 0.7, 0.7, -2.8 }, },
 
 	};
 
@@ -59,8 +59,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	// If DUR_FREQ > 0, then it is number of one partnership to form within snapshot
 	// else it is the duration of partnership
 	private static final int MAPSETTING_MAP_TYPE = 0;
-	private static final int MAPSETTING_SNAP_FREQ = MAPSETTING_MAP_TYPE + 1;
-	private static final int MAPSETTING_GRP_INDEX_P1 = MAPSETTING_SNAP_FREQ + 1;
+	private static final int MAPSETTING_FREQ = MAPSETTING_MAP_TYPE + 1;
+	private static final int MAPSETTING_GRP_INDEX_P1 = MAPSETTING_FREQ + 1;
 	private static final int MAPSETTING_GRP_INDEX_P2 = MAPSETTING_GRP_INDEX_P1 + 1;
 	private static final int MAPSETTING_PROB_HAS_PARTNERSHIP_P1 = MAPSETTING_GRP_INDEX_P2 + 1;
 	private static final int MAPSETTING_PROB_HAS_PARTNERSHIP_P2 = MAPSETTING_PROB_HAS_PARTNERSHIP_P1 + 1;
@@ -90,12 +90,15 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	public void run() {
 		HashMap<Integer, Object[]> population = new HashMap<>();
 		HashMap<Integer, ArrayList<Integer>> active_in_pop = new HashMap<>();
-
-		int nextId = 1;
-		int popTime = 0;
+		// Fields
+		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
+		final long exportFreq = (long) runnable_fields[RUNNABLE_FILED_EXPORT_FREQ];
 		int[] numInGrp = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP];
 		double[][] ageDist = (double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST];
 
+		int nextId = 1;
+		int popTime = contactMapValidRange[0];
+		long lastSnapTime = -1;
 		UnivariateInterpolator polator = new LinearInterpolator();
 
 		// Reuse variables
@@ -103,8 +106,9 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 		// Initialise pop
 		for (int g = 0; g < numInGrp.length; g++) {
-			UnivariateFunction ageDistFunc = polator.interpolate(Arrays.copyOf(ageDist[g], ageDist[g].length / 2),
-					Arrays.copyOfRange(ageDist[g], ageDist[g].length / 2, ageDist[g].length));
+			UnivariateFunction ageDistFunc = polator.interpolate(
+					Arrays.copyOfRange(ageDist[g], ageDist[g].length / 2, ageDist[g].length),
+					Arrays.copyOf(ageDist[g], ageDist[g].length / 2));
 
 			active_by_grp = new ArrayList<>();
 			for (int i = 0; i < numInGrp[g]; i++) {
@@ -112,7 +116,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 				newPerson[POP_INDEX_GRP] = g;
 				newPerson[POP_INDEX_ENTER_POP_AT] = 1;
 				newPerson[POP_INDEX_ENTER_POP_AGE] = (int) Math.round(ageDistFunc.value(RNG.nextDouble()));
-				newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2]
+				newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
 						- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
 				newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
 				population.put(nextId, newPerson);
@@ -124,48 +128,48 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 		}
 
-		for (int snapC = 0; snapC < numSnaps; snapC++) {
+		int numSnapsSim = Math.max(numSnaps, Math.round(contactMapValidRange[1] / snap_dur));
+
+		for (int snapC = 0; snapC < numSnapsSim; snapC++) {
 			popTime += snap_dur;
-			int maxMapSnap = -1;
 
 			for (int g = 0; g < numInGrp.length; g++) {
 				active_by_grp = active_in_pop.get(g);
 				int numRemoved = 0;
-
 				Iterator<Integer> iter = active_by_grp.iterator();
+				// Remove age out person
 				while (iter.hasNext()) {
 					int pId = iter.next();
 					Object[] perStat = population.get(pId);
-					// Remove age out person
 					if ((int) perStat[POP_INDEX_EXIT_POP_AT] <= popTime) {
 						iter.remove();
 						numRemoved++;
 					}
-					// Add new person
-					while (numRemoved > 0) {
-						Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
-						newPerson[POP_INDEX_GRP] = g;
-						newPerson[POP_INDEX_ENTER_POP_AT] = popTime - RNG.nextInt(snap_dur);
-						newPerson[POP_INDEX_ENTER_POP_AGE] = (int) ageDist[g][0];
-						newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist.length / 2]
-								- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
-						newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
-						population.put(nextId, newPerson);
+				}
+				// Add new person
+				while (numRemoved > 0) {
+					Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
+					newPerson[POP_INDEX_GRP] = g;
+					newPerson[POP_INDEX_ENTER_POP_AT] = popTime - RNG.nextInt(snap_dur);
+					newPerson[POP_INDEX_ENTER_POP_AGE] = (int) ageDist[g][0];
+					newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
+							- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
+					newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
+					population.put(nextId, newPerson);
 
-						active_by_grp.add(nextId);
-						nextId++;
-						numRemoved--;
-					}
+					active_by_grp.add(nextId);
+					nextId++;
+					numRemoved--;
 				}
 
 			}
 
 			for (double[] map_setting : (double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP]) {
 				// Generate map
-				int gen_map_snap_freq = (int) map_setting[MAPSETTING_SNAP_FREQ];
-				maxMapSnap = Math.max(gen_map_snap_freq, maxMapSnap);
+				int gen_map_freq = (int) map_setting[MAPSETTING_FREQ];
 
-				if (snapC > gen_map_snap_freq && snapC % gen_map_snap_freq == 0) {
+				if ((popTime - contactMapValidRange[0]) >= gen_map_freq
+						&& (popTime - contactMapValidRange[0]) % gen_map_freq == 0) {
 
 					ArrayList<int[]> partnership_added = new ArrayList<>();
 
@@ -173,8 +177,10 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 					int grp_index_p1 = (int) map_setting[MAPSETTING_GRP_INDEX_P1];
 					int grp_index_p2 = (int) map_setting[MAPSETTING_GRP_INDEX_P2];
 
+					// Assume minimum casual of 1 in last month, or 1 day duration for reg
+					// partnership
 					PoissonDistribution dur_freq_dist = new PoissonDistribution(RNG,
-							Math.abs(map_setting[MAPSETTING_PARTNERSHIP_FREQ]), PoissonDistribution.DEFAULT_EPSILON,
+							Math.abs(map_setting[MAPSETTING_PARTNERSHIP_FREQ]) - 1, PoissonDistribution.DEFAULT_EPSILON,
 							PoissonDistribution.DEFAULT_MAX_ITERATIONS);
 
 					// Candidate list = int[]{PID, NUMBER_OF_PANTERSHIP_FROM}
@@ -188,7 +194,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 					// Fill candidate list
 					for (int g = 0; g < numInGrp.length; g++) {
 						if ((grp_index_p1 & 1 << g) != 0) {
-							active_by_grp = new ArrayList<>(active_in_pop.get(g));
+							active_by_grp = active_in_pop.get(g);
 
 							int numSelectP1 = (int) Math
 									.round(active_by_grp.size() * map_setting[MAPSETTING_PROB_HAS_PARTNERSHIP_P1]);
@@ -199,7 +205,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 								// Filter out those already within regular partnership
 								for (Integer pid : active_by_grp) {
 									int reg_part_until = (int) population.get(pid)[POP_INDEX_HAS_REG_PARTNER_UNTIL];
-									if (reg_part_until > popTime - gen_map_snap_freq * snap_dur) {
+									if (reg_part_until > popTime - gen_map_freq * snap_dur) {
 										numSelectP1--;
 										numSelectP2--;
 									}
@@ -208,22 +214,20 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 							for (int i = 0; i < active_by_grp.size() && numSelectP1 > 0; i++) {
 								if (RNG.nextInt(active_by_grp.size() - i) < numSelectP1) {
-									int dur_freq_val = dur_freq_dist.sample();
-									if (dur_freq_val > 0) {
-										candidate_p1.add(new int[] { active_by_grp.get(i), dur_freq_val });
-										numSelectP1--;
-									}
+									int dur_freq_val = dur_freq_dist.sample() + 1;
+									candidate_p1.add(new int[] { active_by_grp.get(i), dur_freq_val });
+									numSelectP1--;
+
 								}
 							}
 
 							if (grp_index_p1 != grp_index_p2) {
 								for (int i = 0; i < active_by_grp.size() && numSelectP1 > 0; i++) {
 									if (RNG.nextInt(active_by_grp.size() - i) < numSelectP2) {
-										int dur_freq_val = dur_freq_dist.sample();
-										if (dur_freq_val > 0) {
-											candidate_p2.add(new int[] { active_by_grp.get(i), dur_freq_val });
-											numSelectP2--;
-										}
+										int dur_freq_val = dur_freq_dist.sample() + 1;
+										candidate_p2.add(new int[] { active_by_grp.get(i), dur_freq_val });
+										numSelectP2--;
+
 									}
 								}
 							}
@@ -231,8 +235,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 					}
 
 					// Form partnerships
-					while (candidate_p1.size() > 0 && candidate_p2.size() > 0
-							&& candidate_p1.size() + candidate_p2.size() > 1) {
+					while ((grp_index_p1 == grp_index_p2) ? candidate_p1.size() > 1
+							: candidate_p1.size() > 0 && candidate_p2.size() > 0) {
 
 						int[][] selected_candidates = new int[2][];
 
@@ -241,15 +245,14 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 						if (map_setting[MAPSETTING_PARTNERSHIP_FREQ] > 0) {
 							partnership_added.add(new int[] { selected_candidates[0][0], selected_candidates[1][0],
-									popTime - RNG.nextInt(gen_map_snap_freq), 1 });
+									popTime - RNG.nextInt(gen_map_freq), 1 });
 							for (int p = 0; p < selected_candidates.length; p++) {
 								selected_candidates[p][1]--;
-
 							}
 						} else {
-							int dur = Math.min(selected_candidates[0][1], selected_candidates[0][1]);
+							int dur = Math.min(selected_candidates[0][1], selected_candidates[0][1]) + 1;
 							partnership_added.add(new int[] { selected_candidates[0][0], selected_candidates[1][0],
-									popTime - RNG.nextInt(gen_map_snap_freq), dur });
+									popTime - RNG.nextInt(gen_map_freq), dur });
 							for (int p = 0; p < selected_candidates.length; p++) {
 								selected_candidates[p][1] = 0;
 								population.get(selected_candidates[p][0])[POP_INDEX_HAS_REG_PARTNER_UNTIL] = dur
@@ -266,7 +269,6 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 					}
 
 					// Export partnership
-					int[][] partnership_added_arr = partnership_added.toArray(new int[0][]);
 					partnership_added.sort(new Comparator<int[]>() {
 						@Override
 						public int compare(int[] o1, int[] o2) {
@@ -281,13 +283,12 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 							return res;
 						}
 					});
-
 					try {
 						String genMapFilename = String.format(MAPFILE_FORMAT, map_type, getMapSeed());
 						File genMapFile = getTargetFile(genMapFilename);
 						PrintWriter pWri = new PrintWriter(new FileWriter(genMapFile, true));
-						for (int[] partnership_added_ent : partnership_added_arr) {
-							pWri.println(String.format("%d,%d,%d,%d\n",
+						for (int[] partnership_added_ent : partnership_added) {
+							pWri.printf(String.format("%d,%d,%d,%d\n",
 									partnership_added_ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
 									partnership_added_ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2],
 									partnership_added_ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME],
@@ -295,7 +296,6 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 						}
 						pWri.close();
-
 					} catch (IOException ex) {
 						ex.printStackTrace(System.err);
 					}
@@ -303,8 +303,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 				}
 
 			}
-
-			if (snapC % maxMapSnap == 0) {
+			if (exportFreq > 0 && (System.currentTimeMillis() - lastSnapTime) > exportFreq) {
+				lastSnapTime = System.currentTimeMillis();
 				exportPopulationToFile(population);
 			}
 
@@ -313,7 +313,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		exportPopulationToFile(population);
 	}
 
-	public void exportPopulationToFile(HashMap<Integer, Object[]> population) {
+	protected void exportPopulationToFile(HashMap<Integer, Object[]> population) {
 		try {
 			String exportFileName = String.format(POPSTAT_FORMAT, mapSeed);
 			File exportPopFile = getTargetFile(exportFileName);
@@ -335,7 +335,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		}
 	}
 
-	public File getTargetFile(String inputFilename) throws IOException {
+	protected File getTargetFile(String inputFilename) throws IOException {
 		File genMapFile = new File(baseDir, inputFilename);
 
 		if (genMapFile.exists()) {
@@ -348,7 +348,9 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 			for (File d : delFile) {
 				Files.delete(d.toPath());
 			}
-			genMapFile.renameTo(new File(baseDir, String.format("%s_%d", inputFilename, System.currentTimeMillis())));
+
+			Files.copy(genMapFile.toPath(),
+					new File(baseDir, String.format("%s_%d", inputFilename, System.currentTimeMillis())).toPath());
 			genMapFile = new File(baseDir, inputFilename);
 		}
 		return genMapFile;
