@@ -22,7 +22,7 @@ public abstract class Abstract_Runnable_ClusterModel_ContactMap_Generation exten
 	public static final String EXPORT_POP_FILENAME = EXPORT_POP_FILENAME_PRRFIX+ "_%d.obj";
 
 	protected int numSnaps;
-	protected int snapFreq;
+	protected int snap_dur;
 	protected Object[] runnable_fields = new Object[LENGTH_RUNNABLE_MAP_GEN_FIELD];
 	protected ContactMap[] gen_cMap = null;
 	protected PrintStream[] printStatus = null;
@@ -52,7 +52,7 @@ public abstract class Abstract_Runnable_ClusterModel_ContactMap_Generation exten
 	}
 
 	public void setSnapFreq(int snapFreq) {
-		this.snapFreq = snapFreq;
+		this.snap_dur = snapFreq;
 	}
 
 	public void setPrintStatus(PrintStream[] printStatus) {

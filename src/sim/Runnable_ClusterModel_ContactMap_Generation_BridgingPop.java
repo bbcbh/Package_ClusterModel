@@ -238,7 +238,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
 		int stepCount = 0;
 
 		for (int s = 0; s < numSnaps; s++) {
-			for (int f = 0; f < snapFreq; f++) {
+			for (int f = 0; f < snap_dur; f++) {
 				if (stepCount >= skipTimeUntil) {
 					if (contactMapValidRange[0] != 0 && population.getGlobalTime() == contactMapValidRange[0]) {
 						gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
