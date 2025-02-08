@@ -28,8 +28,8 @@ public abstract class Abstract_Runnable_ClusterModel_ContactMap_Generation exten
 	protected PrintStream[] printStatus = null;
 	protected long mapSeed;
 	
-
-
+	protected boolean space_save = false;
+	
 	public Abstract_Runnable_ClusterModel_ContactMap_Generation(long mapSeed) {
 		super();
 		for (int i = 0; i < DEFAULT_RUNNABLE_MAP_GEN_FIELDS.length; i++) {
@@ -37,6 +37,14 @@ public abstract class Abstract_Runnable_ClusterModel_ContactMap_Generation exten
 		}
 		this.mapSeed = mapSeed;
 		
+	}
+	
+	public boolean isSpace_save() {
+		return space_save;
+	}
+
+	public void setSpace_save(boolean space_save) {
+		this.space_save = space_save;
 	}
 
 	public long getMapSeed() {

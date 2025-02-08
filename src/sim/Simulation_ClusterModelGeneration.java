@@ -261,6 +261,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 				}
 
 				runnables[i] = r;
+				r.setSpace_save(space_save);
 				r.setNumSnaps(numSnap);
 				r.setSnapFreq(snapFreq);
 				r.setBaseDir(baseDir);

@@ -68,7 +68,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	private static final int MAPSETTING_PARTNERSHIP_FREQ = MAPSETTING_PROB_HAS_PARTNERSHIP_P2 + 1;
 
 	public static final String MAPFILE_FORMAT = "ContactMap_Type_%d_%d.csv"; // Type, Seed,
-	public static final String POPSTAT_FORMAT = "POP_STAT_%d"; // Seed
+	public static final String POPSTAT_FORMAT = "POP_STAT_%d.csv"; // Seed
 
 	private RandomGenerator RNG;
 
@@ -170,7 +170,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 				int gen_map_freq = (int) map_setting[MAPSETTING_FREQ];
 
 				if ((popTime - contactMapValidRange[0]) >= gen_map_freq
-						&& (popTime - contactMapValidRange[0]) % gen_map_freq == 0) {										
+						&& (popTime - contactMapValidRange[0]) % gen_map_freq == 0) {
 
 					ArrayList<int[]> partnership_added = new ArrayList<>();
 
@@ -298,19 +298,16 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 						}
 						pWri.close();
-						
-						
-						
-						if(printStatus != null) {
+
+						if (printStatus != null) {
 							for (PrintStream out : printStatus) {
-								out.printf("RelMap #%d generated with %d new partnerships added. Time req. = %.3f seconds\n",										
-										map_type, partnership_added.size(),
+								out.printf(
+										"%d:RelMap #%d generated with %d new partnerships added. Time req. = %.3f seconds\n",
+										popTime, map_type, partnership_added.size(),
 										(System.currentTimeMillis() - tic) / 1000f);
 							}
 						}
-						
-						
-						
+
 					} catch (IOException ex) {
 						ex.printStackTrace(System.err);
 					}
@@ -345,6 +342,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 				pWri_exportPop.println();
 			}
 			pWri_exportPop.close();
+
 		} catch (IOException ex) {
 			ex.printStackTrace(System.err);
 		}
@@ -353,7 +351,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	protected File getTargetFile(String inputFilename) throws IOException {
 		File genMapFile = new File(baseDir, inputFilename);
 
-		if (genMapFile.exists()) {
+		if (genMapFile.exists() && !isSpace_save()) {
 			File[] delFile = baseDir.listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File pathname) {
@@ -362,10 +360,11 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 			});
 			for (File d : delFile) {
 				Files.delete(d.toPath());
-			}
-
+			}			
+			
 			Files.copy(genMapFile.toPath(),
 					new File(baseDir, String.format("%s_%d", inputFilename, System.currentTimeMillis())).toPath());
+
 			genMapFile = new File(baseDir, inputFilename);
 		}
 		return genMapFile;

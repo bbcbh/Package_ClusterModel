@@ -151,11 +151,16 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 	}
 
 	public static void zipFile(File[] FileList, File tarFile) throws IOException, FileNotFoundException {
+		zipFile(FileList, tarFile, true);
+	}
+
+	public static void zipFile(File[] FileList, File tarFile, boolean rmSource)
+			throws IOException, FileNotFoundException {
 		SevenZOutputFile outputZip = new SevenZOutputFile(tarFile);
-	
+
 		SevenZArchiveEntry entry;
 		FileInputStream fIn;
-	
+
 		for (int fI = 0; fI < FileList.length; fI++) {
 			entry = outputZip.createArchiveEntry(FileList[fI], FileList[fI].getName());
 			outputZip.putArchiveEntry(entry);
@@ -164,12 +169,14 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 			outputZip.closeArchiveEntry();
 			fIn.close();
 		}
-	
+
 		outputZip.close();
-	
+
 		// Clean up
-		for (File f : FileList) {
-			f.delete();
+		if (rmSource) {
+			for (File f : FileList) {
+				f.delete();
+			}
 		}
 	}
 
@@ -181,7 +188,7 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 		while ((line = reader.readLine()) != null) {
 			lines.add(line);
 			line_counter++;
-		}		
+		}
 		reader.close();
 		String[] line_pbs_arr = lines.toArray(new String[line_counter]);
 		return line_pbs_arr;
@@ -190,7 +197,7 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile) throws IOException {
 		return extractedLinesFrom7Zip(zipFile, new HashMap<String, ArrayList<String[]>>());
 	}
-	
+
 	public static HashMap<String, ArrayList<String[]>> extractedLinesFrom7Zip(File zipFile,
 			HashMap<String, ArrayList<String[]>> zip_ent) throws IOException {
 		return extractedLinesFrom7Zip(zipFile, zip_ent, null);
@@ -217,23 +224,24 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 					lines.add(line.split(","));
 				}
 			}
-			
-			
+
 			String key = file_name;
-			if(keyPattern != null) {
+			if (keyPattern != null) {
 				Matcher m = keyPattern.matcher(file_name);
-				if(m.find()) {
-					if(m.groupCount() > 0) {
-						key = m.group(1);						
-					}else {
-						System.err.print("extractedLinesFrom7Zip: Matcher has no group - using filename as key instead.\n");
+				if (m.find()) {
+					if (m.groupCount() > 0) {
+						key = m.group(1);
+					} else {
+						System.err.print(
+								"extractedLinesFrom7Zip: Matcher has no group - using filename as key instead.\n");
 					}
-				}else {
-					//System.err.printf("extractedLinesFrom7Zip: File entries %s does not match with pattern "
-					//		+ "- using filename as key instead.\n", file_name);
+				} else {
+					// System.err.printf("extractedLinesFrom7Zip: File entries %s does not match
+					// with pattern "
+					// + "- using filename as key instead.\n", file_name);
 				}
-			}			
-			
+			}
+
 			zip_ent.put(key, lines);
 		}
 		inputZip.close();
