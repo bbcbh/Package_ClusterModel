@@ -105,6 +105,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		// Reuse variables
 		ArrayList<Integer> active_by_grp;
 
+		// TODO: Check for previous simulation
+
 		// Initialise pop
 		for (int g = 0; g < numInGrp.length; g++) {
 			UnivariateFunction ageDistFunc = polator.interpolate(
@@ -128,11 +130,16 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 			active_in_pop.put(g, active_by_grp);
 
 		}
+		// First export
+		exportPopulationToFile(population);
 
 		int numSnapsSim = Math.max(numSnaps, Math.round(contactMapValidRange[1] / snap_dur));
 
 		for (int snapC = 0; snapC < numSnapsSim; snapC++) {
 			popTime += snap_dur;
+
+			// Store who are the person added
+			HashMap<Integer, Object[]> justAddedPerson = new HashMap<>();
 
 			for (int g = 0; g < numInGrp.length; g++) {
 				active_by_grp = active_in_pop.get(g);
@@ -147,7 +154,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 						numRemoved++;
 					}
 				}
-				// Add new person
+
 				while (numRemoved > 0) {
 					Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
 					newPerson[POP_INDEX_GRP] = g;
@@ -157,12 +164,17 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 							- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
 					newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
 					population.put(nextId, newPerson);
-
+					justAddedPerson.put(nextId, newPerson);
 					active_by_grp.add(nextId);
 					nextId++;
 					numRemoved--;
 				}
 
+			}
+
+			// Add new person
+			if (!justAddedPerson.isEmpty()) {
+				exportPopulationToFile(justAddedPerson, true);
 			}
 
 			for (double[] map_setting : (double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP]) {
@@ -326,12 +338,17 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	}
 
 	protected void exportPopulationToFile(HashMap<Integer, Object[]> population) {
+		exportPopulationToFile(population, false);
+	}
+
+	protected void exportPopulationToFile(HashMap<Integer, Object[]> population, boolean append) {
 		try {
 			String exportFileName = String.format(POPSTAT_FORMAT, mapSeed);
 			File exportPopFile = getTargetFile(exportFileName);
-			PrintWriter pWri_exportPop = new PrintWriter(exportPopFile);
-
-			pWri_exportPop.println("ID,GRP,ENTER_POP_AGE,ENTER_POP_AT,EXIT_POP_AT,HAS_REG_PARTNER_UNTIL");
+			PrintWriter pWri_exportPop = new PrintWriter(new FileWriter(exportPopFile, append));
+			if (!exportPopFile.exists() || !append) {
+				pWri_exportPop.println("ID,GRP,ENTER_POP_AGE,ENTER_POP_AT,EXIT_POP_AT,HAS_REG_PARTNER_UNTIL");
+			}
 			for (Integer id : population.keySet()) {
 				pWri_exportPop.printf("%d", id);
 				Object[] ent = population.get(id);
@@ -360,8 +377,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 			});
 			for (File d : delFile) {
 				Files.delete(d.toPath());
-			}			
-			
+			}
+
 			Files.copy(genMapFile.toPath(),
 					new File(baseDir, String.format("%s_%d", inputFilename, System.currentTimeMillis())).toPath());
 
