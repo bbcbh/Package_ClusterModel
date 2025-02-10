@@ -12,6 +12,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.analysis.interpolation.LinearInterpolator;
@@ -21,6 +23,7 @@ import org.apache.commons.math3.distribution.PoissonDistribution;
 import person.AbstractIndividualInterface;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
+import util.Util_7Z_CSV_Entry_Extract_Callable;
 
 public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		extends Abstract_Runnable_ClusterModel_ContactMap_Generation {
@@ -70,6 +73,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	public static final String MAPFILE_FORMAT = "ContactMap_Type_%d_%d.csv"; // Type, Seed,
 	public static final String POPSTAT_FORMAT = "POP_STAT_%d.csv"; // Seed
 
+	private static String OUTPUTMSG_FORMAT = "%d:RelMap #%d generated with %d new partnerships added. Time req. = %.3f seconds\n";
+
 	private RandomGenerator RNG;
 
 	public Runnable_ClusterModel_ContactMap_Generation_MultiMap(long mapSeed) {
@@ -105,30 +110,94 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		// Reuse variables
 		ArrayList<Integer> active_by_grp;
 
-		// TODO: Check for previous simulation
+		// Check for previous simulation
+		File outputFile = new File(baseDir,
+				String.format(Simulation_ClusterModelGeneration.FILENAME_FORMAT_OUTPUT, mapSeed));
 
-		// Initialise pop
-		for (int g = 0; g < numInGrp.length; g++) {
-			UnivariateFunction ageDistFunc = polator.interpolate(
-					Arrays.copyOfRange(ageDist[g], ageDist[g].length / 2, ageDist[g].length),
-					Arrays.copyOf(ageDist[g], ageDist[g].length / 2));
+		if (outputFile.exists()) {
+			try {
 
-			active_by_grp = new ArrayList<>();
-			for (int i = 0; i < numInGrp[g]; i++) {
-				Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
-				newPerson[POP_INDEX_GRP] = g;
-				newPerson[POP_INDEX_ENTER_POP_AT] = 1;
-				newPerson[POP_INDEX_ENTER_POP_AGE] = (int) Math.round(ageDistFunc.value(RNG.nextDouble()));
-				newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
-						- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
-				newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
-				population.put(nextId, newPerson);
+				Pattern lastLinePattern = Pattern.compile(OUTPUTMSG_FORMAT.replaceAll("%d", "(-?\\d+)"));
+				String[] lines = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(outputFile);
+				int lastlinePt = lines.length - 1;
 
-				active_by_grp.add(nextId);
-				nextId++;
+				Matcher m = lastLinePattern.matcher(lines[lastlinePt]);
+				while (!m.matches() && lastlinePt > 0) {
+					lastlinePt--;
+				}
+
+				if (m.matches()) {
+					popTime = Integer.parseInt(m.group(1));
+
+					// Update population
+					File popFile = new File(baseDir, String.format(POPSTAT_FORMAT, mapSeed));
+					if (popFile.exists()) {
+						String[] popLines = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(popFile);
+						popFile.renameTo(new File(baseDir,
+								String.format(popFile.getName() + "_%d", System.currentTimeMillis())));
+						for (int i = 1; i < popLines.length; i++) {
+							String[] ent = popLines[i].split(",");
+							Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
+							int pid = Integer.parseInt(newPerson[0].toString());
+							for (int j = 0; j < newPerson.length; j++) {
+								newPerson[j] = Integer.parseInt(ent[j + 1]);
+							}
+
+							if (((Integer) newPerson[POP_INDEX_ENTER_POP_AT]) <= popTime) {
+								population.put(pid, newPerson);
+							}
+							active_by_grp = active_in_pop.get(newPerson[POP_INDEX_GRP]);
+							if (active_by_grp == null) {
+								active_by_grp = new ArrayList<Integer>();
+								active_in_pop.put((Integer) newPerson[POP_INDEX_GRP], active_by_grp);
+							}
+							active_by_grp.add(pid);
+							nextId = Math.max(nextId, pid + 1);
+						}
+					}
+					
+					// Remove edges from map
+					int numMap  = ((double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP]).length;
+					for(int mapId = 0; mapId < numMap; mapId++) {
+						// TODO:
+					}
+					
+					
+					
+					
+
+				}
+
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
 			}
-			active_in_pop.put(g, active_by_grp);
 
+		}
+
+		if (population.isEmpty()) {
+			// Initialise pop
+			for (int g = 0; g < numInGrp.length; g++) {
+				UnivariateFunction ageDistFunc = polator.interpolate(
+						Arrays.copyOfRange(ageDist[g], ageDist[g].length / 2, ageDist[g].length),
+						Arrays.copyOf(ageDist[g], ageDist[g].length / 2));
+
+				active_by_grp = new ArrayList<>();
+				for (int i = 0; i < numInGrp[g]; i++) {
+					Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
+					newPerson[POP_INDEX_GRP] = g;
+					newPerson[POP_INDEX_ENTER_POP_AT] = 1;
+					newPerson[POP_INDEX_ENTER_POP_AGE] = (int) Math.round(ageDistFunc.value(RNG.nextDouble()));
+					newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
+							- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
+					newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
+					population.put(nextId, newPerson);
+
+					active_by_grp.add(nextId);
+					nextId++;
+				}
+				active_in_pop.put(g, active_by_grp);
+
+			}
 		}
 		// First export
 		exportPopulationToFile(population);
@@ -313,9 +382,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 						if (printStatus != null) {
 							for (PrintStream out : printStatus) {
-								out.printf(
-										"%d:RelMap #%d generated with %d new partnerships added. Time req. = %.3f seconds\n",
-										popTime, map_type, partnership_added.size(),
+
+								out.printf(OUTPUTMSG_FORMAT, popTime, map_type, partnership_added.size(),
 										(System.currentTimeMillis() - tic) / 1000f);
 							}
 						}
