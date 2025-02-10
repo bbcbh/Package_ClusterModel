@@ -116,14 +116,16 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 		if (outputFile.exists()) {
 			try {
-
-				Pattern lastLinePattern = Pattern.compile(OUTPUTMSG_FORMAT.replaceAll("%d", "(-?\\d+)"));
+				String patternStr = "(\\d+):.*";																
+				Pattern lastLinePattern = Pattern.compile(patternStr);
 				String[] lines = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(outputFile);
 				int lastlinePt = lines.length - 1;
 
-				Matcher m = lastLinePattern.matcher(lines[lastlinePt]);
+				Matcher m = lastLinePattern.matcher(lines[lastlinePt]);			
+
 				while (!m.matches() && lastlinePt > 0) {
 					lastlinePt--;
+					m = lastLinePattern.matcher(lines[lastlinePt]);
 				}
 
 				if (m.matches()) {
@@ -155,16 +157,31 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 							nextId = Math.max(nextId, pid + 1);
 						}
 					}
-					
+
 					// Remove edges from map
-					int numMap  = ((double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP]).length;
-					for(int mapId = 0; mapId < numMap; mapId++) {
-						// TODO:
+					int numMap = ((double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP]).length;
+					for (int mapId = 0; mapId < numMap; mapId++) {
+						File mapFile = new File(baseDir, String.format(MAPFILE_FORMAT, mapId, mapSeed));
+						if (mapFile.exists()) {
+							String[] edges = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(mapFile);
+							mapFile.renameTo(new File(baseDir,
+									String.format(mapFile.getName() + "_%d", System.currentTimeMillis())));
+
+							// New map file
+							mapFile = new File(baseDir, String.format(MAPFILE_FORMAT, mapId, mapSeed));
+							PrintWriter pWri = new PrintWriter(mapFile);
+
+							for (String edge : edges) {
+								String[] ent = edge.split(",");
+								int edgeFormAt = Integer
+										.parseInt(ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+								if (edgeFormAt <= popTime) {
+									pWri.println(edge);
+								}
+							}
+							pWri.close();
+						}
 					}
-					
-					
-					
-					
 
 				}
 
