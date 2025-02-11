@@ -116,12 +116,12 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 		if (outputFile.exists()) {
 			try {
-				String patternStr = "(\\d+):.*";																
+				String patternStr = "(\\d+):.*";
 				Pattern lastLinePattern = Pattern.compile(patternStr);
 				String[] lines = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(outputFile);
 				int lastlinePt = lines.length - 1;
 
-				Matcher m = lastLinePattern.matcher(lines[lastlinePt]);			
+				Matcher m = lastLinePattern.matcher(lines[lastlinePt]);
 
 				while (!m.matches() && lastlinePt > 0) {
 					lastlinePt--;
@@ -140,21 +140,23 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 						for (int i = 1; i < popLines.length; i++) {
 							String[] ent = popLines[i].split(",");
 							Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
-							int pid = Integer.parseInt(newPerson[0].toString());
+							int pid = Integer.parseInt(ent[0].toString());
 							for (int j = 0; j < newPerson.length; j++) {
 								newPerson[j] = Integer.parseInt(ent[j + 1]);
 							}
 
 							if (((Integer) newPerson[POP_INDEX_ENTER_POP_AT]) <= popTime) {
 								population.put(pid, newPerson);
+
+								active_by_grp = active_in_pop.get(newPerson[POP_INDEX_GRP]);
+								if (active_by_grp == null) {
+									active_by_grp = new ArrayList<Integer>();
+									active_in_pop.put((Integer) newPerson[POP_INDEX_GRP], active_by_grp);
+								}
+								active_by_grp.add(pid);
+								nextId = Math.max(nextId, pid + 1);
 							}
-							active_by_grp = active_in_pop.get(newPerson[POP_INDEX_GRP]);
-							if (active_by_grp == null) {
-								active_by_grp = new ArrayList<Integer>();
-								active_in_pop.put((Integer) newPerson[POP_INDEX_GRP], active_by_grp);
-							}
-							active_by_grp.add(pid);
-							nextId = Math.max(nextId, pid + 1);
+
 						}
 					}
 
@@ -176,6 +178,19 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 								int edgeFormAt = Integer
 										.parseInt(ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
 								if (edgeFormAt <= popTime) {
+									int edgeDur = Integer
+											.parseInt(ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]);
+									if (edgeDur > 1) {
+										for (int pIdPt : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+												Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
+											int pId = Integer.parseInt(ent[pIdPt]);
+											Object[] person = population.get(pId);
+											person[POP_INDEX_HAS_REG_PARTNER_UNTIL] = Math.max(
+													(Integer) person[POP_INDEX_HAS_REG_PARTNER_UNTIL],
+													edgeFormAt + edgeDur);
+										}
+									}
+
 									pWri.println(edge);
 								}
 							}
