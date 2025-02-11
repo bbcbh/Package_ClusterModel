@@ -61,6 +61,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected boolean printProgress = false;
 
 	protected HashMap<Long, ContactMap> baseContactMapMapping;
+	protected HashMap<Long, String[][]> multiContactMapMapping;
+	
+
 	protected HashMap<Long, ArrayList<Number[]>> prealloactedRiskGrpMap = null;
 	protected HashMap<Long, ArrayList<Long>> preGenSimSeedMap = null;
 	protected HashMap<String, ArrayList<double[]>> preGenParam = null;
@@ -145,7 +148,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE = SIM_SETTING_KEY_TRACK_INFECTION_HISTORY + 1;
 	public static final int SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE = SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE + 1;
 	public static final int SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY = SIM_SETTING_KEY_TRACK_VACCINE_COVERAGE + 1;
-	public static final int SIM_SETTING_KEY_GEN_NON_MAPPED_ENCOUNTER = SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY+1; 
+	public static final int SIM_SETTING_KEY_GEN_NON_MAPPED_ENCOUNTER = SIM_SETTING_KEY_TREATMENT_ON_INFECTIOUS_ONLY + 1;
 
 	public static final String PROP_CONTACT_MAP_LOC = "PROP_CONTACT_MAP_LOC";
 
@@ -535,6 +538,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void setBaseContactMap(HashMap<Long, ContactMap> baseContactMap) {
 		this.baseContactMapMapping = baseContactMap;
+	}
+	
+	public void setMultiContactMapStrMapping(HashMap<Long, String[][]> multiContactMapMapping) {
+		this.multiContactMapMapping = multiContactMapMapping;
 	}
 
 	@Override
@@ -939,7 +946,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				runnable[s].setEdges_list(edge_list_map.get(baseContactMapSeed));
 				runnable[s].setSimSetting(simSetting);
 				runnable[s].setPropSwitch_map(propSwitch_map);
-				
 
 				if (printProgress) {
 					runnable[s].setPrint_progress(System.out);
@@ -990,8 +996,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 						if (loadedProperties.containsKey(OptFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)) {
 							String transform_str = loadedProperties
-									.getProperty(OptFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM)
-									.replaceAll("\\s", "");
+									.getProperty(OptFittingFunction.POP_PROP_OPT_PARAM_TRANSFORM).replaceAll("\\s", "");
 							if (transform_str.length() > 0) {
 								HashMap<String, Double> param_map = new HashMap<>();
 								Optimisation_Factory.setOptParamInRunnable_Transfrom(runnable[s], transform_str,
@@ -1684,40 +1689,34 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 			}
 
-			if (baseDir.isDirectory()) {
+			if (baseDir.isDirectory()) {				
+				Simulation_ClusterModelTransmission sim = new Simulation_ClusterModelTransmission();				
+				sim.setBaseDir(baseDir);								
+				if (flag_exportSkipBackup) {
+					sim.setExportSkipBackup(true);
+				}
+				if (flag_setPrintProgress) {
+					sim.setPrintProgress(true);
+				}
+				if (seed_map != null && seed_map.isFile()) {
+					sim.loadPreGenSimSeed(seed_map);
+				}							
 				// Reading of PROP file
 				propFile = new File(baseDir, SimulationInterface.FILENAME_PROP);
 				FileInputStream fIS = new FileInputStream(propFile);
 				Properties prop = new Properties();
 				prop.loadFromXML(fIS);
 				fIS.close();
+				
+				sim.loadProperties(prop);
 				System.out.println(String.format("Properties file < %s > loaded.", propFile.getAbsolutePath()));
 
-				// Check for contact cluster generated
-
-				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
-
-				File contactMapDir = baseDir;
-
-				if (prop.getProperty(PROP_CONTACT_MAP_LOC) != null) {
-					contactMapDir = new File(prop.getProperty(PROP_CONTACT_MAP_LOC));
-					if (!contactMapDir.exists() || !contactMapDir.isDirectory()) {
-						contactMapDir = baseDir;
-					}
-				}
-
-				preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
-					@Override
-					public boolean accept(File pathname) {
-						return pathname.isFile() && Pattern.matches(REGEX_STR, pathname.getName());
-
-					}
-				});
-
+				// Seed map
+				ArrayList<Long> cMapSeeds = null;
 				if (seed_map != null) {
 					try {
 						BufferedReader reader = new BufferedReader(new FileReader(seed_map));
-						ArrayList<Long> cMapSeeds = new ArrayList<>();
+						cMapSeeds = new ArrayList<>();
 						String ent;
 						reader.readLine(); // Skip first line
 						while ((ent = reader.readLine()) != null) {
@@ -1728,7 +1727,89 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							}
 						}
 						reader.close();
+					} catch (IOException e) {
+						e.printStackTrace(System.err);
+					}
 
+				}
+
+				Collections.sort(cMapSeeds);
+
+				// Check for contact cluster generated
+				final String REGEX_STR = FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");
+				File contactMapDir = baseDir;
+
+				if (prop.getProperty(PROP_CONTACT_MAP_LOC) != null) {
+					contactMapDir = new File(prop.getProperty(PROP_CONTACT_MAP_LOC));
+					if (!contactMapDir.exists() || !contactMapDir.isDirectory()) {
+						contactMapDir = baseDir;
+					}
+				}
+				preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return pathname.isFile() && Pattern.matches(REGEX_STR, pathname.getName());
+
+					}
+				});
+				
+				
+				long tic = System.currentTimeMillis();
+
+				if (preGenClusterMap.length > 0) {
+					//TODO: Multiple ContactMap version
+					final String MULTI_MAP_STR = Runnable_ClusterModel_ContactMap_Generation_MultiMap.MAPFILE_FORMAT
+							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");														
+					Pattern p = Pattern.compile(MULTI_MAP_STR);
+
+					preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
+						@Override
+						public boolean accept(File pathname) {
+							return pathname.isFile() && Pattern.matches(MULTI_MAP_STR, pathname.getName());
+
+						}
+					});
+
+					Arrays.sort(preGenClusterMap, new Comparator<File>() {
+						@Override
+						public int compare(File o1, File o2) {
+							Matcher m1 = p.matcher(o1.getName());
+							Matcher m2 = p.matcher(o2.getName());
+							int res = 0;
+							for (int p = 0; p < m1.groupCount() && res == 0; p++) {
+								res = -Long.compare(Long.parseLong(m1.group(p)), Long.parseLong(m2.group(p)));
+							}
+							return res;
+						}
+					});
+
+					HashMap<Long, String[][]> cmap_str_collection = new HashMap<Long, String[][]>();
+
+					for (File f : preGenClusterMap) {
+						Matcher m = p.matcher(f.getName());
+						long cmap_seed = Long.parseLong(m.group(2));
+						if (cMapSeeds == null || Collections.binarySearch(cMapSeeds, cmap_seed) >= 0) {
+							int mapType = Integer.parseInt(m.group(1));
+							String[][] mapStr = cmap_str_collection.get(cmap_seed);
+							if (mapStr == null) {
+								mapStr = new String[mapType + 1][];
+								cmap_str_collection.put(cmap_seed, mapStr);
+							} else if (!(mapType < mapStr.length)) {
+								mapStr = Arrays.copyOf(mapStr, mapType + 1);
+								cmap_str_collection.put(cmap_seed, mapStr);
+							}
+							mapStr[mapType] = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(f);
+						}
+					}					
+					
+					sim.setMultiContactMapStrMapping(cmap_str_collection);
+					
+					System.out.printf("%d ContactMap loaded. Time required = %.3fs\n", cmap_str_collection.size(),
+							(System.currentTimeMillis() - tic) / 1000.0f);
+
+				} else {
+					// Single contact map version
+					if (cMapSeeds != null) {
 						ArrayList<File> preGenClusterMapArr = new ArrayList<>();
 						Pattern p = Pattern.compile(REGEX_STR);
 						for (File f : preGenClusterMap) {
@@ -1743,93 +1824,79 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						}
 						preGenClusterMap = preGenClusterMapArr.toArray(new File[preGenClusterMapArr.size()]);
 
-					} catch (IOException e) {
-						e.printStackTrace(System.err);
 					}
 
-				}
+					Arrays.sort(preGenClusterMap);
 
-				Arrays.sort(preGenClusterMap);
+					
 
-				long tic = System.currentTimeMillis();
+					HashMap<Long, ContactMap> cMap_Map = new HashMap<>();
 
-				HashMap<Long, ContactMap> cMap_Map = new HashMap<>();
-
-				if (preGenClusterMap.length == 1 || Runtime.getRuntime().availableProcessors() == 1) {
-					for (File element : preGenClusterMap) {
-						System.out.printf("Loading (in series) on ContactMap located at %s.\n",
-								element.getAbsolutePath());
-						Matcher m = Pattern.compile(REGEX_STR).matcher(element.getName());
-						m.matches();
-						long cMap_seed = Long.parseLong(m.group(1));
-						ContactMap cMap = extractedCMapfromFile(element);
-						cMap_Map.put(cMap_seed, cMap);
-					}
-
-				} else {
-					// In parallel (not used due to out of memory error)
-					ExecutorService exec = Executors.newFixedThreadPool(
-							Math.min(preGenClusterMap.length, Runtime.getRuntime().availableProcessors()));
-
-					long[] cMap_seeds = new long[preGenClusterMap.length];
-					@SuppressWarnings("unchecked")
-					Future<ContactMap>[] extractCMap = new Future[preGenClusterMap.length];
-
-					for (int i = 0; i < preGenClusterMap.length; i++) {
-						System.out.printf("Loading (in parallel) on ContactMap located at %s.\n",
-								preGenClusterMap[i].getAbsolutePath());
-
-						Matcher m = Pattern.compile(REGEX_STR).matcher(preGenClusterMap[i].getName());
-						m.matches();
-						cMap_seeds[i] = Long.parseLong(m.group(1));
-
-						final File mapFile = preGenClusterMap[i];
-
-						Callable<ContactMap> extractThread = new Callable<>() {
-							@Override
-							public ContactMap call() throws Exception {
-								return extractedCMapfromFile(mapFile);
-							}
-						};
-						extractCMap[i] = exec.submit(extractThread);
-					}
-					exec.shutdown();
-					if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
-						System.err.println("Thread time-out!");
-					}
-
-					for (int i = 0; i < extractCMap.length; i++) {
-						ContactMap cMap = null;
-						try {
-							cMap = extractCMap[i].get();
-						} catch (Exception e) {
-							e.printStackTrace(System.err);
-							cMap = extractedCMapfromFile(preGenClusterMap[i]);
+					if (preGenClusterMap.length == 1 || Runtime.getRuntime().availableProcessors() == 1) {
+						for (File element : preGenClusterMap) {
+							System.out.printf("Loading (in series) on ContactMap located at %s.\n",
+									element.getAbsolutePath());
+							Matcher m = Pattern.compile(REGEX_STR).matcher(element.getName());
+							m.matches();
+							long cMap_seed = Long.parseLong(m.group(1));
+							ContactMap cMap = extractedCMapfromFile(element);
+							cMap_Map.put(cMap_seed, cMap);
 						}
-						cMap_Map.put(cMap_seeds[i], cMap);
+
+					} else {
+						// In parallel (not used due to out of memory error)
+						ExecutorService exec = Executors.newFixedThreadPool(
+								Math.min(preGenClusterMap.length, Runtime.getRuntime().availableProcessors()));
+
+						long[] cMap_seeds = new long[preGenClusterMap.length];
+						@SuppressWarnings("unchecked")
+						Future<ContactMap>[] extractCMap = new Future[preGenClusterMap.length];
+
+						for (int i = 0; i < preGenClusterMap.length; i++) {
+							System.out.printf("Loading (in parallel) on ContactMap located at %s.\n",
+									preGenClusterMap[i].getAbsolutePath());
+
+							Matcher m = Pattern.compile(REGEX_STR).matcher(preGenClusterMap[i].getName());
+							m.matches();
+							cMap_seeds[i] = Long.parseLong(m.group(1));
+
+							final File mapFile = preGenClusterMap[i];
+
+							Callable<ContactMap> extractThread = new Callable<>() {
+								@Override
+								public ContactMap call() throws Exception {
+									return extractedCMapfromFile(mapFile);
+								}
+							};
+							extractCMap[i] = exec.submit(extractThread);
+						}
+						exec.shutdown();
+						if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
+							System.err.println("Thread time-out!");
+						}
+
+						for (int i = 0; i < extractCMap.length; i++) {
+							ContactMap cMap = null;
+							try {
+								cMap = extractCMap[i].get();
+							} catch (Exception e) {
+								e.printStackTrace(System.err);
+								cMap = extractedCMapfromFile(preGenClusterMap[i]);
+							}
+							cMap_Map.put(cMap_seeds[i], cMap);
+						}
+
+						exec = null;
+						// System.gc();
 					}
-
-					exec = null;
-					// System.gc();
+					sim.setBaseContactMap(cMap_Map);
+					System.out.printf("%d ContactMap loaded. Time required = %.3fs\n", cMap_Map.size(),
+							(System.currentTimeMillis() - tic) / 1000.0f);
+					
 				}
 
-				System.out.printf("%d ContactMap loaded. Time required = %.3fs\n", cMap_Map.size(),
-						(System.currentTimeMillis() - tic) / 1000.0f);
-
-				Simulation_ClusterModelTransmission sim = new Simulation_ClusterModelTransmission();
-				sim.setBaseDir(baseDir);
-				sim.loadProperties(prop);
-				sim.setBaseContactMap(cMap_Map);
-
-				if (flag_exportSkipBackup) {
-					sim.setExportSkipBackup(true);
-				}
-				if (flag_setPrintProgress) {
-					sim.setPrintProgress(true);
-				}
-				if (seed_map != null && seed_map.isFile()) {
-					sim.loadPreGenSimSeed(seed_map);
-				}
+				
+				
 
 				sim.generateOneResultSet();
 
