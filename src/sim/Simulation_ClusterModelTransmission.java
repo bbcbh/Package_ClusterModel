@@ -1756,10 +1756,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				
 				long tic = System.currentTimeMillis();
 
-				if (preGenClusterMap.length > 0) {
-					//TODO: Multiple ContactMap version
+				if (preGenClusterMap.length == 0) {
+					// Try multiple ContactMap version
 					final String MULTI_MAP_STR = Runnable_ClusterModel_ContactMap_Generation_MultiMap.MAPFILE_FORMAT
-							.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)");														
+							.replaceAll("%d", "(-{0,1}\\\\d+)");														
 					Pattern p = Pattern.compile(MULTI_MAP_STR);
 
 					preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
@@ -1775,8 +1775,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						public int compare(File o1, File o2) {
 							Matcher m1 = p.matcher(o1.getName());
 							Matcher m2 = p.matcher(o2.getName());
+							m1.matches();
+							m2.matches();
 							int res = 0;
-							for (int p = 0; p < m1.groupCount() && res == 0; p++) {
+							for (int p = 1; p <= m1.groupCount() && res == 0; p++) {
 								res = -Long.compare(Long.parseLong(m1.group(p)), Long.parseLong(m2.group(p)));
 							}
 							return res;
@@ -1787,6 +1789,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 					for (File f : preGenClusterMap) {
 						Matcher m = p.matcher(f.getName());
+						m.matches();
 						long cmap_seed = Long.parseLong(m.group(2));
 						if (cMapSeeds == null || Collections.binarySearch(cMapSeeds, cmap_seed) >= 0) {
 							int mapType = Integer.parseInt(m.group(1));
@@ -1827,8 +1830,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 
 					Arrays.sort(preGenClusterMap);
-
-					
 
 					HashMap<Long, ContactMap> cMap_Map = new HashMap<>();
 
@@ -1894,10 +1895,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							(System.currentTimeMillis() - tic) / 1000.0f);
 					
 				}
-
 				
-				
-
 				sim.generateOneResultSet();
 
 				System.out.println(String.format("%d simulation(s) completed. Runtime (total)= %.2fs",
