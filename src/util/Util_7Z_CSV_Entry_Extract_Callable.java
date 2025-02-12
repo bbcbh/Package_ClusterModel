@@ -249,13 +249,23 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 	}
 
 	public static StringBuilder extractCSVStringFromZip(SevenZFile inputZip) throws IOException {
-		StringBuilder str = new StringBuilder();
-		int count;
-		final int BUFFER = 2048;
-		byte[] buf = new byte[BUFFER];
 
-		while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
-			str.append(new String(Arrays.copyOf(buf, count)));
+		StringBuilder str = new StringBuilder();
+		SevenZArchiveEntry inputEnt;
+
+		while ((inputEnt = inputZip.getNextEntry()) != null) {		
+			if(str.length() != 0) {
+				System.err.printf("Warning: Multiple file (%s) in %s. Addtional line appended.\n.", 
+						inputEnt.getName(),	inputZip.getDefaultName());
+			}
+			
+			int count;
+			final int BUFFER = 2048;
+			byte[] buf = new byte[BUFFER];
+
+			while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
+				str.append(new String(Arrays.copyOf(buf, count)));
+			}
 		}
 		return str;
 	}

@@ -52,12 +52,13 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 	};
 
 	// Population Index
-	private static final int POP_INDEX_GRP = 0;
-	private static final int POP_INDEX_ENTER_POP_AGE = POP_INDEX_GRP + 1;
-	private static final int POP_INDEX_ENTER_POP_AT = POP_INDEX_ENTER_POP_AGE + 1;
-	private static final int POP_INDEX_EXIT_POP_AT = POP_INDEX_ENTER_POP_AT + 1;
-	private static final int POP_INDEX_HAS_REG_PARTNER_UNTIL = POP_INDEX_EXIT_POP_AT + 1;
-	private static final int LENGTH_POP_ENTRIES = POP_INDEX_HAS_REG_PARTNER_UNTIL + 1;
+	// Offset by ID under POP_STAT_%d.csv
+	public static final int POP_INDEX_GRP = 0;
+	public static final int POP_INDEX_ENTER_POP_AGE = POP_INDEX_GRP + 1;
+	public static final int POP_INDEX_ENTER_POP_AT = POP_INDEX_ENTER_POP_AGE + 1;
+	public static final int POP_INDEX_EXIT_POP_AT = POP_INDEX_ENTER_POP_AT + 1;
+	public static final int POP_INDEX_HAS_REG_PARTNER_UNTIL = POP_INDEX_EXIT_POP_AT + 1;
+	public static final int LENGTH_POP_ENTRIES = POP_INDEX_HAS_REG_PARTNER_UNTIL + 1;
 
 	// MAPSETTING
 	// If DUR_FREQ > 0, then it is number of one partnership to form within snapshot
