@@ -1,11 +1,15 @@
 package sim;
 
 import java.util.Properties;
+import java.util.regex.Pattern;
 
-
+/**
+ * Not used atm
+*/
 
 public class Runnable_ClusterModel_MultiTransmission_MultiMap extends Runnable_ClusterModel_MultiTransmission {
 	
+	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("MultiTransmission_MultiMap_(\\d+)_(\\d+)_(\\d+)");
 	
 	protected String[][] cmaps_str;
 	protected int[] cmaps_pt;

@@ -51,15 +51,6 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 	};
 
-	// Population Index
-	// Offset by ID under POP_STAT_%d.csv
-	public static final int POP_INDEX_GRP = 0;
-	public static final int POP_INDEX_ENTER_POP_AGE = POP_INDEX_GRP + 1;
-	public static final int POP_INDEX_ENTER_POP_AT = POP_INDEX_ENTER_POP_AGE + 1;
-	public static final int POP_INDEX_EXIT_POP_AT = POP_INDEX_ENTER_POP_AT + 1;
-	public static final int POP_INDEX_HAS_REG_PARTNER_UNTIL = POP_INDEX_EXIT_POP_AT + 1;
-	public static final int LENGTH_POP_ENTRIES = POP_INDEX_HAS_REG_PARTNER_UNTIL + 1;
-
 	// MAPSETTING
 	// If DUR_FREQ > 0, then it is number of one partnership to form within snapshot
 	// else it is the duration of partnership
@@ -140,19 +131,19 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 								String.format(popFile.getName() + "_%d", System.currentTimeMillis())));
 						for (int i = 1; i < popLines.length; i++) {
 							String[] ent = popLines[i].split(",");
-							Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
+							Object[] newPerson = new Object[Abstract_Runnable_ClusterModel.LENGTH_POP_ENTRIES];
 							int pid = Integer.parseInt(ent[0].toString());
 							for (int j = 0; j < newPerson.length; j++) {
 								newPerson[j] = Integer.parseInt(ent[j + 1]);
 							}
 
-							if (((Integer) newPerson[POP_INDEX_ENTER_POP_AT]) <= popTime) {
+							if (((Integer) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]) <= popTime) {
 								population.put(pid, newPerson);
 
-								active_by_grp = active_in_pop.get(newPerson[POP_INDEX_GRP]);
+								active_by_grp = active_in_pop.get(newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP]);
 								if (active_by_grp == null) {
 									active_by_grp = new ArrayList<Integer>();
-									active_in_pop.put((Integer) newPerson[POP_INDEX_GRP], active_by_grp);
+									active_in_pop.put((Integer) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP], active_by_grp);
 								}
 								active_by_grp.add(pid);
 								nextId = Math.max(nextId, pid + 1);
@@ -186,8 +177,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 												Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
 											int pId = Integer.parseInt(ent[pIdPt]);
 											Object[] person = population.get(pId);
-											person[POP_INDEX_HAS_REG_PARTNER_UNTIL] = Math.max(
-													(Integer) person[POP_INDEX_HAS_REG_PARTNER_UNTIL],
+											person[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = Math.max(
+													(Integer) person[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL],
 													edgeFormAt + edgeDur);
 										}
 									}
@@ -216,13 +207,13 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 				active_by_grp = new ArrayList<>();
 				for (int i = 0; i < numInGrp[g]; i++) {
-					Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
-					newPerson[POP_INDEX_GRP] = g;
-					newPerson[POP_INDEX_ENTER_POP_AT] = 1;
-					newPerson[POP_INDEX_ENTER_POP_AGE] = (int) Math.round(ageDistFunc.value(RNG.nextDouble()));
-					newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
-							- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
-					newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
+					Object[] newPerson = new Object[Abstract_Runnable_ClusterModel.LENGTH_POP_ENTRIES];
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP] = g;
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT] = 1;
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE] = (int) Math.round(ageDistFunc.value(RNG.nextDouble()));
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
+							- (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT];
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
 					population.put(nextId, newPerson);
 
 					active_by_grp.add(nextId);
@@ -251,20 +242,20 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 				while (iter.hasNext()) {
 					int pId = iter.next();
 					Object[] perStat = population.get(pId);
-					if ((int) perStat[POP_INDEX_EXIT_POP_AT] <= popTime) {
+					if ((int) perStat[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] <= popTime) {
 						iter.remove();
 						numRemoved++;
 					}
 				}
 
 				while (numRemoved > 0) {
-					Object[] newPerson = new Object[LENGTH_POP_ENTRIES];
-					newPerson[POP_INDEX_GRP] = g;
-					newPerson[POP_INDEX_ENTER_POP_AT] = popTime - RNG.nextInt(snap_dur);
-					newPerson[POP_INDEX_ENTER_POP_AGE] = (int) ageDist[g][0];
-					newPerson[POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
-							- (int) newPerson[POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[POP_INDEX_ENTER_POP_AT];
-					newPerson[POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
+					Object[] newPerson = new Object[Abstract_Runnable_ClusterModel.LENGTH_POP_ENTRIES];
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP] = g;
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT] = popTime - RNG.nextInt(snap_dur);
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE] = (int) ageDist[g][0];
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
+							- (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT];
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
 					population.put(nextId, newPerson);
 					justAddedPerson.put(nextId, newPerson);
 					active_by_grp.add(nextId);
@@ -320,7 +311,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 							if (map_setting[MAPSETTING_PARTNERSHIP_FREQ] < 0) {
 								// Filter out those already within regular partnership
 								for (Integer pid : active_by_grp) {
-									int reg_part_until = (int) population.get(pid)[POP_INDEX_HAS_REG_PARTNER_UNTIL];
+									int reg_part_until = (int) population.get(pid)[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL];
 									if (reg_part_until > popTime - gen_map_freq) {
 										numSelectP1--;
 										numSelectP2--;
@@ -371,7 +362,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 									popTime - RNG.nextInt(gen_map_freq), dur });
 							for (int p = 0; p < selected_candidates.length; p++) {
 								selected_candidates[p][1] = 0;
-								population.get(selected_candidates[p][0])[POP_INDEX_HAS_REG_PARTNER_UNTIL] = dur
+								population.get(selected_candidates[p][0])[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = dur
 										+ popTime;
 							}
 						}

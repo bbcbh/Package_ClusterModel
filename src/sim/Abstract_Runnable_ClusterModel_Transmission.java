@@ -83,6 +83,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected RandomGenerator RNG;
 	protected ArrayList<Integer[]> edges_list;
 
+	// Multi contact map / large map support
+	protected File[] contactMap_files = null;
+	protected String[] contactMap_nextString = null;
+	protected BufferedReader[] contactMap_reader = null;
+
+	// PopStat
+	protected HashMap<Integer, String[]> pop_stat = null;
+
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
 
 	protected transient HashMap<Integer, Integer> risk_cat_map;
@@ -156,6 +164,50 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	public Properties getSim_prop() {
 		return baseProp;
+	}
+
+	public HashMap<Integer, String[]> getPop_stat() {
+		return pop_stat;
+	}
+
+	public void setPop_stat(HashMap<Integer, String[]> pop_stat) {
+		this.pop_stat = pop_stat;
+	}
+
+	public Integer[] getCurrentPopulationPId(int time) {
+		if (pop_stat == null) {
+			if (bASE_CONTACT_MAP != null) {
+				// All valid
+				return bASE_CONTACT_MAP.vertexSet().toArray(new Integer[bASE_CONTACT_MAP.vertexSet().size()]);
+			} else {
+				System.err.println("Warning - Population undefined.");
+				return null;
+			}
+		} else {
+			ArrayList<Integer> res = new ArrayList<>();
+			for (Integer pid : pop_stat.keySet()) {
+				String[] popEnt = pop_stat.get(pid);
+				if (Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]) <= time
+						&& time < Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT])) {
+					res.add(pid);
+				}
+			}
+			return res.toArray(new Integer[0]);
+		}
+	}
+
+	public File[] getContactMapFiles() {
+		return contactMap_files;
+	}
+
+	public String[] getContactMap_nextString() {
+		return contactMap_nextString;
+	}
+
+	public void setContactMapFiles(File[] contactMapFiles) {
+		this.contactMap_files = contactMapFiles;
+		this.contactMap_nextString = new String[contactMapFiles.length];
+		this.contactMap_reader = new BufferedReader[contactMapFiles.length];
 	}
 
 	public void setBaseProp(Properties sim_prop) {
@@ -347,15 +399,15 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	protected Integer[][] getEdgesArrayFromBaseConctactMap() {
 		if (edges_list == null) {
-
-			try {
-				edges_list = generateMapEdgeArray(bASE_CONTACT_MAP).call();
-			} catch (Exception e) {
-				e.printStackTrace(System.err);
-				System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
-				edges_list = new ArrayList<>();
-				System.exit(-1);
-
+			if (bASE_CONTACT_MAP != null) {
+				try {
+					edges_list = generateMapEdgeArray(bASE_CONTACT_MAP).call();
+				} catch (Exception e) {
+					e.printStackTrace(System.err);
+					System.err.println("Error in generating edge list from BASE_CONTACT_MAP. Exiting...");
+					edges_list = new ArrayList<>();
+					System.exit(-1);
+				}
 			}
 		}
 		Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
@@ -425,8 +477,51 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
+	private void updateCMapFromFiles(ContactMap cMap, int currentTime, int mapNumber) {
+		String lastEdgeStr = contactMap_nextString[mapNumber];
+		String[] edgeSp;
+
+		if (lastEdgeStr != null) {
+			edgeSp = contactMap_nextString[mapNumber].split(",");
+			if (Integer.parseInt(edgeSp[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]) <= currentTime) {
+				addPartnership(cMap, lastEdgeStr.split(","));
+				contactMap_nextString[mapNumber] = null;
+			}
+		}
+
+		// Reading next set of edges
+		if (contactMap_nextString[mapNumber] == null) {
+			try {
+				if (contactMap_reader[mapNumber] == null) {
+					contactMap_reader[mapNumber] = new BufferedReader(new FileReader(contactMap_files[mapNumber]));
+				}
+				while ((contactMap_nextString[mapNumber] = contactMap_reader[mapNumber].readLine()) != null) {
+					edgeSp = contactMap_nextString[mapNumber].split(",");
+					if (Integer.parseInt(
+							edgeSp[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]) <= currentTime) {
+						addPartnership(cMap, edgeSp);
+					} else {
+						break;
+					}
+				}
+
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+			}
+		}
+
+	}
+
 	protected int updateCMap(ContactMap cMap, int currentTime, Integer[][] edges_array, int edges_array_pt,
 			HashMap<Integer, ArrayList<Integer[]>> edgesToRemove) {
+
+		// Add multimap and read edges if needed
+		if (bASE_CONTACT_MAP == null && contactMap_files != null) {
+			for (int i = 0; i < contactMap_files.length; i++) {
+				updateCMapFromFiles(cMap, currentTime, i);
+			}
+		}
+
 		ArrayList<Integer[]> toRemove;
 		// Remove expired edges
 		toRemove = edgesToRemove.get(currentTime);
@@ -598,6 +693,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 	}
 
+	protected void addPartnership(ContactMap cMap, String[] eS) {
+		Integer[] e = new Integer[eS.length];
+		for (int i = 0; i < e.length; i++) {
+			e[i] = Integer.parseInt(eS[i]);
+		}
+		addPartnership(cMap, e);
+	}
+
 	public HashMap<String, Object> getSim_output() {
 		return sim_output;
 	}
@@ -717,6 +820,17 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	}
 
 	protected void postSimulation() {
+		if (contactMap_reader != null) {
+			try {
+				for (BufferedReader r : contactMap_reader) {
+					if (r != null) {
+						r.close();
+					}
+				}
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+			}
+		}
 		exportNonMapEdgeStore();
 	}
 }

@@ -20,6 +20,15 @@ public abstract class Abstract_Runnable_ClusterModel implements Runnable {
 
 	protected String runnableId = null;
 	protected File baseDir = null;
+	
+	// Population Index
+	// Offset by ID under POP_STAT_%d.csv
+	public static final int POP_INDEX_GRP = 0;	
+	public static final int POP_INDEX_ENTER_POP_AGE = POP_INDEX_GRP + 1;
+	public static final int POP_INDEX_ENTER_POP_AT = POP_INDEX_ENTER_POP_AGE + 1;
+	public static final int POP_INDEX_EXIT_POP_AT = POP_INDEX_ENTER_POP_AT + 1;
+	public static final int POP_INDEX_HAS_REG_PARTNER_UNTIL = POP_INDEX_EXIT_POP_AT + 1;
+	public static final int LENGTH_POP_ENTRIES = POP_INDEX_HAS_REG_PARTNER_UNTIL + 1;
 
 	// Edge format in contact map: {p1, p2, start time_1, duration_1, ...}
 	// CONTACT_MAP_EDGE_DURATION = -1 -> Removal

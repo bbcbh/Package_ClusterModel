@@ -746,7 +746,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if (simFields[sim_offset + SIM_FIELD_SEED_INFECTION] instanceof float[][]) {
 			// Single infection version
 			float[][] seedInfectParam = (float[][]) simFields[sim_offset + SIM_FIELD_SEED_INFECTION];
-			seedInfectNum = new int[Population_Bridging.LENGTH_GENDER][Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE];
+			seedInfectNum = new int[pop_composition.length][Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
 			for (int g = 0; g < seedInfectParam.length; g++) {
 				for (int s = 0; s < seedInfectParam[g].length; s++) {
@@ -759,10 +759,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		HashMap<Long, ArrayList<Integer>[]> personListByGenderMap = new HashMap<>();
+		HashMap<Long, HashMap<Integer, String[]>> pop_stat_map = new HashMap<>();
 
 		for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
 			@SuppressWarnings("unchecked")
-			ArrayList<Integer>[] personStat = new ArrayList[Population_Bridging.LENGTH_GENDER];
+			ArrayList<Integer>[] personStat = new ArrayList[pop_composition.length];
 			for (int g = 0; g < personStat.length; g++) {
 				personStat[g] = new ArrayList<>();
 			}
@@ -771,14 +772,25 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			popStatFile = new File(popStatFile, String
 					.format(Runnable_ClusterModel_ContactMap_Generation_MultiMap.POPSTAT_FORMAT, baseContactMapSeed));
 			if (popStatFile.exists()) {
-				//TODO: Update group
+				// Update group
 				String[] popStat = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(popStatFile);
-				for(String person : popStat) {
-					String[] personEnt = person.split(","); 
+				
+				HashMap<Integer, String[]> pop_stat = pop_stat_map.get(baseContactMapSeed);
+				if(pop_stat == null) {
+					pop_stat = new HashMap<>();
+					pop_stat_map.put(baseContactMapSeed, pop_stat);
+				}
+				
+				
+				for (int i = 1; i < popStat.length; i++) {
+					String[] personEnt = popStat[i].split(",");
 					int pid = Integer.parseInt(personEnt[0]);
-					int group = Integer.parseInt(personEnt[Runnable_ClusterModel_ContactMap_Generation_MultiMap.POP_INDEX_GRP+1]);										
+					int group = Integer.parseInt(
+							personEnt[Abstract_Runnable_ClusterModel.POP_INDEX_GRP + 1]);
 					personStat[group].add(pid);
-				}							
+					
+					pop_stat.put(pid, Arrays.copyOfRange(personEnt, 1, personEnt.length)); // ID offset
+				}
 
 			} else {
 				ContactMap cMap = baseContactMapMapping.get(baseContactMapSeed);
@@ -790,9 +802,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 				} else {
 					System.err.println("Warning! POPSTAT and/or baseContactMap not defined.");
-				}
+				}						
 			}
-
+			
 			personListByGenderMap.put(baseContactMapSeed, personStat);
 		}
 
@@ -825,28 +837,29 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		long tic = System.currentTimeMillis();
-
 		HashMap<Long, ArrayList<Integer[]>> edge_list_map = new HashMap<>();
-
 		if (numThreads == 1 || baseContactMapMapping.size() == 1) {
 			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
-				ArrayList<Integer[]> edge_list = null;
-				try {
-					edge_list = Abstract_Runnable_ClusterModel
-							.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)).call();
-				} catch (Exception e1) {
-					e1.printStackTrace(System.err);
+				if (baseContactMapMapping.get(baseContactMapSeed) != null) {
+					ArrayList<Integer[]> edge_list = null;
+					try {
+						edge_list = Abstract_Runnable_ClusterModel
+								.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)).call();
+					} catch (Exception e1) {
+						e1.printStackTrace(System.err);
+					}
+					edge_list_map.put(baseContactMapSeed, edge_list);
 				}
-
-				edge_list_map.put(baseContactMapSeed, edge_list);
 			}
 		} else {
 			ExecutorService execReadMap = Executors.newFixedThreadPool(numThreads);
 			HashMap<Long, Future<ArrayList<Integer[]>>> futureMap = new HashMap<>();
 			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
-				Future<ArrayList<Integer[]>> res = execReadMap.submit(Abstract_Runnable_ClusterModel
-						.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)));
-				futureMap.put(baseContactMapSeed, res);
+				if (baseContactMapMapping.get(baseContactMapSeed) != null) {
+					Future<ArrayList<Integer[]>> res = execReadMap.submit(Abstract_Runnable_ClusterModel
+							.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)));
+					futureMap.put(baseContactMapSeed, res);
+				}
 			}
 
 			execReadMap.shutdown();
@@ -855,29 +868,29 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
-				ArrayList<Integer[]> edge_list = null;
-				try {
-					Future<ArrayList<Integer[]>> res = futureMap.get(baseContactMapSeed);
-					edge_list = res.get();
-				} catch (Exception ex) {
-					ex.printStackTrace(System.err);
+				if (baseContactMapMapping.get(baseContactMapSeed) != null) {
+					ArrayList<Integer[]> edge_list = null;
 					try {
-						edge_list = Abstract_Runnable_ClusterModel
-								.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)).call();
-					} catch (Exception e) {
-						e.printStackTrace(System.err);
+						Future<ArrayList<Integer[]>> res = futureMap.get(baseContactMapSeed);
+						edge_list = res.get();
+					} catch (Exception ex) {
+						ex.printStackTrace(System.err);
+						try {
+							edge_list = Abstract_Runnable_ClusterModel
+									.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)).call();
+						} catch (Exception e) {
+							e.printStackTrace(System.err);
+						}
 					}
+					edge_list_map.put(baseContactMapSeed, edge_list);
 				}
-				edge_list_map.put(baseContactMapSeed, edge_list);
-
 			}
-
 			execReadMap = null;
 			// System.gc();
 
 		}
 
-		if (printProgress) {
+		if (printProgress && edge_list_map.size() > 0) {
 			System.out.printf("Generation of edge_list map completed. Time required = = %.3fs.\n",
 					(System.currentTimeMillis() - tic) / 1000.0f);
 		}
@@ -956,7 +969,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
 							num_snap, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
 							Integer.parseInt(m.group(3)));
-
 				} else {
 					runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
 							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
@@ -964,9 +976,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setBaseProp(loadedProperties);
+				runnable[s].setContactMapFiles(multiContactMapFileMapping.get(baseContactMapSeed));
 				runnable[s].setEdges_list(edge_list_map.get(baseContactMapSeed));
 				runnable[s].setSimSetting(simSetting);
 				runnable[s].setPropSwitch_map(propSwitch_map);
+				runnable[s].setPop_stat(pop_stat_map.get(baseContactMapSeed));
 
 				if (printProgress) {
 					runnable[s].setPrint_progress(System.out);
@@ -1003,7 +1017,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				runnable[s].initialse();
-				runnable[s].fillRiskCatMap(prealloactedRiskGrpMap.get(baseContactMapSeed));
+				if (prealloactedRiskGrpMap != null) {
+					runnable[s].fillRiskCatMap(prealloactedRiskGrpMap.get(baseContactMapSeed));
+				}
 
 				if (preGenParam != null) {
 					String preGenParamMapKey = String.format("%d_%d", baseContactMapSeed, simSeed);
@@ -1830,15 +1846,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 					for (Long seed : cmap_file_collection.keySet()) {
 						ContactMap cMap = null;
-						/*
-						 * File[] f_cmap = cmap_file_collection.get(seed); cMap = new ContactMap(); for
-						 * (File f : f_cmap) { combineCMapfromFiles(cMap, f); }
-						 */
+
 						cMap_Map.put(seed, cMap);
 					}
 
-					System.out.printf("%d ContactMap files setup. Time required = %.3fs\n", cmap_file_collection.size(),
-							(System.currentTimeMillis() - tic) / 1000.0f);
+					System.out.printf("%d set(s) of ContactMaps setup as files. Time required = %.3fs\n",
+							cmap_file_collection.size(), (System.currentTimeMillis() - tic) / 1000.0f);
 
 				} else {
 					// Single contact map version
@@ -1953,33 +1966,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 		ContactMap cMap = ContactMap.ContactMapFromFullString(cMap_str.toString());
 		return cMap;
-	}
-
-	private static void combineCMapfromFiles(ContactMap src, File contactMapFile)
-			throws FileNotFoundException, IOException {
-		BufferedReader reader = new BufferedReader(new FileReader(contactMapFile));
-		String line;
-		while ((line = reader.readLine()) != null) {
-			String[] lineEnt = line.split(",");
-			Integer[] edge = new Integer[lineEnt.length];
-			for (int i = 0; i < lineEnt.length; i++) {
-				edge[i] = Integer.parseInt(lineEnt[i]);
-
-				if (i == Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1
-						|| i == Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2) {
-					if (!src.containsVertex(edge[i])) {
-						src.addVertex(edge[i]);
-					}
-				}
-			}
-
-			src.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
-					edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
-
-		}
-
-		reader.close();
-
 	}
 
 }

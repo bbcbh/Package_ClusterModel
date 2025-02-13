@@ -536,7 +536,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		int startTime = firstSeedTime;
 
 		// Schedule testing
-		for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
+		for (Integer personId :bASE_CONTACT_MAP == null?  pop_stat.keySet() :bASE_CONTACT_MAP.vertexSet()) {
 			scheduleNextTest(personId, startTime);
 		} // End of schedule test
 
@@ -1091,14 +1091,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 		}
-	}		
+	}
 
 	@Override
-	protected void postSimulation() {	
-		super.postSimulation();		
-		System.out.printf("Warning. %s.postSimulation() not set or overwritten.\n", this.getClass().getName());		
+	protected void postSimulation() {
+		super.postSimulation();
+		System.out.printf("Warning. %s.postSimulation() not set or overwritten.\n", this.getClass().getName());
 	}
-	
+
 	public void printCountMap(HashMap<Integer, int[]> countMap, String fileName, String headerFormat, int[] dimension) {
 		printCountMap(countMap, fileName, headerFormat, dimension, null);
 	}
@@ -1343,8 +1343,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			int pt = 0;
 			while (pt < inf_setting.length) {
 				if (inf_setting[pt] < 0) {
-					cMap = Abstract_Runnable_ClusterModel.generateContactMapAcrossTimeRange(bASE_CONTACT_MAP,
-							new int[] { time - AbstractIndividualInterface.ONE_YEAR_INT, time });
+					if (bASE_CONTACT_MAP == null) {
+						System.err.println("allocateSeedInfection: MIN_NUM_PARTNER_IN_LAST_12_MONTHS setting "
+								+ "not yet support for null base contact map in this version");
+
+					} else {
+						cMap = Abstract_Runnable_ClusterModel.generateContactMapAcrossTimeRange(bASE_CONTACT_MAP,
+								new int[] { time - AbstractIndividualInterface.ONE_YEAR_INT, time });
+					}
 
 					break cMapLoop;
 				}
@@ -1352,7 +1358,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 		}
 
-		Integer[] all_vertex = bASE_CONTACT_MAP.vertexSet().toArray(new Integer[bASE_CONTACT_MAP.vertexSet().size()]);
+		Integer[] all_vertex = getCurrentPopulationPId(time); // bASE_CONTACT_MAP.vertexSet().toArray(new
+																// Integer[bASE_CONTACT_MAP.vertexSet().size()]);
 		Arrays.sort(all_vertex);
 
 		for (int[] inf_setting : num_infected) {
@@ -1389,7 +1396,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								}
 							} else { // By Risk Group
 								int numPartLimit = -includeIndex;
-								if (cMap.containsVertex(pid)) {
+								if (cMap!= null && cMap.containsVertex(pid)) {
 									// pWri.printf("%d,%d\n", pid, cMap.degreeOf(pid));
 									if (cMap.degreeOf(pid) >= numPartLimit) {
 										candidate.add(pid);
@@ -1718,11 +1725,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	@Override
 	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
 			boolean display_only) {
-		
+
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
-		
+
 		ArrayList<Integer> field_to_update = new ArrayList<>();
 		for (int param_arr_index = 0; param_arr_index < parameter_settings.length; param_arr_index++) {
 			String param_setting = parameter_settings[param_arr_index];
@@ -1743,7 +1750,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				if (pt < 0) {
 					field_to_update.add(~pt, field_id);
 				}
-			} else if(param_name_index == sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION){
+			} else if (param_name_index == sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION) {
 				// Seed infection replacement
 				int i_lvl = 1;
 				int j_lvl = 2;
@@ -1767,8 +1774,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				try {
 					Object val = util.PropValUtils.propStrToObject(prop_str, Class.forName(prop_class));
 					int setting_level = 1;
-					Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point,
-							param_setting_arr, setting_level);
+					Optimisation_Factory.recursiveRunnableFieldReplace(val, param_arr_index, point, param_setting_arr,
+							setting_level);
 
 					getSim_prop().put(String.format("POP_PROP_INIT_PREFIX_%d", param_name_index),
 							util.PropValUtils.objectToPropStr(val, Class.forName(prop_class)));
