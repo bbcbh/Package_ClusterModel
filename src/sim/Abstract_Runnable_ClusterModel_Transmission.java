@@ -408,6 +408,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 					edges_list = new ArrayList<>();
 					System.exit(-1);
 				}
+			}else {
+				edges_list = new ArrayList<>();
 			}
 		}
 		Integer[][] edges_array = edges_list.toArray(new Integer[edges_list.size()][]);
@@ -417,6 +419,13 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected int initaliseCMap(ContactMap cMap, Integer[][] edges_array, int edges_array_pt, int startTime,
 			HashMap<Integer, ArrayList<Integer[]>> removeEdges) {
 		ArrayList<Integer[]> toRemove;
+
+		// Add multimap and read edges if needed
+		if (bASE_CONTACT_MAP == null && contactMap_files != null) {
+			for (int i = 0; i < contactMap_files.length; i++) {
+				updateCMapFromFiles(cMap, startTime, i);
+			}
+		}
 
 		// Skip invalid edges
 		while (edges_array_pt < edges_array.length
@@ -477,14 +486,13 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-	private void updateCMapFromFiles(ContactMap cMap, int currentTime, int mapNumber) {
-		String lastEdgeStr = contactMap_nextString[mapNumber];
+	private void updateCMapFromFiles(ContactMap cMap, int currentTime, int mapNumber) {	
 		String[] edgeSp;
 
-		if (lastEdgeStr != null) {
+		if (contactMap_nextString[mapNumber] != null) {
 			edgeSp = contactMap_nextString[mapNumber].split(",");
 			if (Integer.parseInt(edgeSp[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]) <= currentTime) {
-				addPartnership(cMap, lastEdgeStr.split(","));
+				addPartnership(cMap, contactMap_nextString[mapNumber].split(","));
 				contactMap_nextString[mapNumber] = null;
 			}
 		}
@@ -689,6 +697,12 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	}
 
 	protected void addPartnership(ContactMap cMap, Integer[] edge) {
+		for(int i : new int[] {Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+				Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2}) {
+			if(!cMap.containsVertex(edge[i])) {
+				cMap.addVertex(edge[i]);
+			}
+		}				
 		cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
 				edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 	}

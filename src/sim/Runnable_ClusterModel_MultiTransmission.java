@@ -154,6 +154,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected HashMap<String, ArrayList<Integer>> map_currently_infectious; // Key=Inf_ID,SiteID,V=ArrayList
 																			// of
 																			// pid with infectious
+	protected int lastStateSwitch = -1;
 
 	// For schedule, key are day and entries are list of person id, ordered
 	protected HashMap<Integer, ArrayList<int[]>> schedule_testing; // V=int[]{PID,INF_INCLUDE_INDEX,SITE_INCLUDE_INDEX}
@@ -536,9 +537,21 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		int startTime = firstSeedTime;
 
 		// Schedule testing
-		for (Integer personId :bASE_CONTACT_MAP == null?  pop_stat.keySet() :bASE_CONTACT_MAP.vertexSet()) {
-			scheduleNextTest(personId, startTime);
-		} // End of schedule test
+
+		if (bASE_CONTACT_MAP != null) {
+			for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
+				scheduleNextTest(personId, startTime);
+			}
+		}
+
+		// Schedule test for pop
+		for (Integer pid : pop_stat.keySet()) {
+			String[] popEnt = pop_stat.get(pid);
+			scheduleNextTest(pid,
+					Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_ENTER_POP_AT]));
+		}
+
+		// End of schedule test
 
 		int snap_index = 0;
 		boolean hasInfectious = hasInfectious();
@@ -555,7 +568,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// = 2 if p2s1 -> p1s2 e.g. p2 insertive
 
 		for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
-				&& hasInfectious; currentTime++) {
+				&& (currentTime < lastStateSwitch || hasInfectious); currentTime++) {
 
 			if (switchTimeIndex < switchTime.length && switchTime[switchTimeIndex] == currentTime) {
 				HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
@@ -1177,12 +1190,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	@Override
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
-
 		int riskCat;
 		if (risk_cat_map.containsKey(personId)) {
 			riskCat = risk_cat_map.get(personId);
 		} else {
-			riskCat = determineRiskGrp(personId);
+			if (bASE_CONTACT_MAP != null) {
+				riskCat = determineRiskGrpByCasualPartners(personId);
+			} else {
+				riskCat = 0;
+			}
 			risk_cat_map.put(personId, riskCat);
 		}
 
@@ -1268,7 +1284,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	}
 
-	protected int determineRiskGrp(Integer personId) {
+	protected int determineRiskGrpByCasualPartners(Integer personId) {
 		int riskCat;
 		riskCat = -1;
 		int genderType = getGenderType(personId);
@@ -1396,7 +1412,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								}
 							} else { // By Risk Group
 								int numPartLimit = -includeIndex;
-								if (cMap!= null && cMap.containsVertex(pid)) {
+								if (cMap != null && cMap.containsVertex(pid)) {
 									// pWri.printf("%d,%d\n", pid, cMap.degreeOf(pid));
 									if (cMap.degreeOf(pid) >= numPartLimit) {
 										candidate.add(pid);
@@ -1710,7 +1726,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						}
 						schedule_inf.add(schedule_inf_site);
 					}
-					schedule_stage_change.put(infect_switch_time, schedule_inf);
+					schedule_stage_change.put(infect_switch_time, schedule_inf);					
+					lastStateSwitch = Math.max(lastStateSwitch, infect_switch_time);
+					
 				}
 
 				schedule_inf_site_arr = schedule_inf.get(infection_id).get(site_id);
