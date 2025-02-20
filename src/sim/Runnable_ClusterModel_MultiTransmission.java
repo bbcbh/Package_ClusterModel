@@ -542,13 +542,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
-		}
-
-		// Schedule test for pop
-		for (Integer pid : pop_stat.keySet()) {
-			String[] popEnt = pop_stat.get(pid);
-			scheduleNextTest(pid,
-					Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_ENTER_POP_AT]));
+		} 
+		
+		if(pop_stat != null) {
+			// Schedule test for pop
+			for (Integer pid : pop_stat.keySet()) {
+				String[] popEnt = pop_stat.get(pid);
+				scheduleNextTest(pid,
+						Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_ENTER_POP_AT]));
+			}
 		}
 
 		// End of schedule test
@@ -1726,9 +1728,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						}
 						schedule_inf.add(schedule_inf_site);
 					}
-					schedule_stage_change.put(infect_switch_time, schedule_inf);					
+					schedule_stage_change.put(infect_switch_time, schedule_inf);
 					lastStateSwitch = Math.max(lastStateSwitch, infect_switch_time);
-					
+
 				}
 
 				schedule_inf_site_arr = schedule_inf.get(infection_id).get(site_id);
