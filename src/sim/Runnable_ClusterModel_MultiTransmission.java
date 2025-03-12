@@ -629,7 +629,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 				// TODO: Debug
 				if (currentTime % 365 == 0) {
-					System.out.printf("T = %d. # Inf %d = %d CMAP={%d,%d} # Test = %d\n", currentTime, inf_id,
+					System.out.printf("T = %03d. # Inf %d = %d CMAP={%d,%d} # Test = %d\n", currentTime, inf_id,
 							currenty_infectious_ent.size(), cMap.vertexSet().size(), cMap.edgeSet().size(),
 							schedule_testing.get(currentTime).size());
 				}
