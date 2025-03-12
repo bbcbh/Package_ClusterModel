@@ -542,9 +542,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
-		} 
-		
-		if(pop_stat != null) {
+		}
+
+		if (pop_stat != null) {
 			// Schedule test for pop
 			for (Integer pid : pop_stat.keySet()) {
 				String[] popEnt = pop_stat.get(pid);
@@ -626,6 +626,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				String[] key_s = key.split(",");
 				int inf_id = Integer.parseInt(key_s[0]);
 				int infected_site_id = Integer.parseInt(key_s[1]);
+
+				// TODO: Debug
+				if (currentTime % 365 == 0) {
+					System.out.printf("T = %d. # Inf %d = %d CMAP={%d,%d} # Test = %d\n", currentTime, inf_id,
+							currenty_infectious_ent.size(), cMap.vertexSet().size(), cMap.edgeSet().size(),
+							schedule_testing.get(currentTime).size());
+				}
 
 				for (Integer pid_inf_src : currenty_infectious_ent) {
 					if (cMap.containsVertex(pid_inf_src)) {
@@ -835,7 +842,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					current_infectious_site_count.put(currentTime, num_infectious_site_count);
 					current_infected_count.put(currentTime, num_infected_by_gender_site_at);
 
-					for (Integer pid : bASE_CONTACT_MAP.vertexSet()) {
+					for (Integer pid : getCurrentPopulationPId(currentTime)) {
 						int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
 						int gI = getGenderType(pid);
 						for (int i = 0; i < NUM_INF; i++) {
@@ -1252,32 +1259,33 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 						int nextTestDate = lastTestTime + nextTestAfter;
 
-						ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
-
-						if (day_sch == null) {
-							day_sch = new ArrayList<>();
-							schedule_testing.put(nextTestDate, day_sch);
-						}
-
-						int[] test_pair = new int[] { personId, iIncl, sIncl };
-						int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
-							@Override
-							public int compare(int[] o1, int[] o2) {
-								int res = 0;
-								int pt = 0;
-								while (res == 0 && pt < o1.length) {
-									res = Integer.compare(o1[pt], o2[pt]);
-									pt++;
-								}
-								return res;
+						if (nextTestDate < exitPopAt(personId)) {
+							ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
+							
+							if (day_sch == null) {
+								day_sch = new ArrayList<>();
+								schedule_testing.put(nextTestDate, day_sch);
 							}
-						});
+							int[] test_pair = new int[] { personId, iIncl, sIncl };
+							int pt_t = Collections.binarySearch(day_sch, test_pair, new Comparator<int[]>() {
+								@Override
+								public int compare(int[] o1, int[] o2) {
+									int res = 0;
+									int pt = 0;
+									while (res == 0 && pt < o1.length) {
+										res = Integer.compare(o1[pt], o2[pt]);
+										pt++;
+									}
+									return res;
+								}
+							});
 
-						if (pt_t < 0) {
-							day_sch.add(~pt_t, test_pair);
-						} else {
-							int[] org_pair = day_sch.get(pt_t);
-							org_pair[1] |= iIncl;
+							if (pt_t < 0) {
+								day_sch.add(~pt_t, test_pair);
+							} else {
+								int[] org_pair = day_sch.get(pt_t);
+								org_pair[1] |= iIncl;
+							}
 						}
 					}
 				}
