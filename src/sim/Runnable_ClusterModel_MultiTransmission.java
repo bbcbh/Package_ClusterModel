@@ -568,7 +568,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// = 0 if no acts
 		// = 1 if p1s1 -> p2s2, e.g. p1 insertive, or if the site is the same
 		// = 2 if p2s1 -> p1s2 e.g. p2 insertive
-
+		
+		
+		// TODO: Debug setting
+		long tic = System.currentTimeMillis();
+		long debug_time_test = 0, debug_time_inf = 0, debug_time_cMap = 0;		
+		int debug_num_test = 0;
+		
 		for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
 				&& (currentTime < lastStateSwitch || hasInfectious); currentTime++) {
 
@@ -589,7 +595,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				switchTimeIndex++;
 			}
 
+			tic = System.currentTimeMillis();
 			edges_array_pt = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges);
+			debug_time_cMap += System.currentTimeMillis() - tic;
 
 			// Check for stage change
 			ArrayList<ArrayList<ArrayList<Integer>>> state_change_today = schedule_stage_change.remove(currentTime);
@@ -619,9 +627,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			Arrays.sort(currently_infectious_keys);
 
 			acted_today.clear();
-
-			// TODO: Debug
-			long tic = System.currentTimeMillis();
+			
+			tic = System.currentTimeMillis();	
 
 			for (String key : currently_infectious_keys) {
 				ArrayList<Integer> currenty_infectious_ent = map_currently_infectious.get(key);
@@ -775,13 +782,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				} // End of checking one infectious
 			} // End loop for all infectious infection-site combinations
 
-			long time_inf = System.currentTimeMillis() - tic;
-			tic = System.currentTimeMillis();
+			debug_time_inf += System.currentTimeMillis() - tic;
+			
 
 			// Simulate acts among non-infectious
 			simulate_non_infectious_act(currentTime, cMap, acted_today);
 
 			// Testing
+			tic = System.currentTimeMillis();
 			ArrayList<int[]> testToday = schedule_testing.remove(currentTime);
 			if (testToday != null) {
 				for (int[] testing_stat : testToday) {
@@ -799,13 +807,25 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				} // End of testing for single individual
 			} // End of all scheduled testing for today
 
-			long time_test = System.currentTimeMillis() - tic;
+			debug_time_test += System.currentTimeMillis() - tic;
+			if(testToday!= null) {
+				debug_num_test += testToday.size();
+			}
+			
 
 			// Storing of outputs
 			if (snap_index == 0) {
-				// TODO: Debug
-				System.out.printf("T=%03d, CMAP={%d,%d}, Time_inf = %.3f, Time_test = %.3f\n", currentTime,
-						cMap.vertexSet().size(), cMap.edgeSet().size(), time_inf / 1000f, time_test / 1000f);
+				// TODO: Print debug output
+				System.out.printf("T=%d, CMAP={%d,%d}, time_map = %.3f, time inf = %.3f, # test = %d, time_test = %.3f\n", currentTime,
+						cMap.vertexSet().size(), cMap.edgeSet().size(),
+						debug_time_cMap / 1000f,
+						debug_time_inf / 1000f, 
+						debug_num_test, debug_time_test / 1000f);
+				
+				debug_time_test = 0;
+				debug_time_inf = 0;
+				debug_num_test = 0;
+				debug_time_cMap = 0;
 
 				String key;
 
