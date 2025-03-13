@@ -620,19 +620,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 			acted_today.clear();
 
+			// TODO: Debug
+			long tic = System.currentTimeMillis();
+
 			for (String key : currently_infectious_keys) {
 				ArrayList<Integer> currenty_infectious_ent = map_currently_infectious.get(key);
 
 				String[] key_s = key.split(",");
 				int inf_id = Integer.parseInt(key_s[0]);
 				int infected_site_id = Integer.parseInt(key_s[1]);
-
-				// TODO: Debug
-				if (currentTime % 365 == 0) {
-					System.out.printf("T = %03d. # Inf %d = %d CMAP={%d,%d} # Test = %d\n", currentTime, inf_id,
-							currenty_infectious_ent.size(), cMap.vertexSet().size(), cMap.edgeSet().size(),
-							schedule_testing.get(currentTime).size());
-				}
 
 				for (Integer pid_inf_src : currenty_infectious_ent) {
 					if (cMap.containsVertex(pid_inf_src)) {
@@ -779,6 +775,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				} // End of checking one infectious
 			} // End loop for all infectious infection-site combinations
 
+			long time_inf = System.currentTimeMillis() - tic;
+			tic = System.currentTimeMillis();
+
 			// Simulate acts among non-infectious
 			simulate_non_infectious_act(currentTime, cMap, acted_today);
 
@@ -794,14 +793,20 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
 					// Schedule next test
 					if (testing_stat[0] > 0) {
-						scheduleNextTest(pid, currentTime);
+						scheduleNextTest(pid, currentTime, infIncl, siteIncl);
 					}
 
 				} // End of testing for single individual
 			} // End of all scheduled testing for today
 
+			long time_test = System.currentTimeMillis() - tic;
+
 			// Storing of outputs
 			if (snap_index == 0) {
+				// TODO: Debug
+				System.out.printf("T=%03d, CMAP={%d,%d}, Time_inf = %.3f, Time_test = %.3f\n", currentTime,
+						cMap.vertexSet().size(), cMap.edgeSet().size(), time_inf / 1000f, time_test / 1000f);
+
 				String key;
 
 				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
@@ -1197,8 +1202,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		test_rate_index_map.clear();
 	}
 
-	@Override
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
+		scheduleNextTest(personId, lastTestTime, -1, -1);
+	}
+
+	public void scheduleNextTest(Integer personId, int lastTestTime, int last_test_infIncl, int last_test_siteIncl) {
 		int riskCat;
 		if (risk_cat_map.containsKey(personId)) {
 			riskCat = risk_cat_map.get(personId);
@@ -1222,9 +1230,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
 				int iIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
 				int rIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_RISK_GRP_INCLUDE_INDEX];
+				int sIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX];
 
-				if (((gIncl & (1 << genderType)) != 0) && ((rIncl & (1 << riskCat)) != 0)) {
-					int sIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX];
+				if (((gIncl & (1 << genderType)) != 0) && ((rIncl & (1 << riskCat)) != 0)
+						&& (last_test_infIncl < 0 || last_test_infIncl == iIncl)
+						&& (last_test_siteIncl < 0 || last_test_siteIncl == sIncl)) {
+
 					int test_pt;
 
 					if (past_test_pt == null || past_test_pt.get(i) == null) {
@@ -1261,7 +1272,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 						if (nextTestDate < exitPopAt(personId)) {
 							ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
-							
+
 							if (day_sch == null) {
 								day_sch = new ArrayList<>();
 								schedule_testing.put(nextTestDate, day_sch);
