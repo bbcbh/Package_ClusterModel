@@ -1945,9 +1945,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				sim.setBaseContactMap(cMap_Map);
 				sim.setMultiContactMapStrMapping(cmap_file_collection);
 				sim.generateOneResultSet();
-
-				System.out.println(String.format("%d simulation(s) completed. Runtime (total)= %.2fs",
-						preGenClusterMap.length, (System.currentTimeMillis() - tic) / 1000f));
+				System.out.println(String.format("All simulation(s) completed. Runtime (total)= %.2fs",
+						(System.currentTimeMillis() - tic) / 1000f));
 
 			}
 		}
