@@ -856,7 +856,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					vaccine_one_off_at = setOneOffVaccineSetting(vaccine_one_off_rate, vaccine_one_off_at);
 				}
 
-				edges_array_pt = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges);
+				edges_array_pt = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges)[0];
 
 				for (int site_src = 0; site_src < LENGTH_SITE; site_src++) {
 					// Update infectious

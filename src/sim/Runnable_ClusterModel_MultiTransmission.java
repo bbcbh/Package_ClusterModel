@@ -573,7 +573,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// TODO: Debug setting
 		long tic = System.currentTimeMillis();
 		long debug_time_test = 0, debug_time_inf = 0, debug_time_cMap = 0;		
-		int debug_num_test = 0;
+		int debug_num_test = 0, debug_num_edge_add = 0, debug_num_new_inf = 0;
 		
 		for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
 				&& (currentTime < lastStateSwitch || hasInfectious); currentTime++) {
@@ -595,10 +595,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				switchTimeIndex++;
 			}
 
-			tic = System.currentTimeMillis();
-			edges_array_pt = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges);
-			debug_time_cMap += System.currentTimeMillis() - tic;
-
+			
 			// Check for stage change
 			ArrayList<ArrayList<ArrayList<Integer>>> state_change_today = schedule_stage_change.remove(currentTime);
 			if (state_change_today != null) {
@@ -625,13 +622,30 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			String[] currently_infectious_keys = map_currently_infectious.keySet()
 					.toArray(new String[map_currently_infectious.size()]);
 			Arrays.sort(currently_infectious_keys);
+			
+			
+			ArrayList<Integer> currenty_infectious_ent = new ArrayList<Integer>();			
+			for (String key : currently_infectious_keys) {
+				currenty_infectious_ent.addAll(map_currently_infectious.get(key));				
+			}
+			Collections.sort(currenty_infectious_ent);
+				
+			
+			// Update cMap
+			tic = System.currentTimeMillis();
+			int[] updatecMap_Stat = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges,
+					currenty_infectious_ent);
+			edges_array_pt = updatecMap_Stat[0];
+			debug_num_edge_add += updatecMap_Stat[1];
+			debug_time_cMap += System.currentTimeMillis() - tic;
+
 
 			acted_today.clear();
 			
 			tic = System.currentTimeMillis();	
 
 			for (String key : currently_infectious_keys) {
-				ArrayList<Integer> currenty_infectious_ent = map_currently_infectious.get(key);
+				currenty_infectious_ent = map_currently_infectious.get(key);
 
 				String[] key_s = key.split(",");
 				int inf_id = Integer.parseInt(key_s[0]);
@@ -766,6 +780,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 																tar_infection_state_switch[inf_id][tar_site]);
 														simulate_transmission_success_act(currentTime, inf_id,
 																pid_inf_src, pid_inf_tar, src_site, tar_site);
+														debug_num_new_inf++;
 													} else {
 														simulate_transmission_failed_act(currentTime, inf_id,
 																pid_inf_src, pid_inf_tar, src_site, tar_site);
@@ -816,16 +831,22 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			// Storing of outputs
 			if (snap_index == 0) {
 				// TODO: Print debug output
-				System.out.printf("T=%d, CMAP={%d,%d}, time_map = %.3f, time inf = %.3f, # test = %d, time_test = %.3f\n", currentTime,
-						cMap.vertexSet().size(), cMap.edgeSet().size(),
-						debug_time_cMap / 1000f,
-						debug_time_inf / 1000f, 
+				System.out.printf("T=%d, CMAP={%d,%d}"
+						+ ", # edge_added = %d, time_edge_added = %.3f"
+						+ ", # inf added = %d,  time inf = %.3f"
+						+ ", # test = %d, time_test = %.3f\n", 
+						currentTime, cMap.vertexSet().size(), cMap.edgeSet().size(),
+						debug_num_edge_add,	debug_time_cMap / 1000f,
+						debug_num_new_inf, debug_time_inf / 1000f, 
 						debug_num_test, debug_time_test / 1000f);
 				
 				debug_time_test = 0;
 				debug_time_inf = 0;
-				debug_num_test = 0;
 				debug_time_cMap = 0;
+				debug_num_test = 0;
+				debug_num_edge_add = 0;
+				debug_num_new_inf = 0;
+				
 
 				String key;
 
