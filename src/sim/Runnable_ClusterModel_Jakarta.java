@@ -22,8 +22,6 @@ public class Runnable_ClusterModel_Jakarta extends Runnable_ClusterModel_MultiTr
 	// MSM only
 	private static final int num_gender = 1;
 
-	private static final int INF_HIV = 3;	
-
 	// FILENAME_CUMUL_TREATMENT_PERSON, FILENAME_CUMUL_INCIDENCE_PERSON,
 	// FILENAME_PREVALENCE_PERSON
 	private static final int[] COL_SEL_INF_GENDER = null;
