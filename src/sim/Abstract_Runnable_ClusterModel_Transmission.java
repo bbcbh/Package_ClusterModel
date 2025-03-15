@@ -2,9 +2,14 @@ package sim;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -12,6 +17,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.BetaDistribution;
@@ -61,16 +68,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ +Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
-
-	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
-		int index = Arrays.binarySearch(cumul_pop_comp, personId);
-
-		if (index < 0) {
-			return ~index;
-		} else {
-			return index;
-		}
-	}
 
 	protected final int[] cUMULATIVE_POP_COMPOSITION;
 	protected final ContactMap bASE_CONTACT_MAP;
@@ -129,6 +126,50 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	private int NON_MAP_EDGES_STORE_PT = 0;
 	private int NON_MAP_EDGES_STORE_MAX = 100000;
 
+	protected static String[] exportFileFormat = new String[] { "Export_RNG_%d_%d_%d.obj", "Export_SimOutput_%d_%d_%d.obj", };
+
+	protected static final int EXPORT_RNG = 0;
+	protected static final int EXPORT_SIMOUTPUT = EXPORT_RNG + 1;
+	protected static final int LENGTH_EXPORT = EXPORT_SIMOUTPUT + 1;
+
+	protected static int importedAtTime = -1;
+	
+	@SuppressWarnings("unchecked")
+	public void importRunnableTransmission(int time_pt) throws IOException, ClassNotFoundException {
+		File objFile;
+		ObjectInputStream objStream;
+		// RNG
+		objFile = new File(baseDir, String.format(exportFileFormat[EXPORT_RNG], cMAP_SEED, sIM_SEED, time_pt));
+		objStream = new ObjectInputStream(new FileInputStream(objFile));
+		RNG = (RandomGenerator) objStream.readObject();
+		objStream.close();
+
+		// SIM_OUPUT
+		objFile = new File(baseDir, String.format(exportFileFormat[EXPORT_SIMOUTPUT], cMAP_SEED, sIM_SEED, time_pt));
+		objStream = new ObjectInputStream(new FileInputStream(objFile));
+		sim_output = (HashMap<String, Object>) objStream.readObject();
+		objStream.close();
+		
+		importedAtTime = time_pt;
+	}
+
+	public void exportRunnableTransmission(int time_pt) throws IOException {
+		File objFile;
+		ObjectOutputStream objStream;
+		// RNG
+		objFile = new File(baseDir, String.format(exportFileFormat[EXPORT_RNG], cMAP_SEED, sIM_SEED, time_pt));
+		objStream = new ObjectOutputStream(new FileOutputStream(objFile));
+		objStream.writeObject(RNG);
+		objStream.close();
+
+		// SIM_OUPUT
+		objFile = new File(baseDir, String.format(exportFileFormat[EXPORT_SIMOUTPUT], cMAP_SEED, sIM_SEED, time_pt));
+		objStream = new ObjectOutputStream(new FileOutputStream(objFile));
+		objStream.writeObject(sim_output);
+		objStream.close();
+
+	}
+
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
 
@@ -159,6 +200,16 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 		RNG = new MersenneTwisterRandomGenerator(sIM_SEED);
 		RNG_NM = new MersenneTwisterRandomGenerator(sIM_SEED);
+	}
+
+	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
+		int index = Arrays.binarySearch(cumul_pop_comp, personId);
+
+		if (index < 0) {
+			return ~index;
+		} else {
+			return index;
+		}
 	}
 
 	public abstract void initialse();
@@ -520,9 +571,11 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			for (int i = 0; i < add_e.length; i++) {
 				add_e[i] = Integer.parseInt(edgeSp[i]);
 			}
-			if (add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
+			if (add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime
+					&& (add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
+							+ add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]) > currentTime) {
 				if (addSelectiveEdge(included_pids, add_e)) {
-					addPartnership(cMap, add_e);					
+					addPartnership(cMap, add_e);
 					addedEdges.add(add_e);
 					numEdgeAdded++;
 					contactMap_nextString[mapNumber] = null;
@@ -543,9 +596,12 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 						add_e[i] = Integer.parseInt(edgeSp[i]);
 					}
 					if (add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-						addPartnership(cMap, add_e);
-						addedEdges.add(add_e);
-						numEdgeAdded++;
+						if ((add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]
+								+ add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]) > currentTime) {
+							addPartnership(cMap, add_e);
+							addedEdges.add(add_e);
+							numEdgeAdded++;
+						}
 					} else {
 						break;
 					}
@@ -570,7 +626,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			}
 
 		}
-		
+
 		return numEdgeAdded;
 
 	}
@@ -583,7 +639,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	// return int[]{edges_array_pt, numEdgeAdded}
 	protected int[] updateCMap(ContactMap cMap, int currentTime, Integer[][] edges_array, int edges_array_pt,
 			HashMap<Integer, ArrayList<Integer[]>> edgesToRemove, ArrayList<Integer> included_pids) {
-		
+
 		int numEdgeAdded = 0;
 
 		// Add multimap and read edges if needed
@@ -645,7 +701,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 					}
 				}
 
-				addPartnership(cMap, edge);				
+				addPartnership(cMap, edge);
 				numEdgeAdded++;
 			}
 
@@ -755,14 +811,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 						cMap.addVertex(nm_edge[index]);
 					}
 				}
-				addPartnership(cMap, nm_edge);				
+				addPartnership(cMap, nm_edge);
 				addNonMapEdgeStore(nm_edge);
 				numEdgeAdded++;
 			}
 
 		}
 
-		return new int[] {edges_array_pt, numEdgeAdded};
+		return new int[] { edges_array_pt, numEdgeAdded };
 	}
 
 	private boolean addSelectiveEdge(ArrayList<Integer> included_pids, Integer[] edge) {
@@ -922,5 +978,58 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			}
 		}
 		exportNonMapEdgeStore();
+	}
+
+	public int importExportedTransmissionStates(String[] exportFileFormat) {
+		ArrayList<Integer> previousEntryAt = new ArrayList<>();
+		int res = -1;
+		for (String exp_file_format : exportFileFormat) {			
+			String adjFormat = exp_file_format.replaceFirst("%d", Long.toString(cMAP_SEED));
+			adjFormat = adjFormat.replaceFirst("%d", Long.toString(sIM_SEED));
+			adjFormat = adjFormat.replaceFirst("%d", "(\\\\d+)");
+			final Pattern f_match = Pattern.compile(adjFormat);
+			File[] list = baseDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return f_match.matcher(pathname.getName()).matches();
+				}
+			});
+			for (File f : list) {
+				Matcher m = f_match.matcher(f.getName());
+				m.matches();
+				previousEntryAt.add(Integer.parseInt(m.group(1)));
+			}
+		}
+		Collections.sort(previousEntryAt);
+		if (previousEntryAt.size() > 0) {
+			int importTime = -1;
+			for (int i = previousEntryAt.size() - 1; i >= 0; i--) {
+				boolean validTime = true;
+				for (String exp_file_format : exportFileFormat) {
+					File test = new File(baseDir,
+							String.format(exp_file_format, cMAP_SEED, sIM_SEED, previousEntryAt.get(i)));
+					validTime &= test.exists();
+				}
+				if (validTime) {
+					importTime = previousEntryAt.get(i);
+				}
+			}
+			if (importTime >= 0) {
+				try {
+					importRunnableTransmission(importTime);
+					res = importTime;
+					if (print_progress != null) {
+						print_progress.printf("Transmission state imported from results exported at t=%d\n.",
+								importTime);
+
+					}
+
+				} catch (ClassNotFoundException | IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+		return res;
 	}
 }

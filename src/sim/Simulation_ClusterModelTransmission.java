@@ -802,6 +802,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 				} else {
 					System.err.println("Warning! POPSTAT and/or baseContactMap not defined.");
+					System.exit(-1);
 				}						
 			}
 			
