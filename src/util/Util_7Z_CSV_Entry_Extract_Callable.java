@@ -1,9 +1,11 @@
 package util;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
@@ -180,6 +182,33 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 		}
 	}
 
+	public static ArrayList<File> unzipFile(File zipFile, File tarDir) throws IOException {
+		SevenZFile inputZip = new SevenZFile(zipFile);
+		SevenZArchiveEntry inputEnt;
+		ArrayList<File> extractedFiles = new ArrayList<>();
+
+		final int BUFFER = 2048;
+		byte[] buf = new byte[BUFFER];
+		int count;
+
+		while ((inputEnt = inputZip.getNextEntry()) != null) {
+			String file_name = inputEnt.getName();
+			File extracted = new File(tarDir, file_name);
+			BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(extracted), BUFFER);
+			while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
+				out.write(buf, 0, count);
+			}
+			out.flush();
+			out.close();
+			extractedFiles.add(extracted);
+
+		}
+		inputZip.close();
+
+		return extractedFiles;
+
+	}
+
 	public static String[] extracted_lines_from_text(File srcTxt) throws FileNotFoundException, IOException {
 		ArrayList<String> lines = new ArrayList<>();
 		BufferedReader reader = new BufferedReader(new FileReader(srcTxt));
@@ -253,12 +282,12 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 		StringBuilder str = new StringBuilder();
 		SevenZArchiveEntry inputEnt;
 
-		while ((inputEnt = inputZip.getNextEntry()) != null) {		
-			if(str.length() != 0) {
-				System.err.printf("Warning: Multiple file (%s) in %s. Addtional line appended.\n.", 
-						inputEnt.getName(),	inputZip.getDefaultName());
+		while ((inputEnt = inputZip.getNextEntry()) != null) {
+			if (str.length() != 0) {
+				System.err.printf("Warning: Multiple file (%s) in %s. Addtional line appended.\n.", inputEnt.getName(),
+						inputZip.getDefaultName());
 			}
-			
+
 			int count;
 			final int BUFFER = 2048;
 			byte[] buf = new byte[BUFFER];

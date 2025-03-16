@@ -12,9 +12,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -33,6 +35,7 @@ import random.RandomGenerator;
 import relationship.ContactMap;
 import util.ArrayUtilsRandomGenerator;
 import util.PropValUtils;
+import util.Util_7Z_CSV_Entry_Extract_Callable;
 
 public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstract_Runnable_ClusterModel {
 
@@ -126,14 +129,15 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	private int NON_MAP_EDGES_STORE_PT = 0;
 	private int NON_MAP_EDGES_STORE_MAX = 100000;
 
-	protected static String[] exportFileFormat = new String[] { "Export_RNG_%d_%d_%d.obj", "Export_SimOutput_%d_%d_%d.obj", };
+	protected static String[] exportFileFormat = new String[] { "Export_RNG_%d_%d_%d.obj",
+			"Export_SimOutput_%d_%d_%d.obj", };
 
 	protected static final int EXPORT_RNG = 0;
 	protected static final int EXPORT_SIMOUTPUT = EXPORT_RNG + 1;
 	protected static final int LENGTH_EXPORT = EXPORT_SIMOUTPUT + 1;
 
 	protected static int importedAtTime = -1;
-	
+
 	@SuppressWarnings("unchecked")
 	public void importRunnableTransmission(int time_pt) throws IOException, ClassNotFoundException {
 		File objFile;
@@ -149,12 +153,12 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		objStream = new ObjectInputStream(new FileInputStream(objFile));
 		sim_output = (HashMap<String, Object>) objStream.readObject();
 		objStream.close();
-		
+
 		importedAtTime = time_pt;
 	}
 
 	public void exportRunnableTransmission(int time_pt) throws IOException {
-		File objFile;
+		File objFile, archiveFile;
 		ObjectOutputStream objStream;
 		// RNG
 		objFile = new File(baseDir, String.format(exportFileFormat[EXPORT_RNG], cMAP_SEED, sIM_SEED, time_pt));
@@ -162,11 +166,83 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		objStream.writeObject(RNG);
 		objStream.close();
 
+		archiveFile = new File(baseDir, objFile.getName() + ".7z");
+		util.Util_7Z_CSV_Entry_Extract_Callable.zipFile(new File[] { objFile }, archiveFile, false);
+		Files.delete(objFile.toPath());
+
 		// SIM_OUPUT
 		objFile = new File(baseDir, String.format(exportFileFormat[EXPORT_SIMOUTPUT], cMAP_SEED, sIM_SEED, time_pt));
 		objStream = new ObjectOutputStream(new FileOutputStream(objFile));
 		objStream.writeObject(sim_output);
 		objStream.close();
+
+		archiveFile = new File(baseDir, objFile.getName() + ".7z");
+		util.Util_7Z_CSV_Entry_Extract_Callable.zipFile(new File[] { objFile }, archiveFile, false);
+		Files.delete(objFile.toPath());
+
+	}
+
+	public void importExportedTransmissionStates(String[] fileformats) {
+		ArrayList<Integer> timePt_Collection = null;
+		ArrayList<File> extracted_file = new ArrayList<>();
+
+		for (String fileformat : fileformats) {
+			String pat_format = fileformat.replaceFirst("%d", Long.toString(cMAP_SEED));
+			pat_format = pat_format.replaceFirst("%d", Long.toString(sIM_SEED));
+			pat_format = pat_format.replaceFirst("%d", "(\\\\d+)");
+			Pattern pattern_sel = Pattern.compile(pat_format + ".*");
+			File[] candidate = baseDir.listFiles(new FileFilter() {
+				@Override
+				public boolean accept(File pathname) {
+					return pattern_sel.matcher(pathname.getName()).matches();
+				}
+			});
+
+			ArrayList<Integer> timePt_Collection_fitlered = new ArrayList<>();
+			for (File f : candidate) {
+				Matcher m = pattern_sel.matcher(f.getName());
+				m.matches();
+				int time_pt = Integer.parseInt(m.group(1));
+				int pos;
+
+				if (timePt_Collection == null || Collections.binarySearch(timePt_Collection, time_pt) >= 0) {
+					boolean validFile = true;
+					if (f.getName().endsWith(".7z")) {						
+						try {
+							extracted_file.addAll(Util_7Z_CSV_Entry_Extract_Callable.unzipFile(f, baseDir));
+						} catch (IOException e) {
+							validFile = false;
+						}					}
+					if (validFile) {
+						pos = Collections.binarySearch(timePt_Collection_fitlered, time_pt);
+						if (pos < 0) {
+							timePt_Collection_fitlered.add(~pos, time_pt);
+						}
+					}
+				}
+			}
+			timePt_Collection = timePt_Collection_fitlered;
+		}
+
+		// Select best time point
+
+		if (timePt_Collection.size() > 0) {
+			int bestTimePt = timePt_Collection.get(timePt_Collection.size() - 1);
+			try {
+				importRunnableTransmission(bestTimePt);
+			} catch (IOException | ClassNotFoundException e) {
+				e.printStackTrace(System.err);
+			}
+		}
+
+		// Remove extracted file
+		for (File f : extracted_file) {
+			try {
+				Files.delete(f.toPath());
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+			}
+		}
 
 	}
 
@@ -980,56 +1056,4 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		exportNonMapEdgeStore();
 	}
 
-	public int importExportedTransmissionStates(String[] exportFileFormat) {
-		ArrayList<Integer> previousEntryAt = new ArrayList<>();
-		int res = -1;
-		for (String exp_file_format : exportFileFormat) {			
-			String adjFormat = exp_file_format.replaceFirst("%d", Long.toString(cMAP_SEED));
-			adjFormat = adjFormat.replaceFirst("%d", Long.toString(sIM_SEED));
-			adjFormat = adjFormat.replaceFirst("%d", "(\\\\d+)");
-			final Pattern f_match = Pattern.compile(adjFormat);
-			File[] list = baseDir.listFiles(new FileFilter() {
-				@Override
-				public boolean accept(File pathname) {
-					return f_match.matcher(pathname.getName()).matches();
-				}
-			});
-			for (File f : list) {
-				Matcher m = f_match.matcher(f.getName());
-				m.matches();
-				previousEntryAt.add(Integer.parseInt(m.group(1)));
-			}
-		}
-		Collections.sort(previousEntryAt);
-		if (previousEntryAt.size() > 0) {
-			int importTime = -1;
-			for (int i = previousEntryAt.size() - 1; i >= 0; i--) {
-				boolean validTime = true;
-				for (String exp_file_format : exportFileFormat) {
-					File test = new File(baseDir,
-							String.format(exp_file_format, cMAP_SEED, sIM_SEED, previousEntryAt.get(i)));
-					validTime &= test.exists();
-				}
-				if (validTime) {
-					importTime = previousEntryAt.get(i);
-				}
-			}
-			if (importTime >= 0) {
-				try {
-					importRunnableTransmission(importTime);
-					res = importTime;
-					if (print_progress != null) {
-						print_progress.printf("Transmission state imported from results exported at t=%d\n.",
-								importTime);
-
-					}
-
-				} catch (ClassNotFoundException | IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-
-		return res;
-	}
 }

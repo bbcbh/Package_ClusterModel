@@ -276,115 +276,138 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		File csvFile;
 		PrintWriter pWri;
 
-		for (int eI : EXPORT_INDEX_ARRAY) {
-			csvFile = new File(baseDir, String.format(exportFileFormat[eI], cMAP_SEED, sIM_SEED, time_pt));
-			pWri = new PrintWriter(csvFile);
-			switch (eI) {
-			case EXPORT_MAP_TRANS_PROB:
-				for (Integer pid : map_trans_prob.keySet()) {
-					double[][][][] ent = map_trans_prob.get(pid);
-					pWri.print(pid);
-					pWri.print(':');
-					pWri.print(util.PropValUtils.objectToPropStr(ent, ent.getClass()));
-					pWri.println();
-				}
-				break;
-			case EXPORT_MAP_INF_STAGE:
-			case EXPORT_MAP_INF_SWICH:
-				HashMap<Integer, int[][]> map;
+		// Zip file
+		try {
+			long tic = System.currentTimeMillis();
+
+			for (int eI : EXPORT_INDEX_ARRAY) {
+				csvFile = new File(baseDir, String.format(exportFileFormat[eI], cMAP_SEED, sIM_SEED, time_pt));
+				pWri = new PrintWriter(csvFile);
 				switch (eI) {
-				case EXPORT_MAP_INF_STAGE:
-					map = map_currrent_infection_stage;
-					break;
-				case EXPORT_MAP_INF_SWICH:
-					map = map_infection_stage_switch;
-					break;
-				default:
-					System.err.printf("exportRunnableTransmission: export file index of %d not defined.\n", eI);
-					map = null;
-				}
-				if (map != null) {
-					for (Integer pid : map.keySet()) {
-						int[][] ent = map.get(pid);
+				case EXPORT_MAP_TRANS_PROB:
+					for (Integer pid : map_trans_prob.keySet()) {
+						double[][][][] ent = map_trans_prob.get(pid);
 						pWri.print(pid);
 						pWri.print(':');
 						pWri.print(util.PropValUtils.objectToPropStr(ent, ent.getClass()));
 						pWri.println();
 					}
-				}
-				break;
-			case EXPORT_SCHEDULE_TESTING:
-				for (Integer time : schedule_testing.keySet()) {
-					ArrayList<int[]> entArr = schedule_testing.get(time);
-					pWri.print(time);
-					for (int[] ent : entArr) {
-						pWri.print(':');
-						pWri.print(util.PropValUtils.objectToPropStr(ent, int[].class));
+					break;
+				case EXPORT_MAP_INF_STAGE:
+				case EXPORT_MAP_INF_SWICH:
+					HashMap<Integer, int[][]> map;
+					switch (eI) {
+					case EXPORT_MAP_INF_STAGE:
+						map = map_currrent_infection_stage;
+						break;
+					case EXPORT_MAP_INF_SWICH:
+						map = map_infection_stage_switch;
+						break;
+					default:
+						System.err.printf("exportRunnableTransmission: export file index of %d not defined.\n", eI);
+						map = null;
 					}
-					pWri.println();
-				}
-				break;
-			case EXPORT_SCHEDULE_STAGE_CHANGE:
-				for (Integer time : schedule_stage_change.keySet()) {
-					ArrayList<ArrayList<ArrayList<Integer>>> ent = schedule_stage_change.get(time);
-					pWri.print(time);
-					for (int i = 0; i < NUM_INF; i++) {
-						for (int s = 0; s < NUM_SITE; s++) {
-							ArrayList<Integer> pids = ent.get(i).get(s);
-							if (pids.size() > 0) {
-								pWri.printf(":%d,%d", i, s);
-								for (Integer pid : pids) {
-									pWri.print(',');
-									pWri.print(pid);
+					if (map != null) {
+						for (Integer pid : map.keySet()) {
+							int[][] ent = map.get(pid);
+							pWri.print(pid);
+							pWri.print(':');
+							pWri.print(util.PropValUtils.objectToPropStr(ent, ent.getClass()));
+							pWri.println();
+						}
+					}
+					break;
+				case EXPORT_SCHEDULE_TESTING:
+					for (Integer time : schedule_testing.keySet()) {
+						ArrayList<int[]> entArr = schedule_testing.get(time);
+						pWri.print(time);
+						for (int[] ent : entArr) {
+							pWri.print(':');
+							pWri.print(util.PropValUtils.objectToPropStr(ent, int[].class));
+						}
+						pWri.println();
+					}
+					break;
+				case EXPORT_SCHEDULE_STAGE_CHANGE:
+					for (Integer time : schedule_stage_change.keySet()) {
+						ArrayList<ArrayList<ArrayList<Integer>>> ent = schedule_stage_change.get(time);
+						pWri.print(time);
+						for (int i = 0; i < NUM_INF; i++) {
+							for (int s = 0; s < NUM_SITE; s++) {
+								ArrayList<Integer> pids = ent.get(i).get(s);
+								if (pids.size() > 0) {
+									pWri.printf(":%d,%d", i, s);
+									for (Integer pid : pids) {
+										pWri.print(',');
+										pWri.print(pid);
+									}
 								}
 							}
 						}
+						pWri.println();
 					}
-					pWri.println();
-				}
-				break;
-			case EXPORT_TEST_RATE_INDEX:
-				for (Integer pid : test_rate_index_map.keySet()) {
-					HashMap<Integer, Integer> ent = test_rate_index_map.get(pid);
-					pWri.print(pid);
-					for (Entry<Integer, Integer> entry : ent.entrySet()) {
-						pWri.printf(":%d,%d", entry.getKey(), entry.getValue());
+					break;
+				case EXPORT_TEST_RATE_INDEX:
+					for (Integer pid : test_rate_index_map.keySet()) {
+						HashMap<Integer, Integer> ent = test_rate_index_map.get(pid);
+						pWri.print(pid);
+						for (Entry<Integer, Integer> entry : ent.entrySet()) {
+							pWri.printf(":%d,%d", entry.getKey(), entry.getValue());
+						}
+						pWri.println();
 					}
-					pWri.println();
+					break;
+				case EXPORT_CUMUL_INC_SITE:
+					pWri.println(util.PropValUtils.objectToPropStr(cumul_incidence_by_site, int[][][].class));
+					break;
+				case EXPORT_CUMUL_INC_PERSON:
+					pWri.println(util.PropValUtils.objectToPropStr(cumul_incidence_by_person, int[][].class));
+					break;
+				case EXPORT_CUMUL_TREATMENT_PERSON:
+					pWri.println(util.PropValUtils.objectToPropStr(cumul_treatment_by_person, int[][].class));
+					break;
+				default:
+					System.err.printf("exportRunnableTransmission: export file index of %d not defined.\n", eI);
 				}
-				break;
-			case EXPORT_CUMUL_INC_SITE:
-				pWri.println(util.PropValUtils.objectToPropStr(cumul_incidence_by_site, int[][][].class));
-				break;
-			case EXPORT_CUMUL_INC_PERSON:
-				pWri.println(util.PropValUtils.objectToPropStr(cumul_incidence_by_person, int[][].class));
-				break;
-			case EXPORT_CUMUL_TREATMENT_PERSON:
-				pWri.println(util.PropValUtils.objectToPropStr(cumul_treatment_by_person, int[][].class));
-				break;
-			default:
-				System.err.printf("exportRunnableTransmission: export file index of %d not defined.\n", eI);
+				pWri.close();
+
+				File archiveFile = new File(baseDir, csvFile.getName() + ".7z");
+				util.Util_7Z_CSV_Entry_Extract_Callable.zipFile(new File[] { csvFile }, archiveFile, false);
+				Files.delete(csvFile.toPath());
 			}
-			pWri.close();
-		}
-		
-		// Clean up 
-		for (String exportStr : exportFileFormat) {					
-			String adjFormat = exportStr.replaceFirst("%d", Long.toString(cMAP_SEED));
-			adjFormat = adjFormat.replaceFirst("%d", Long.toString(sIM_SEED));
-			adjFormat = adjFormat.replaceFirst("%d", "(\\\\d+)");
-			final Pattern f_match = Pattern.compile(adjFormat);
-			File[] list = baseDir.listFiles(new FileFilter() {
-				@Override
-				public boolean accept(File pathname) {
-					return f_match.matcher(pathname.getName()).matches() 
-							&& !pathname.getName().equals(String.format(exportStr, cMAP_SEED, sIM_SEED, time_pt));
+
+			// Delete old zip only when all zip okay
+			for (String srcFormat : exportFileFormat) {
+				File archiveFile = new File(baseDir, String.format(srcFormat, cMAP_SEED, sIM_SEED, time_pt) + ".7z");
+				String pat_format = srcFormat.replaceFirst("%d", Long.toString(cMAP_SEED));
+				pat_format = pat_format.replaceFirst("%d", Long.toString(sIM_SEED));
+				pat_format = pat_format.replaceFirst("%d", "(\\\\d+)");
+				Pattern pattern_previous_zips = Pattern.compile(pat_format + ".7z");
+				File[] prev_zips = baseDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						return pattern_previous_zips.matcher(pathname.getName()).matches()
+								&& !pathname.equals(archiveFile);
+					}
+				});
+				for (File f : prev_zips) {
+					Files.delete(f.toPath());
 				}
-			});			
-			for(File f : list) {
-				Files.delete(f.toPath());
-			}						
+			}
+
+			if (print_progress != null && runnableId != null) {
+				try {
+					print_progress.printf("Thread <%s>: Population stat exported at T = %d . Time req. = %.3fs\n",
+							runnableId, time_pt, (System.currentTimeMillis() - tic) / 1000.0);
+				} catch (Exception e) {
+					e.printStackTrace(System.err);
+				}
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace(System.err);
 		}
+
 	}
 
 	@Override
@@ -399,7 +422,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			reader = new BufferedReader(new FileReader(csvFile));
 			while ((line = reader.readLine()) != null) {
 				String[] lineSp = line.split(":");
-				int key = Integer.parseInt(lineSp[0]);
+				int key = -1;
+				if (lineSp.length > 1) {
+					key = Integer.parseInt(lineSp[0]);
+				}
 				switch (eI) {
 				case EXPORT_MAP_TRANS_PROB:
 					map_trans_prob.put(key,
@@ -1294,7 +1320,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		} // End of time step
 
-		if (runnableId != null)	{
+		if (runnableId != null) {
 			System.out.printf("Thread <%s> completed.\n", runnableId);
 		}
 
