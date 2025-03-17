@@ -135,7 +135,43 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected static final int EXPORT_SIMOUTPUT = EXPORT_RNG + 1;
 	protected static final int LENGTH_EXPORT = EXPORT_SIMOUTPUT + 1;
 
-	protected static int importedAtTime = -1;
+	protected int importedAtTime = -1;
+
+	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
+			Properties prop) {
+
+		this(cMap_seed, sim_seed,
+				(int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey), int[].class), base_cMap,
+				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])),
+				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])));
+
+		this.baseProp = prop;
+	}
+
+	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] pop_composition,
+			ContactMap base_cMap, int numTimeStepsPerSnap, int numSnap) {
+		super();
+		this.cUMULATIVE_POP_COMPOSITION = new int[pop_composition.length];
+		int offset = 0;
+
+		for (int g = 0; g < this.cUMULATIVE_POP_COMPOSITION.length; g++) {
+			this.cUMULATIVE_POP_COMPOSITION[g] = offset + pop_composition[g];
+			offset += pop_composition[g];
+		}
+
+		this.bASE_CONTACT_MAP = base_cMap;
+		this.nUM_TIME_STEPS_PER_SNAP = numTimeStepsPerSnap;
+		this.nUM_SNAP = numSnap;
+		this.cMAP_SEED = cMap_seed;
+		this.sIM_SEED = sim_seed;
+
+		RNG = new MersenneTwisterRandomGenerator(sIM_SEED);
+		RNG_NM = new MersenneTwisterRandomGenerator(sIM_SEED);
+	}
+
+	public int getImportedAtTime() {
+		return importedAtTime;
+	}
 
 	@SuppressWarnings("unchecked")
 	public void importRunnableTransmission(int time_pt) throws IOException, ClassNotFoundException {
@@ -206,12 +242,13 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 				if (timePt_Collection == null || Collections.binarySearch(timePt_Collection, time_pt) >= 0) {
 					boolean validFile = true;
-					if (f.getName().endsWith(".7z")) {						
+					if (f.getName().endsWith(".7z")) {
 						try {
 							extracted_file.addAll(Util_7Z_CSV_Entry_Extract_Callable.unzipFile(f, baseDir));
 						} catch (IOException e) {
 							validFile = false;
-						}					}
+						}
+					}
 					if (validFile) {
 						pos = Collections.binarySearch(timePt_Collection_fitlered, time_pt);
 						if (pos < 0) {
@@ -227,11 +264,53 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 		if (timePt_Collection.size() > 0) {
 			int bestTimePt = timePt_Collection.get(timePt_Collection.size() - 1);
+
+			// Remove non-used files
+			for (String fileformat : fileformats) {
+				String pat_format = fileformat.replaceFirst("%d", Long.toString(cMAP_SEED));
+				pat_format = pat_format.replaceFirst("%d", Long.toString(sIM_SEED));
+				pat_format = pat_format.replaceFirst("%d", "(\\\\d+)");
+				Pattern pattern_sel = Pattern.compile(pat_format + ".*");
+
+				File[] candidate = baseDir.listFiles(new FileFilter() {
+					@Override
+					public boolean accept(File pathname) {
+						Matcher m = pattern_sel.matcher(pathname.getName());
+						boolean res = m.matches();
+						if (res) {
+							res = Integer.parseInt(m.group(1)) != bestTimePt;
+						}
+						return res;
+					}
+				});
+				for (File f : candidate) {
+					try {
+						Files.delete(f.toPath());
+					} catch (IOException e) {
+						e.printStackTrace(System.err);
+					}
+				}
+			}
+
 			try {
-				importRunnableTransmission(bestTimePt);
-			} catch (IOException | ClassNotFoundException e) {
+				long tic = System.currentTimeMillis();
+				try {
+					importRunnableTransmission(bestTimePt);
+
+				} catch (IOException | ClassNotFoundException e) {
+					e.printStackTrace(System.err);
+				}
+
+				if (print_progress != null && runnableId != null) {
+					print_progress.printf("Thread <%s>: Population stat imported at T = %d . Time req. = %.3fs\n",
+							runnableId, bestTimePt, (System.currentTimeMillis() - tic) / 1000.0);
+
+				}
+
+			} catch (Exception e) {
 				e.printStackTrace(System.err);
 			}
+
 		}
 
 		// Remove extracted file
@@ -243,38 +322,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			}
 		}
 
-	}
-
-	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
-			Properties prop) {
-
-		this(cMap_seed, sim_seed,
-				(int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey), int[].class), base_cMap,
-				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])),
-				Integer.parseInt(prop.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])));
-
-		this.baseProp = prop;
-	}
-
-	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, int[] pop_composition,
-			ContactMap base_cMap, int numTimeStepsPerSnap, int numSnap) {
-		super();
-		this.cUMULATIVE_POP_COMPOSITION = new int[pop_composition.length];
-		int offset = 0;
-
-		for (int g = 0; g < this.cUMULATIVE_POP_COMPOSITION.length; g++) {
-			this.cUMULATIVE_POP_COMPOSITION[g] = offset + pop_composition[g];
-			offset += pop_composition[g];
-		}
-
-		this.bASE_CONTACT_MAP = base_cMap;
-		this.nUM_TIME_STEPS_PER_SNAP = numTimeStepsPerSnap;
-		this.nUM_SNAP = numSnap;
-		this.cMAP_SEED = cMap_seed;
-		this.sIM_SEED = sim_seed;
-
-		RNG = new MersenneTwisterRandomGenerator(sIM_SEED);
-		RNG_NM = new MersenneTwisterRandomGenerator(sIM_SEED);
 	}
 
 	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {

@@ -1049,6 +1049,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 				}
 
+				// Seed of infection 
+				if(runnable[s].getImportedAtTime() < contactMapTimeRange[0]) {
 				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0
 						|| !(runnable[s] instanceof Runnable_ClusterModel_Transmission)) {
 					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
@@ -1109,6 +1111,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							}
 						}
 					}
+				}
 				}
 				if (useParallel) {
 					if (exec == null) {
