@@ -225,14 +225,24 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			String pat_format = fileformat.replaceFirst("%d", Long.toString(cMAP_SEED));
 			pat_format = pat_format.replaceFirst("%d", Long.toString(sIM_SEED));
 			pat_format = pat_format.replaceFirst("%d", "(\\\\d+)");
-			Pattern pattern_sel = Pattern.compile(pat_format + ".*");
+			Pattern pattern_sel_zip = Pattern.compile(pat_format + ".7z");
+			
 			File[] candidate = baseDir.listFiles(new FileFilter() {
 				@Override
 				public boolean accept(File pathname) {
-					return pattern_sel.matcher(pathname.getName()).matches();
+					return pattern_sel_zip.matcher(pathname.getName()).matches();
 				}
-			});
-
+			});						
+			// Replace with the unzip version if exist						
+			for(int f = 0; f < candidate.length; f++) {							
+				String rawFileName = candidate[f].getName().substring(0, candidate[f].getName().length()-3);				
+				File rawFile = new File(baseDir, rawFileName);				
+				if(rawFile.exists()) {
+					candidate[f] = rawFile;
+				}										
+			}						
+			
+			Pattern pattern_sel = Pattern.compile(pat_format + ".*");
 			ArrayList<Integer> timePt_Collection_fitlered = new ArrayList<>();
 			for (File f : candidate) {
 				Matcher m = pattern_sel.matcher(f.getName());

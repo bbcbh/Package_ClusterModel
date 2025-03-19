@@ -418,6 +418,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		String line;
 
 		for (int eI : EXPORT_INDEX_ARRAY) {
+			long tic = System.currentTimeMillis();
 			csvFile = new File(baseDir, String.format(exportFileFormat[eI], cMAP_SEED, sIM_SEED, time_pt));
 			reader = new BufferedReader(new FileReader(csvFile));
 			while ((line = reader.readLine()) != null) {
@@ -492,6 +493,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 			reader.close();
+			
+			if (print_progress != null && runnableId != null) {
+				print_progress.printf("Thread <%s>: Import of %s completed. Time = %.3fs\n", runnableId, 
+						csvFile.getName(), (System.currentTimeMillis() - tic)/1000.0) ;
+			}
 		}
 
 		// Fill others
@@ -522,7 +528,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 		}
-		firstSeedTime = time_pt;
+		firstSeedTime = time_pt+1; // Next time step
 	}
 
 	@Override
@@ -1295,7 +1301,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 						print_progress.printf(
 								"T=%d, CMAP={%d,%d}" + ", # edge_added = %d, time_edge_added = %.3f"
-										+ ", # inf added = %d,  time inf = %.3f" + ", # test = %d, time_test = %.3f\n",
+										+ ", # inf added = %d,  time inf = %.3f" + ", # test = %d, time_test = %.3fs\n",
 								currentTime, cMap.vertexSet().size(), cMap.edgeSet().size(), debug_num_edge_add,
 								debug_time_cMap / 1000f, debug_num_new_inf, debug_time_inf / 1000f, debug_num_test,
 								debug_time_test / 1000f);
