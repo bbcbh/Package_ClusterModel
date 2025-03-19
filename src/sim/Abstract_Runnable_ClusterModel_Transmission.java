@@ -251,7 +251,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				int pos;
 
 				if (timePt_Collection == null || Collections.binarySearch(timePt_Collection, time_pt) >= 0) {
-					boolean validFile = true;
+					boolean validFile = f.length() > 0;
 					if (f.getName().endsWith(".7z")) {
 						try {
 							extracted_file.addAll(Util_7Z_CSV_Entry_Extract_Callable.unzipFile(f, baseDir));

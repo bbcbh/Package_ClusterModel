@@ -249,8 +249,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			"Export_map_trans_prob_%d_%d_%d.map", "Export_map_currrent_infection_stage_%d_%d_%d.map",
 			"Export_map_infection_stage_switch_%d_%d_%d.map", "Export_schedule_testing_%d_%d_%d.map",
 			"Export_schedule_stage_change_%d_%d_%d.map", "Export_test_rate_index_map_%d_%d_%d.map",
-			"Export_cumul_incidence_by_site_%d_%d_%d.arr", "Export_cumul_incidence_by_person_%d_%d_%d.arr",
-			"Export_cumul_treatment_by_person_%d_%d_%d.arr"
+			"Export_risk_cat_%d_%d_%d.map", "Export_cumul_incidence_by_site_%d_%d_%d.arr",
+			"Export_cumul_incidence_by_person_%d_%d_%d.arr", "Export_cumul_treatment_by_person_%d_%d_%d.arr"
 
 	};
 
@@ -260,13 +260,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected final int EXPORT_SCHEDULE_TESTING = EXPORT_MAP_INF_SWICH + 1;
 	protected final int EXPORT_SCHEDULE_STAGE_CHANGE = EXPORT_SCHEDULE_TESTING + 1;
 	protected final int EXPORT_TEST_RATE_INDEX = EXPORT_SCHEDULE_STAGE_CHANGE + 1;
-	protected final int EXPORT_CUMUL_INC_SITE = EXPORT_TEST_RATE_INDEX + 1;
+	protected final int EXPORT_RISK_CAT_INDEX = EXPORT_TEST_RATE_INDEX + 1;
+	protected final int EXPORT_CUMUL_INC_SITE = EXPORT_RISK_CAT_INDEX + 1;
 	protected final int EXPORT_CUMUL_INC_PERSON = EXPORT_CUMUL_INC_SITE + 1;
 	protected final int EXPORT_CUMUL_TREATMENT_PERSON = EXPORT_CUMUL_INC_PERSON + 1;
 
 	protected final int[] EXPORT_INDEX_ARRAY = new int[] { EXPORT_MAP_TRANS_PROB, EXPORT_MAP_INF_STAGE,
 			EXPORT_MAP_INF_SWICH, EXPORT_SCHEDULE_TESTING, EXPORT_SCHEDULE_STAGE_CHANGE, EXPORT_TEST_RATE_INDEX,
-			EXPORT_CUMUL_INC_SITE, EXPORT_CUMUL_INC_PERSON, EXPORT_CUMUL_TREATMENT_PERSON };
+			EXPORT_RISK_CAT_INDEX, EXPORT_CUMUL_INC_SITE, EXPORT_CUMUL_INC_PERSON, EXPORT_CUMUL_TREATMENT_PERSON };
 
 	protected int[] exportTime = new int[0];
 
@@ -355,6 +356,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							pWri.printf(":%d,%d", entry.getKey(), entry.getValue());
 						}
 						pWri.println();
+					}
+					break;
+				case EXPORT_RISK_CAT_INDEX:					
+					for (Integer pid : risk_cat_map.keySet()) {
+						pWri.printf("%d:%d\n",pid, risk_cat_map.get(pid));
 					}
 					break;
 				case EXPORT_CUMUL_INC_SITE:
@@ -479,6 +485,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					}
 					test_rate_index_map.put(key, entry);
 					break;
+				case EXPORT_RISK_CAT_INDEX:					
+					risk_cat_map.put(key, Integer.parseInt(lineSp[1]));					
+					break;
 				case EXPORT_CUMUL_INC_SITE:
 					cumul_incidence_by_site = (int[][][]) util.PropValUtils.propStrToObject(line, int[][][].class);
 					break;
@@ -493,10 +502,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 			reader.close();
-			
+
 			if (print_progress != null && runnableId != null) {
-				print_progress.printf("Thread <%s>: Import of %s completed. Time = %.3fs\n", runnableId, 
-						csvFile.getName(), (System.currentTimeMillis() - tic)/1000.0) ;
+				print_progress.printf("Thread <%s>: Import of %s completed. Time = %.3fs\n", runnableId,
+						csvFile.getName(), (System.currentTimeMillis() - tic) / 1000.0);
 			}
 		}
 
@@ -528,7 +537,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 		}
-		firstSeedTime = time_pt+1; // Next time step
+		firstSeedTime = time_pt + 1; // Next time step
 	}
 
 	@Override
@@ -797,12 +806,17 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			test_rate_index_map = new HashMap<>();
 		}
 
+		if (risk_cat_map == null) {
+			risk_cat_map = new HashMap<>();
+		}
+
 		// Check export time
 		if (baseProp.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_EXPORT_AT])) {
 			exportTime = (int[]) util.PropValUtils.propStrToObject(
 					baseProp.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_EXPORT_AT]),
 					int[].class);
 		}
+
 		// Import previous exported entries
 		importExportedTransmissionStates(exportFileFormat);
 
@@ -811,9 +825,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 
 		// Non exported
-		if (risk_cat_map == null) {
-			risk_cat_map = new HashMap<>();
-		}
+
 		if (propSwitch_map == null) {
 			propSwitch_map = new HashMap<>();
 		}
@@ -832,7 +844,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		Integer[][] edges_array = getEdgesArrayFromBaseConctactMap();
 		int edges_array_pt = 0;
 		HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
-		edges_array_pt = initaliseCMap(cMap, edges_array, edges_array_pt, firstSeedTime, removeEdges);
+		edges_array_pt = initaliseCMap(cMap, edges_array, edges_array_pt, firstSeedTime-1, removeEdges);
 
 		// Pre allocate risk categories (mainly form MSM)
 		setPreAllocatedRiskFromFile();
