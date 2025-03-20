@@ -59,6 +59,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected int simSetting = 1 << SIM_SETTING_KEY_TRACK_TRANSMISSION_CLUSTER;
 	protected boolean exportSkipBackup = false;
 	protected boolean printProgress = false;
+	protected boolean exportSkipStateGen = false;
 
 	protected HashMap<Long, ContactMap> baseContactMapMapping;
 	protected HashMap<Long, File[]> multiContactMapFileMapping;
@@ -73,6 +74,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_FORMAT_ALL_CMAP = Simulation_ClusterModelGeneration.FILENAME_FORMAT_ALL_CMAP;
 
 	public static final String LAUNCH_ARGS_SKIP_BACKUP = "-export_skip_backup";
+	public static final String LAUNCH_ARGS_SKIP_STATE_GEN = "-export_skip_state_gen";
 	public static final String LAUNCH_ARGS_PRINT_PROGRESS = "-printProgress";
 	public static final String LAUNCH_ARGS_SEED_MAP = "-seedMap=";
 
@@ -225,6 +227,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 
+	}
+
+	public void setExportStateGen(boolean exportSkipStateGen) {
+		this.exportSkipStateGen = exportSkipStateGen;
 	}
 
 	public void setExportSkipBackup(boolean exportSkipBackup) {
@@ -774,21 +780,19 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			if (popStatFile.exists()) {
 				// Update group
 				String[] popStat = Util_7Z_CSV_Entry_Extract_Callable.extracted_lines_from_text(popStatFile);
-				
+
 				HashMap<Integer, String[]> pop_stat = pop_stat_map.get(baseContactMapSeed);
-				if(pop_stat == null) {
+				if (pop_stat == null) {
 					pop_stat = new HashMap<>();
 					pop_stat_map.put(baseContactMapSeed, pop_stat);
 				}
-				
-				
+
 				for (int i = 1; i < popStat.length; i++) {
 					String[] personEnt = popStat[i].split(",");
 					int pid = Integer.parseInt(personEnt[0]);
-					int group = Integer.parseInt(
-							personEnt[Abstract_Runnable_ClusterModel.POP_INDEX_GRP + 1]);
+					int group = Integer.parseInt(personEnt[Abstract_Runnable_ClusterModel.POP_INDEX_GRP + 1]);
 					personStat[group].add(pid);
-					
+
 					pop_stat.put(pid, Arrays.copyOfRange(personEnt, 1, personEnt.length)); // ID offset
 				}
 
@@ -803,9 +807,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				} else {
 					System.err.println("Warning! POPSTAT and/or baseContactMap not defined.");
 					System.exit(-1);
-				}						
+				}
 			}
-			
+
 			personListByGenderMap.put(baseContactMapSeed, personStat);
 		}
 
@@ -983,6 +987,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				runnable[s].setSimSetting(simSetting);
 				runnable[s].setPropSwitch_map(propSwitch_map);
 				runnable[s].setPop_stat(pop_stat_map.get(baseContactMapSeed));
+				runnable[s].setSkipStateGen(exportSkipStateGen);
 
 				if (printProgress) {
 					runnable[s].setPrint_progress(System.out);
@@ -1049,69 +1054,69 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					}
 				}
 
-				// Seed of infection 
-				if(runnable[s].getImportedAtTime() < contactMapTimeRange[0]) {
-				if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0
-						|| !(runnable[s] instanceof Runnable_ClusterModel_Transmission)) {
-					runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
-				} else {
-					// Add infected (only support Runnable_ClusterModel_Transmission atm)
-					for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
-						for (int site = 0; site < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; site++) {
-							if (seedInfectNum[gender][site] > 0) {
-								ArrayList<Integer>[] personStat = personListByGenderMap.get(baseContactMapSeed);
-								Integer[] seedInf = util.ArrayUtilsRandomGenerator.randomSelect(
-										personStat[gender].toArray(new Integer[personStat[gender].size()]),
-										seedInfectNum[gender][site], rngBase);
+				// Seed of infection
+				if (runnable[s].getImportedAtTime() < contactMapTimeRange[0]) {
+					if ((simSetting & 1 << SIM_SETTING_KEY_GLOBAL_TIME_SEED) != 0
+							|| !(runnable[s] instanceof Runnable_ClusterModel_Transmission)) {
+						runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
+					} else {
+						// Add infected (only support Runnable_ClusterModel_Transmission atm)
+						for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
+							for (int site = 0; site < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; site++) {
+								if (seedInfectNum[gender][site] > 0) {
+									ArrayList<Integer>[] personStat = personListByGenderMap.get(baseContactMapSeed);
+									Integer[] seedInf = util.ArrayUtilsRandomGenerator.randomSelect(
+											personStat[gender].toArray(new Integer[personStat[gender].size()]),
+											seedInfectNum[gender][site], rngBase);
 
-								int[] seedTime = new int[seedInf.length];
+									int[] seedTime = new int[seedInf.length];
 
-								for (int i = 0; i < seedInf.length; i++) {
-									Integer infected = seedInf[i];
+									for (int i = 0; i < seedInf.length; i++) {
+										Integer infected = seedInf[i];
 
-									int firstContactTime = contactMapTimeRange[1]; // Start only from valid range
+										int firstContactTime = contactMapTimeRange[1]; // Start only from valid range
 
-									Set<Integer[]> edgesOfInfected = baseContactMapMapping.get(baseContactMapSeed)
-											.edgesOf(infected);
+										Set<Integer[]> edgesOfInfected = baseContactMapMapping.get(baseContactMapSeed)
+												.edgesOf(infected);
 
-									for (Integer[] e : edgesOfInfected) {
-										int edge_start_time = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
-										int edge_end_time = edge_start_time
-												+ e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
-										if (edge_end_time > contactMapTimeRange[0]
-												&& edge_start_time < contactMapTimeRange[1]) {
-											firstContactTime = Math.max(Math.min(firstContactTime, edge_start_time),
-													contactMapTimeRange[0]);
+										for (Integer[] e : edgesOfInfected) {
+											int edge_start_time = e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
+											int edge_end_time = edge_start_time
+													+ e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
+											if (edge_end_time > contactMapTimeRange[0]
+													&& edge_start_time < contactMapTimeRange[1]) {
+												firstContactTime = Math.max(Math.min(firstContactTime, edge_start_time),
+														contactMapTimeRange[0]);
+											}
+										}
+
+										if (firstContactTime == contactMapTimeRange[1]) {
+											firstContactTime = contactMapTimeRange[0];
+										}
+
+										seedTime[i] = firstContactTime;
+
+										if (runnable[s] instanceof Runnable_ClusterModel_Transmission) {
+											((Runnable_ClusterModel_Transmission) runnable[s]).addInfectious(infected,
+													site, firstContactTime, firstContactTime + 180);
+										} else {
+											System.err.printf(
+													"Warning: seedInfectNum[gender][site] for %s not support in this version of %s.\n",
+													Runnable_ClusterModel_Transmission.class.getName(),
+													this.getClass().getName());
 										}
 									}
+									System.out.printf("Seeding %s of gender #%d at site #%d at t = %s\n",
+											Arrays.toString(seedInf), gender, site, Arrays.toString(seedTime));
+								} else {
+									System.err.printf(
+											"Warning: seedInfectNum[gender][site] < 0 not support in this version of %s.\n",
+											this.getClass().getName());
 
-									if (firstContactTime == contactMapTimeRange[1]) {
-										firstContactTime = contactMapTimeRange[0];
-									}
-
-									seedTime[i] = firstContactTime;
-
-									if (runnable[s] instanceof Runnable_ClusterModel_Transmission) {
-										((Runnable_ClusterModel_Transmission) runnable[s]).addInfectious(infected, site,
-												firstContactTime, firstContactTime + 180);
-									} else {
-										System.err.printf(
-												"Warning: seedInfectNum[gender][site] for %s not support in this version of %s.\n",
-												Runnable_ClusterModel_Transmission.class.getName(),
-												this.getClass().getName());
-									}
 								}
-								System.out.printf("Seeding %s of gender #%d at site #%d at t = %s\n",
-										Arrays.toString(seedInf), gender, site, Arrays.toString(seedTime));
-							} else {
-								System.err.printf(
-										"Warning: seedInfectNum[gender][site] < 0 not support in this version of %s.\n",
-										this.getClass().getName());
-
 							}
 						}
 					}
-				}
 				}
 				if (useParallel) {
 					if (exec == null) {
@@ -1705,8 +1710,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if (args.length > 0) {
 			baseDir = new File(args[0]);
 		} else {
-			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY <%s>",
-					Simulation_ClusterModelTransmission.class.getName(), LAUNCH_ARGS_SKIP_BACKUP));
+			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY <%s> <%s> <%s> <%s....>",
+					Simulation_ClusterModelTransmission.class.getName(), LAUNCH_ARGS_SKIP_BACKUP,
+					LAUNCH_ARGS_SKIP_STATE_GEN, LAUNCH_ARGS_PRINT_PROGRESS, LAUNCH_ARGS_SEED_MAP));
 			System.exit(0);
 		}
 
@@ -1714,6 +1720,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 			boolean flag_exportSkipBackup = false;
 			boolean flag_setPrintProgress = false;
+			boolean flag_exportStateGen = false;
 			File seed_map = null;
 
 			if (args.length > 1) {
@@ -1724,6 +1731,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {
 						flag_setPrintProgress = true;
 					}
+					if (LAUNCH_ARGS_SKIP_STATE_GEN.equals(args[ai])) {
+						flag_exportStateGen = true;
+					}
+
 					if (args[ai].startsWith(LAUNCH_ARGS_SEED_MAP)) {
 						seed_map = new File(baseDir, args[ai].substring(LAUNCH_ARGS_SEED_MAP.length()));
 
@@ -1741,6 +1752,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				if (flag_setPrintProgress) {
 					sim.setPrintProgress(true);
 				}
+				if (flag_exportStateGen) {
+					sim.setExportStateGen(true);
+				}
+
 				if (seed_map != null && seed_map.isFile()) {
 					sim.loadPreGenSimSeed(seed_map);
 				}

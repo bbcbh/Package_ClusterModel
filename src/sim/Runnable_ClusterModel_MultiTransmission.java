@@ -327,7 +327,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							pWri.print(util.PropValUtils.objectToPropStr(ent, int[].class));
 						}
 						pWri.println();
-					}									
+					}
 					break;
 				case EXPORT_SCHEDULE_STAGE_CHANGE:
 					for (Integer time : schedule_stage_change.keySet()) {
@@ -358,9 +358,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						pWri.println();
 					}
 					break;
-				case EXPORT_RISK_CAT_INDEX:					
+				case EXPORT_RISK_CAT_INDEX:
 					for (Integer pid : risk_cat_map.keySet()) {
-						pWri.printf("%d:%d\n",pid, risk_cat_map.get(pid));
+						pWri.printf("%d:%d\n", pid, risk_cat_map.get(pid));
 					}
 					break;
 				case EXPORT_CUMUL_INC_SITE:
@@ -405,8 +405,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				try {
 					print_progress.printf("Thread <%s>: Population stat exported at T = %d . Time req. = %.3fs\n",
 							runnableId, time_pt, (System.currentTimeMillis() - tic) / 1000.0);
-					
-					
+
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
 				}
@@ -487,8 +486,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					}
 					test_rate_index_map.put(key, entry);
 					break;
-				case EXPORT_RISK_CAT_INDEX:					
-					risk_cat_map.put(key, Integer.parseInt(lineSp[1]));					
+				case EXPORT_RISK_CAT_INDEX:
+					risk_cat_map.put(key, Integer.parseInt(lineSp[1]));
 					break;
 				case EXPORT_CUMUL_INC_SITE:
 					cumul_incidence_by_site = (int[][][]) util.PropValUtils.propStrToObject(line, int[][][].class);
@@ -846,7 +845,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		Integer[][] edges_array = getEdgesArrayFromBaseConctactMap();
 		int edges_array_pt = 0;
 		HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
-		edges_array_pt = initaliseCMap(cMap, edges_array, edges_array_pt, firstSeedTime-1, removeEdges);
+		edges_array_pt = initaliseCMap(cMap, edges_array, edges_array_pt, firstSeedTime - 1, removeEdges);
 
 		// Pre allocate risk categories (mainly form MSM)
 		setPreAllocatedRiskFromFile();
@@ -1409,7 +1408,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	}
 
 	protected void postTimeStep(int currentTime) {
-		if (exportTime.length > 0) {
+		if (exportTime.length > 0 && !skipStateGen) {
 			if (currentTime > 0 && currentTime % exportTime[0] == 0) {
 				try {
 					exportRunnableTransmission(currentTime);

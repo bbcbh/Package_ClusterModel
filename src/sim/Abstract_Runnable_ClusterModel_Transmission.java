@@ -133,7 +133,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	protected static final int EXPORT_RNG = 0;
 	protected static final int EXPORT_SIMOUTPUT = EXPORT_RNG + 1;
-	protected static final int LENGTH_EXPORT = EXPORT_SIMOUTPUT + 1;
+	protected static final int LENGTH_EXPORT = EXPORT_SIMOUTPUT + 1;	
+	protected boolean skipStateGen = false;
 
 	protected int importedAtTime = -1;
 
@@ -214,7 +215,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		archiveFile = new File(baseDir, objFile.getName() + ".7z");
 		util.Util_7Z_CSV_Entry_Extract_Callable.zipFile(new File[] { objFile }, archiveFile, false);
 		Files.delete(objFile.toPath());
+	}		
 
+	public void setSkipStateGen(boolean skipStateGen) {
+		this.skipStateGen = skipStateGen;
 	}
 
 	public void importExportedTransmissionStates(String[] fileformats) {
