@@ -327,7 +327,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							pWri.print(util.PropValUtils.objectToPropStr(ent, int[].class));
 						}
 						pWri.println();
-					}
+					}									
 					break;
 				case EXPORT_SCHEDULE_STAGE_CHANGE:
 					for (Integer time : schedule_stage_change.keySet()) {
@@ -405,6 +405,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				try {
 					print_progress.printf("Thread <%s>: Population stat exported at T = %d . Time req. = %.3fs\n",
 							runnableId, time_pt, (System.currentTimeMillis() - tic) / 1000.0);
+					
+					
 				} catch (Exception e) {
 					e.printStackTrace(System.err);
 				}
