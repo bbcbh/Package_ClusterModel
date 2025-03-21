@@ -783,7 +783,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		// Add multimap and read edges if needed
 		if (bASE_CONTACT_MAP == null && contactMap_files != null) {
 			for (int i = 0; i < contactMap_files.length; i++) {
-				updateCMapFromFiles(cMap, currentTime, i, edgesToRemove, included_pids);
+				numEdgeAdded += updateCMapFromFiles(cMap, currentTime, i, edgesToRemove, included_pids);
 			}
 		}
 
