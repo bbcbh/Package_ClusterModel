@@ -385,6 +385,24 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			return res.toArray(new Integer[0]);
 		}
 	}
+	
+	public boolean isValidPerson(int pid, int[] timeRange) {
+		if (pop_stat == null) {
+			if (bASE_CONTACT_MAP != null) {
+				return bASE_CONTACT_MAP.containsVertex(pid);
+			}else {
+				System.err.println("Warning - Population undefined.");
+				return false;
+			}			
+		}else {			
+			String[] popEnt = pop_stat.get(pid);
+			boolean res = timeRange[0] < Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]);
+			if(timeRange.length > 1) {
+				res &= Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]) < timeRange[1]; 
+			}					
+			return res;
+		}
+	}
 
 	public File[] getContactMapFiles() {
 		return contactMap_files;
