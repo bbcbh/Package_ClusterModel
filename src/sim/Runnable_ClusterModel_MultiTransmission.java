@@ -87,6 +87,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected final int NUM_ACT;
 	protected final int NUM_GENDER;
 
+	// For extra field SIM_FIELD_SEED_INFECTION
+	public static final int SEED_INFECTION_EXTRA_INFID = 0;
+	public static final int SEED_INFECTION_EXTRA_GENDER_INC = SEED_INFECTION_EXTRA_INFID + 1;
+	public static final int SEED_INFECTION_EXTRA_SITE_INDEX = SEED_INFECTION_EXTRA_GENDER_INC + 1;
+	public static final int SEED_INFECTION_EXTRA_STAGE_INC = SEED_INFECTION_EXTRA_SITE_INDEX + 1;
+	public static final int SEED_INFECTION_EXTRA_NUM_INF = SEED_INFECTION_EXTRA_STAGE_INC + 1;
+
 	// For RUNNABLE_FIELD_TRANSMISSION_ACT_FREQ
 	public static final int FIELD_ACT_FREQ_ACT_TYPE = 0;
 	public static final int FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_FROM = FIELD_ACT_FREQ_ACT_TYPE + 1;
@@ -749,7 +756,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						cumul_prob[i + target_stages.length] = target_stages[i].intValue();
 					}
 				} else {
-					cumul_prob = new double[] {Double.NaN, target_stages[0].intValue()};
+					cumul_prob = new double[] { Double.NaN, target_stages[0].intValue() };
 				}
 				lookupTable_infection_stage_path.put(key, cumul_prob);
 			}
@@ -1895,6 +1902,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// num_infected = int[infection_id]{-MIN_NUM_PARTNER_IN_LAST_12_MONTHS,
 		// SITE_INDEX_0,
 		// Number_INF_0,...}
+
 		firstSeedTime = Math.min(firstSeedTime, time);
 
 		int inf_id = 0;
@@ -1926,85 +1934,161 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		Arrays.sort(all_vertex);
 
 		for (int[] inf_setting : num_infected) {
-			int pt = 0;
-			while (pt < inf_setting.length) {
-				int includeIndex = inf_setting[pt];
-				pt++;
-				int site_index = inf_setting[pt];
-				pt++;
-				int num_inf = inf_setting[pt];
-				pt++;
 
-				int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
-				int stage_pt = 0;
-				ArrayList<Integer> validInfectiousStages = new ArrayList<>();
-				while (validStage != 0) {
-					if ((validStage & 1) > 0) {
-						validInfectiousStages.add(stage_pt);
+			if (inf_id < NUM_INF) {
+				int pt = 0;
+				while (pt < inf_setting.length) {
+					int includeIndex = inf_setting[pt];
+					pt++;
+					int site_index = inf_setting[pt];
+					pt++;
+					int num_inf = inf_setting[pt];
+					pt++;
+
+					int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
+					int stage_pt = 0;
+					ArrayList<Integer> validInfectiousStages = new ArrayList<>();
+					while (validStage != 0) {
+						if ((validStage & 1) > 0) {
+							validInfectiousStages.add(stage_pt);
+						}
+						validStage = validStage >> 1;
+						stage_pt++;
 					}
-					validStage = validStage >> 1;
-					stage_pt++;
-				}
 
-				if (validInfectiousStages.size() > 0) {
-					// List out all valid candidate
-					candidate.clear();
-					for (Integer pid : all_vertex) {
-						int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
+					if (validInfectiousStages.size() > 0) {
+						// List out all valid candidate
+						candidate.clear();
+						for (Integer pid : all_vertex) {
+							int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
 
-						if (isValidInfectionTargetSite(inf_id, site_index, current_stage_arr)) {
-							if (includeIndex > 0) { // By gender group
-								if ((includeIndex & 1 << getGenderType(pid)) > 0) {
-									candidate.add(pid);
-								}
-							} else { // By Risk Group
-								int numPartLimit = -includeIndex;
-								if (cMap != null && cMap.containsVertex(pid)) {
-									// pWri.printf("%d,%d\n", pid, cMap.degreeOf(pid));
-									if (cMap.degreeOf(pid) >= numPartLimit) {
+							if (isValidInfectionTargetSite(inf_id, site_index, current_stage_arr)) {
+								if (includeIndex > 0) { // By gender group
+									if ((includeIndex & 1 << getGenderType(pid)) > 0) {
 										candidate.add(pid);
+									}
+								} else { // By Risk Group
+									int numPartLimit = -includeIndex;
+									if (cMap != null && cMap.containsVertex(pid)) {
+										// pWri.printf("%d,%d\n", pid, cMap.degreeOf(pid));
+										if (cMap.degreeOf(pid) >= numPartLimit) {
+											candidate.add(pid);
+										}
 									}
 								}
 							}
 						}
-					}
 
-					int counter = 0;
-					int num_inf_added = 0;
+						int counter = 0;
+						int num_inf_added = 0;
 
-					for (Integer pid : candidate) {
-						if (RNG.nextInt(candidate.size() - counter) < (num_inf - num_inf_added)) {
-							int[] cumulProb = new int[validInfectiousStages.size()];
-							for (int i = 0; i < cumulProb.length; i++) {
-								if (i > 0) {
-									cumulProb[i] = cumulProb[i - 1];
+						for (Integer pid : candidate) {
+							if (RNG.nextInt(candidate.size() - counter) < (num_inf - num_inf_added)) {
+								int[] cumulProb = new int[validInfectiousStages.size()];
+								for (int i = 0; i < cumulProb.length; i++) {
+									if (i > 0) {
+										cumulProb[i] = cumulProb[i - 1];
+									}
+									cumulProb[i] += (int) Math
+											.ceil(dist_stage_period[inf_id][site_index][validInfectiousStages.get(i)]
+													.sample());
 								}
-								cumulProb[i] += (int) Math.ceil(
-										dist_stage_period[inf_id][site_index][validInfectiousStages.get(i)].sample());
-							}
-							int stageDur = RNG.nextInt(cumulProb[cumulProb.length - 1]);
+								int stageDur = RNG.nextInt(cumulProb[cumulProb.length - 1]);
 
-							int stage_sel = Arrays.binarySearch(cumulProb, stageDur);
-							if (stage_sel < 0) {
-								stage_sel = ~stage_sel;
-							}
-							validStage = validInfectiousStages.get(stage_sel);
-							if (stage_sel > 0) {
-								stageDur -= cumulProb[stage_sel - 1];
-							}
-							addInfectious(pid, inf_id, site_index, validStage, time, stageDur);
-							num_inf_added++;
+								int stage_sel = Arrays.binarySearch(cumulProb, stageDur);
+								if (stage_sel < 0) {
+									stage_sel = ~stage_sel;
+								}
+								validStage = validInfectiousStages.get(stage_sel);
+								if (stage_sel > 0) {
+									stageDur -= cumulProb[stage_sel - 1];
+								}
+								addInfectious(pid, inf_id, site_index, validStage, time, stageDur);
+								num_inf_added++;
 
+							}
+							counter++;
 						}
-						counter++;
-					}
 
-					if (print_progress != null && num_inf_added > 0) {
-						print_progress.printf("Time = %d. Inf #%d candidate = %d. # added = %d.\n", time, inf_id,
-								candidate.size(), num_inf_added);
+						if (print_progress != null && num_inf_added > 0) {
+							print_progress.printf("Time = %d. Inf #%d candidate = %d. # added = %d.\n", time, inf_id,
+									candidate.size(), num_inf_added);
+						}
 					}
 				}
-			}
+			} else {
+				// Seed infection extra
+				// [INFECTION_ID, GENDER_INC_INDEX, SITE_INDEX, STAGE_INC_INDEX, NUM_INF]
+				int infection_id = inf_setting[SEED_INFECTION_EXTRA_INFID];
+				int gender_inc = inf_setting[SEED_INFECTION_EXTRA_GENDER_INC];
+				int site_id = inf_setting[SEED_INFECTION_EXTRA_SITE_INDEX];
+				int stage_inc = inf_setting[SEED_INFECTION_EXTRA_STAGE_INC];
+				int num_inf = inf_setting[SEED_INFECTION_EXTRA_NUM_INF];
+
+				candidate.clear();
+				Integer[] candidateList = getCurrentPopulationPId(time);
+
+				for (Integer pid : candidateList) {
+					int candidate_gender = getGenderType(pid);
+					if ((gender_inc & 1 << candidate_gender) != 0) {
+						int[][] candidate_inf_state = map_currrent_infection_stage.get(pid);
+						if (candidate_inf_state == null
+								|| candidate_inf_state[infection_id][site_id] == AbstractIndividualInterface.INFECT_S) {
+							candidate.add(pid);
+						}
+					}
+				}
+				num_inf = Math.min(num_inf, candidate.size());
+
+				// State duration ratio
+				HashMap<Integer, Integer> valid_stage = new HashMap<>(); // KEY=Stage, V=Duration
+				int counter = 0;
+				while (stage_inc != 0) {
+					if ((stage_inc & 1) > 0) {
+						valid_stage.put(counter,
+								(int) Math.round(dist_stage_period[infection_id][site_id][counter].getNumericalMean()));
+					}
+					stage_inc = stage_inc >> 1;
+					counter++;
+				}
+
+				int[] stage_id = new int[valid_stage.size()];
+				int[] state_cumul_prob = new int[stage_id.length];
+				int pt = 0;
+				for (Integer stage : valid_stage.keySet()) {
+					stage_id[pt] = stage;
+					state_cumul_prob[pt] = valid_stage.get(stage);
+					if (pt > 0) {
+						state_cumul_prob[pt] += state_cumul_prob[pt - 1];
+					}
+					pt++;
+				}
+				int num_inf_added = 0;
+
+				for (int i = 0; i < candidate.size() && num_inf > 0; i++) {
+					if (RNG.nextInt(candidate.size() - i) < num_inf) {
+						Integer pid = candidate.get(i);
+						int stage_pt = Arrays.binarySearch(state_cumul_prob,
+								RNG.nextInt(state_cumul_prob[state_cumul_prob.length - 1]));
+						if (stage_pt < 0) {
+							stage_pt = ~stage_pt;
+						}
+						int stage_selected = stage_id[stage_pt];
+						int stage_duration = (int) Math
+								.ceil(dist_stage_period[infection_id][site_id][stage_selected].sample());
+						addInfectious(pid, infection_id, site_id, stage_selected, time, stage_duration/2);
+
+						num_inf--;
+						num_inf_added++;
+					}
+				}
+
+				if (print_progress != null && num_inf_added > 0) {
+					print_progress.printf("Time = %d. Infecte_setting=%s : Candidate = %d. # added = %d.\n", time,
+							Arrays.toString(inf_setting), candidate.size(), num_inf_added);
+				}
+
+			} // End of seed infection extra
 			inf_id++;
 
 		}
@@ -2142,7 +2226,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 						break;
 					} else {
-						if (Double.isNaN(nextProb[0])) {							
+						if (Double.isNaN(nextProb[0])) {
 							current_infection_stage = (int) nextProb[1];
 							int[][] preTreatDur = map_pre_treatment_duration.get(pid);
 							if (preTreatDur == null) {
