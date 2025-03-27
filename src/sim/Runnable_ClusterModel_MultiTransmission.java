@@ -166,8 +166,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected HashMap<Integer, double[][][][]> map_trans_prob; // Key=PID,V=double[INF_ID][SITE_FROM][SITE_TO][STAGE_ID]
 	protected HashMap<Integer, int[][]> map_currrent_infection_stage; // Key=PID,V=int[INF_ID][SITE]{infection_stage}
 	protected HashMap<Integer, int[][]> map_infection_stage_switch; // Key=PID,V=int[INF_ID][SITE]{switch_time_at_site};
-	protected HashMap<Integer, int[][]> map_pre_treatment_duration; // Key=PID, V =
-																	// int[INF_ID][SITE]{infection_duration_pre_treatment}
+	protected HashMap<Integer, int[][]> map_pre_treatment_state; // Key=PID, V
+																	// =int[INF_ID][SITE]{infection_state_pre_treatment}
+	protected HashMap<Integer, int[][]> map_pre_treatment_duration; // Key=PID, V
+																	// =int[INF_ID][SITE]{infection_duration_pre_treatment}
+	protected HashMap<Integer, int[][]> map_life_table; // Key=PID, V=[[INF_ID, TIME_OF_ENTRY, TIME_OF_EXIT,
+														// TIME_OF_DEATH]]
 
 	// Key=Inf_ID,SiteID,V=ArrayList of pid with infectious
 	protected transient HashMap<String, ArrayList<Integer>> map_currently_infectious;
@@ -190,6 +194,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected transient HashMap<String, double[]> lookupTable_test_treatment_properties; // Key="INF_ID,SITE_ID,V=TEST_ACCURACY_INFO
 	protected transient HashMap<String, ArrayList<double[]>> lookupTable_instant_stage_switch; // KEY="Inf_ID,SITE_ID,STAGE_ID",V
 																								// = fieldEntry
+	protected transient HashMap<Integer, double[][]> lookupTable_co_infect_multipler; // KEY=INF_ID,
+																						// V={[infID]{co_infect_stage_incl,
+																						// co_infect_lower,
+																						// co_infect_higher}
 
 	protected transient double[][][][] table_act_frequency; // double[ACT_ID][G_TO][G_FROM]=fieldEntry
 
@@ -217,8 +225,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected final int EXPORT_MAP_TRANS_PROB = EXPORT_SIMOUTPUT + 1;
 	protected final int EXPORT_MAP_INF_STAGE = EXPORT_MAP_TRANS_PROB + 1;
 	protected final int EXPORT_MAP_INF_SWICH = EXPORT_MAP_INF_STAGE + 1;
-	protected final int EXPORT_MAP_PRE_TREAT_DURATION = EXPORT_MAP_INF_SWICH + 1;
-	protected final int EXPORT_SCHEDULE_TESTING = EXPORT_MAP_PRE_TREAT_DURATION + 1;
+	protected final int EXPORT_MAP_PRE_TREAT_STATE = EXPORT_MAP_INF_SWICH + 1;
+	protected final int EXPORT_MAP_PRE_TREAT_DURATION = EXPORT_MAP_PRE_TREAT_STATE + 1;
+	protected final int EXPORT_MAP_DEATH = EXPORT_MAP_PRE_TREAT_DURATION + 1;
+	protected final int EXPORT_SCHEDULE_TESTING = EXPORT_MAP_DEATH + 1;
 	protected final int EXPORT_SCHEDULE_STAGE_CHANGE = EXPORT_SCHEDULE_TESTING + 1;
 	protected final int EXPORT_TEST_RATE_INDEX = EXPORT_SCHEDULE_STAGE_CHANGE + 1;
 	protected final int EXPORT_RISK_CAT_INDEX = EXPORT_TEST_RATE_INDEX + 1;
@@ -231,6 +241,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			Abstract_Runnable_ClusterModel_Transmission.exportFileFormat[Abstract_Runnable_ClusterModel_Transmission.EXPORT_SIMOUTPUT],
 			"Export_map_trans_prob_%d_%d_%d.map", "Export_map_currrent_infection_stage_%d_%d_%d.map",
 			"Export_map_infection_stage_switch_%d_%d_%d.map", "Export_map_pre_treatment_duration_%d_%d_%d.map",
+			"Export_map_pre_treatment_state_%d_%d_%d.map", "Export_map_infected_death_%d_%d_%d_map",
 			"Export_schedule_testing_%d_%d_%d.map", "Export_schedule_stage_change_%d_%d_%d.map",
 			"Export_test_rate_index_map_%d_%d_%d.map", "Export_risk_cat_%d_%d_%d.map",
 			"Export_cumul_incidence_by_site_%d_%d_%d.arr", "Export_cumul_incidence_by_person_%d_%d_%d.arr",
@@ -238,9 +249,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	};
 	protected final int[] EXPORT_INDEX_ARRAY = new int[] { EXPORT_MAP_TRANS_PROB, EXPORT_MAP_INF_STAGE,
-			EXPORT_MAP_INF_SWICH, EXPORT_MAP_PRE_TREAT_DURATION, EXPORT_SCHEDULE_TESTING, EXPORT_SCHEDULE_STAGE_CHANGE,
-			EXPORT_TEST_RATE_INDEX, EXPORT_RISK_CAT_INDEX, EXPORT_CUMUL_INC_SITE, EXPORT_CUMUL_INC_PERSON,
-			EXPORT_CUMUL_TREATMENT_PERSON };
+			EXPORT_MAP_INF_SWICH, EXPORT_MAP_PRE_TREAT_STATE, EXPORT_MAP_PRE_TREAT_DURATION, EXPORT_MAP_DEATH,
+			EXPORT_SCHEDULE_TESTING, EXPORT_SCHEDULE_STAGE_CHANGE, EXPORT_TEST_RATE_INDEX, EXPORT_RISK_CAT_INDEX,
+			EXPORT_CUMUL_INC_SITE, EXPORT_CUMUL_INC_PERSON, EXPORT_CUMUL_TREATMENT_PERSON };
 
 	protected int[] exportTime = new int[0];
 
@@ -266,7 +277,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		map_currrent_infection_stage = new HashMap<>();
 		map_infection_stage_switch = new HashMap<>();
 		map_currently_infectious = new HashMap<>();
+		map_pre_treatment_state = new HashMap<>();
 		map_pre_treatment_duration = new HashMap<>();
+		map_life_table = new HashMap<>();
 
 		schedule_testing = new HashMap<>();
 		schedule_stage_change = new HashMap<>();
@@ -275,6 +288,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		lookupTable_infection_infectious_stages = new int[NUM_INF][NUM_SITE];
 		lookupTable_test_treatment_properties = new HashMap<>();
 		lookupTable_instant_stage_switch = new HashMap<>();
+		lookupTable_co_infect_multipler = new HashMap<>();
 
 		table_act_frequency = new double[NUM_ACT][NUM_GENDER][NUM_GENDER][];
 
@@ -312,7 +326,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					break;
 				case EXPORT_MAP_INF_STAGE:
 				case EXPORT_MAP_INF_SWICH:
+				case EXPORT_MAP_PRE_TREAT_STATE:
 				case EXPORT_MAP_PRE_TREAT_DURATION:
+				case EXPORT_MAP_DEATH:
 					HashMap<Integer, int[][]> map;
 					switch (eI) {
 					case EXPORT_MAP_INF_STAGE:
@@ -321,8 +337,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					case EXPORT_MAP_INF_SWICH:
 						map = map_infection_stage_switch;
 						break;
+					case EXPORT_MAP_PRE_TREAT_STATE:
+						map = map_pre_treatment_state;
+						break;
 					case EXPORT_MAP_PRE_TREAT_DURATION:
 						map = map_pre_treatment_duration;
+						break;
+					case EXPORT_MAP_DEATH:
+						map = map_life_table;
 						break;
 					default:
 						System.err.printf("exportRunnableTransmission: export file index of %d not defined.\n", eI);
@@ -461,7 +483,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					break;
 				case EXPORT_MAP_INF_STAGE:
 				case EXPORT_MAP_INF_SWICH:
+				case EXPORT_MAP_PRE_TREAT_STATE:
 				case EXPORT_MAP_PRE_TREAT_DURATION:
+				case EXPORT_MAP_DEATH:
 					HashMap<Integer, int[][]> tarMap;
 					switch (eI) {
 					case EXPORT_MAP_INF_STAGE:
@@ -470,8 +494,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					case EXPORT_MAP_INF_SWICH:
 						tarMap = map_infection_stage_switch;
 						break;
+					case EXPORT_MAP_PRE_TREAT_STATE:
+						tarMap = map_pre_treatment_state;
+						break;
 					case EXPORT_MAP_PRE_TREAT_DURATION:
 						tarMap = map_pre_treatment_duration;
+						break;
+					case EXPORT_MAP_DEATH:
+						tarMap = map_life_table;
 						break;
 					default:
 						System.err.printf("exportRunnableTransmission: export file index of %d not defined.\n", eI);
@@ -638,6 +668,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int comparator = state_include;
 				int statePt = 0;
 
+				double[] co_inf_setting = null;
+				// Get dist parameters
+				for (int s = 0; s < param.length; s++) {
+					if (Double.isNaN(param[s])) {
+						co_inf_setting = Arrays.copyOfRange(param, s + 1, param.length);
+						param = Arrays.copyOf(param, s);
+						break;
+					}
+				}
 				while (comparator != 0) {
 					if ((comparator & 1) != 0) {
 						if (dist_tranmissionMatrix[inf_id][site_from][site_to] == null) {
@@ -657,6 +696,19 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					}
 					comparator = comparator >> 1;
 					statePt++;
+				}
+
+				// Co-infection multiplier
+				if (co_inf_setting != null) {
+					double[][] co_inf_entry = lookupTable_co_infect_multipler.get(inf_id);
+					if (co_inf_entry == null) {
+						co_inf_entry = new double[NUM_INF][];
+						lookupTable_co_infect_multipler.put(inf_id, co_inf_entry);
+					}
+					for (int cInf = 0; cInf < co_inf_setting.length; cInf += 4) {
+						co_inf_entry[(int) co_inf_setting[cInf]] = Arrays.copyOfRange(co_inf_setting, cInf + 1,
+								cInf + 4);
+					}
 				}
 
 			}
@@ -755,8 +807,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						cumul_p += cumul_prob[i];
 						cumul_prob[i + target_stages.length] = target_stages[i].intValue();
 					}
-				} else {
-					cumul_prob = new double[] { Double.NaN, target_stages[0].intValue() };
+				} else {										
+					cumul_prob = new double[] { Double.NaN, target_stages[0].doubleValue() };
 				}
 				lookupTable_infection_stage_path.put(key, cumul_prob);
 			}
@@ -1610,6 +1662,36 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 		}
 
+		// Co-infection multiplier
+		double[][] co_inf_multiplier = lookupTable_co_infect_multipler.get(inf_id);
+		if (co_inf_multiplier != null) {
+			int[] pids = new int[] { pid_inf_src, pid_inf_tar };
+			int[] sites = new int[] { src_site, tar_site };
+
+			for (int inf_id_co = 0; inf_id_co < NUM_INF; inf_id_co++) {
+				if (inf_id_co != inf_id && co_inf_multiplier[inf_id_co] != null) {
+					boolean hasCoInf = false;
+					int co_inf_stage = (int) co_inf_multiplier[inf_id_co][0];
+
+					for (int ppt = 0; ppt < pids.length && !hasCoInf; ppt++) {
+						int[][] inf_states = map_currrent_infection_stage.get(pids[ppt]);
+						if (inf_states != null) {
+							int inf_stage = inf_states[inf_id_co][sites[ppt]];
+							hasCoInf |= (inf_stage != AbstractIndividualInterface.INFECT_S
+									&& ((co_inf_stage & (1 << inf_stage)) != 0));
+						}
+					}
+
+					if (hasCoInf) {
+						prob *= co_inf_multiplier[inf_id_co][1] + RNG.nextDouble()
+								* (co_inf_multiplier[inf_id_co][2] - co_inf_multiplier[inf_id_co][1]);
+					}
+
+				}
+			}
+
+		}
+
 		return prob;
 	}
 
@@ -1639,6 +1721,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							map_pre_treatment_duration.put(pid, preTreatmentDur);
 						}
 						preTreatmentDur[infId][siteId] = infection_switch[infId][siteId] - currentTime;
+
+						int[][] preTreatmentState = map_pre_treatment_state.get(pid);
+						if (preTreatmentState == null) {
+							preTreatmentState = new int[NUM_INF][NUM_SITE];
+							map_pre_treatment_state.put(pid, preTreatmentState);
+						}
+						preTreatmentState[infId][siteId] = inf_stage[infId][siteId];
 
 						int nextStage = (int) test_treatment_properies[stage_inc_pt + 1];
 						inf_stage[infId][siteId] = nextStage;
@@ -2076,7 +2165,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						int stage_selected = stage_id[stage_pt];
 						int stage_duration = (int) Math
 								.ceil(dist_stage_period[infection_id][site_id][stage_selected].sample());
-						addInfectious(pid, infection_id, site_id, stage_selected, time, stage_duration/2);
+						addInfectious(pid, infection_id, site_id, stage_selected, time, stage_duration / 2);
 
 						num_inf--;
 						num_inf_added++;
@@ -2084,7 +2173,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 
 				if (print_progress != null && num_inf_added > 0) {
-					print_progress.printf("Time = %d. Infecte_setting=%s : Candidate = %d. # added = %d.\n", time,
+					print_progress.printf("Time = %d. Infection_setting=%s : Candidate = %d. # added = %d.\n", time,
 							Arrays.toString(inf_setting), candidate.size(), num_inf_added);
 				}
 
@@ -2227,11 +2316,26 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						break;
 					} else {
 						if (Double.isNaN(nextProb[0])) {
-							current_infection_stage = (int) nextProb[1];
+							if (current_infection_stage == (int) nextProb[1]) {
+								int[][] preTreatState = map_pre_treatment_state.get(pid);
+								if (preTreatState == null) {
+									System.err.printf(
+											"Warning! Pre treatment state for <Inf,Site,SwitchStage>= <%s> not found! Assume switch to INFECT_S.\n",
+											key);
+									current_infection_stage = AbstractIndividualInterface.INFECT_S;
+
+								} else {
+									current_infection_stage = preTreatState[infection_id][site_id];
+								}
+							} else {
+								current_infection_stage = (int) nextProb[1];
+							}
+
 							int[][] preTreatDur = map_pre_treatment_duration.get(pid);
 							if (preTreatDur == null) {
 								System.err.printf(
-										"Warning! Pre treatment duration for <Inf,Site,SwitchStage>= <%s> not found! Assume duration of 1 day.\n");
+										"Warning! Pre treatment duration for <Inf,Site,SwitchStage>= <%s> not found! Assume duration of 1 day.\n",
+										key);
 								infect_switch_time = current_time + 1;
 							} else {
 								infect_switch_time = current_time + preTreatDur[infection_id][site_id];
@@ -2245,7 +2349,23 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							current_infection_stage = (int) nextProb[nextProb.length / 2 + state_pt];
 
 							state_duration = dist_stage_period[infection_id][site_id][current_infection_stage].sample();
-							infect_switch_time = (int) Math.round(current_time + state_duration);
+
+							if (Double.isInfinite(state_duration) && state_duration < 0) {
+								// Infection death
+								// Key=PID, V=[[INF_ID, TIME_OF_ENTRY, TIME_OF_EXIT, TIME_OF_DEATH]]
+								String[] popEnt = pop_stat.get(pid);
+								int[][] death_info = new int[][] { new int[] { infection_id,
+										Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]),
+										Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]),
+										current_time } };
+								popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = Integer
+										.toString(current_time);
+								map_life_table.put(pid, death_info);
+
+							} else {
+
+								infect_switch_time = (int) Math.round(current_time + state_duration);
+							}
 
 						}
 

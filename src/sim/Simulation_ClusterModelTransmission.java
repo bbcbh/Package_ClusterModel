@@ -92,6 +92,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String FILENAME_VACCINE_COVERAGE = "Vaccine_coverage_%d_%d.csv";
 	public static final String FILENAME_VACCINE_COVERAGE_PERSON = "Vaccine_coverage_Person_%d_%d.csv";
 	public static final String FILENAME_NON_MAPPED_ENCOUNTER = "Non_mapped_encounter_%d_%d.csv";
+	public static final String FILENAME_LIFE_TABLE = "Life_table_%d_%d.csv";
 
 	public static final String FILENAME_INDEX_CASE_LIST_ZIP = FILENAME_INDEX_CASE_LIST.replaceFirst("_%d", "") + ".7z";
 	public static final String FILENAME_PREVALENCE_SITE_ZIP = FILENAME_PREVALENCE_SITE.replaceFirst("_%d", "") + ".7z";
@@ -118,6 +119,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			+ ".7z";
 	public static final String FILENAME_VACCINE_COVERAGE_PERSON_ZIP = FILENAME_VACCINE_COVERAGE_PERSON
 			.replaceFirst("_%d", "") + ".7z";
+	public static final String FILENAME_LIFE_TABLE_ZIP = FILENAME_LIFE_TABLE.replaceFirst("_%d", "") + ".7z";
 
 	public static final String FILENAME_PRE_ALLOCATE_RISK_GRP = "RiskGrp_Map_%d.csv";
 	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_PID = 0;
@@ -1479,7 +1481,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
 			zipSelectedOutputs(FILENAME_INDEX_CASE_LIST.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_INDEX_CASE_LIST_ZIP, baseContactMapSeed));
-
+			
+			zipSelectedOutputs(FILENAME_LIFE_TABLE_ZIP.replaceFirst("%d", Long.toString(baseContactMapSeed)),
+					String.format(FILENAME_LIFE_TABLE_ZIP, baseContactMapSeed));
+			
+			
 			if ((simSetting & 1 << SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 				zipSelectedOutputs(FILENAME_PREVALENCE_SITE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 						String.format(FILENAME_PREVALENCE_SITE_ZIP, baseContactMapSeed));

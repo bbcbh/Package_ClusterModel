@@ -46,6 +46,29 @@ public class Runnable_ClusterModel_Jakarta extends Runnable_ClusterModel_MultiTr
 		HashMap<Integer, int[]> countMap;
 		String filePrefix = this.getRunnableId() == null ? "" : this.getRunnableId();
 
+		// Print death table
+		try {
+			fileName = String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_LIFE_TABLE, cMAP_SEED,
+					sIM_SEED);
+			PrintWriter pWri = new PrintWriter(new java.io.File(baseDir, fileName));
+			pWri.println("PID,INF_ID,TIME_OF_ENTRY,TIME_OF_EXIT,TIME_OF_DEATH");
+			for (Integer pid : map_life_table.keySet()) {
+				// Key=PID, V=[[INF_ID, TIME_OF_ENTRY, TIME_OF_EXIT,TIME_OF_DEATH]]
+				pWri.print(pid);
+
+				int[] vals = map_life_table.get(pid)[0];
+				for (int val : vals) {
+					pWri.print(',');
+					pWri.print(val);
+				}
+				pWri.println();
+			}			
+			pWri.close();
+			
+		} catch (IOException e) {
+			e.printStackTrace(System.err);
+		}
+
 		if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 			key = String.format(SIM_OUTPUT_KEY_CUMUL_TREATMENT,
 					Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE);
