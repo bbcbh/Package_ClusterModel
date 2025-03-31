@@ -2082,41 +2082,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		
 		all_vertex = getCurrentPopulationPId(time); // bASE_CONTACT_MAP.vertexSet().toArray(new
 												    // Integer[bASE_CONTACT_MAP.vertexSet().size()]);
-		//Arrays.sort(all_vertex);
-
-		//Fliter those who are not in partnership
-		
-		if (cMap == null) {
-			try {
-				ArrayList<Integer> hasContact = new ArrayList<>();
-				for (File cMapFile : contactMap_files) {
-					BufferedReader reader = new BufferedReader(new FileReader(cMapFile));
-					String line;
-					int timeLimit = 0;
-					while ((line = reader.readLine()) != null && timeLimit <= time) {
-						String[] edge = line.split(",");
-						int e_start = Integer.parseInt(edge[CONTACT_MAP_EDGE_START_TIME]);
-						int e_end = Integer.parseInt(edge[CONTACT_MAP_EDGE_DURATION]) + e_start;
-						if (e_start <= time && time < e_end) {
-							for (int p : new int[] { CONTACT_MAP_EDGE_P1, CONTACT_MAP_EDGE_P2 }) {
-								int pid = Integer.parseInt(edge[p]);																
-								int k = Collections.binarySearch(hasContact, pid);
-								if (k < 0) {
-									hasContact.add(~k, pid);
-								}
-							}
-						}
-						timeLimit = e_start;
-
-					}
-					reader.close();
-				}			
-				all_vertex = hasContact.toArray(new Integer[0]);
-			} catch (IOException ex) {
-				ex.printStackTrace(System.err);
-			}
-
-		}
+		Arrays.sort(all_vertex);
 
 		for (int[] inf_setting : num_infected) {
 
