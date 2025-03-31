@@ -719,7 +719,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		String[] edgeSp;
 		Integer[] add_e;
 		ArrayList<Integer[]> addedEdges = new ArrayList<>();
-		int numEdgeAdded = 0;
+		int numEdgeAdded = 0;				
 
 		if (contactMap_nextString[mapNumber] != null) {
 			edgeSp = contactMap_nextString[mapNumber].split(",");
@@ -733,10 +733,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				if (addSelectiveEdge(included_pids, add_e)) {
 					addPartnership(cMap, add_e);
 					addedEdges.add(add_e);
-					numEdgeAdded++;
-					contactMap_nextString[mapNumber] = null;
+					numEdgeAdded++;					
 				}
-			}
+				contactMap_nextString[mapNumber] = null;
+			}						
 		}
 
 		// Reading next set of edges

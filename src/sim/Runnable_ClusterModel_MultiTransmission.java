@@ -209,6 +209,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	// Output setting
 	protected static final int STAGE_ID_JUST_INFECTED = Integer.MIN_VALUE;
+	protected static final int STAGE_ID_DEATH = Integer.MAX_VALUE;
 
 	public static final String SIM_OUTPUT_KEY_INFECTIOUS_GENDER_COUNT = "Output_%d_Gender_Count";
 	public static final String SIM_OUTPUT_KEY_INFECTED_AT_GENDER_COUNT = "Output_%d_Infected_At_By_Gender";
@@ -1107,6 +1108,22 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// = 1 if p1s1 -> p2s2, e.g. p1 insertive, or if the site is the same
 		// = 2 if p2s1 -> p1s2 e.g. p2 insertive
 
+		HashMap<Integer, ArrayList<Integer>> pid_remove_at = new HashMap<>();
+
+		// Default removal time
+		for (Integer pid : pop_stat.keySet()) {
+			int exitTime = exitPopAt(pid);
+			ArrayList<Integer> rm_today = pid_remove_at.get(exitTime);
+			if (rm_today == null) {
+				rm_today = new ArrayList<>();
+				pid_remove_at.put(exitTime, rm_today);
+			}
+			int pt = Collections.binarySearch(rm_today, pid);
+			if (pt < 0) {
+				rm_today.add(~pt, pid);
+			}
+		}
+
 		// For timing stat
 		long tic = System.currentTimeMillis();
 		long debug_time_test = 0, debug_time_inf = 0, debug_time_cMap = 0;
@@ -1145,13 +1162,51 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								for (Integer pid : state_change_pids) {
 									int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
 									int[][] infection_state_switch = map_infection_stage_switch.get(pid);
+
 									updateInfectionStage(pid, inf_id, site_id, current_stage_arr[inf_id][site_id],
 											currentTime, current_stage_arr, infection_state_switch, 0);
+
+									// Adjusted removal time
+									if (currentTime == exitPopAt(pid)) {
+										ArrayList<Integer> rm_today = pid_remove_at.get(currentTime);
+										if (rm_today == null) {
+											rm_today = new ArrayList<>();
+											pid_remove_at.put(currentTime, rm_today);
+										}
+										int pt = Collections.binarySearch(rm_today, pid);
+										if (pt < 0) {
+											rm_today.add(~pt, pid);
+										}
+									}
 
 								}
 							}
 						}
 					}
+				}
+			}
+
+			// Remove expired
+			ArrayList<Integer> rm_today = pid_remove_at.remove(currentTime);
+			if (rm_today != null) {
+				for (Integer pid : rm_today) {
+					int[][] stat = map_currrent_infection_stage.get(pid);
+					if (stat != null) {
+						for (String inf_site_key : map_currently_infectious.keySet()) {
+							ArrayList<Integer> inf_ent = map_currently_infectious.get(inf_site_key);
+							int d_pt = Collections.binarySearch(inf_ent, pid);
+							if (d_pt >= 0) {
+								inf_ent.remove(d_pt);
+							}
+						}
+					} else {
+						stat = new int[NUM_INF][NUM_SITE];
+						map_currrent_infection_stage.put(pid, stat);
+					}
+					for (int[] stat_inf : stat) {
+						Arrays.fill(stat_inf, STAGE_ID_DEATH);
+					}
+
 				}
 			}
 
@@ -1346,10 +1401,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					int pid = Math.abs(testing_stat[0]);
 					int infIncl = testing_stat[1];
 					int siteIncl = testing_stat[2];
-					testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
-					// Schedule next test
-					if (testing_stat[0] > 0) {
-						scheduleNextTest(pid, currentTime, infIncl, siteIncl);
+					if (currentTime < exitPopAt(pid)) {
+						testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
+						// Schedule next test
+						if (testing_stat[0] > 0) {
+							scheduleNextTest(pid, currentTime, infIncl, siteIncl);
+						}
 					}
 
 				} // End of testing for single individual
@@ -1538,9 +1595,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								System.currentTimeMillis());
 
 						print_progress.printf(
-								"T=%d, CMAP={%d,%d}" + ", # edge_added = %d, time_edge_added = %.3f"
+								"T=%d, CMAP={%d,%d}"
+										+ ", Current pop size =%d, # edge_added = %d, time_edge_added = %.3f"
 										+ ", # inf added = %d,  time inf = %.3f" + ", # test = %d, time_test = %.3fs\n",
-								currentTime, cMap.vertexSet().size(), cMap.edgeSet().size(), debug_num_edge_add,
+								currentTime, cMap.vertexSet().size(), cMap.edgeSet().size(),
+								getCurrentPopulationPId(currentTime).length, debug_num_edge_add,
 								debug_time_cMap / 1000f, debug_num_new_inf, debug_time_inf / 1000f, debug_num_test,
 								debug_time_test / 1000f);
 
@@ -2019,9 +2078,45 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 		}
 
-		Integer[] all_vertex = getCurrentPopulationPId(time); // bASE_CONTACT_MAP.vertexSet().toArray(new
-																// Integer[bASE_CONTACT_MAP.vertexSet().size()]);
-		Arrays.sort(all_vertex);
+		Integer[] all_vertex;
+		
+		all_vertex = getCurrentPopulationPId(time); // bASE_CONTACT_MAP.vertexSet().toArray(new
+												    // Integer[bASE_CONTACT_MAP.vertexSet().size()]);
+		//Arrays.sort(all_vertex);
+
+		//Fliter those who are not in partnership
+		
+		if (cMap == null) {
+			try {
+				ArrayList<Integer> hasContact = new ArrayList<>();
+				for (File cMapFile : contactMap_files) {
+					BufferedReader reader = new BufferedReader(new FileReader(cMapFile));
+					String line;
+					int timeLimit = 0;
+					while ((line = reader.readLine()) != null && timeLimit <= time) {
+						String[] edge = line.split(",");
+						int e_start = Integer.parseInt(edge[CONTACT_MAP_EDGE_START_TIME]);
+						int e_end = Integer.parseInt(edge[CONTACT_MAP_EDGE_DURATION]) + e_start;
+						if (e_start <= time && time < e_end) {
+							for (int p : new int[] { CONTACT_MAP_EDGE_P1, CONTACT_MAP_EDGE_P2 }) {
+								int pid = Integer.parseInt(edge[p]);																
+								int k = Collections.binarySearch(hasContact, pid);
+								if (k < 0) {
+									hasContact.add(~k, pid);
+								}
+							}
+						}
+						timeLimit = e_start;
+
+					}
+					reader.close();
+				}			
+				all_vertex = hasContact.toArray(new Integer[0]);
+			} catch (IOException ex) {
+				ex.printStackTrace(System.err);
+			}
+
+		}
 
 		for (int[] inf_setting : num_infected) {
 
@@ -2115,10 +2210,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int stage_inc = inf_setting[SEED_INFECTION_EXTRA_STAGE_INC];
 				int num_inf = inf_setting[SEED_INFECTION_EXTRA_NUM_INF];
 
-				candidate.clear();
-				Integer[] candidateList = getCurrentPopulationPId(time);
+				candidate.clear();				
 
-				for (Integer pid : candidateList) {
+				for (Integer pid : all_vertex) {
 					int candidate_gender = getGenderType(pid);
 					if ((gender_inc & 1 << candidate_gender) != 0) {
 						int[][] candidate_inf_state = map_currrent_infection_stage.get(pid);
@@ -2266,145 +2360,141 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		double state_duration;
 		int infect_switch_time = current_time;
 
-		if (current_infection_stage == STAGE_ID_JUST_INFECTED) {
-			String key = String.format("%d,%d,%d", infection_id, site_id, STAGE_ID_JUST_INFECTED);
-			ArrayList<double[]> optionsArr = lookupTable_instant_stage_switch.get(key);
-			if (optionsArr != null) {
-				int riskGrp = risk_cat_map.get(pid);
-				for (double[] options : optionsArr) {
-					if (current_infection_stage != STAGE_ID_JUST_INFECTED) {
-						break;
-					}
-					int riskGrpInc = (int) options[FIELD_STAGE_PERIOD_INSTANT_RISKGRP_INC];
-					if ((riskGrpInc & 1 << riskGrp) != 0) {
-						current_infection_stage = (int) options[FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START];
-						if (FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START + 1 < options.length) {
-							// More than one option
-							int numPossibleStage = (options.length - FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START)
-									/ 2;
-							int opPt = Arrays.binarySearch(options,
-									FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START + numPossibleStage, options.length,
-									RNG.nextDouble());
-							if (opPt < 0) {
-								opPt = ~opPt;
-							}
-							current_infection_stage = (int) options[opPt - numPossibleStage];
+		if (current_stage_arr[infection_id][site_id] != STAGE_ID_DEATH) {
+			if (current_infection_stage == STAGE_ID_JUST_INFECTED) {
+				String key = String.format("%d,%d,%d", infection_id, site_id, STAGE_ID_JUST_INFECTED);
+				ArrayList<double[]> optionsArr = lookupTable_instant_stage_switch.get(key);
+				if (optionsArr != null) {
+					int riskGrp = risk_cat_map.get(pid);
+					for (double[] options : optionsArr) {
+						if (current_infection_stage != STAGE_ID_JUST_INFECTED) {
+							break;
 						}
+						int riskGrpInc = (int) options[FIELD_STAGE_PERIOD_INSTANT_RISKGRP_INC];
+						if ((riskGrpInc & 1 << riskGrp) != 0) {
+							current_infection_stage = (int) options[FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START];
+							if (FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START + 1 < options.length) {
+								// More than one option
+								int numPossibleStage = (options.length - FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START)
+										/ 2;
+								int opPt = Arrays.binarySearch(options,
+										FIELD_STAGE_PERIOD_INSTANT_STAGE_OPTIONS_START + numPossibleStage,
+										options.length, RNG.nextDouble());
+								if (opPt < 0) {
+									opPt = ~opPt;
+								}
+								current_infection_stage = (int) options[opPt - numPossibleStage];
+							}
 
+						}
 					}
 				}
-			}
-			if (current_infection_stage == STAGE_ID_JUST_INFECTED) {
-				// Default to first stage
-				current_infection_stage = 0;
-			}
+				if (current_infection_stage == STAGE_ID_JUST_INFECTED) {
+					// Default to first stage
+					current_infection_stage = 0;
+				}
 
-			infect_switch_time = addInfectious(pid, infection_id, site_id, current_infection_stage, current_time,
-					(int) dist_stage_period[infection_id][site_id][current_infection_stage].sample());
+				infect_switch_time = addInfectious(pid, infection_id, site_id, current_infection_stage, current_time,
+						(int) dist_stage_period[infection_id][site_id][current_infection_stage].sample());
 
-		} else {
-			if (state_duration_preset <= 0) {
-				while (infect_switch_time == current_time) {
-					String key = String.format("%d,%d,%d", infection_id, site_id, current_infection_stage);
-					double[] nextProb = lookupTable_infection_stage_path.get(key);
-					if (nextProb == null) {
-						// No next stage - return to susceptible
-						int[] infect_switch_outcome = handleNoNextStage(pid, infection_id, site_id,
-								current_infection_stage, current_time);
+			} else {
+				if (state_duration_preset <= 0) {
+					while (infect_switch_time == current_time) {
+						String key = String.format("%d,%d,%d", infection_id, site_id, current_infection_stage);
+						double[] nextProb = lookupTable_infection_stage_path.get(key);
+						if (nextProb == null) {
+							// No next stage - return to susceptible
+							int[] infect_switch_outcome = handleNoNextStage(pid, infection_id, site_id,
+									current_infection_stage, current_time);
 
-						current_infection_stage = infect_switch_outcome[0];
-						infect_switch_time = infect_switch_outcome[1];
+							current_infection_stage = infect_switch_outcome[0];
+							infect_switch_time = infect_switch_outcome[1];
 
-						break;
-					} else {
-						if (Double.isNaN(nextProb[0])) {
-							if (current_infection_stage == (int) nextProb[1]) {
-								int[][] preTreatState = map_pre_treatment_state.get(pid);
-								if (preTreatState == null) {
-									System.err.printf(
-											"Warning! Pre treatment state for <Inf,Site,SwitchStage>= <%s> not found! Assume switch to INFECT_S.\n",
-											key);
-									current_infection_stage = AbstractIndividualInterface.INFECT_S;
-
-								} else {
-									current_infection_stage = preTreatState[infection_id][site_id];
-								}
-							} else {
-								current_infection_stage = (int) nextProb[1];
-							}
-
-							int[][] preTreatDur = map_pre_treatment_duration.get(pid);
-							if (preTreatDur == null) {
-								System.err.printf(
-										"Warning! Pre treatment duration for <Inf,Site,SwitchStage>= <%s> not found! Assume duration of 1 day.\n",
-										key);
-								infect_switch_time = current_time + 1;
-							} else {
-								infect_switch_time = current_time + preTreatDur[infection_id][site_id];
-
-							}
+							break;
 						} else {
-							int state_pt = Arrays.binarySearch(nextProb, 0, nextProb.length / 2, RNG.nextDouble());
-							if (state_pt <= 0) {
-								state_pt = ~state_pt;
-							}
-							current_infection_stage = (int) nextProb[nextProb.length / 2 + state_pt];
+							if (Double.isNaN(nextProb[0])) {
+								if (current_infection_stage == (int) nextProb[1]) {
+									int[][] preTreatState = map_pre_treatment_state.get(pid);
+									if (preTreatState == null) {
+										System.err.printf(
+												"Warning! Pre treatment state for <Inf,Site,SwitchStage>= <%s> not found! Assume switch to INFECT_S.\n",
+												key);
+										current_infection_stage = AbstractIndividualInterface.INFECT_S;
 
-							state_duration = dist_stage_period[infection_id][site_id][current_infection_stage].sample();
-
-							if (Double.isInfinite(state_duration) && state_duration < 0) {
-								// Infection death
-								// Key=PID, V=[[INF_ID, TIME_OF_ENTRY, TIME_OF_EXIT, TIME_OF_DEATH]]
-								String[] popEnt = pop_stat.get(pid);
-
-								if (Integer.parseInt(
-										popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]) >= current_time) {
-									
-									// Only applicable if death occurs before population exit 
-									
-									int[][] death_info = new int[][] { new int[] { infection_id,
-											Integer.parseInt(
-													popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]),
-											Integer.parseInt(
-													popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]),
-											current_time } };
-									map_life_table.put(pid, death_info);
+									} else {
+										current_infection_stage = preTreatState[infection_id][site_id];
+									}
+								} else {
+									current_infection_stage = (int) nextProb[1];
 								}
 
-								popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = Integer
-										.toString(current_time);
+								int[][] preTreatDur = map_pre_treatment_duration.get(pid);
+								if (preTreatDur == null) {
+									System.err.printf(
+											"Warning! Pre treatment duration for <Inf,Site,SwitchStage>= <%s> not found! Assume duration of 1 day.\n",
+											key);
+									infect_switch_time = current_time + 1;
+								} else {
+									infect_switch_time = current_time + preTreatDur[infection_id][site_id];
 
-								// Remove from infectious
-								int[][] stat = map_currrent_infection_stage.get(pid);
-								for (int[] stat_inf : stat) {
-									Arrays.fill(stat_inf, Integer.MAX_VALUE);
 								}
+							} else {
+								int state_pt = Arrays.binarySearch(nextProb, 0, nextProb.length / 2, RNG.nextDouble());
+								if (state_pt <= 0) {
+									state_pt = ~state_pt;
+								}
+								current_infection_stage = (int) nextProb[nextProb.length / 2 + state_pt];
 
-								for (String inf_site_key : map_currently_infectious.keySet()) {
-									ArrayList<Integer> inf_ent = map_currently_infectious.get(inf_site_key);
-									int d_pt = Collections.binarySearch(inf_ent, pid);
-									if (d_pt >= 0) {
-										inf_ent.remove(d_pt);
+								state_duration = dist_stage_period[infection_id][site_id][current_infection_stage]
+										.sample();
+
+								if ((Double.isInfinite(state_duration) && state_duration < 0)
+										|| current_infection_stage == STAGE_ID_DEATH) {
+									// Infection death
+									// Key=PID, V=[[INF_ID, TIME_OF_ENTRY, TIME_OF_EXIT, TIME_OF_DEATH]]
+									String[] popEnt = pop_stat.get(pid);
+									if (current_time <= exitPopAt(pid)) {
+										// Only applicable if death occurs before population exit
+										int[][] death_info = new int[][] { new int[] { infection_id,
+												Integer.parseInt(
+														popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]),
+												Integer.parseInt(
+														popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]),
+												current_time } };
+										map_life_table.put(pid, death_info);
 									}
 
+									popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = Integer
+											.toString(current_time);
+
+									int[][] stat = map_currrent_infection_stage.get(pid);
+									for (int[] stat_inf : stat) {
+										Arrays.fill(stat_inf, STAGE_ID_DEATH);
+									}
+									infect_switch_time = Integer.MAX_VALUE;
+
+								} else {
+									infect_switch_time = (int) Math.round(current_time + state_duration);
 								}
 
-							} else {
-								infect_switch_time = (int) Math.round(current_time + state_duration);
 							}
 
 						}
-
 					}
+				} else {
+					infect_switch_time = current_time + state_duration_preset;
 				}
-			} else {
-				infect_switch_time = current_time + state_duration_preset;
 			}
+		}
+		// Disease induced death
+		if (current_stage_arr[infection_id][site_id] == STAGE_ID_DEATH) {
+			current_infection_stage = STAGE_ID_DEATH;
+			infect_switch_time = Integer.MAX_VALUE;
+			;
 		}
 
 		// Update state_switch map
 		current_stage_arr[infection_id][site_id] = current_infection_stage;
-
 		if (infection_state_switch[infection_id][site_id] != infect_switch_time) {
 			int org_switch = infection_state_switch[infection_id][site_id];
 			infection_state_switch[infection_id][site_id] = infect_switch_time;
