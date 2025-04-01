@@ -608,17 +608,26 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	@Override
 	public void refreshField(int fieldId, boolean clearAll) {
-		refreshField(fieldId, Integer.MAX_VALUE, clearAll);
+		refreshField(fieldId, Integer.MAX_VALUE, clearAll, null);
 
 	}
 
-	public void refreshField(int fieldId, int currentTime, boolean clearAll) {
+	public void refreshField(int fieldId, int currentTime, boolean clearAll, String orginal_field) {
 		double[][] field = null;
 
 		try {
 			field = (double[][]) getRunnable_fields()[fieldId];
 		} catch (ClassCastException ex) {
 			field = null;
+		}
+
+		double[][] org_field = null;
+		if (orginal_field != null) {
+			try {
+				org_field = (double[][]) util.PropValUtils.propStrToObject(orginal_field, double[][].class);
+			} catch (ClassCastException ex) {
+				org_field = null;
+			}
 		}
 
 		// Reset runnable field
@@ -895,97 +904,103 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 				for (int tType_pt = 0; tType_pt < testRateDefs.length; tType_pt++) {
 					double[] testRateDef = testRateDefs[tType_pt];
-					// FORMAT: {Cumul_Prob_0, Cummul_Prob_1, .... test_gap_time_0, test_gap_time_1,
-					// test_gap_time_2..}
-					int cumul_end_index = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START
-							+ ((testRateDef.length - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START) - 1)
-									/ 2;
 
-					HashMap<Integer, Integer> test_pt_target = new HashMap<>();
-					double preProb = 0;
-					int num_tar_total = 0;
+					if (org_field == null || !Arrays.equals(testRateDef, org_field[tType_pt])) {
 
-					for (int test_pt_ind = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START; test_pt_ind < cumul_end_index; test_pt_ind++) {
-						int num_target = (int) Math.round(testPopSize * (testRateDef[test_pt_ind] - preProb));
-						test_pt_target.put(
-								cumul_end_index
-										+ (test_pt_ind - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START),
-								num_target);
-						num_tar_total += num_target;
-						preProb = testRateDef[test_pt_ind];
-					}
+						// FORMAT: {Cumul_Prob_0, Cummul_Prob_1, .... test_gap_time_0, test_gap_time_1,
+						// test_gap_time_2..}
+						int cumul_end_index = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START
+								+ ((testRateDef.length - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START)
+										- 1) / 2;
 
-					// Round off to same pop size
-					while (num_tar_total != testPopSize) {
-						int test_pt_ind = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + rng_test
-								.nextInt(cumul_end_index - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START);
-						int test_min_pt = cumul_end_index
-								+ (test_pt_ind - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START);
+						HashMap<Integer, Integer> test_pt_target = new HashMap<>();
+						double preProb = 0;
+						int num_tar_total = 0;
 
-						int num_target_ent = test_pt_target.get(test_min_pt);
-
-						if (num_tar_total > testPopSize && num_target_ent > 0) {
-							test_pt_target.put(test_min_pt, num_target_ent - 1);
-							num_tar_total--;
-						} else if (num_tar_total < testPopSize) {
-							test_pt_target.put(test_min_pt, num_target_ent + 1);
-							num_tar_total++;
+						for (int test_pt_ind = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START; test_pt_ind < cumul_end_index; test_pt_ind++) {
+							int num_target = (int) Math.round(testPopSize * (testRateDef[test_pt_ind] - preProb));
+							test_pt_target.put(cumul_end_index
+									+ (test_pt_ind - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START),
+									num_target);
+							num_tar_total += num_target;
+							preProb = testRateDef[test_pt_ind];
 						}
 
-					}
+						// Round off to same pop size
+						while (num_tar_total != testPopSize) {
+							int test_pt_ind = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START
+									+ rng_test.nextInt(cumul_end_index
+											- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START);
+							int test_min_pt = cumul_end_index
+									+ (test_pt_ind - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START);
 
-					// Re-adjust number of entries in each group based on target
-					ArrayList<Integer> testPt_excess = new ArrayList<>();
-					ArrayList<Integer> testPt_request = new ArrayList<>();
-					for (int test_pt_ind = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START; test_pt_ind < cumul_end_index; test_pt_ind++) {
-						int test_min_pt = cumul_end_index
-								+ (test_pt_ind - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START);
-						int num_target = test_pt_target.get(test_min_pt);
-						int num_actual = existMap.get(String.format("%d,%d", tType_pt, test_min_pt)).size();
-						int diff = num_actual - num_target;
-						ArrayList<Integer> placement = null;
-						if (diff > 0) {
-							placement = testPt_excess;
-						} else if (diff < 0) {
-							placement = testPt_request;
+							int num_target_ent = test_pt_target.get(test_min_pt);
+
+							if (num_tar_total > testPopSize && num_target_ent > 0) {
+								test_pt_target.put(test_min_pt, num_target_ent - 1);
+								num_tar_total--;
+							} else if (num_tar_total < testPopSize) {
+								test_pt_target.put(test_min_pt, num_target_ent + 1);
+								num_tar_total++;
+							}
+
 						}
 
-						int pt = Collections.binarySearch(placement, test_min_pt);
-						placement.add(~pt, test_min_pt);
-					}
-
-					while (testPt_excess.size() > 0) {
-						int excess_test_pt = rng_test.nextInt(testPt_excess.size());
-						int request_test_pt = rng_test.nextInt(testPt_request.size());
-
-						int init_testPt = testPt_excess.get(excess_test_pt);
-						int moved_testPt = testPt_request.get(request_test_pt);
-
-						ArrayList<Integer> candidates_from = existMap
-								.get(String.format("%d,%d", tType_pt, init_testPt));
-						ArrayList<Integer> candidate_to = existMap.get(String.format("%d,%d", tType_pt, moved_testPt));
-
-						int moveGrp_pid = candidates_from.remove(rng_test.nextInt(candidates_from.size()));
-						candidate_to.add(moveGrp_pid);
-
-						HashMap<Integer, Integer> testTypeMap = test_rate_index_map.get(moveGrp_pid);
-						testTypeMap.put(tType_pt, moved_testPt);
-
-						scheduleNextTest(moveGrp_pid, currentTime,
-								(int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX],
-								(int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX]);
-
-						// Reset excess and request array
-						for (int test_pt_ind : new int[] { init_testPt, moved_testPt }) {
-							int num_target = test_pt_target.get(test_pt_ind);
-							int num_actual = existMap.get(String.format("%d,%d", tType_pt, test_pt_ind)).size();
+						// Re-adjust number of entries in each group based on target
+						ArrayList<Integer> testPt_excess = new ArrayList<>();
+						ArrayList<Integer> testPt_request = new ArrayList<>();
+						for (int test_pt_ind = FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START; test_pt_ind < cumul_end_index; test_pt_ind++) {
+							int test_min_pt = cumul_end_index
+									+ (test_pt_ind - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START);
+							int num_target = test_pt_target.get(test_min_pt);
+							int num_actual = existMap.get(String.format("%d,%d", tType_pt, test_min_pt)).size();
 							int diff = num_actual - num_target;
-
 							ArrayList<Integer> placement = null;
-							if (diff == 0) {
-								placement = test_pt_ind == init_testPt ? testPt_excess : testPt_request;
-								int pt = Collections.binarySearch(placement, test_pt_ind);
-								placement.remove(pt);
+							if (diff > 0) {
+								placement = testPt_excess;
+							} else if (diff < 0) {
+								placement = testPt_request;
+							}
+
+							int pt = Collections.binarySearch(placement, test_min_pt);
+							placement.add(~pt, test_min_pt);
+						}
+
+						while (testPt_excess.size() > 0) {
+							int excess_test_pt = rng_test.nextInt(testPt_excess.size());
+							int request_test_pt = rng_test.nextInt(testPt_request.size());
+
+							int init_testPt = testPt_excess.get(excess_test_pt);
+							int moved_testPt = testPt_request.get(request_test_pt);
+
+							ArrayList<Integer> candidates_from = existMap
+									.get(String.format("%d,%d", tType_pt, init_testPt));
+							ArrayList<Integer> candidate_to = existMap
+									.get(String.format("%d,%d", tType_pt, moved_testPt));
+
+							int moveGrp_pid = candidates_from.remove(rng_test.nextInt(candidates_from.size()));
+							candidate_to.add(moveGrp_pid);
+
+							HashMap<Integer, Integer> testTypeMap = test_rate_index_map.get(moveGrp_pid);
+							testTypeMap.put(tType_pt, moved_testPt);
+
+							scheduleNextTest(moveGrp_pid, currentTime,
+									(int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX],
+									(int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX]);
+
+							// Reset excess and request array
+							for (int test_pt_ind : new int[] { init_testPt, moved_testPt }) {
+								int num_target = test_pt_target.get(test_pt_ind);
+								int num_actual = existMap.get(String.format("%d,%d", tType_pt, test_pt_ind)).size();
+								int diff = num_actual - num_target;
+
+								ArrayList<Integer> placement = null;
+								if (diff == 0) {
+									placement = test_pt_ind == init_testPt ? testPt_excess : testPt_request;
+									int pt = Collections.binarySearch(placement, test_pt_ind);
+									placement.remove(pt);
+								}
+
 							}
 
 						}
@@ -1141,9 +1156,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					if (fieldId < 0) {
 						loadNonRunnableFieldSetting(switch_index, str_obj, currentTime);
 					} else {
+						String org_field = PropValUtils.objectToPropStr(getRunnable_fields()[fieldId],
+								getRunnable_fields()[fieldId].getClass());
 						getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
 								getRunnable_fields()[fieldId].getClass());
-						refreshField(fieldId, currentTime, false);
+						refreshField(fieldId, currentTime, false, org_field);
 					}
 				}
 				switchTimeIndex++;
@@ -2079,9 +2096,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 
 		Integer[] all_vertex;
-		
+
 		all_vertex = getCurrentPopulationPId(time); // bASE_CONTACT_MAP.vertexSet().toArray(new
-												    // Integer[bASE_CONTACT_MAP.vertexSet().size()]);
+													// Integer[bASE_CONTACT_MAP.vertexSet().size()]);
 		Arrays.sort(all_vertex);
 
 		for (int[] inf_setting : num_infected) {
@@ -2176,7 +2193,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int stage_inc = inf_setting[SEED_INFECTION_EXTRA_STAGE_INC];
 				int num_inf = inf_setting[SEED_INFECTION_EXTRA_NUM_INF];
 
-				candidate.clear();				
+				candidate.clear();
 
 				for (Integer pid : all_vertex) {
 					int candidate_gender = getGenderType(pid);
