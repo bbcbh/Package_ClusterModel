@@ -966,7 +966,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							placement.add(~pt, test_min_pt);
 						}
 
-						while (testPt_excess.size() > 0) {
+						while (testPt_excess.size() > 0 && testPt_request.size() > 0) {
 							int excess_test_pt = rng_test.nextInt(testPt_excess.size());
 							int request_test_pt = rng_test.nextInt(testPt_request.size());
 
@@ -984,7 +984,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							HashMap<Integer, Integer> testTypeMap = test_rate_index_map.get(moveGrp_pid);
 							testTypeMap.put(tType_pt, moved_testPt);
 
-							scheduleNextTest(moveGrp_pid, currentTime,
+							scheduleNextTest(moveGrp_pid, currentTime, -1,
 									(int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX],
 									(int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX]);
 
@@ -1102,8 +1102,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				// Schedule test for pop
 				for (Integer pid : pop_stat.keySet()) {
 					String[] popEnt = pop_stat.get(pid);
-					scheduleNextTest(pid, Integer
-							.parseInt(popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_ENTER_POP_AT]));
+					scheduleNextTest(pid,
+							Integer.parseInt(
+									popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_ENTER_POP_AT]),
+							Integer.parseInt(
+									popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_EXIT_POP_AT]));
 				}
 			}
 			// End of schedule test
@@ -1422,7 +1425,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
 						// Schedule next test
 						if (testing_stat[0] > 0) {
-							scheduleNextTest(pid, currentTime, infIncl, siteIncl);
+							scheduleNextTest(pid, currentTime, -1, infIncl, siteIncl);
 						}
 					}
 
@@ -1902,10 +1905,16 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	}
 
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
-		scheduleNextTest(personId, lastTestTime, -1, -1);
+		scheduleNextTest(personId, lastTestTime, -1, -1, -1);
 	}
 
-	public void scheduleNextTest(Integer personId, int lastTestTime, int last_test_infIncl, int last_test_siteIncl) {
+	public void scheduleNextTest(Integer personId, int lastTestTime, int mustTestBefore) {
+		scheduleNextTest(personId, lastTestTime, mustTestBefore, -1, -1);
+	}
+
+	public void scheduleNextTest(Integer personId, int lastTestTime, int mustTestBefore, int last_test_infIncl,
+			int last_test_siteIncl) {
+
 		int riskCat;
 		if (risk_cat_map.containsKey(personId)) {
 			riskCat = risk_cat_map.get(personId);
@@ -1966,8 +1975,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					if (!Double.isInfinite(testRateDef[test_pt])) {
 						int nextTestAfter = (int) (testRateDef[test_pt + 1]
 								+ RNG.nextInt((int) testRateDef[test_pt] - (int) testRateDef[test_pt + 1]));
-
 						int nextTestDate = lastTestTime + nextTestAfter;
+						if (mustTestBefore > lastTestTime && nextTestDate >= mustTestBefore) {
+							nextTestDate = lastTestTime + RNG.nextInt(mustTestBefore - lastTestTime);
+						}
 
 						if (nextTestDate < exitPopAt(personId)) {
 							ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
@@ -1996,6 +2007,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								int[] org_pair = day_sch.get(pt_t);
 								org_pair[1] |= iIncl;
 							}
+
 						}
 					}
 				}
@@ -2341,7 +2353,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			int current_time, int[][] current_stage_arr, int[][] infection_state_switch, int state_duration_preset) {
 		int pt;
 		double state_duration;
-		int infect_switch_time = current_time;
+		int infect_switch_time = current_time;		
 
 		if (current_stage_arr[infection_id][site_id] != STAGE_ID_DEATH) {
 			if (current_infection_stage == STAGE_ID_JUST_INFECTED) {
@@ -2472,8 +2484,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Disease induced death
 		if (current_stage_arr[infection_id][site_id] == STAGE_ID_DEATH) {
 			current_infection_stage = STAGE_ID_DEATH;
-			infect_switch_time = Integer.MAX_VALUE;
-			;
+			infect_switch_time = Integer.MAX_VALUE;			
 		}
 
 		// Update state_switch map
