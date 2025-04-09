@@ -621,19 +621,52 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									int tar_candidate_index = -1;
 									int num_partner_found = 0;
 
-									// Choose partnership based on number sought
+									// Assortativity
+									boolean assort_mix = false;
+
+									float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_GENDER]];
+									if (PARTNER_TYPE_ASSORTATIVITY < part_type.length
+											&& src_specific_candidate_list.size() > 0) {
+										assort_mix = getRNG().nextFloat() < part_type[PARTNER_TYPE_ASSORTATIVITY];
+									}
 
 									for (int partnerIndex = 0; partnerIndex < partnered_with.length
 											&& src_specific_candidate_list.size() > 0; partnerIndex++) {
 
+										
+										int maxAssortWeightDiff = Math.max(
+												Math.abs(src_candidate_cmp_ent[tar_sought_comparator_partner_type_index]
+														- src_specific_candidate_list
+																.get(0)[tar_sought_comparator_partner_type_index]),
+												Math.abs(src_candidate_cmp_ent[tar_sought_comparator_partner_type_index]
+														- src_specific_candidate_list.get(src_specific_candidate_list
+																.size()
+																- 1)[tar_sought_comparator_partner_type_index]));
+
 										int[] cumul_weight = new int[src_specific_candidate_list.size()];
 										int cumul_weight_pt = 0;
+
 										for (int[] target_candidate_cmp_ent : src_specific_candidate_list) {
+
+											// Choose partnership based on number sought (by default)
+											// but with additional adjustment to assortativity
+											int partner_weight = target_candidate_cmp_ent[tar_sought_comparator_partner_type_index];
+
+											if (partner_weight != 0 && assort_mix
+													&& src_specific_candidate_list.size() > 1) {
+												int weight_diff = Math.abs(
+														src_candidate_cmp_ent[tar_sought_comparator_partner_type_index]
+																- target_candidate_cmp_ent[tar_sought_comparator_partner_type_index]);
+
+												partner_weight = (maxAssortWeightDiff - weight_diff);
+
+											}
+
 											if (cumul_weight_pt == 0) {
-												cumul_weight[cumul_weight_pt] = target_candidate_cmp_ent[tar_sought_comparator_partner_type_index];
+												cumul_weight[cumul_weight_pt] = partner_weight;
 											} else {
 												cumul_weight[cumul_weight_pt] = cumul_weight[cumul_weight_pt - 1]
-														+ target_candidate_cmp_ent[tar_sought_comparator_partner_type_index];
+														+ partner_weight;
 											}
 											cumul_weight_pt++;
 										}
@@ -785,8 +818,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 					boolean isOldFile = pathname.getName().startsWith(oldProgressFile_prefix);
 
 					isOldFile |= !pathname.getName()
-							.equals(String.format(Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME,
-									getSeed(), getGlobalTime()))
+							.equals(String.format(
+									Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME, getSeed(),
+									getGlobalTime()))
 							&& pathname.getName().startsWith(oldExportPop_prefix);
 
 					return isOldFile;
@@ -987,8 +1021,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 				try {
 					File tempFile = null;
 					File exportPopFile = new File(baseDir,
-							String.format(Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME, getSeed(),
-									getGlobalTime()));
+							String.format(Abstract_Runnable_ClusterModel_ContactMap_Generation.EXPORT_POP_FILENAME,
+									getSeed(), getGlobalTime()));
 
 					if (exportPopFile.isFile()) {
 						tempFile = new File(baseDir, String.format("%s_temp", exportPopFile.getName()));
