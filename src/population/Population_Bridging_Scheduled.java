@@ -626,22 +626,12 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_candidate_cmp_ent[Comparator_Candidate_Entry.INDEX_GENDER]];
 
 									int assort_index = -1; // ASSORTATIVITY_INC_INDEX.ASSORTATIVITY_PROB
-									int maxAssortWeightDiff = -1;
 
 									if (PARTNER_TYPE_ASSORTATIVITY < part_type.length
 											&& src_specific_candidate_list.size() > 0) {
 										assort_index = (int) part_type[PARTNER_TYPE_ASSORTATIVITY];
 										assort_mix = getRNG()
 												.nextFloat() < (part_type[PARTNER_TYPE_ASSORTATIVITY] - assort_index);
-										for (int[] candidate : src_specific_candidate_list) {
-											int total_weight = 0;
-											for (int i = 0; i < src_candidate_cmp_ent.length; i++) {
-												if ((assort_index & 1 << i) != 0) {
-													total_weight += Math.abs(src_candidate_cmp_ent[i] - candidate[i]);
-												}
-											}
-											maxAssortWeightDiff = Math.max(maxAssortWeightDiff, total_weight);
-										}
 
 									}
 
@@ -649,7 +639,21 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 											&& src_specific_candidate_list.size() > 0; partnerIndex++) {
 										int[] cumul_weight = new int[src_specific_candidate_list.size()];
 										int cumul_weight_pt = 0;
-										
+										int maxAssortWeightDiff = -1;
+
+										if (assort_mix) {
+											for (int[] candidate : src_specific_candidate_list) {
+												int total_weight = 0;
+												for (int i = 0; i < src_candidate_cmp_ent.length; i++) {
+													if ((assort_index & 1 << i) != 0) {
+														total_weight += Math
+																.abs(src_candidate_cmp_ent[i] - candidate[i]);
+													}
+												}
+												maxAssortWeightDiff = Math.max(maxAssortWeightDiff, total_weight);
+											}
+
+										}
 
 										for (int[] target_candidate_cmp_ent : src_specific_candidate_list) {
 
@@ -665,8 +669,8 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 														weight_diff += Math.abs(
 																src_candidate_cmp_ent[i] - target_candidate_cmp_ent[i]);
 													}
-												}											
-												partner_weight = (maxAssortWeightDiff - weight_diff);
+												}
+												partner_weight = (maxAssortWeightDiff - weight_diff);											
 											}
 
 											if (cumul_weight_pt == 0) {
