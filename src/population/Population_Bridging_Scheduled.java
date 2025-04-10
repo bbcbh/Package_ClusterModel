@@ -689,7 +689,18 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 											tar_candidate_index = Arrays.binarySearch(cumul_weight, prob_weight);
 											if (tar_candidate_index < 0) {
 												tar_candidate_index = ~tar_candidate_index;
-											} 
+											}else {												
+												if(tar_candidate_index + 1 < cumul_weight.length) {
+													tar_candidate_index++;
+												}												
+												// If value found, check the previous one to see if it is of same weight
+												while(tar_candidate_index > 0 && cumul_weight[tar_candidate_index] 
+														== cumul_weight[tar_candidate_index-1]) {
+													tar_candidate_index--;
+												}
+												
+												
+											}
 										}
 
 										partnered_with[partnerIndex] = src_specific_candidate_list
