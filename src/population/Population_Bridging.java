@@ -33,7 +33,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 4789823681005424649L;
+	private static final long serialVersionUID = 202504100918L;
 
 	public final Object[] DEFAULT_BRIDGING_POP_FIELDS = {
 			// FIELD_POP_COMPOSITION
@@ -419,8 +419,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			boolean randMix = true;
 
 			float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_person.getGenderType()];
-			if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {
-				randMix = part_type[PARTNER_TYPE_ASSORTATIVITY] < getRNG().nextFloat();
+			if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {				
+				float mixProb = part_type[PARTNER_TYPE_ASSORTATIVITY];				
+				if(mixProb >= 1) {
+					System.err.printf("Warning: PARTNER_TYPE_ASSORTATIVITY = %f > 1\n",mixProb);
+				}								
+				randMix = mixProb < getRNG().nextFloat();
 			}
 
 			ArrayList<Person_Bridging_Pop> tar_list = new ArrayList<>(tar_base_list);
