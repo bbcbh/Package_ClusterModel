@@ -650,7 +650,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 																.abs(src_candidate_cmp_ent[i] - candidate[i]);
 													}
 												}
-												maxAssortWeightDiff = Math.max(maxAssortWeightDiff, total_weight);
+												maxAssortWeightDiff = Math.max(maxAssortWeightDiff, total_weight + 1);
 											}
 
 										}
@@ -670,7 +670,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 																src_candidate_cmp_ent[i] - target_candidate_cmp_ent[i]);
 													}
 												}
-												partner_weight = (maxAssortWeightDiff - weight_diff);											
+												partner_weight = (maxAssortWeightDiff - weight_diff);
 											}
 
 											if (cumul_weight_pt == 0) {
@@ -682,10 +682,14 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 											cumul_weight_pt++;
 										}
 
-										int prob_weight = getRNG().nextInt(cumul_weight[cumul_weight.length - 1]);
-										tar_candidate_index = Arrays.binarySearch(cumul_weight, prob_weight);
-										if (tar_candidate_index < 0) {
-											tar_candidate_index = ~tar_candidate_index;
+										if (cumul_weight[cumul_weight.length - 1] == 0) {
+											tar_candidate_index = getRNG().nextInt(cumul_weight.length);
+										} else {
+											int prob_weight = getRNG().nextInt(cumul_weight[cumul_weight.length - 1]);
+											tar_candidate_index = Arrays.binarySearch(cumul_weight, prob_weight);
+											if (tar_candidate_index < 0) {
+												tar_candidate_index = ~tar_candidate_index;
+											} 
 										}
 
 										partnered_with[partnerIndex] = src_specific_candidate_list
