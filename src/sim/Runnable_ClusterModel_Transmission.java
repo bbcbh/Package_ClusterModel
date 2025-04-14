@@ -334,6 +334,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// with K = time, V= int[gender]{valid, partial, expired, unused}
 	public static final String SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON = "SIM_OUTPUT_VACCINE_COVERAGE_BY_PERSON";
 
+	// Bridging
+	// HashMap<Integer, int[][]>
+	// with K = time, V= int[gender][site]
+	public static final String SIM_OUTPUT_CUMUL_INCIDENCE_BRIDGE = "SIM_OUTPUT_CUMUL_INCIDENCE_BRIDGE";
+	public static final String FILENAME_CUMUL_INCIDENCE_BRIDGE = "Incidence_Site_Bridge_%d_%d.csv";
+	public static final String FILENAME_CUMUL_INCIDENCE_BRIDGE_ZIP = FILENAME_CUMUL_INCIDENCE_BRIDGE.replaceFirst("_%d",
+			"") + ".7z";
+
 	private static final int ACT_SPECIFIC_CONDOM_EFFICACY_INDEX = Population_Bridging.LENGTH_GENDER;
 	private static final int ACT_SPECIFIC_USAGE_REG_INDEX = ACT_SPECIFIC_CONDOM_EFFICACY_INDEX + 1;
 	private static final int ACT_SPECIFIC_USAGE_CAS_INDEX = ACT_SPECIFIC_USAGE_REG_INDEX + 1;
@@ -826,6 +834,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
 			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];
+			int[][] cumul_incidence_src = new int[Population_Bridging.LENGTH_GENDER][Population_Bridging.LENGTH_GENDER];
 			int[][] cumul_antibiotic_use = new int[Population_Bridging.LENGTH_GENDER][2];
 			int[] cumul_treatment_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
 			int[] cumul_positive_dx_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
@@ -1040,6 +1049,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 														} else {
 															cumul_incidence[g_t][site_target]++;
+																																										
+															cumul_incidence_src[g_t][g_s]++;															
+															
 															int k = Collections.binarySearch(infected_today, partner);
 															if (k < 0) {
 																boolean newIncidence = true;
@@ -1204,6 +1216,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						sim_output.put(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON, cumul_incidence_map_by_person);
 					}
 
+					@SuppressWarnings("unchecked")
+					HashMap<Integer, int[][]> cumul_incidence_bridging = (HashMap<Integer, int[][]>) sim_output
+							.get(SIM_OUTPUT_CUMUL_INCIDENCE_BRIDGE);
+					if (cumul_incidence_bridging == null) {
+						cumul_incidence_bridging = new HashMap<>();
+						sim_output.put(SIM_OUTPUT_CUMUL_INCIDENCE_BRIDGE, cumul_incidence_bridging);
+					}
+
 					int[][] incidence_snap = new int[cumul_incidence.length][];
 
 					for (int g = 0; g < cumul_incidence.length; g++) {
@@ -1213,6 +1233,14 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					cumul_incidence_map.put(currentTime, incidence_snap);
 					cumul_incidence_map_by_person.put(currentTime,
 							Arrays.copyOf(cumul_incidence_by_person, cumul_incidence_by_person.length));
+
+					// Bridging incidence
+					int[][] incidence_bridge_snap = new int[cumul_incidence_src.length][];
+					for (int g = 0; g < cumul_incidence_src.length; g++) {
+						incidence_bridge_snap[g] = Arrays.copyOf(cumul_incidence_src[g],
+								cumul_incidence_src[g].length);
+					}
+					cumul_incidence_bridging.put(currentTime, incidence_bridge_snap);
 
 					@SuppressWarnings("unchecked")
 					HashMap<Integer, int[]> cumul_treatment_map_by_person = (HashMap<Integer, int[]>) sim_output
@@ -1779,9 +1807,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	 * Procedure that are called after simulations. *
 	 * 
 	 */
-	@SuppressWarnings("unchecked")	
+	@SuppressWarnings("unchecked")
 	protected void postSimulation(Object[] simulation_store) {
-		super.postSimulation();	
+		super.postSimulation();
 
 		HashMap<Integer, int[][]> count_map;
 		HashMap<Integer, int[]> count_map_by_person;
@@ -1863,6 +1891,15 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 									cMAP_SEED, sIM_SEED)));
 					pWri.println(str.toString());
 					pWri.close();
+
+					// Bridging stat
+					count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE_BRIDGE);
+					str = printCountMap(count_map, "Gender_%d_Src_Gender_%d");
+					pWri = new PrintWriter(new File(baseDir,
+							String.format(filePrefix + FILENAME_CUMUL_INCIDENCE_BRIDGE, cMAP_SEED, sIM_SEED)));
+					pWri.println(str.toString());
+					pWri.close();
+
 				}
 				if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_TREATMENT_FILE) != 0) {
 					PrintWriter pWri;
@@ -2424,30 +2461,21 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	// Override to include infectious seeker and non-infectious only
-	
+
 	/*
-	@Override
-	protected ArrayList<Integer[]> formNonMappedEdges(ContactMap cMap, int currentTime) {
-		ArrayList<Integer[]> srcList = super.formNonMappedEdges(cMap, currentTime);
-		ArrayList<Integer[]> filter_list = new ArrayList<>();
-		for (Integer[] entry : srcList) {
-			boolean p1_inf = isInfectious(entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
-			boolean p2_inf = isInfectious(entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
-
-			if ((p1_inf && !p2_inf) || (!p1_inf && p2_inf)) {
-				filter_list.add(entry);
-			}
-		}
-		return filter_list;
-	}
-
-	private boolean isInfectious(Integer pid) {
-		for (ArrayList<Integer> inf_site : currently_infectious) {
-			if (Collections.binarySearch(inf_site, pid) >= 0) {
-				return true;
-			}
-		}
-		return false;
-	}
-   */
+	 * @Override protected ArrayList<Integer[]> formNonMappedEdges(ContactMap cMap,
+	 * int currentTime) { ArrayList<Integer[]> srcList =
+	 * super.formNonMappedEdges(cMap, currentTime); ArrayList<Integer[]> filter_list
+	 * = new ArrayList<>(); for (Integer[] entry : srcList) { boolean p1_inf =
+	 * isInfectious(entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
+	 * boolean p2_inf =
+	 * isInfectious(entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
+	 * 
+	 * if ((p1_inf && !p2_inf) || (!p1_inf && p2_inf)) { filter_list.add(entry); } }
+	 * return filter_list; }
+	 * 
+	 * private boolean isInfectious(Integer pid) { for (ArrayList<Integer> inf_site
+	 * : currently_infectious) { if (Collections.binarySearch(inf_site, pid) >= 0) {
+	 * return true; } } return false; }
+	 */
 }
