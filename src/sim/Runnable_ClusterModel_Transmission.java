@@ -1048,10 +1048,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 															}
 
 														} else {
-															cumul_incidence[g_t][site_target]++;
-																																										
-															cumul_incidence_src[g_t][g_s]++;															
-															
+															cumul_incidence[g_t][site_target]++;																																										
+															cumul_incidence_src[g_t][g_s]++;																													
 															int k = Collections.binarySearch(infected_today, partner);
 															if (k < 0) {
 																boolean newIncidence = true;
