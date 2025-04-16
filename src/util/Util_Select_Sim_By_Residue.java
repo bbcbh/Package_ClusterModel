@@ -30,17 +30,17 @@ public abstract class Util_Select_Sim_By_Residue {
 
 	public static UnivariateFunction extractedWeightedInterpolateFunction(UnivariateInterpolator polator,
 			double[] dist_val) {
-		Arrays.sort(dist_val);		
-		if(Double.isNaN(dist_val[dist_val.length-1])) {
+		Arrays.sort(dist_val);
+		if (Double.isNaN(dist_val[dist_val.length - 1])) {
 			return null;
 		}
-		
+
 		double[] x_val = new double[dist_val.length];
 		for (int x = 1; x < dist_val.length; x++) {
 			x_val[x] = x_val[x - 1] + 1.0 / dist_val.length;
 		}
 		x_val[x_val.length - 1] = 1;
-		
+
 		UnivariateFunction resFunc = polator.interpolate(x_val, dist_val);
 		return resFunc;
 	}
@@ -171,24 +171,30 @@ public abstract class Util_Select_Sim_By_Residue {
 			double residue = 0;
 			boolean inRange = true;
 
-			for (int i = 0; i < data.length && !Double.isNaN(residue); i++) {
-				if (residue_target_range[i] != null && residue_weight[i] != 0) {
-					inRange &= residue_target_range[i].length == 1
-							|| (residue_target_range[i][1] <= data[i] && data[i] <= residue_target_range[i][2]);
-					residue += residue_weight[i] * Math.pow(data[i] - residue_target_range[i][0], 2);
+			if (residue_target_range != null && residue_weight != null) {
+				for (int i = 0; i < data.length && !Double.isNaN(residue); i++) {
+					if (residue_target_range[i] != null && residue_weight[i] != 0) {
+						inRange &= residue_target_range[i].length == 1
+								|| (residue_target_range[i][1] <= data[i] && data[i] <= residue_target_range[i][2]);
+						residue += residue_weight[i] * Math.pow(data[i] - residue_target_range[i][0], 2);
+					}
 				}
-			}
 
-			if (!Double.isNaN(residue)) {
-				int pt = Collections.binarySearch(order_residue_val, residue);
-				if (pt < 0) {
-					pt = ~pt;
+				if (!Double.isNaN(residue)) {
+					int pt = Collections.binarySearch(order_residue_val, residue);
+					if (pt < 0) {
+						pt = ~pt;
+					}
+					order_residue_val.add(pt, residue);
+					order_resiude_key.add(pt, key);
+					if (inRange) {
+						inRangeKeyArr.add(key);
+					}
 				}
-				order_residue_val.add(pt, residue);
-				order_resiude_key.add(pt, key);
-				if (inRange) {
-					inRangeKeyArr.add(key);
-				}
+			}else {
+				order_residue_val.add(Double.NaN); // Not used
+			    order_resiude_key.add(key);
+				inRangeKeyArr.add(key);
 			}
 		}
 
