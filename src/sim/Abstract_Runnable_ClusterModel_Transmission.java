@@ -122,6 +122,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected int non_map_edges_pre_gen_last_edge_pt = 0;
 
 	protected Integer[][] non_map_edges_store = null;
+	protected RandomGenerator RNG_IMPORT = null;
 	protected RandomGenerator RNG_NM = null;
 	protected IntegerDistribution[] dist_nm_candidate = null;
 
@@ -137,6 +138,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected boolean skipStateGen = false;
 
 	protected int importedAtTime = -1;
+	
+	protected final int SIM_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
+			+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
@@ -168,6 +173,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 		RNG = new MersenneTwisterRandomGenerator(sIM_SEED);
 		RNG_NM = new MersenneTwisterRandomGenerator(sIM_SEED);
+		RNG_IMPORT = new MersenneTwisterRandomGenerator(sIM_SEED);
 	}
 
 	public int getImportedAtTime() {
@@ -564,16 +570,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	}
 
 	protected void loadNonRunnableFieldSetting(Integer index, String entry, int loadTime) {
-		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
-				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
+		
 		switch (index.intValue()) {
 		case Population_Bridging.FIELD_PARTNER_TYPE_PROB:
 			// Reset
 			non_mapped_encounter_prob = null;
 			non_mapped_encounter_target_gender = null;
 			break;
-		case sim_offset + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION:
+		case SIM_OFFSET + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION:
 			int[][] num_infected = (int[][]) PropValUtils.propStrToObject(entry, int[][].class);
 			allocateSeedInfection(num_infected, loadTime);
 			break;

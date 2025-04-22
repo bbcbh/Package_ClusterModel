@@ -756,8 +756,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			float[][] seedInfectParam = (float[][]) simFields[sim_offset + SIM_FIELD_SEED_INFECTION];
 			seedInfectNum = new int[pop_composition.length][Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
-			for (int g = 0; g < seedInfectParam.length; g++) {
-				for (int s = 0; s < seedInfectParam[g].length; s++) {
+			for (int g = 0; g < seedInfectNum.length; g++) {
+				for (int s = 0; s < seedInfectNum[g].length; s++) {
 					seedInfectNum[g][s] = Math.round(seedInfectParam[g][s]);
 				}
 			}

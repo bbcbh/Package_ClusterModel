@@ -798,6 +798,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		float[] vaccine_one_off_rate = new float[Population_Bridging.LENGTH_GENDER];
 		int vaccine_one_off_at = -1;
 
+		final int SEED_INF_INDEX = SIM_OFFSET + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION;
+
 		vaccine_one_off_at = setOneOffVaccineSetting(vaccine_one_off_rate, vaccine_one_off_at);
 
 		if (startTime < Integer.MAX_VALUE) {
@@ -867,7 +869,41 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				edges_array_pt = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges)[0];
 
+				// Importation
+				// Single infection
+				float[][] seedInfArr = (float[][]) PropValUtils.propStrToObject(
+						baseProp.getProperty(Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX + SEED_INF_INDEX),
+						float[][].class);
+
+				if (seedInfArr != null && seedInfArr.length > cUMULATIVE_POP_COMPOSITION.length) {
+					Integer[] importCandidates = getCurrentPopulationPId(currentTime);
+					for (Integer importCandidate : importCandidates) {
+						int g = getGenderType(importCandidate);
+						if (g + cUMULATIVE_POP_COMPOSITION.length < seedInfArr.length) {
+							float[] importRateBySite = seedInfArr[g + cUMULATIVE_POP_COMPOSITION.length];
+							for (int s = 0; s < importRateBySite.length; s++) {
+								if (importRateBySite[s] > 0) {
+									if (Collections.binarySearch(currently_infectious[s], importCandidate) < 0) {
+										if (RNG_IMPORT.nextFloat() < importRateBySite[s]) {
+											ArrayList<Integer> becomeInfectiousToday = schedule_becoming_infectious[s]
+													.get(currentTime);
+
+											if (becomeInfectiousToday == null) {
+												becomeInfectiousToday = new ArrayList<>();
+												schedule_becoming_infectious[s].put(currentTime, becomeInfectiousToday);
+											}
+											becomeInfectiousToday.add(importCandidate);
+
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+
 				for (int site_src = 0; site_src < LENGTH_SITE; site_src++) {
+
 					// Update infectious
 					ArrayList<Integer> becomeInfectiousToday = schedule_becoming_infectious[site_src]
 							.remove(currentTime);
@@ -1048,8 +1084,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 															}
 
 														} else {
-															cumul_incidence[g_t][site_target]++;																																										
-															cumul_incidence_src[g_t][g_s]++;																													
+															cumul_incidence[g_t][site_target]++;
+															cumul_incidence_src[g_t][g_s]++;
 															int k = Collections.binarySearch(infected_today, partner);
 															if (k < 0) {
 																boolean newIncidence = true;
@@ -1235,8 +1271,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					// Bridging incidence
 					int[][] incidence_bridge_snap = new int[cumul_incidence_src.length][];
 					for (int g = 0; g < cumul_incidence_src.length; g++) {
-						incidence_bridge_snap[g] = Arrays.copyOf(cumul_incidence_src[g],
-								cumul_incidence_src[g].length);
+						incidence_bridge_snap[g] = Arrays.copyOf(cumul_incidence_src[g], cumul_incidence_src[g].length);
 					}
 					cumul_incidence_bridging.put(currentTime, incidence_bridge_snap);
 
