@@ -953,34 +953,26 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 			}
 
-			if (runSim) {
-
-				if (popType == null) {
-					popType = ""; // Default
-				}
-				if (Runnable_ClusterModel_Viability.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					runnable[s] = new Runnable_ClusterModel_Viability(baseContactMapSeed, seed,
-							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
-
-				} else if (Runnable_ClusterModel_Prophylaxis.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					runnable[s] = new Runnable_ClusterModel_Prophylaxis(baseContactMapSeed, seed,
-							baseContactMapMapping.get(baseContactMapSeed), loadedProperties);
-				} else if (Runnable_ClusterModel_Bali.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					runnable[s] = new Runnable_ClusterModel_Bali(baseContactMapSeed, simSeed, pop_composition,
-							baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);
-				} else if (Runnable_ClusterModel_Jakarta.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					runnable[s] = new Runnable_ClusterModel_Jakarta(baseContactMapSeed, simSeed, loadedProperties);
-				} else if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-					Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
-					m.matches();
-					runnable[s] = new Runnable_ClusterModel_MultiTransmission(baseContactMapSeed, simSeed,
-							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
-							num_snap, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
-							Integer.parseInt(m.group(3)));
-				} else {
-					runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
-							pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
-							num_snap);
+			if (runSim) {				
+				runnable[s] = generateDefaultRunnable(baseContactMapSeed, seed, loadedProperties);
+				
+				if (runnable[s] == null) {
+					if (popType == null) {
+						popType = ""; // Default
+					}
+					// Adjust to remove runnable as see fit
+					if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+						Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
+						m.matches();
+						runnable[s] = new Runnable_ClusterModel_MultiTransmission(baseContactMapSeed, simSeed,
+								pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
+								num_snap, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
+								Integer.parseInt(m.group(3)));
+					} else {
+						runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
+								pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
+								num_snap);
+					}
 				}
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setBaseProp(loadedProperties);
@@ -1185,6 +1177,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			extra_csv = baseDir.listFiles(extra_filter);
 		}
 
+	}
+
+	// To be overwritten by subclass
+	public Abstract_Runnable_ClusterModel_Transmission generateDefaultRunnable(long cMap_seed, long sim_seed, 
+			Properties loadedProperties) {
+		return null;
 	}
 
 	public static void fillRiskGrpArrByCasualPartnership(ArrayList<Number[]> riskGrpArr, ContactMap cMap,
@@ -1481,11 +1479,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
 			zipSelectedOutputs(FILENAME_INDEX_CASE_LIST.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_INDEX_CASE_LIST_ZIP, baseContactMapSeed));
-			
+
 			zipSelectedOutputs(FILENAME_LIFE_TABLE_ZIP.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 					String.format(FILENAME_LIFE_TABLE_ZIP, baseContactMapSeed));
-			
-			
+
 			if ((simSetting & 1 << SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {
 				zipSelectedOutputs(FILENAME_PREVALENCE_SITE.replaceFirst("%d", Long.toString(baseContactMapSeed)),
 						String.format(FILENAME_PREVALENCE_SITE_ZIP, baseContactMapSeed));
