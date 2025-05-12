@@ -8,7 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import population.Population_Bridging;
-import sim.Abstract_Runnable_ClusterModel_Transmission;
+import sim.Abstract_Runnable_ClusterModel;
 import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
 import sim.Simulation_ClusterModelGeneration;
 import sim.Simulation_ClusterModelTransmission;
@@ -79,7 +79,7 @@ public class Optimisation_Factory {
 		}
 	}
 
-	public static void setOptParamInRunnable_Transfrom(Abstract_Runnable_ClusterModel_Transmission target_runnable, String transform_str, HashMap<String, Double> param_map, ArrayList<Integer> field_to_update) {
+	public static void setOptParamInRunnable_Transfrom(Abstract_Runnable_ClusterModel target_runnable, String transform_str, HashMap<String, Double> param_map, ArrayList<Integer> field_to_update) {
 		// Fill transfrom_ents
 		ArrayList<String[]> transfrom_ents = new ArrayList<>();
 		Pattern pattern_braceEntry = Pattern.compile("\\[([^\\[\\]]*)\\]");

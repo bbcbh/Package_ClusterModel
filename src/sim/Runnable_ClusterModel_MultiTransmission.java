@@ -1104,9 +1104,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					String[] popEnt = pop_stat.get(pid);
 					scheduleNextTest(pid,
 							Integer.parseInt(
-									popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_ENTER_POP_AT]),
+									popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]),
 							Integer.parseInt(
-									popEnt[Abstract_Runnable_ClusterModel_Transmission.POP_INDEX_EXIT_POP_AT]));
+									popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]));
 				}
 			}
 			// End of schedule test

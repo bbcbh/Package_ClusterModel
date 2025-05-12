@@ -2357,7 +2357,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	public static void setOptParamInSingleTransmissionRunnable(
-			Abstract_Runnable_ClusterModel_Transmission target_runnable, double[] point, boolean display_only) {
+			Abstract_Runnable_ClusterModel target_runnable, double[] point, boolean display_only) {
 		double[][][] transmission_rate = (double[][][]) target_runnable
 				.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_TRANSMISSION_RATE];
 

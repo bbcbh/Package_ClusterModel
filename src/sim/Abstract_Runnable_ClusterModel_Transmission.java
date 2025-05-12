@@ -21,12 +21,8 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.math3.distribution.AbstractRealDistribution;
-import org.apache.commons.math3.distribution.BetaDistribution;
-import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.IntegerDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
-import org.apache.commons.math3.distribution.UniformRealDistribution;
 
 import population.Population_Bridging;
 import random.MersenneTwisterRandomGenerator;
@@ -455,110 +451,6 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	public void setSimSetting(int simSetting) {
 		this.simSetting = simSetting;
-	}
-
-	protected static final AbstractRealDistribution generateNonDistribution(RandomGenerator RNG, double[] input) {
-		return new AbstractRealDistribution(RNG) {
-			private static final long serialVersionUID = -4946118496555960005L;
-
-			@Override
-			public boolean isSupportUpperBoundInclusive() {
-				return true;
-			}
-
-			@Override
-			public boolean isSupportLowerBoundInclusive() {
-				return true;
-			}
-
-			@Override
-			public boolean isSupportConnected() {
-				return true;
-			}
-
-			@Override
-			public double getSupportUpperBound() {
-				return input[0];
-			}
-
-			@Override
-			public double getSupportLowerBound() {
-				return input[0];
-			}
-
-			@Override
-			public double getNumericalVariance() {
-				return 0;
-			}
-
-			@Override
-			public double getNumericalMean() {
-				return input[0];
-			}
-
-			@Override
-			public double density(double x) {
-				return x == input[0] ? 1 : 0;
-			}
-
-			@Override
-			public double cumulativeProbability(double x) {
-				return x < input[0] ? 0 : 1;
-			}
-
-			@Override
-			public double sample() {
-				return input[0];
-			}
-
-		};
-
-	}
-
-	protected static AbstractRealDistribution generateGammaDistribution(RandomGenerator RNG, double[] input) {
-		if (input[1] != 0) {
-			// For Gamma distribution
-			// GammaDistribution(RandomGenerator rng, double shape, double scale)
-			// shape = mean / scale i.e. mean / (var / mean)
-			// scale = var / mean
-			double[] res = new double[2];
-			double var = input[1] * input[1];
-			// scale
-			res[1] = var / input[0];
-			// shape
-			res[0] = input[0] / res[1];
-			return new GammaDistribution(RNG, res[0], res[1]);
-		} else {
-			return generateNonDistribution(RNG, input);
-
-		}
-	}
-
-	protected static AbstractRealDistribution generateBetaDistribution(RandomGenerator RNG, double[] input) {
-		if (input[1] != 0) {
-
-			// For Beta distribution,
-			// alpha = mean*(mean*(1-mean)/variance - 1)
-			// beta = (1-mean)*(mean*(1-mean)/variance - 1)
-			double[] res = new double[2];
-			double var = input[1] * input[1];
-			double rP = input[0] * (1 - input[0]) / var - 1;
-			// alpha
-			res[0] = rP * input[0];
-			// beta
-			res[1] = rP * (1 - input[0]);
-			return new BetaDistribution(RNG, res[0], res[1]);
-		} else {
-			return generateNonDistribution(RNG, input);
-		}
-	}
-
-	protected static AbstractRealDistribution generateUniformDistribution(RandomGenerator RNG, double[] input) {
-		if (input[1] != 0) {
-			return new UniformRealDistribution(RNG, input[0], input[1]);
-		} else {
-			return generateNonDistribution(RNG, input);
-		}
 	}
 
 	public void setEdges_list(ArrayList<Integer[]> edges_list) {
