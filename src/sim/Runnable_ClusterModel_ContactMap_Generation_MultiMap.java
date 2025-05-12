@@ -30,10 +30,10 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 	// Runnable fields
 	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP = Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
-	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP
+	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGE_DIST = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP
 			+ 1;
 
-	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST
+	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGE_DIST
 			+ 1;
 
 	public static final int LENGTH_RUNNABLE_MAP_GEN_FIELD = RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_PARTNERSHIP_BY_SNAP
@@ -67,7 +67,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 
 	private static String OUTPUTMSG_FORMAT = "%d:RelMap #%d generated with %d new partnerships added. Time req. = %.3f seconds\n";
 
-	private RandomGenerator RNG;
+	protected RandomGenerator RNG;
 
 	public Runnable_ClusterModel_ContactMap_Generation_MultiMap(long mapSeed) {
 		super(mapSeed);
@@ -92,7 +92,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
 		final long exportFreq = (long) runnable_fields[RUNNABLE_FILED_EXPORT_FREQ];
 		int[] numInGrp = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP];
-		double[][] ageDist = (double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGEING_DIST];
+		double[][] ageDist = (double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGE_DIST];
 
 		int nextId = 1;
 		int popTime = contactMapValidRange[0];
@@ -140,10 +140,12 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 							if (((Integer) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]) <= popTime) {
 								population.put(pid, newPerson);
 
-								active_by_grp = active_in_pop.get(newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP]);
+								active_by_grp = active_in_pop
+										.get(newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP]);
 								if (active_by_grp == null) {
 									active_by_grp = new ArrayList<Integer>();
-									active_in_pop.put((Integer) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP], active_by_grp);
+									active_in_pop.put((Integer) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP],
+											active_by_grp);
 								}
 								active_by_grp.add(pid);
 								nextId = Math.max(nextId, pid + 1);
@@ -177,9 +179,9 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 												Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
 											int pId = Integer.parseInt(ent[pIdPt]);
 											Object[] person = population.get(pId);
-											person[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = Math.max(
-													(Integer) person[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL],
-													edgeFormAt + edgeDur);
+											person[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = Math
+													.max((Integer) person[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL],
+															edgeFormAt + edgeDur);
 										}
 									}
 
@@ -210,9 +212,11 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 					Object[] newPerson = new Object[Abstract_Runnable_ClusterModel.LENGTH_POP_ENTRIES];
 					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP] = g;
 					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT] = 1;
-					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE] = (int) Math.round(ageDistFunc.value(RNG.nextDouble()));
-					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
-							- (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT];
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE] = (int) Math
+							.round(ageDistFunc.value(RNG.nextDouble()));
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length
+							/ 2 - 1] - (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE])
+							+ (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT];
 					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
 					population.put(nextId, newPerson);
 
@@ -253,8 +257,9 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_GRP] = g;
 					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT] = popTime - RNG.nextInt(snap_dur);
 					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE] = (int) ageDist[g][0];
-					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length / 2 - 1]
-							- (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE]) + (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT];
+					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT] = ((int) ageDist[g][ageDist[g].length
+							/ 2 - 1] - (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AGE])
+							+ (int) newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT];
 					newPerson[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = -1;
 					population.put(nextId, newPerson);
 					justAddedPerson.put(nextId, newPerson);
@@ -311,7 +316,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 							if (map_setting[MAPSETTING_PARTNERSHIP_FREQ] < 0) {
 								// Filter out those already within regular partnership
 								for (Integer pid : active_by_grp) {
-									int reg_part_until = (int) population.get(pid)[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL];
+									int reg_part_until = (int) population
+											.get(pid)[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL];
 									if (reg_part_until > popTime - gen_map_freq) {
 										numSelectP1--;
 										numSelectP2--;
@@ -362,8 +368,9 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 									popTime - RNG.nextInt(gen_map_freq), dur });
 							for (int p = 0; p < selected_candidates.length; p++) {
 								selected_candidates[p][1] = 0;
-								population.get(selected_candidates[p][0])[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = dur
-										+ popTime;
+								population.get(
+										selected_candidates[p][0])[Abstract_Runnable_ClusterModel.POP_INDEX_HAS_REG_PARTNER_UNTIL] = dur
+												+ popTime;
 							}
 						}
 						// Add candidate back if needed
@@ -429,11 +436,11 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		exportPopulationToFile(population);
 	}
 
-	protected void exportPopulationToFile(HashMap<Integer, Object[]> population) {
+	private void exportPopulationToFile(HashMap<Integer, Object[]> population) {
 		exportPopulationToFile(population, false);
 	}
 
-	protected void exportPopulationToFile(HashMap<Integer, Object[]> population, boolean append) {
+	private void exportPopulationToFile(HashMap<Integer, Object[]> population, boolean append) {
 		try {
 			String exportFileName = String.format(POPSTAT_FORMAT, mapSeed);
 			File exportPopFile = getTargetFile(exportFileName);
@@ -457,7 +464,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		}
 	}
 
-	protected File getTargetFile(String inputFilename) throws IOException {
+	protected File getTargetFile(String inputFilename) {
 		File genMapFile = new File(baseDir, inputFilename);
 
 		if (genMapFile.exists() && !isSpace_save()) {
@@ -467,21 +474,23 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 					return pathname.getName().startsWith(inputFilename + "_");
 				}
 			});
-			for (File d : delFile) {
-				Files.delete(d.toPath());
-			}
+			try {
+				for (File d : delFile) {
+					Files.delete(d.toPath());
+				}
 
-			Files.copy(genMapFile.toPath(),
-					new File(baseDir, String.format("%s_%d", inputFilename, System.currentTimeMillis())).toPath());
-
-			genMapFile = new File(baseDir, inputFilename);
+				Files.copy(genMapFile.toPath(),
+						new File(baseDir, String.format("%s_%d", inputFilename, System.currentTimeMillis())).toPath());
+			} catch (IOException ex) {
+				ex.printStackTrace(System.err);
+			}			
 		}
 		return genMapFile;
 	}
 
 	@Override
 	public void setRunnable_fields(Object[] simFields) {
-		for (int f = 0; f < LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
+		for (int f = 0; f < getRunnable_fields().length; f++) {
 			if (simFields[Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD + f] != null) {
 				getRunnable_fields()[f] = simFields[f + Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD];
 			}
