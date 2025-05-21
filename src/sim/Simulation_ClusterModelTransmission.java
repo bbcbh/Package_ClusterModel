@@ -1703,8 +1703,11 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 		}
 	}
-
 	public static void launch(String[] args) throws IOException, InterruptedException {
+		launch(args, null);
+	}
+
+	public static void launch(String[] args, Simulation_ClusterModelTransmission sim) throws IOException, InterruptedException {
 		File baseDir = null;
 		File propFile = null;
 
@@ -1747,7 +1750,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (baseDir.isDirectory()) {
-				Simulation_ClusterModelTransmission sim = new Simulation_ClusterModelTransmission();
+				if(sim == null) {	
+					// Default
+					sim = new Simulation_ClusterModelTransmission();
+				}
 				sim.setBaseDir(baseDir);
 				if (flag_exportSkipBackup) {
 					sim.setExportSkipBackup(true);
@@ -1975,7 +1981,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	}
 
-	private static ContactMap extractedCMapfromFile(File contactMapFile) throws FileNotFoundException, IOException {
+	protected static ContactMap extractedCMapfromFile(File contactMapFile) throws FileNotFoundException, IOException {
 		StringWriter cMap_str = new StringWriter();
 		PrintWriter pWri = new PrintWriter(cMap_str);
 		BufferedReader reader = new BufferedReader(new FileReader(contactMapFile));
