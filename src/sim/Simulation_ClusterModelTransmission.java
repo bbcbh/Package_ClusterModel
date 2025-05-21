@@ -1153,6 +1153,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 
+		
+		finalise_simulations();
+
+	}
+
+	protected void finalise_simulations() throws IOException, FileNotFoundException {
 		// Zip extra files
 		Pattern pattern_csv_extra = Pattern.compile("(?:\\[.*\\]){0,1}(.*)_(-{0,1}\\d+)_-{0,1}\\d+.csv");
 
@@ -1176,7 +1182,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					String.format("%s_%s.csv.7z", filename_id, baseContactSeed_str));
 			extra_csv = baseDir.listFiles(extra_filter);
 		}
-
 	}
 
 	// To be overwritten by subclass
