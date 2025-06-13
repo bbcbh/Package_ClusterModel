@@ -1038,28 +1038,11 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 														}
 
 														// Reduction of transProb due to vaccine
-														if (vaccine_expiry_src != null) {
-															if (currentTime < vaccine_expiry_src[site_src]) {
-																if (vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ] < 0) {
-																	if (RNG.nextFloat() < -vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ]) {
-																		transProb *= 0;
-																	}
-																} else {
-																	transProb *= vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ];
-																}
-															}
-														}
-														if (vaccine_expiry_target != null) {
-															if (currentTime < vaccine_expiry_target[site_target]) {
-																if (vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST] < 0) {
-																	if (RNG.nextFloat() < -vaccine_effect[g_s][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST]) {
-																		transProb *= 0;
-																	}
-																} else {
-																	transProb *= vaccine_effect[g_t][site_target][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST];
-																}
-															}
-														}
+																												
+														transProb = vaccine_effect(currentTime, vaccine_effect,																
+																infectious, g_s, site_src, vaccine_expiry_src,
+																partner, g_t, site_target,
+																vaccine_expiry_target, transProb);
 
 														transmission_possible &= RNG.nextFloat() < transProb;
 
@@ -1414,6 +1397,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				snap_index = (snap_index + 1) % nUM_TIME_STEPS_PER_SNAP;
 
 				hasInfected = hasInfectedInPop();
+								
+				postTimeStep(currentTime);
 
 			}
 			// End of simulations
@@ -1424,6 +1409,37 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
+	}
+
+	protected float vaccine_effect(int currentTime, float[][][] vaccine_effect_global,
+			int srcId, 	int gender_src, int site_src, int[] vaccine_expiry_src,			
+			int tarId, int gender_target, int site_target, int[] vaccine_expiry_target, float transProb_pre_vaccine) {
+		
+		float transProb = transProb_pre_vaccine;
+		
+		if (vaccine_expiry_src != null) {
+			if (currentTime < vaccine_expiry_src[site_src]) {
+				if (vaccine_effect_global[gender_src][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ] < 0) {
+					if (RNG.nextFloat() < -vaccine_effect_global[gender_src][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ]) {
+						transProb *= 0;
+					}
+				} else {
+					transProb *= vaccine_effect_global[gender_src][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ];
+				}
+			}
+		}
+		if (vaccine_expiry_target != null) {
+			if (currentTime < vaccine_expiry_target[site_target]) {
+				if (vaccine_effect_global[gender_src][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST] < 0) {
+					if (RNG.nextFloat() < -vaccine_effect_global[gender_src][site_src][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST]) {
+						transProb *= 0;
+					}
+				} else {
+					transProb *= vaccine_effect_global[gender_target][site_target][VACCINE_PROPERTIES_SUSCEPTIBILITY_ADJUST];
+				}
+			}
+		}
+		return transProb;
 	}
 
 	protected int setOneOffVaccineSetting(float[] vaccine_one_off_rate, int vaccine_one_off_at) {

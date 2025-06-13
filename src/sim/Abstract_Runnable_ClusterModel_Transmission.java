@@ -1031,5 +1031,9 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 		exportNonMapEdgeStore();
 	}
+	
+	protected void postTimeStep(int currentTime) {
+		// Do nothing
+	}
 
 }

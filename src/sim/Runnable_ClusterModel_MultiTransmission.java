@@ -1711,6 +1711,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		} // Check if infection is tested
 	}
 
+	@Override
 	protected void postTimeStep(int currentTime) {
 		if (exportTime.length > 0 && !skipStateGen) {
 			if (currentTime > 0 && currentTime % exportTime[0] == 0) {
