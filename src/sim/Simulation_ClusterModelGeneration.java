@@ -27,6 +27,81 @@ import random.RandomGenerator;
 import util.PersonClassifier;
 import util.PropValUtils;
 
+/**
+ * <p>
+ * This class is responsible for generating partnership networks used in ClusterModel simulations.
+ * </p>
+ *
+ * <p>
+ * To generate a network, users must prepare a working directory containing an XML configuration file named
+ * <i>simSpecificSim.prop</i>. This file must follow the Java XML properties format and is read using
+ * {@link java.util.Properties#loadFromXML(java.io.InputStream)}.
+ * </p>
+ *
+ * <p>
+ * A typical <i>simSpecificSim.prop</i> file looks like:
+ * </p>
+ *
+ * <pre>{@code
+ * <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+ * <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+ * <properties>
+ *   <entry key="PROP_POP_TYPE">...</entry>
+ *   <entry key="PROP_NUM_SIM_PER_SET">...</entry>
+ *   <entry key="PROP_USE_PARALLEL">...</entry>
+ *   <entry key="PROP_BASESEED">...</entry>
+ *   <entry key="PROP_NUM_SNAP">...</entry>
+ *   <entry key="PROP_SNAP_FREQ">1</entry>
+ *   <entry key="POP_PROP_INIT_PREFIX_X">...</entry>
+ *   <entry key="POP_PROP_INIT_PREFIX_CLASS_X">...</entry>
+ *   ...
+ * </properties>
+ * }</pre>
+ *
+ * <h2>Properties entries</h2>
+ * <h3>PROP_POP_TYPE</h3>
+ * <p>Defines the population model type. Supported values include:</p>
+ * <ul>
+ *   <li><i>Population_Bridging_Scheduled</i></li>
+ *   <li><i>Population_Bridging_NetworkDensity</i></li>
+ *   <li><i>MultiMap</i></li>
+ * </ul>
+ *
+ * <p>Depending on the value of <code>PROP_POP_TYPE</code>, the following classes are invoked:</p>
+ * <ul>
+ *   <li>{@link Runnable_ClusterModel_ContactMap_Generation_BridgingPop} – used for both <i>Population_Bridging_Scheduled</i> and <i>Population_Bridging_NetworkDensity</i></li>
+ *   <li>{@link Runnable_ClusterModel_ContactMap_Generation_MultiMap} – used for <i>MultiMap</i></li>
+ * </ul>
+ *
+ * <h3>PROP_NUM_SIM_PER_SET</h3><p>Number of networks to generate.</p>
+ * <h3>PROP_USE_PARALLEL</h3><p>Number of networks to generate in parallel. Note that network generation is resource-intensive, so this value should be set cautiously.</p>
+ * <h3>PROP_BASESEED</h3><p>Base seed for the random number generator (RNG), used to derive seeds for each network.</p>
+ * <h3>PROP_NUM_SNAP and PROP_SNAP_FREQ</h3><p>Define the number of snapshots and the interval between them (in days). The total simulation duration is <code>PROP_NUM_SNAP × PROP_SNAP_FREQ</code> days.</p>
+ * <h3>POP_PROP_INIT_PREFIX_X and POP_PROP_INIT_PREFIX_CLASS_X</h3><p>Specify the parameter values and corresponding classes for the X-th parameter used in model generation. Refer to the respective map generation classes for details.</p>
+ *
+ * <h2>Network Generation</h2>
+ * <p>Once the working directory is properly configured, the network can be generated using the following command:</p>
+ *
+ * <pre>
+ * java -jar <b>ClusterModel.jar</b> -gen <b>Working_Directory</b> [-printOutput] [-useExistingPop] [-space_save] [-preSeed=<b>PreSeed</b>]
+ * </pre>
+ *
+ * <p>Where:</p>
+ * <ul>
+ *   <li><b>ClusterModel.jar</b>: The compiled Java Archive (JAR) file for the ClusterModel package.</li>
+ *   <li><b>Working_Directory</b>: The directory containing <i>simSpecificSim.prop</i> and other required resources.</li>
+ *   <li><b>PreSeed</b>: A comma-separated list of RNG seeds for network generation. If omitted, seeds are generated based on <code>PROP_BASESEED</code>.</li>
+ * </ul>
+ *
+ * @see Runnable_ClusterModel_ContactMap_Generation_BridgingPop
+ * @see Runnable_ClusterModel_ContactMap_Generation_MultiMap
+ * 
+ * @author Ben Hui
+ * @version 20250618
+ */
+
+
+
 public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 	public static final Object[] DEFAULT_BRIDGING_MAP_GEN_SIM_FIELDS = {};
