@@ -628,7 +628,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			pid_collection[g] = new ArrayList<>();
 		}
 
-		for (Integer v : bASE_CONTACT_MAP.vertexSet()) {
+		for (Integer v : bASE_CONTACT_MAP == null? pop_stat.keySet() : bASE_CONTACT_MAP.vertexSet()) {
 			pid_collection[getGenderType(v)].add(v);
 		}
 
@@ -823,7 +823,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			setPreAllocatedRiskFromFile();
 
 			// Schedule testing and vaccination limit
-			for (Integer personId : bASE_CONTACT_MAP.vertexSet()) {
+			for (Integer personId : bASE_CONTACT_MAP == null? pop_stat.keySet() :  bASE_CONTACT_MAP.vertexSet()) {
 				scheduleNextTest(personId, startTime);
 			}
 			vaccineAllocLimitReset();
