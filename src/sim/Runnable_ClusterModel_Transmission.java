@@ -628,16 +628,18 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			pid_collection[g] = new ArrayList<>();
 		}
 
-		for (Integer v : bASE_CONTACT_MAP == null? pop_stat.keySet() : bASE_CONTACT_MAP.vertexSet()) {
+		for (Integer v : bASE_CONTACT_MAP == null ? pop_stat.keySet() : bASE_CONTACT_MAP.vertexSet()) {
 			pid_collection[getGenderType(v)].add(v);
 		}
 
 		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
 			Integer[] candidate = pid_collection[g].toArray(new Integer[pid_collection[g].size()]);
+			Arrays.sort(candidate);
 			for (int s = 0; s < LENGTH_SITE; s++) {
 				int numInfect = num_infectioned_by_gender_site[g][s];
 				for (int p = 0; p < candidate.length && numInfect > 0; p++) {
-					if (RNG.nextInt(candidate.length - p) < numInfect) {
+					int prob = RNG.nextInt(candidate.length - p);
+					if (prob < numInfect) {
 						addInfectious(candidate[p], s, time, time + (int) Math.round(infectious_period[s].sample()));
 						numInfect--;
 					}
@@ -823,7 +825,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			setPreAllocatedRiskFromFile();
 
 			// Schedule testing and vaccination limit
-			for (Integer personId : bASE_CONTACT_MAP == null? pop_stat.keySet() :  bASE_CONTACT_MAP.vertexSet()) {
+			Integer[] pid_set = (bASE_CONTACT_MAP == null ? pop_stat.keySet() : bASE_CONTACT_MAP.vertexSet())
+					.toArray(new Integer[0]);
+			Arrays.sort(pid_set);
+			for (Integer personId : pid_set) {
 				scheduleNextTest(personId, startTime);
 			}
 			vaccineAllocLimitReset();
@@ -1038,11 +1043,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 														}
 
 														// Reduction of transProb due to vaccine
-																												
-														transProb = vaccine_effect(currentTime, vaccine_effect,																
-																infectious, g_s, site_src, vaccine_expiry_src,
-																partner, g_t, site_target,
-																vaccine_expiry_target, transProb);
+
+														transProb = vaccine_effect(currentTime, vaccine_effect,
+																infectious, g_s, site_src, vaccine_expiry_src, partner,
+																g_t, site_target, vaccine_expiry_target, transProb);
 
 														transmission_possible &= RNG.nextFloat() < transProb;
 
@@ -1397,7 +1401,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				snap_index = (snap_index + 1) % nUM_TIME_STEPS_PER_SNAP;
 
 				hasInfected = hasInfectedInPop();
-								
+
 				postTimeStep(currentTime);
 
 			}
@@ -1411,12 +1415,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	}
 
-	protected float vaccine_effect(int currentTime, float[][][] vaccine_effect_global,
-			int srcId, 	int gender_src, int site_src, int[] vaccine_expiry_src,			
-			int tarId, int gender_target, int site_target, int[] vaccine_expiry_target, float transProb_pre_vaccine) {
-		
+	protected float vaccine_effect(int currentTime, float[][][] vaccine_effect_global, int srcId, int gender_src,
+			int site_src, int[] vaccine_expiry_src, int tarId, int gender_target, int site_target,
+			int[] vaccine_expiry_target, float transProb_pre_vaccine) {
+
 		float transProb = transProb_pre_vaccine;
-		
+
 		if (vaccine_expiry_src != null) {
 			if (currentTime < vaccine_expiry_src[site_src]) {
 				if (vaccine_effect_global[gender_src][site_src][VACCINE_PROPERTIES_TRANSMISSION_ADJ] < 0) {
@@ -1880,7 +1884,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 
 				File printFile;
-				PrintWriter expWri;				
+				PrintWriter expWri;
 				printFile = new File(baseDir,
 						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_INDEX_CASE_LIST,
 								this.cMAP_SEED, this.sIM_SEED));
@@ -1895,7 +1899,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				}
 			}
-			
+
 			// Print default output (sim_ouput)
 
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_GEN_PREVAL_FILE) != 0) {

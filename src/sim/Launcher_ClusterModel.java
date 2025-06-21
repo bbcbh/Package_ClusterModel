@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.InvalidPropertiesFormatException;
 import java.util.regex.Pattern;
 
+import test.Test_Util_ContactMapConversion;
 import util.PropValUtils;
 import util.Util_Analyse_ClusterModel_Transmission_Output_Combined;
 import util.Util_Analyse_ContactMap_Outputs;
@@ -80,16 +81,7 @@ public class Launcher_ClusterModel {
 				analysis.analyse_output();
 			} else if ("-combine_map".equals(flag)) {
 				Util_ContactMap_Adjust combine = new Util_ContactMap_Adjust(args[1], args[2], args[3]);
-				combine.combineMaps();
-			}else if ("-convert_map".equals(flag)) {
-				if(args.length < 2) {					
-					System.out.printf("Usage: java %s -convert_map FILE_DIRECTORY_SRC FILE_DIRECTORY_SRC  \n");
-					System.exit(0);					
-				}else {				
-					File contactMapDir = new File(args[1]);
-					File tarDir = new File(args[2]);										
-					Util_ContactMap_Adjust.convertContactMapToMultiMap(contactMapDir, tarDir);
-				}
+				combine.combineMaps();			
 			} else if ("-compare".equals(flag)) {
 				Util_Compare_ClusterModel_Transmission_Output.launch(Arrays.copyOfRange(args, 1, args.length));
 			} else if ("-clean_up".equals(flag)) {

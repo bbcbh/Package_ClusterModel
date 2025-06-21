@@ -8,20 +8,13 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import person.AbstractIndividualInterface;
 import relationship.ContactMap;
 import sim.Abstract_Runnable_ClusterModel;
-import sim.Runnable_ClusterModel_ContactMap_Generation_MultiMap;
 import sim.Simulation_ClusterModelGeneration;
-import sim.Simulation_ClusterModelTransmission;
 
 public class Util_ContactMap_Adjust {
 
@@ -165,120 +158,6 @@ public class Util_ContactMap_Adjust {
 
 		}
 
-	}
-
-
-
-	public static void convertContactMapToMultiMap(File contactMapDir, File tarDir)
-			throws FileNotFoundException, IOException {
-		final Pattern pattern_all_ContactMap = Pattern.compile(
-				Simulation_ClusterModelTransmission.FILENAME_FORMAT_ALL_CMAP.replaceAll("%d", "(-{0,1}(?!0)\\\\d+)"));
-			
-		tarDir.mkdirs();	
-	
-		File[] preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
-			@Override
-			public boolean accept(File pathname) {
-				return pathname.isFile() && pattern_all_ContactMap.matcher(pathname.getName()).matches();
-	
-			}
-		});
-	
-		System.out.printf("Converting %d contact map found in %s...\n", preGenClusterMap.length,
-				contactMapDir.getAbsolutePath());
-	
-		PrintWriter pwri;
-		for (File file_cmap : preGenClusterMap) {
-			Matcher m = pattern_all_ContactMap.matcher(file_cmap.getName());
-			if (m.find()) {
-				ArrayList<Integer> pid_list = new ArrayList<Integer>();
-				int minTime = Integer.MAX_VALUE;
-				int maxTime = 0;
-				int default_enter_age = 18 * AbstractIndividualInterface.ONE_YEAR_INT;
-				
-				long cMap_seed = Long.parseLong(m.group(1));
-				HashMap<Integer, ArrayList<int[]>> futureMap = new HashMap<>();
-				BufferedReader cmap_reader = new BufferedReader(new FileReader(file_cmap));												
-				
-				String cmap_line;
-			
-				File convert_cmap_file = new File(tarDir, String.format(Runnable_ClusterModel_ContactMap_Generation_MultiMap.MAPFILE_FORMAT, 0, cMap_seed));
-				pwri = new PrintWriter(convert_cmap_file);
-	
-				while ((cmap_line = cmap_reader.readLine()) != null) {
-					String[] cmap_entry = cmap_line.split(",");
-	
-					int pid_1 = Integer.parseInt(cmap_entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
-					int pid_2 = Integer.parseInt(cmap_entry[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
-					int pre_e_start = -1;
-	
-					for (int pid : new int[] { pid_1, pid_2 }) {
-						int pt = Collections.binarySearch(pid_list, pid);
-						if (pt < 0) {
-							pid_list.add(~pt, pid);
-						}
-					}
-	
-					for (int i = Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME; i < cmap_entry.length; i += 2) {
-						int e_start = Integer.parseInt(cmap_entry[i]);
-						int e_length = Integer.parseInt(cmap_entry[i + 1]);
-						
-						minTime = Math.min(e_start, minTime);
-						maxTime = Math.max(e_start+e_length, maxTime);
-	
-						if (pre_e_start != e_start) {
-							Integer[] storedEdgeTimes = futureMap.keySet().toArray(new Integer[0]);
-							if (storedEdgeTimes.length > 0) {
-								Arrays.sort(storedEdgeTimes);
-								int pt = 0;
-								while (pt < storedEdgeTimes.length 
-										&& storedEdgeTimes[pt] <= e_start) {
-									ArrayList<int[]> storedEdges = futureMap.remove(storedEdgeTimes[pt]);
-									for (int[] edges : storedEdges) {
-										pwri.printf("%d,%d,%d,%d\n", edges[0], edges[1],edges[2],edges[3]);
-									}
-									pt++;
-								}
-	
-							}
-							pre_e_start = e_start;
-						}
-						if (i != Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME) {
-							ArrayList<int[]> ent = futureMap.get(e_start);
-							if (ent == null) {
-								ent = new ArrayList<>();
-								futureMap.put(e_start, ent);
-							}
-							ent.add(new int[] { pid_1, pid_2, e_start, e_length });
-						}else {
-							pwri.printf("%d,%d,%d,%d\n", pid_1, pid_2, e_start, e_length);
-						}
-					}
-				}
-				
-				pwri.close();
-				cmap_reader.close();
-				
-				System.out.printf("Convert contact map to %s\n", convert_cmap_file.getAbsolutePath());
-	
-				// Print pop stat
-				
-				File pop_stat_file = new File(tarDir,
-						String.format(Runnable_ClusterModel_ContactMap_Generation_MultiMap.POPSTAT_FORMAT, cMap_seed));
-				pwri = new PrintWriter(pop_stat_file);
-				pwri.println("ID,GRP,ENTER_POP_AGE,ENTER_POP_AT,EXIT_POP_AT,HAS_REG_PARTNER_UNTIL");
-	
-				for (Integer pid : pid_list) {
-					pwri.printf("%d,0,%d,%d,%d,-1\n", pid, default_enter_age, minTime, maxTime);
-				}
-	
-				pwri.close();
-				
-				System.out.printf("Generated default pop stat file at %s \n", pop_stat_file.getAbsolutePath());
-	
-			}
-	
-		}
 	}
 
 }
