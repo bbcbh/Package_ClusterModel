@@ -9,12 +9,11 @@ import java.util.Arrays;
 import java.util.InvalidPropertiesFormatException;
 import java.util.regex.Pattern;
 
-import test.Test_Util_ContactMapConversion;
 import util.PropValUtils;
 import util.Util_Analyse_ClusterModel_Transmission_Output_Combined;
 import util.Util_Analyse_ContactMap_Outputs;
-import util.Util_ContactMap_Adjust;
 import util.Util_Compare_ClusterModel_Transmission_Output;
+import util.Util_ContactMap_Adjust;
 import util.Util_RiskGrpAllocation;
 
 public class Launcher_ClusterModel {
