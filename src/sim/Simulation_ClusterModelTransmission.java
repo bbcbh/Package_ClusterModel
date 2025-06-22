@@ -956,7 +956,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			if (runSim) {				
-				runnable[s] = generateDefaultRunnable(baseContactMapSeed, seed, loadedProperties);
+				runnable[s] = generateDefaultRunnable(baseContactMapSeed, simSeed, loadedProperties);
 				
 				if (runnable[s] == null) {
 					if (popType == null) {
