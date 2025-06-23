@@ -69,7 +69,7 @@ import util.PropValUtils;
  *
  * <p>Depending on the value of <code>PROP_POP_TYPE</code>, the following classes are invoked:</p>
  * <ul>
- *   <li>{@link Runnable_ClusterModel_ContactMap_Generation_BridgingPop} – used for both <i>Population_Bridging_Scheduled</i> and <i>Population_Bridging_NetworkDensity</i></li>
+ *   <li>{@link Runnable_ClusterModel_ContactMap_Generation_SingleMap} – used for both <i>Population_Bridging_Scheduled</i> and <i>Population_Bridging_NetworkDensity</i></li>
  *   <li>{@link Runnable_ClusterModel_ContactMap_Generation_MultiMap} – used for <i>MultiMap</i></li>
  * </ul>
  *
@@ -93,7 +93,7 @@ import util.PropValUtils;
  *   <li><b>PreSeed</b>: A comma-separated list of RNG seeds for network generation. If omitted, seeds are generated based on <code>PROP_BASESEED</code>.</li>
  * </ul>
  *
- * @see Runnable_ClusterModel_ContactMap_Generation_BridgingPop
+ * @see Runnable_ClusterModel_ContactMap_Generation_SingleMap
  * @see Runnable_ClusterModel_ContactMap_Generation_MultiMap
  * 
  * @author Ben Hui
@@ -318,8 +318,8 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 							population.getFields()[f] = simFields[f];
 						}
 					}
-					r = new Runnable_ClusterModel_ContactMap_Generation_BridgingPop(population.getSeed());
-					((Runnable_ClusterModel_ContactMap_Generation_BridgingPop) r).setPopulation(population);
+					r = new Runnable_ClusterModel_ContactMap_Generation_SingleMap(population.getSeed());
+					((Runnable_ClusterModel_ContactMap_Generation_SingleMap) r).setPopulation(population);
 				} else {
 					String popType = loadedProperties
 							.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);

@@ -22,7 +22,7 @@ person_id_1, person_id_2, partnership_start, partnership_duration
 The package included the _Simulation_ClusterModelGeneration_ class to initiate network generation. This class calls objects that implement the _Abstract_Runnable_ClusterModel_ContactMap_Generation_ interface.
 
 Available implementations include:
-* _Runnable_ClusterModel_ContactMap_Generation_BridgingPop_
+* _Runnable_ClusterModel_ContactMap_Generation_SingleMap_
 * _Runnable_ClusterModel_ContactMap_Generation_MultiMap_
   
 Refer to the **Javadoc** for each class for detailed usage and configuration.

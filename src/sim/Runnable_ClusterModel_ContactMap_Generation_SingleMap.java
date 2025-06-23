@@ -22,12 +22,18 @@ import population.Population_Bridging;
 import population.Population_Bridging_Scheduled;
 import relationship.ContactMap;
 
-public class Runnable_ClusterModel_ContactMap_Generation_BridgingPop
+
+//TODO Javadoc for Runnable_ClusterModel_ContactMap_Generation_SingleMap
+/**
+ * 
+ */
+
+public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 		extends Abstract_Runnable_ClusterModel_ContactMap_Generation {
 
 	private Population_Bridging population;
 
-	public Runnable_ClusterModel_ContactMap_Generation_BridgingPop(long mapSeed) {
+	public Runnable_ClusterModel_ContactMap_Generation_SingleMap(long mapSeed) {
 		super(mapSeed);
 	}
 
