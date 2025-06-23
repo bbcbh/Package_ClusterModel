@@ -2,7 +2,7 @@
 This Java package provides core utilities for implementing various Individual-Based Models (IBM), particularly those involving cluster-based simulations. It supports both network generation and simulation execution, serving as the backbone for multiple IBM implementations.
 
 # Maintainer and developers
-* Ben Hui
+* Ben Hui; ORCiD ID: [0000-0002-6567-5821] (https://orcid.org/0000-0002-6567-5821)
 
 # Key Concepts
 IBM simulations built with this package typically follow two main steps:
