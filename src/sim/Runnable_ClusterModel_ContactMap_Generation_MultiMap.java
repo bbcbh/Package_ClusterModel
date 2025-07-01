@@ -25,11 +25,6 @@ import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import util.Util_7Z_CSV_Entry_Extract_Callable;
 
-//TODO Javadoc for Runnable_ClusterModel_ContactMap_Generation_MultiMap
-/**
- * 
- */
-
 public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		extends Abstract_Runnable_ClusterModel_ContactMap_Generation {
 

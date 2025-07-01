@@ -1103,10 +1103,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				for (Integer pid : pop_stat.keySet()) {
 					String[] popEnt = pop_stat.get(pid);
 					scheduleNextTest(pid,
-							Integer.parseInt(
-									popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]),
-							Integer.parseInt(
-									popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]));
+							Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_ENTER_POP_AT]),
+							Integer.parseInt(popEnt[Abstract_Runnable_ClusterModel.POP_INDEX_EXIT_POP_AT]));
 				}
 			}
 			// End of schedule test
@@ -1129,16 +1127,18 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		HashMap<Integer, ArrayList<Integer>> pid_remove_at = new HashMap<>();
 
 		// Default removal time
-		for (Integer pid : pop_stat.keySet()) {
-			int exitTime = exitPopAt(pid);
-			ArrayList<Integer> rm_today = pid_remove_at.get(exitTime);
-			if (rm_today == null) {
-				rm_today = new ArrayList<>();
-				pid_remove_at.put(exitTime, rm_today);
-			}
-			int pt = Collections.binarySearch(rm_today, pid);
-			if (pt < 0) {
-				rm_today.add(~pt, pid);
+		if (pop_stat != null) {
+			for (Integer pid : pop_stat.keySet()) {
+				int exitTime = exitPopAt(pid);
+				ArrayList<Integer> rm_today = pid_remove_at.get(exitTime);
+				if (rm_today == null) {
+					rm_today = new ArrayList<>();
+					pid_remove_at.put(exitTime, rm_today);
+				}
+				int pt = Collections.binarySearch(rm_today, pid);
+				if (pt < 0) {
+					rm_today.add(~pt, pid);
+				}
 			}
 		}
 
@@ -2354,7 +2354,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			int current_time, int[][] current_stage_arr, int[][] infection_state_switch, int state_duration_preset) {
 		int pt;
 		double state_duration;
-		int infect_switch_time = current_time;		
+		int infect_switch_time = current_time;
 
 		if (current_stage_arr[infection_id][site_id] != STAGE_ID_DEATH) {
 			if (current_infection_stage == STAGE_ID_JUST_INFECTED) {
@@ -2485,7 +2485,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Disease induced death
 		if (current_stage_arr[infection_id][site_id] == STAGE_ID_DEATH) {
 			current_infection_stage = STAGE_ID_DEATH;
-			infect_switch_time = Integer.MAX_VALUE;			
+			infect_switch_time = Integer.MAX_VALUE;
 		}
 
 		// Update state_switch map
