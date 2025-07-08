@@ -808,10 +808,10 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			Object[] simulation_store = preSimulation();
 
-			Integer[] switchTime = propSwitch_map.keySet().toArray(new Integer[propSwitch_map.size()]);
-
-			Arrays.sort(switchTime);
-			int switchTimeIndex = 0;
+			// Integer[] switchTime = propSwitch_map.keySet().toArray(new
+			// Integer[propSwitch_map.size()]);
+			// Arrays.sort(switchTime);
+			// int switchTimeIndex = 0;
 
 			// Current contact map
 			ContactMap cMap = new ContactMap();
@@ -852,22 +852,23 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				infected_today.clear();
 
-				if (switchTimeIndex < switchTime.length && switchTime[switchTimeIndex] == currentTime) {
+				if (!propSwitch_map.isEmpty()) {
 					HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
-					for (Integer switch_index : switch_ent.keySet()) {
-						String str_obj = switch_ent.get(switch_index);
+					if (switch_ent != null) {
+						for (Integer switch_index : switch_ent.keySet()) {
+							String str_obj = switch_ent.get(switch_index);
 
-						int fieldId = switch_index - RUNNABLE_OFFSET;
-						if (fieldId < 0) {
-							loadNonRunnableFieldSetting(switch_index, str_obj, currentTime);
-						} else {
-							getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
-									getRunnable_fields()[fieldId].getClass());
-							refreshField(fieldId, false);
+							int fieldId = switch_index - RUNNABLE_OFFSET;
+							if (fieldId < 0) {
+								loadNonRunnableFieldSetting(switch_index, str_obj, currentTime);
+							} else {
+								getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
+										getRunnable_fields()[fieldId].getClass());
+								refreshField(fieldId, false);
 
+							}
 						}
 					}
-					switchTimeIndex++;
 
 					vaccine_one_off_at = setOneOffVaccineSetting(vaccine_one_off_rate, vaccine_one_off_at);
 				}

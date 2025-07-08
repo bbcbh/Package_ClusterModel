@@ -1076,9 +1076,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public void run() {
 
 		// Check if there is a switch in prop
-		Integer[] switchTime = propSwitch_map.keySet().toArray(new Integer[propSwitch_map.size()]);
-		Arrays.sort(switchTime);
-		int switchTimeIndex = 0;
+		// Integer[] switchTime = propSwitch_map.keySet().toArray(new
+		// Integer[propSwitch_map.size()]);
+		// Arrays.sort(switchTime);
+		// int switchTimeIndex = 0;
 
 		// Current contact map
 		ContactMap cMap = new ContactMap();
@@ -1150,23 +1151,25 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
 				&& (currentTime < lastStateSwitch || hasInfectious); currentTime++) {
 
-			if (switchTimeIndex < switchTime.length && switchTime[switchTimeIndex] == currentTime) {
+			if (!propSwitch_map.isEmpty()) {
 				HashMap<Integer, String> switch_ent = propSwitch_map.get(currentTime);
-				for (Integer switch_index : switch_ent.keySet()) {
-					String str_obj = switch_ent.get(switch_index);
+				if (switch_ent != null) {
+					for (Integer switch_index : switch_ent.keySet()) {
+						String str_obj = switch_ent.get(switch_index);
 
-					int fieldId = switch_index - RUNNABLE_OFFSET;
-					if (fieldId < 0) {
-						loadNonRunnableFieldSetting(switch_index, str_obj, currentTime);
-					} else {
-						String org_field = PropValUtils.objectToPropStr(getRunnable_fields()[fieldId],
-								getRunnable_fields()[fieldId].getClass());
-						getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
-								getRunnable_fields()[fieldId].getClass());
-						refreshField(fieldId, currentTime, false, org_field);
+						int fieldId = switch_index - RUNNABLE_OFFSET;
+						if (fieldId < 0) {
+							loadNonRunnableFieldSetting(switch_index, str_obj, currentTime);
+						} else {
+							String org_field = PropValUtils.objectToPropStr(getRunnable_fields()[fieldId],
+									getRunnable_fields()[fieldId].getClass());
+							getRunnable_fields()[fieldId] = PropValUtils.propStrToObject(str_obj,
+									getRunnable_fields()[fieldId].getClass());
+							refreshField(fieldId, currentTime, false, org_field);
+						}
 					}
 				}
-				switchTimeIndex++;
+
 			}
 
 			// Check for stage change
