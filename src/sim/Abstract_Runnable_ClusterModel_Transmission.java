@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -458,7 +459,17 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	}
 
 	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
-		this.propSwitch_map = propSwitch_map;
+		this.propSwitch_map = new HashMap<>();
+		for(Entry<Integer, HashMap<Integer, String>> ent : propSwitch_map.entrySet()) {
+			HashMap<Integer, String> srcMap = ent.getValue();			
+			HashMap<Integer, String> newMap = new HashMap<>();
+			for(Entry<Integer, String> entry : srcMap.entrySet()) {
+				newMap.put(entry.getKey(), entry.getValue());
+			}								
+			this.propSwitch_map.put(ent.getKey(), newMap);
+			
+		}
+		
 	}
 
 	protected void loadNonRunnableFieldSetting(Integer index, String entry, int loadTime) {
@@ -664,7 +675,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				add_e[i] = Integer.parseInt(edgeSp[i]);
 			}
 			if (add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-				if (addSelectiveEdge(included_pids, add_e)) {
+				if (checkCMapKeptEdge(addSelectiveEdge(included_pids, add_e),add_e)) {										
 					addPartnership(cMap, add_e);
 					addedEdges.add(add_e);
 					numEdgeAdded++;
@@ -685,8 +696,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 					for (int i = 0; i < add_e.length; i++) {
 						add_e[i] = Integer.parseInt(edgeSp[i]);
 					}
-					if (add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-
+					if (checkCMapKeptEdge(add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime, add_e)) {
 						addPartnership(cMap, add_e);
 						addedEdges.add(add_e);
 						numEdgeAdded++;
@@ -745,20 +755,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			boolean addEdge = cMap_Kept_Edge_By_Duration_Setting == null;
 			Integer[] edge = edges_array[edges_array_pt];
 
-			if (cMap_Kept_Edge_By_Duration_Setting != null) {
-				int index = Arrays.binarySearch(cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST],
-						Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1));
-				if (index < 0) {
-					index = ~index;
-				}
-				addEdge = index >= cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST].length;
-				if (!addEdge) {
-					float keptEdgeProb = cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST][index];
-					if (keptEdgeProb > 0) {
-						addEdge = keptEdgeProb >= 1 ? true : RNG.nextFloat() < keptEdgeProb;
-					}
-				}
-			}
+			addEdge = checkCMapKeptEdge(addEdge, edge);
 
 			// Check for one-off not involving infectious
 			if (addEdge) {
@@ -910,6 +907,25 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 
 		return new int[] { edges_array_pt, numEdgeAdded };
+	}
+
+	private boolean checkCMapKeptEdge(boolean addEdge, Integer[] edge) {
+		if (cMap_Kept_Edge_By_Duration_Setting != null) {
+			int index = Arrays.binarySearch(cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST],
+					Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1));
+			if (index < 0) {
+				index = ~index;
+			}
+			addEdge = index >= cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST].length;
+			if (!addEdge) {
+				float keptEdgeProb = cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST][index];
+							
+				if (keptEdgeProb > 0) {
+					addEdge = keptEdgeProb >= 1 ? true : RNG.nextFloat() < keptEdgeProb;
+				}
+			}
+		}
+		return addEdge;
 	}
 
 	private boolean addSelectiveEdge(ArrayList<Integer> included_pids, Integer[] edge) {
