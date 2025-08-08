@@ -1421,13 +1421,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				for (int[] testing_stat : testToday) {
 					// Testing stat: int[]{PID,INF_INCLUDE_INDEX,SITE_INCLUDE_INDEX}
 					// symptomatic or one off test if PID < 0
-					int pid = Math.abs(testing_stat[0]);
+					int pid = testing_stat[0];
 					int infIncl = testing_stat[1];
 					int siteIncl = testing_stat[2];
 					if (currentTime < exitPopAt(pid)) {
 						testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
 						// Schedule next test
-						if (testing_stat[0] > 0) {
+						if (pid > 0) {
 							scheduleNextTest(pid, currentTime, -1, infIncl, siteIncl);
 						}
 					}
@@ -1672,7 +1672,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				|| tar_infection_stages[inf_id][tar_site] == AbstractIndividualInterface.INFECT_S;
 	}
 
-	protected void testPerson(int currentTime, int pid, int infIncl, int siteIncl, int[][] cumul_treatment_by_person) {
+	protected void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl, int[][] cumul_treatment_by_person) {
+		int pid = Math.abs(pid_t); // Symptomatic or one off test if PID < 0
 		for (int infId = 0; infId < NUM_INF; infId++) {
 			if ((infIncl & 1 << infId) != 0) {
 				boolean applyTreatment = false;

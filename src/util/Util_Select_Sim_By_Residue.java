@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
@@ -49,12 +50,14 @@ public abstract class Util_Select_Sim_By_Residue {
 			ArrayList<Double> ordered_residue_val, ArrayList<String> inRangeKeyArray,
 			HashMap<String, double[]> residue_mapping, File paramListSummaryFile)
 			throws FileNotFoundException, IOException {
-		PrintWriter pWri_summary = null;
-		HashMap<String, String[]> extract_seedList = new HashMap<>();
+
 		int pt = 0;
 
 		double lastResidue = Double.NaN;
 		ArrayList<String> sameResidueParamList = new ArrayList<>();
+		HashMap<String, String[]> extract_seedList = new HashMap<>();
+
+		ArrayList<StringBuilder> lines_collections = new ArrayList<>();
 
 		for (String key : ordered_keys) {
 			Double residue = ordered_residue_val.get(pt);
@@ -93,21 +96,21 @@ public abstract class Util_Select_Sim_By_Residue {
 
 			}
 
-			if (pWri_summary == null) {
-				pWri_summary = new PrintWriter(paramListSummaryFile);
+			if (lines_collections.size() == 0) {
+				StringBuilder header = new StringBuilder();
+				lines_collections.add(header);
 				// Print header
-				pWri_summary.print(extract_seed[0]);
-				pWri_summary.print(',');
-				pWri_summary.print(',');
-				pWri_summary.print("Dir");
-				pWri_summary.print(',');
-				pWri_summary.print("Residue");
-				pWri_summary.print(',');
-				pWri_summary.print("In target range");
+				header.append(extract_seed[0]);
+				header.append(',');
+				header.append(',');
+				header.append("Dir");
+				header.append(',');
+				header.append("Residue");
+				header.append(',');
+				header.append("In target range");
 				for (int i = 0; i < residue_val.length; i++) {
-					pWri_summary.print(String.format(",Outcome_%d", i));
+					header.append(String.format(",Outcome_%d", i));
 				}
-				pWri_summary.println();
 			}
 
 			boolean addNewRow = !residue.equals(lastResidue);
@@ -124,22 +127,47 @@ public abstract class Util_Select_Sim_By_Residue {
 			}
 
 			if (addNewRow) {
-				pWri_summary.print(extract_seed[seedNum + 1]); // Seed starts at line 1
-				pWri_summary.print(',');
-				pWri_summary.print(',');
-				pWri_summary.print(key);
-				pWri_summary.print(',');
-				pWri_summary.print(residue);
-				pWri_summary.print(',');
-				pWri_summary.print(Collections.binarySearch(inRangeKeyArray, key) >= 0);
+				StringBuilder line = new StringBuilder();
+				lines_collections.add(line);
+				line.append(extract_seed[seedNum + 1]); // Seed starts at line 1
+				line.append(',');
+				line.append(',');
+				line.append(key);
+				line.append(',');
+				line.append(residue);
+				line.append(',');
+				line.append(Collections.binarySearch(inRangeKeyArray, key) >= 0);
 				for (int i = 0; i < residue_val.length; i++) {
-					pWri_summary.print(',');
-					pWri_summary.print(residue_val[i]);
+					line.append(',');
+					line.append(residue_val[i]);
 				}
-				pWri_summary.println();
-
 			}
 			pt++;
+		}
+
+		// Post processing
+		StringBuilder[] lines_collections_arr = lines_collections.toArray(new StringBuilder[0]);
+		Arrays.sort(lines_collections_arr, 1, lines_collections_arr.length, new Comparator<StringBuilder>() {
+			@Override
+			public int compare(StringBuilder o1, StringBuilder o2) {
+				int res = 0;
+				String[] c1 = o1.toString().split(",");
+				String[] c2 = o2.toString().split(",");
+				for (int c = 0; c < Math.min(c1.length, c2.length) && res == 0; c++) {
+					if (c < 2) {
+						res = Long.compare(Long.parseLong(c1[c]), Long.parseLong(c2[c]));
+					} else {
+						res = Double.compare(Double.parseDouble(c1[c]), Double.parseDouble(c2[c]));
+					}
+				}
+				return res;
+			}
+
+		});
+
+		PrintWriter pWri_summary = new PrintWriter(paramListSummaryFile);
+		for (StringBuilder builder : lines_collections_arr) {
+			pWri_summary.println(builder.toString());
 		}
 		pWri_summary.close();
 	}
@@ -191,9 +219,9 @@ public abstract class Util_Select_Sim_By_Residue {
 						inRangeKeyArr.add(key);
 					}
 				}
-			}else {
+			} else {
 				order_residue_val.add(Double.NaN); // Not used
-			    order_resiude_key.add(key);
+				order_resiude_key.add(key);
 				inRangeKeyArr.add(key);
 			}
 		}
