@@ -1687,7 +1687,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						test_properties = lookupTable_test_treatment_properties
 								.get(String.format("%d,%d", infId, siteId));
 						
-						// Check for test_properties for symptom/self sought infection					
+						// Check for test_properties for symptom/self sought infections					
 						if(pid_t < 0) {
 							double[] test_properties_sym = lookupTable_test_treatment_properties
 									.get(String.format("%d,%d", -infId, siteId));							
