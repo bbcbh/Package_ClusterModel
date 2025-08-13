@@ -1677,26 +1677,36 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		for (int infId = 0; infId < NUM_INF; infId++) {
 			if ((infIncl & 1 << infId) != 0) {
 				boolean applyTreatment = false;
-				double[] test_properies;
+				double[] test_properties;
 				int tested_stage_inc;
 				int[][] inf_stage = null;
 
 				for (int siteId = 0; siteId < NUM_SITE && !applyTreatment; siteId++) {
-					if ((siteIncl & 1 << siteId) != 0) {
+					if ((siteIncl & 1 << siteId) != 0) {							
 						// Test for the site
-						test_properies = lookupTable_test_treatment_properties
+						test_properties = lookupTable_test_treatment_properties
 								.get(String.format("%d,%d", infId, siteId));
-						if (test_properies != null) {
+						
+						// Check for test_properties for symptom/self sought infection					
+						if(pid_t < 0) {
+							double[] test_properties_sym = lookupTable_test_treatment_properties
+									.get(String.format("%d,%d", -infId, siteId));							
+							if(test_properties_sym != null) {
+								test_properties = test_properties_sym;
+							}														
+						}																																									
+						
+						if (test_properties != null) {
 							inf_stage = map_currrent_infection_stage.get(pid);
 							if (inf_stage != null && inf_stage[infId][siteId] >= 0) {
 								double testSensitivity = 0;
 								int stage_pt = FIELD_DX_TEST_PROPERTIES_ACCURACY_START;
 
-								while (testSensitivity == 0 && stage_pt < test_properies.length) {
+								while (testSensitivity == 0 && stage_pt < test_properties.length) {
 									// TEST_ACCURACY_1, TARGET_STAGE_INC_1, TREATMENT_SUC_STAGE_1 ..
-									tested_stage_inc = (int) test_properies[stage_pt + 1];
+									tested_stage_inc = (int) test_properties[stage_pt + 1];
 									if ((tested_stage_inc & 1 << inf_stage[infId][siteId]) != 0) {
-										testSensitivity = test_properies[stage_pt];
+										testSensitivity = test_properties[stage_pt];
 									}
 									stage_pt += 3;
 								}
