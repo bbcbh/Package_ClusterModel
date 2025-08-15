@@ -104,7 +104,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	public static final int PARTNER_TYPE_INDEX_CAS_ONLY = PARTNER_TYPE_INDEX_REG_ONLY + 1;
 	public static final int PARTNER_TYPE_ASSORTATIVITY = PARTNER_TYPE_INDEX_CAS_ONLY + 1;
 	public static final int PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB = PARTNER_TYPE_ASSORTATIVITY + 1;
-	public static final int PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER = PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB + 1;
+	public static final int PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER = PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB
+			+ 1;
 
 	public static final int GENDER_FEMALE = 0;
 	public static final int GENDER_HETRO_MALE = GENDER_FEMALE + 1;
@@ -120,6 +121,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	public static final String STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS = "STEPWISE_OUTPUT_NUM_PARTNERS_IN_12_MONTHS";
 
+	protected float prob_no_bridge = -1f;
+
 	@SuppressWarnings("unchecked")
 	private transient ArrayList<Person_Bridging_Pop>[] canSeekRelPartners = new ArrayList[LENGTH_GENDER];
 	private transient int[][] canSeekRelPartners_catorgories_offset = new int[LENGTH_GENDER][];
@@ -131,11 +134,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	private transient int[][] canSeekCasPartners_catorgories_offset = new int[LENGTH_GENDER][];
 
 	private transient Person_Bridging_Pop[][] casualPartnerFormed = null;
-	protected transient HashMap<String, Object> stepwise_output = null;	
+	protected transient HashMap<String, Object> stepwise_output = null;
 	protected transient File baseDir = null;
 
-	
-	
 	private static final Comparator<Person_Bridging_Pop> COMPARATOR_CASUAL_MIXING = new Comparator<Person_Bridging_Pop>() {
 		@Override
 		public int compare(Person_Bridging_Pop o1, Person_Bridging_Pop o2) {
@@ -147,8 +148,9 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	private static final int CASUAL_MIXING_SD_RANGE = 2;
 
-	protected AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];	
+	protected AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 	protected PrintStream[] printStatus = null;
+
 	public Population_Bridging(long seed) {
 		setSeed(seed);
 		setRNG(new random.MersenneTwisterRandomGenerator(seed));
@@ -192,6 +194,10 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 		return pop;
 
+	}
+
+	public void setProb_no_bridge(float prob_no_bridge) {
+		this.prob_no_bridge = prob_no_bridge;
 	}
 
 	protected void initialiseTransientFields() {
@@ -341,14 +347,27 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			}
 		}
 
+		Person_Bridging_Pop[] bridging_candidate = casualCandidate[GENDER_MSMW];
+
+		if (prob_no_bridge > 0) {
+			int numMSM_bridge = Math.round(bridging_candidate.length * Math.max(0, 1 - prob_no_bridge));
+			if (numMSM_bridge > 0) {
+				bridging_candidate = ArrayUtilsRandomGenerator.randomSelect(bridging_candidate, numMSM_bridge,
+						getRNG());
+			} else {
+				bridging_candidate = new Person_Bridging_Pop[0];
+			}
+
+		}
+
 		// Heterosexual
 		if (casualCandidate[GENDER_FEMALE].length > 0
-				&& (casualCandidate[GENDER_HETRO_MALE].length + casualCandidate[GENDER_MSMW].length) > 0)
+				&& (casualCandidate[GENDER_HETRO_MALE].length + bridging_candidate.length) > 0)
 
 		{
 
 			int numHetroCasualToFormed = Math.min(casualCandidate[GENDER_FEMALE].length,
-					casualCandidate[GENDER_HETRO_MALE].length + casualCandidate[GENDER_MSMW].length);
+					casualCandidate[GENDER_HETRO_MALE].length + bridging_candidate.length);
 
 			if (numHetroCasualToFormed > 0) {
 
@@ -356,10 +375,12 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 				Person_Bridging_Pop[] casualFemale = casualCandidate[GENDER_FEMALE];
 				Person_Bridging_Pop[] casualMale = Arrays.copyOf(casualCandidate[GENDER_HETRO_MALE],
-						casualCandidate[GENDER_HETRO_MALE].length + casualCandidate[GENDER_MSMW].length);
+						casualCandidate[GENDER_HETRO_MALE].length + bridging_candidate.length);
 
-				System.arraycopy(casualCandidate[GENDER_MSMW], 0, casualMale, casualCandidate[GENDER_HETRO_MALE].length,
-						casualCandidate[GENDER_MSMW].length);
+				if (bridging_candidate.length > 0) {
+					System.arraycopy(bridging_candidate, 0, casualMale, casualCandidate[GENDER_HETRO_MALE].length,
+							bridging_candidate.length);
+				}
 
 				// Assortative mixing (Hetrosexual)
 				Arrays.sort(casualFemale, COMPARATOR_CASUAL_MIXING);
@@ -419,11 +440,11 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			boolean randMix = true;
 
 			float[] part_type = ((float[][]) getFields()[FIELD_PARTNER_TYPE_PROB])[src_person.getGenderType()];
-			if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {				
-				float mixProb = part_type[PARTNER_TYPE_ASSORTATIVITY];				
-				if(mixProb >= 1) {
-					System.err.printf("Warning: PARTNER_TYPE_ASSORTATIVITY = %f > 1\n",mixProb);
-				}								
+			if (PARTNER_TYPE_ASSORTATIVITY < part_type.length) {
+				float mixProb = part_type[PARTNER_TYPE_ASSORTATIVITY];
+				if (mixProb >= 1) {
+					System.err.printf("Warning: PARTNER_TYPE_ASSORTATIVITY = %f > 1\n", mixProb);
+				}
 				randMix = mixProb < getRNG().nextFloat();
 			}
 
@@ -967,12 +988,26 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 				availiablePerson[0] = candidates[GENDER_MSMO];
 				availiablePerson[1] = new AbstractIndividualInterface[0];
 			}
+
 			if (candidates[GENDER_MSMW].length > 0) {
-				int orgLen = availiablePerson[0].length;
-				availiablePerson[0] = Arrays.copyOf(availiablePerson[0],
-						availiablePerson[0].length + candidates[GENDER_MSMW].length);
-				System.arraycopy(candidates[GENDER_MSMW], 0, availiablePerson[0], orgLen,
-						candidates[GENDER_MSMW].length);
+				AbstractIndividualInterface[] candidate_bridge = candidates[GENDER_MSMW];
+				if (prob_no_bridge > 0) {
+					int numMSM_bridge = Math.round(candidates[GENDER_MSMW].length * Math.max(0, 1 - prob_no_bridge));
+					if (numMSM_bridge > 0) {
+						candidate_bridge = ArrayUtilsRandomGenerator.randomSelect(candidate_bridge, numMSM_bridge,
+								getRNG());
+					} else {
+						candidate_bridge = new AbstractIndividualInterface[0];
+					}
+
+				}
+
+				if (candidate_bridge.length > 0) {
+					int orgLen = availiablePerson[0].length;
+					availiablePerson[0] = Arrays.copyOf(availiablePerson[0],
+							availiablePerson[0].length + candidate_bridge.length);
+					System.arraycopy(candidate_bridge, 0, availiablePerson[0], orgLen, candidate_bridge.length);
+				}
 			}
 
 			// No need to be sorted
@@ -1130,7 +1165,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			for (SingleRelationship rel : relArr) {
 				Integer[] link = rel.getLinks();
 				link = Arrays.copyOf(link, Abstract_Runnable_ClusterModel.LENGTH_CONTACT_MAP_EDGE);
-				link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] = ((SingleRelationshipTimeStamp) rel).getRelStartTime();
+				link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] = ((SingleRelationshipTimeStamp) rel)
+						.getRelStartTime();
 				if (rel.incrementTime(1) <= 0) {
 					relMap.removeEdge(rel);
 					link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] = -1;
@@ -1153,16 +1189,20 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 					c.addVertex(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
 				}
 
-				if (!c.containsEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2])) {
+				if (!c.containsEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+						link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2])) {
 					if (link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] >= 0) {
-						c.addEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], link);
+						c.addEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+								link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], link);
 					} else {
-						//System.err.println(String.format("checkContactMaps: Edge of %d duration not added.",
-						//		link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]));
+						// System.err.println(String.format("checkContactMaps: Edge of %d duration not
+						// added.",
+						// link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]));
 					}
 				} else {
 					// Edge already existed
-					Integer[] e = c.getEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
+					Integer[] e = c.getEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+							link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
 					int lastRelStart = e[e.length - 2].intValue();
 					if (link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION] < 0) {
 						e[e.length - 1] = getGlobalTime() - lastRelStart;
@@ -1173,7 +1213,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 							e = Arrays.copyOf(e, e.length + 2);
 							e[e.length - 1] = link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION];
 							e[e.length - 2] = link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
-							c.addEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], e);
+							c.addEdge(link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+									link[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], e);
 						} else {
 							// Update edge
 							e[e.length - 1] = Math.max(e[e.length - 1], getGlobalTime() - lastRelStart);
@@ -1259,7 +1300,6 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		this.baseDir = baseDir;
 	}
 
-
 	public void setPrintStatus(PrintStream[] printStatus) {
 		this.printStatus = printStatus;
 	}
@@ -1277,13 +1317,17 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 		Arrays.sort(edge_list, new Comparator<Integer[]>() {
 			@Override
 			public int compare(Integer[] o1, Integer[] o2) {
-				int cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
+				int cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME],
+						o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]);
 				if (cmp == 0) {
-					cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]);
+					cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION],
+							o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION]);
 					if (cmp == 0) {
-						cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
+						cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+								o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1]);
 						if (cmp == 0) {
-							cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
+							cmp = Integer.compare(o1[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2],
+									o2[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]);
 						}
 					}
 				}

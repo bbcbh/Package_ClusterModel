@@ -547,7 +547,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 									int[] tar_possible_gender;
 									switch (src_gender) {
 									case GENDER_FEMALE:
-										tar_possible_gender = new int[] { GENDER_HETRO_MALE, GENDER_MSMW };
+										tar_possible_gender = prob_no_bridge < 0
+												? new int[] { GENDER_HETRO_MALE, GENDER_MSMW }
+												: new int[] { GENDER_HETRO_MALE };
 										break;
 									case GENDER_HETRO_MALE:
 										tar_possible_gender = new int[] { GENDER_FEMALE };
@@ -556,7 +558,9 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 										tar_possible_gender = new int[] { GENDER_MSMO, GENDER_MSMW };
 										break;
 									default:
-										tar_possible_gender = new int[] { GENDER_FEMALE, GENDER_MSMO, GENDER_MSMW };
+										tar_possible_gender = prob_no_bridge < 0
+												? new int[] { GENDER_FEMALE, GENDER_MSMO, GENDER_MSMW }
+												: new int[] { GENDER_MSMO, GENDER_MSMW };
 									}
 
 									Collections.shuffle(progressing_src_candidate_list,

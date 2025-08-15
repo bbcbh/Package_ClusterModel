@@ -12,12 +12,12 @@ public abstract class Abstract_Runnable_ClusterModel_ContactMap_Generation exten
 	public static final Object[] DEFAULT_RUNNABLE_MAP_GEN_FIELDS = {
 			// RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE
 			new int[] { 30, 30 + AbstractIndividualInterface.ONE_YEAR_INT },
-			// RUNNABLE_FILED_EXPORT_FREQ - in milliseconds
-			-1l, };
+			// RUNNABLE_FIELD_NO_BRIDGE  - Probabiliy of restrict bridging, with >= 1 means no bridging 
+			-1f, };
 
 	public static final int RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE = 0;
-	public static final int RUNNABLE_FILED_EXPORT_FREQ = RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE + 1;
-	public static final int LENGTH_RUNNABLE_MAP_GEN_FIELD = RUNNABLE_FILED_EXPORT_FREQ + 1;
+	public static final int RUNNABLE_FIELD_NO_BRIDGE = RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE + 1;
+	public static final int LENGTH_RUNNABLE_MAP_GEN_FIELD = RUNNABLE_FIELD_NO_BRIDGE + 1;
 
 	public static final String EXPORT_POP_FILENAME_PRRFIX = "EXPORT_POP_%d";
 	public static final String EXPORT_POP_FILENAME = EXPORT_POP_FILENAME_PRRFIX + "_%d.obj";

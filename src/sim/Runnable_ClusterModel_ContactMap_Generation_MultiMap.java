@@ -90,7 +90,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		HashMap<Integer, ArrayList<Integer>> active_in_pop = new HashMap<>();
 		// Fields
 		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
-		final long exportFreq = (long) runnable_fields[RUNNABLE_FILED_EXPORT_FREQ];
+		final float noBridge = (float) runnable_fields[RUNNABLE_FIELD_NO_BRIDGE];
 		int[] numInGrp = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP];
 		double[][] ageDist = (double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGE_DIST];
 
@@ -426,11 +426,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 				}
 
 			}
-			if (exportFreq > 0 && (System.currentTimeMillis() - lastSnapTime) > exportFreq) {
-				lastSnapTime = System.currentTimeMillis();
-				exportPopulationToFile(population);
-			}
-
+			
 		}
 		// Finishing
 		exportPopulationToFile(population);

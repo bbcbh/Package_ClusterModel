@@ -93,7 +93,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 
 		File[] oldPopulationSnapFiles;
 		int skipTimeUntil = -1;
-		final long exportFreq = (long) runnable_fields[RUNNABLE_FILED_EXPORT_FREQ];
+		final float prob_no_bridge = (float) runnable_fields[RUNNABLE_FIELD_NO_BRIDGE];
 
 		oldPopulationSnapFiles = baseDir.listFiles(new FileFilter() {
 			@Override
@@ -115,7 +115,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 			}
 
 			if (population instanceof Population_Bridging_Scheduled) {
-				((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
+				((Population_Bridging_Scheduled) population).setProb_no_bridge(prob_no_bridge);
 			}
 
 			population.initialise();
@@ -182,7 +182,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 
 					if (population instanceof Population_Bridging_Scheduled) {
 						((Population_Bridging_Scheduled) population)
-								.setExport_period_form_partnership_progress(exportFreq);
+								.setProb_no_bridge(prob_no_bridge);
 					}
 
 					if (contactMapValidRange[0] < population.getGlobalTime()
@@ -220,7 +220,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 				}
 
 				if (population instanceof Population_Bridging_Scheduled) {
-					((Population_Bridging_Scheduled) population).setExport_period_form_partnership_progress(exportFreq);
+					((Population_Bridging_Scheduled) population).setProb_no_bridge(prob_no_bridge);
 				}
 				population.initialise();
 
@@ -257,9 +257,9 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 						exportPop &= !((Population_Bridging_Scheduled) population).isSpace_save();
 					}
 
-					if (exportFreq > 0 && exportPop) {
+					if (prob_no_bridge > 0 && exportPop) {
 						long snapTime = System.currentTimeMillis();
-						if (snapTime - lastExportTime > exportFreq) {
+						if (snapTime - lastExportTime > prob_no_bridge) {
 							exportPopSnap(snapTime);
 							lastExportTime = snapTime;
 						}
