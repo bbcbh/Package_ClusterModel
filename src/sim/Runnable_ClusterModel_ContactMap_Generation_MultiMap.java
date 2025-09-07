@@ -90,13 +90,13 @@ public class Runnable_ClusterModel_ContactMap_Generation_MultiMap
 		HashMap<Integer, ArrayList<Integer>> active_in_pop = new HashMap<>();
 		// Fields
 		int[] contactMapValidRange = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
-		final float noBridge = (float) runnable_fields[RUNNABLE_FIELD_NO_BRIDGE];
+		//final float noBridge = (float) runnable_fields[RUNNABLE_FIELD_NO_BRIDGE];
 		int[] numInGrp = (int[]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_NUMBER_OF_GRP];
 		double[][] ageDist = (double[][]) runnable_fields[RUNNABLE_FIELD_CONTACT_MAP_GEN_MULTIMAP_AGE_DIST];
 
 		int nextId = 1;
 		int popTime = contactMapValidRange[0];
-		long lastSnapTime = -1;
+		//long lastSnapTime = -1;
 		UnivariateInterpolator polator = new LinearInterpolator();
 
 		// Reuse variables
