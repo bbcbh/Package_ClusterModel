@@ -25,6 +25,11 @@ import relationship.ContactMap;
 public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 		extends Abstract_Runnable_ClusterModel_ContactMap_Generation {
 
+	// Index replacement
+	// RUNNABLE_FIELD_NO_BRIDGE 
+	//  Probabiliy of restrict bridging, with >= 1 means no bridging
+	public static final int RUNNABLE_FIELD_NO_BRIDGE = RUNNABLE_FIELD_INT_SETTING;
+
 	private Population_Bridging population;
 
 	public Runnable_ClusterModel_ContactMap_Generation_SingleMap(long mapSeed) {
@@ -181,8 +186,7 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
 
 					if (population instanceof Population_Bridging_Scheduled) {
-						((Population_Bridging_Scheduled) population)
-								.setProb_no_bridge(prob_no_bridge);
+						((Population_Bridging_Scheduled) population).setProb_no_bridge(prob_no_bridge);
 					}
 
 					if (contactMapValidRange[0] < population.getGlobalTime()
