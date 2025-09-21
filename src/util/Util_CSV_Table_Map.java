@@ -190,7 +190,7 @@ public class Util_CSV_Table_Map extends HashMap<String, ArrayList<Double>> {
 				try {
 					String[] entries = line.split(",");
 					int id = Integer.parseInt(entries[0]);
-					int gender = Runnable_ClusterModel_Transmission.getGenderType(id, cumulative_gender_distribution);
+					int gender = Runnable_ClusterModel_Transmission.getPersonGrp(id, cumulative_gender_distribution);
 					int site = Integer.parseInt(entries[1]);
 
 					String key = String.format("%d,%d", gender, site);

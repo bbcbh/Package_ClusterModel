@@ -343,7 +343,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	}
 
-	public static int getGenderType(Integer personId, int[] cumul_pop_comp) {
+	public static int getPersonGrp(Integer personId, int[] cumul_pop_comp) {
 		int index = Arrays.binarySearch(cumul_pop_comp, personId);
 
 		if (index < 0) {
@@ -494,13 +494,13 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 	}
 
-	public int getGenderType(Integer personId) {
+	public int getPersonGrp(Integer personId) {
 		String[] pT = null;
 		if (pop_stat != null) {
 			pT = pop_stat.get(personId);
 		}
 		if (pT == null) {
-			return getGenderType(personId, cUMULATIVE_POP_COMPOSITION);
+			return getPersonGrp(personId, cUMULATIVE_POP_COMPOSITION);
 		} else {
 			return Integer.parseInt(pT[Abstract_Runnable_ClusterModel.POP_INDEX_GRP]);
 		}
@@ -1013,7 +1013,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				non_map_candidate_id_target[seeker_g] = new ArrayList<Integer>();
 				int id = 1;
 				while (id <= cUMULATIVE_POP_COMPOSITION[cUMULATIVE_POP_COMPOSITION.length - 1]) {
-					int gender_type = getGenderType(id);
+					int gender_type = getPersonGrp(id);
 					if (gender_type == seeker_g) {
 						non_map_candidate_id_seeker[seeker_g].add(id);
 					}

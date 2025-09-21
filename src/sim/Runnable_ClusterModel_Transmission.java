@@ -498,7 +498,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	public void scheduleNextTest(Integer personId, int lastTestTime) {
-		int genderType = getGenderType(personId);
+		int genderType = getPersonGrp(personId);
 
 		float[][] testRate = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES])[genderType];
 		if (testRate != null) {
@@ -629,7 +629,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 
 		for (Integer v : bASE_CONTACT_MAP == null ? pop_stat.keySet() : bASE_CONTACT_MAP.vertexSet()) {
-			pid_collection[getGenderType(v)].add(v);
+			pid_collection[getPersonGrp(v)].add(v);
 		}
 
 		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
@@ -676,7 +676,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				updateScheduleMap(infectedId, LENGTH_SITE + site, recoveredAt);
 			}
 
-			int gender = getGenderType(infectedId);
+			int gender = getPersonGrp(infectedId);
 
 			// Transmission probability
 			if (!trans_prob.containsKey(infectedId)) {
@@ -775,7 +775,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				}
 			}
 
-			int gender = getGenderType(infectedId);
+			int gender = getPersonGrp(infectedId);
 
 			float[] non_viable_infection_setting_by_gender_site = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING])[gender][site];
 
@@ -884,7 +884,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				if (seedInfArr != null && seedInfArr.length > cUMULATIVE_POP_COMPOSITION.length) {
 					Integer[] importCandidates = getCurrentPopulationPId(currentTime);
 					for (Integer importCandidate : importCandidates) {
-						int g = getGenderType(importCandidate);
+						int g = getPersonGrp(importCandidate);
 						if (g + cUMULATIVE_POP_COMPOSITION.length < seedInfArr.length) {
 							float[] importRateBySite = seedInfArr[g + cUMULATIVE_POP_COMPOSITION.length];
 							for (int s = 0; s < importRateBySite.length; s++) {
@@ -923,7 +923,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							if (vac_expiry != null) {
 								if (currentTime < vac_expiry[site_src]) {
 									recoveredAt = currentTime
-											+ Math.round((recoveredAt - currentTime) * vaccine_effect[getGenderType(
+											+ Math.round((recoveredAt - currentTime) * vaccine_effect[getPersonGrp(
 													toInfectiousId)][site_src][VACCINE_PROPERTIES_INF_DURATION_ADJUST]);
 								}
 							}
@@ -958,8 +958,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 								boolean tar_immune = immune_until != null && immune_until > currentTime;
 
-								int g_s = getGenderType(infectious);
-								int g_t = getGenderType(partner);
+								int g_s = getPersonGrp(infectious);
+								int g_t = getPersonGrp(partner);
 
 								int[] valid_target = g_t == Population_Bridging.GENDER_FEMALE
 										? new int[] { SITE_VAGINA, SITE_RECTUM, SITE_OROPHARYNX }
@@ -1109,7 +1109,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					for (Integer tId : testToday) {
 						int testOutcome = testPerson(currentTime, tId);
 
-						int gI = getGenderType(Math.abs(tId));
+						int gI = getPersonGrp(Math.abs(tId));
 						if ((testOutcome & 1 << TEST_OUTCOME_TREATMENT_APPLIED) != 0) {
 							cumul_treatment_by_person[gI]++;
 						}
@@ -1150,7 +1150,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 					for (Integer antibiotic_user : currently_has_antibiotic) {
 						int usage_key = antibiotic_user > 0 ? 0 : 1;
-						cumul_antibiotic_use[getGenderType(Math.abs(antibiotic_user))][usage_key]++;
+						cumul_antibiotic_use[getPersonGrp(Math.abs(antibiotic_user))][usage_key]++;
 					}
 
 				}
@@ -1162,7 +1162,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						vaccineToday = new ArrayList<>();
 					}
 					for (Integer pid : bASE_CONTACT_MAP.vertexSet()) {
-						int genderType = getGenderType(pid);
+						int genderType = getPersonGrp(pid);
 						if (vaccine_one_off_rate[genderType] > 0) {
 							if (RNG.nextFloat() < vaccine_one_off_rate[genderType]) {
 								int pt = Collections.binarySearch(vaccineToday, pid);
@@ -1210,7 +1210,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 					ArrayList<Integer> infected_person = new ArrayList<>();
 					for (int site = 0; site < LENGTH_SITE; site++) {
 						for (Integer infected_id : currently_infectious[site]) {
-							int gender_type = getGenderType(infected_id);
+							int gender_type = getPersonGrp(infected_id);
 							infectious_count[gender_type][site]++;
 							int k = Collections.binarySearch(infected_person, infected_id);
 							if (k < 0) {
@@ -1346,7 +1346,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						int[][] vaccine_coverage_by_person_ent = new int[Population_Bridging.LENGTH_GENDER][4];
 
 						for (Integer pid : currently_vaccinated) {
-							int g = getGenderType(pid);
+							int g = getPersonGrp(pid);
 							int[] vaccine_expiry = vaccine_expiry_by_indivdual.get(pid);
 
 							boolean hasValid = false;
@@ -1487,7 +1487,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected int testPerson(int currentTime, Integer testing_pid_signed) {
 		Integer test_pid = Math.abs(testing_pid_signed);
 
-		int gender = getGenderType(test_pid);
+		int gender = getPersonGrp(test_pid);
 
 		boolean positve_dx = false;
 		boolean positive_dx_on_infectious = false;
@@ -1711,7 +1711,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	protected void vaccine_person(Integer vaccinate_pid, int currentTime) {
 		int key = Collections.binarySearch(currently_vaccinated, vaccinate_pid);
-		int gender = getGenderType(vaccinate_pid);
+		int gender = getPersonGrp(vaccinate_pid);
 		float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
 		float[][] vacc_prop = ((float[][][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_PROPERTIES])[gender];
 

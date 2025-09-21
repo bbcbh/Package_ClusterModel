@@ -804,7 +804,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				ContactMap cMap = baseContactMapMapping.get(baseContactMapSeed);
 				if (cMap != null) {
 					for (Integer v : cMap.vertexSet()) {
-						int g = Abstract_Runnable_ClusterModel_Transmission.getGenderType(v,
+						int g = Abstract_Runnable_ClusterModel_Transmission.getPersonGrp(v,
 								cumulative_pop_composition);
 						personStat[g].add(v);
 					}

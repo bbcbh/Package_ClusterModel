@@ -85,7 +85,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected final int NUM_INF;
 	protected final int NUM_SITE;
 	protected final int NUM_ACT;
-	protected final int NUM_GENDER;
+	protected final int NUM_GRP;
 
 	// For extra field SIM_FIELD_SEED_INFECTION
 	public static final int SEED_INFECTION_EXTRA_INFID = 0;
@@ -271,7 +271,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		NUM_INF = num_inf;
 		NUM_SITE = num_site;
 		NUM_ACT = num_act;
-		NUM_GENDER = pop_composition.length;
+		NUM_GRP = pop_composition.length;
 
 		// Initiate transient field, lookup table etc
 		map_trans_prob = new HashMap<>();
@@ -291,14 +291,14 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		lookupTable_instant_stage_switch = new HashMap<>();
 		lookupTable_co_infect_multipler = new HashMap<>();
 
-		table_act_frequency = new double[NUM_ACT][NUM_GENDER][NUM_GENDER][];
+		table_act_frequency = new double[NUM_ACT][NUM_GRP][NUM_GRP][];
 
 		dist_tranmissionMatrix = new RealDistribution[NUM_INF][NUM_SITE][NUM_SITE][];
 
 		dist_stage_period = new RealDistribution[NUM_INF][NUM_SITE][];
 		dist_sym_rate = new RealDistribution[NUM_INF][NUM_SITE][];
-		dist_seek_test_period = new RealDistribution[NUM_GENDER];
-		seek_test_rate = new double[NUM_GENDER];
+		dist_seek_test_period = new RealDistribution[NUM_GRP];
+		seek_test_rate = new double[NUM_GRP];
 		Arrays.fill(seek_test_rate, 1);
 	}
 
@@ -646,9 +646,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int act_type = (int) ent[FIELD_ACT_FREQ_ACT_TYPE];
 				int gI_from = (int) ent[FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_FROM];
 				int gI_to = (int) ent[FIELD_ACT_FREQ_GENDER_INCLUDE_INDEX_TO];
-				for (int gf = 0; gf < NUM_GENDER; gf++) {
+				for (int gf = 0; gf < NUM_GRP; gf++) {
 					if ((gI_from & 1 << gf) != 0) {
-						for (int gt = 0; gt < NUM_GENDER; gt++) {
+						for (int gt = 0; gt < NUM_GRP; gt++) {
 							if ((gI_to & 1 << gt) != 0) {
 								table_act_frequency[act_type][gf][gt] = ent;
 							}
@@ -1071,6 +1071,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			propSwitch_map = new HashMap<>();
 		}
 	}
+	
+	protected int getPersonLastValidGrp(Integer pid) {
+		return getPersonGrp(pid);
+	}
 
 	@Override
 	public void run() {
@@ -1110,9 +1114,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 			// End of schedule test
 
-			cumul_incidence_by_site = new int[NUM_INF][NUM_GENDER][NUM_SITE];
-			cumul_incidence_by_person = new int[NUM_INF][NUM_GENDER];
-			cumul_treatment_by_person = new int[NUM_INF][NUM_GENDER];
+			cumul_incidence_by_site = new int[NUM_INF][NUM_GRP][NUM_SITE];
+			cumul_incidence_by_person = new int[NUM_INF][NUM_GRP];
+			cumul_treatment_by_person = new int[NUM_INF][NUM_GRP];
 		}
 
 		int snap_index = 0;
@@ -1213,23 +1217,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			ArrayList<Integer> rm_today = pid_remove_at.remove(currentTime);
 			if (rm_today != null) {
 				for (Integer pid : rm_today) {
-					int[][] stat = map_currrent_infection_stage.get(pid);
-					if (stat != null) {
-						for (String inf_site_key : map_currently_infectious.keySet()) {
-							ArrayList<Integer> inf_ent = map_currently_infectious.get(inf_site_key);
-							int d_pt = Collections.binarySearch(inf_ent, pid);
-							if (d_pt >= 0) {
-								inf_ent.remove(d_pt);
-							}
-						}
-					} else {
-						stat = new int[NUM_INF][NUM_SITE];
-						map_currrent_infection_stage.put(pid, stat);
-					}
-					for (int[] stat_inf : stat) {
-						Arrays.fill(stat_inf, STAGE_ID_DEATH);
-					}
-
+					handleRemovePerson(pid);
 				}
 			}
 
@@ -1265,7 +1253,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 				for (Integer pid_inf_src : currenty_infectious_ent) {
 					if (cMap.containsVertex(pid_inf_src)) {
-						int g_s = getGenderType(pid_inf_src);
+						int g_s = getPersonLastValidGrp(pid_inf_src);
 						Integer[][] edges = cMap.edgesOf(pid_inf_src).toArray(new Integer[0][]);
 
 						for (Integer[] e : edges) {
@@ -1273,7 +1261,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 									? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
 									: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
 
-							int g_t = getGenderType(pid_inf_tar);
+							int g_t = getPersonLastValidGrp(pid_inf_tar);
 
 							int[] partners = new int[] { pid_inf_src, pid_inf_tar };
 							Arrays.sort(partners);
@@ -1476,8 +1464,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					}
 
 					int[] num_infectious_site_count = new int[NUM_INF * NUM_SITE];
-					int[] num_infectious_person_count = new int[NUM_INF * NUM_GENDER];
-					int[] num_infected_by_gender_site_at = new int[NUM_INF * NUM_GENDER * (1 << (NUM_SITE + 1))];
+					int[] num_infectious_person_count = new int[NUM_INF * NUM_GRP];
+					int[] num_infected_by_gender_site_at = new int[NUM_INF * NUM_GRP * (1 << (NUM_SITE + 1))];
 
 					current_infectious_gender_count.put(currentTime, num_infectious_person_count);
 					current_infectious_site_count.put(currentTime, num_infectious_site_count);
@@ -1485,7 +1473,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 					for (Integer pid : getCurrentPopulationPId(currentTime)) {
 						int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
-						int gI = getGenderType(pid);
+						int gI = getPersonGrp(pid);
 						for (int i = 0; i < NUM_INF; i++) {
 							int infected_site = 0;
 							int infectious_site = 0;
@@ -1507,10 +1495,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 							}
 
 							if (infectious_site != 0) {
-								num_infectious_person_count[i * NUM_GENDER + getGenderType(pid)]++;
+								num_infectious_person_count[i * NUM_GRP + getPersonGrp(pid)]++;
 							}
 
-							int pt_infected_site_at = i * NUM_GENDER * (1 << (NUM_SITE + 1))
+							int pt_infected_site_at = i * NUM_GRP * (1 << (NUM_SITE + 1))
 									+ gI * (1 << (NUM_SITE + 1)) + infected_site;
 							num_infected_by_gender_site_at[pt_infected_site_at]++;
 						}
@@ -1556,12 +1544,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						cumulative_treatment = new HashMap<>();
 						sim_output.put(key, cumulative_treatment);
 					}
-					int[] ent = new int[NUM_INF * NUM_GENDER];
+					int[] ent = new int[NUM_INF * NUM_GRP];
 					cumulative_treatment.put(currentTime, ent);
 
 					int pt = 0;
 					for (int i = 0; i < NUM_INF; i++) {
-						for (int g = 0; g < NUM_GENDER; g++) {
+						for (int g = 0; g < NUM_GRP; g++) {
 							ent[pt] = cumul_treatment_by_person[i][g];
 							pt++;
 						}
@@ -1580,12 +1568,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						cumulative_incidence_by_person = new HashMap<>();
 						sim_output.put(key, cumulative_incidence_by_person);
 					}
-					int[] ent = new int[NUM_INF * NUM_GENDER];
+					int[] ent = new int[NUM_INF * NUM_GRP];
 					cumulative_incidence_by_person.put(currentTime, ent);
 
 					int pt = 0;
 					for (int i = 0; i < NUM_INF; i++) {
-						for (int g = 0; g < NUM_GENDER; g++) {
+						for (int g = 0; g < NUM_GRP; g++) {
 							ent[pt] = cumul_incidence_by_person[i][g];
 							pt++;
 						}
@@ -1600,11 +1588,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						cumulative_incidence_by_site = new HashMap<>();
 						sim_output.put(key, cumulative_incidence_by_site);
 					}
-					ent = new int[NUM_INF * NUM_GENDER * NUM_SITE];
+					ent = new int[NUM_INF * NUM_GRP * NUM_SITE];
 					cumulative_incidence_by_site.put(currentTime, ent);
 					pt = 0;
 					for (int i = 0; i < NUM_INF; i++) {
-						for (int g = 0; g < NUM_GENDER; g++) {
+						for (int g = 0; g < NUM_GRP; g++) {
 							for (int s = 0; s < NUM_SITE; s++) {
 								ent[pt] = cumul_incidence_by_site[i][g][s];
 								pt++;
@@ -1653,6 +1641,25 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Post simulation
 		postSimulation();
 
+	}
+
+	protected void handleRemovePerson(Integer pid) {
+		int[][] stat = map_currrent_infection_stage.get(pid);
+		if (stat != null) {
+			for (String inf_site_key : map_currently_infectious.keySet()) {
+				ArrayList<Integer> inf_ent = map_currently_infectious.get(inf_site_key);
+				int d_pt = Collections.binarySearch(inf_ent, pid);
+				if (d_pt >= 0) {
+					inf_ent.remove(d_pt);
+				}
+			}
+		} else {
+			stat = new int[NUM_INF][NUM_SITE];
+			map_currrent_infection_stage.put(pid, stat);
+		}
+		for (int[] stat_inf : stat) {
+			Arrays.fill(stat_inf, STAGE_ID_DEATH);
+		}
 	}
 
 	protected void simulate_transmission_failed_act(int currentTime, int inf_id, Integer pid_inf_src, int pid_inf_tar,
@@ -1718,7 +1725,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					} // End of testing pid for infection and site
 				}
 				if (applyTreatment) {
-					cumul_treatment_by_person[infId][getGenderType(pid)]++;
+					cumul_treatment_by_person[infId][getPersonGrp(pid)]++;
 					applyTreatment(currentTime, infId, pid, inf_stage);
 				}
 			} // End of testing for infection
@@ -1741,7 +1748,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected double getTransmissionProb(int currentTime, int inf_id, int pid_inf_src, int pid_inf_tar,
 			int partnershiptDur, int actType, int src_site, int tar_site) {
 
-		double[] actFieldEntry = table_act_frequency[actType][getGenderType(pid_inf_src)][getGenderType(pid_inf_tar)];
+		double[] actFieldEntry = table_act_frequency[actType][getPersonGrp(pid_inf_src)][getPersonGrp(pid_inf_tar)];
 
 		int[][] src_infection_stages = map_currrent_infection_stage.get(pid_inf_src);
 		int src_stage = src_infection_stages[inf_id][src_site];
@@ -1944,7 +1951,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		if (riskCat != -1) {
 			double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
-			int genderType = getGenderType(personId);
+			int genderType = getPersonGrp(personId);
 
 			HashMap<Integer, Integer> past_test_pt = test_rate_index_map.get(personId);
 
@@ -2034,7 +2041,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected int determineRiskGrpByCasualPartners(Integer personId) {
 		int riskCat;
 		riskCat = -1;
-		int genderType = getGenderType(personId);
+		int genderType = getPersonGrp(personId);
 		// Based on number of casual partners
 		Set<Integer[]> edges = bASE_CONTACT_MAP.edgesOf(personId);
 		int numCasual = 0;
@@ -2159,7 +2166,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 							if (isValidInfectionTargetSite(inf_id, site_index, current_stage_arr)) {
 								if (includeIndex > 0) { // By gender group
-									if ((includeIndex & 1 << getGenderType(pid)) > 0) {
+									if ((includeIndex & 1 << getPersonGrp(pid)) > 0) {
 										candidate.add(pid);
 									}
 								} else { // By Risk Group
@@ -2223,7 +2230,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				candidate.clear();
 
 				for (Integer pid : all_vertex) {
-					int candidate_gender = getGenderType(pid);
+					int candidate_gender = getPersonGrp(pid);
 					if ((gender_inc & 1 << candidate_gender) != 0) {
 						int[][] candidate_inf_state = map_currrent_infection_stage.get(pid);
 						if (candidate_inf_state == null
@@ -2544,12 +2551,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 			// Check if seek treatment
-			boolean seekTest = seek_test_rate[getGenderType(pid)] >= 1;
-			if (seek_test_rate[getGenderType(pid)] < 1) {
-				seekTest = RNG.nextDouble() < seek_test_rate[getGenderType(pid)];
+			boolean seekTest = seek_test_rate[getPersonGrp(pid)] >= 1;
+			if (seek_test_rate[getPersonGrp(pid)] < 1) {
+				seekTest = RNG.nextDouble() < seek_test_rate[getPersonGrp(pid)];
 			}
 			if (hasSym & seekTest) {
-				int seekTestAfter = (int) Math.max(1, Math.round(dist_seek_test_period[getGenderType(pid)].sample()));
+				int seekTestAfter = (int) Math.max(1, Math.round(dist_seek_test_period[getPersonGrp(pid)].sample()));
 				int nextTestDate = current_time + seekTestAfter;
 				ArrayList<int[]> day_sch = schedule_testing.get(nextTestDate);
 				if (day_sch == null) {
