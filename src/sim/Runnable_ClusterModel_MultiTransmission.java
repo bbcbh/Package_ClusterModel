@@ -1071,10 +1071,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			propSwitch_map = new HashMap<>();
 		}
 	}
-	
-	protected int getPersonLastValidGrp(Integer pid) {
-		return getPersonGrp(pid);
-	}
 
 	@Override
 	public void run() {
@@ -1253,7 +1249,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 				for (Integer pid_inf_src : currenty_infectious_ent) {
 					if (cMap.containsVertex(pid_inf_src)) {
-						int g_s = getPersonLastValidGrp(pid_inf_src);
+						int g_s = getPersonGrp(pid_inf_src);
 						Integer[][] edges = cMap.edgesOf(pid_inf_src).toArray(new Integer[0][]);
 
 						for (Integer[] e : edges) {
@@ -1261,7 +1257,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 									? e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2]
 									: e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1];
 
-							int g_t = getPersonLastValidGrp(pid_inf_tar);
+							int g_t = getPersonGrp(pid_inf_tar);
 
 							int[] partners = new int[] { pid_inf_src, pid_inf_tar };
 							Arrays.sort(partners);
