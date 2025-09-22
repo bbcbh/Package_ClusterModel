@@ -1408,7 +1408,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					int pid = testing_stat[0];
 					int infIncl = testing_stat[1];
 					int siteIncl = testing_stat[2];
-					if (currentTime < exitPopAt(pid)) {
+					if (currentTime < exitPopAt(Math.abs(pid))) {
 						testPerson(currentTime, pid, infIncl, siteIncl, cumul_treatment_by_person);
 						// Schedule next test
 						if (pid > 0) {
