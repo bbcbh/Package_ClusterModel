@@ -1323,6 +1323,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 												: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
 										p2_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P2]
 												: fieldEntry[FIELD_ACT_FREQ_SITE_P1]);
+										
 										int src_site = inf_src_pt == 0 ? p1_site : p2_site;
 										if (src_site == infected_site_id) {
 											int tar_site = inf_src_pt == 0 ? p2_site : p1_site;
@@ -1494,8 +1495,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								num_infectious_person_count[i * NUM_GRP + getPersonGrp(pid)]++;
 							}
 
-							int pt_infected_site_at = i * NUM_GRP * (1 << (NUM_SITE + 1))
-									+ gI * (1 << (NUM_SITE + 1)) + infected_site;
+							int pt_infected_site_at = i * NUM_GRP * (1 << (NUM_SITE + 1)) + gI * (1 << (NUM_SITE + 1))
+									+ infected_site;
 							num_infected_by_gender_site_at[pt_infected_site_at]++;
 						}
 					}
@@ -1675,7 +1676,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				|| tar_infection_stages[inf_id][tar_site] == AbstractIndividualInterface.INFECT_S;
 	}
 
-	protected void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl, int[][] cumul_treatment_by_person) {
+	protected void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl,
+			int[][] cumul_treatment_by_person) {
 		int pid = Math.abs(pid_t); // Symptomatic or one off test if PID < 0
 		for (int infId = 0; infId < NUM_INF; infId++) {
 			if ((infIncl & 1 << infId) != 0) {
@@ -1685,20 +1687,20 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int[][] inf_stage = null;
 
 				for (int siteId = 0; siteId < NUM_SITE && !applyTreatment; siteId++) {
-					if ((siteIncl & 1 << siteId) != 0) {							
+					if ((siteIncl & 1 << siteId) != 0) {
 						// Test for the site
 						test_properties = lookupTable_test_treatment_properties
 								.get(String.format("%d,%d", infId, siteId));
-						
-						// Check for test_properties for symptom/self sought infections					
-						if(pid_t < 0) {
+
+						// Check for test_properties for symptom/self sought infections
+						if (pid_t < 0) {
 							double[] test_properties_sym = lookupTable_test_treatment_properties
-									.get(String.format("%d,%d", -infId, siteId));							
-							if(test_properties_sym != null) {
+									.get(String.format("%d,%d", -infId, siteId));
+							if (test_properties_sym != null) {
 								test_properties = test_properties_sym;
-							}														
-						}																																									
-						
+							}
+						}
+
 						if (test_properties != null) {
 							inf_stage = map_currrent_infection_stage.get(pid);
 							if (inf_stage != null && inf_stage[infId][siteId] >= 0) {
