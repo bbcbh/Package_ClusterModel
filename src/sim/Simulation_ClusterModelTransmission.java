@@ -1866,7 +1866,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						m.matches();
 						long cmap_seed = Long.parseLong(m.group(2));
 						if (cMapSeeds == null || Collections.binarySearch(cMapSeeds, cmap_seed) >= 0) {
-							int mapType = Integer.parseInt(m.group(1));
+							//int mapType = Integer.parseInt(m.group(1));
 							ArrayList<File> mapStr = cmap_file_collection.get(cmap_seed);
 							if (mapStr == null) {
 								mapStr = new ArrayList<>();
