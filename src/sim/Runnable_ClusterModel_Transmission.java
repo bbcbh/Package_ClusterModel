@@ -633,10 +633,43 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		}
 
 		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
-			Integer[] candidate = pid_collection[g].toArray(new Integer[pid_collection[g].size()]);
-			Arrays.sort(candidate);
+			Integer[] candidate_any = pid_collection[g].toArray(new Integer[pid_collection[g].size()]);
+			Arrays.sort(candidate_any);
+
+			Integer[] candidate_with_partner = new Integer[0];
+
 			for (int s = 0; s < LENGTH_SITE; s++) {
-				int numInfect = num_infectioned_by_gender_site[g][s];
+				if (num_infectioned_by_gender_site[g][s] < 0 && candidate_with_partner.length == 0) {
+					ArrayList<Integer> candidate_with_partner_list = new ArrayList<>();
+					for (Integer pid : candidate_any) {
+						boolean hasPartnerAtTime = bASE_CONTACT_MAP == null;
+						if (bASE_CONTACT_MAP != null && bASE_CONTACT_MAP.containsVertex(pid)) {
+							for (Integer[] edges : bASE_CONTACT_MAP.edgesOf(pid)) {
+								if (hasPartnerAtTime) {
+									break;
+								}
+								hasPartnerAtTime |= edges[CONTACT_MAP_EDGE_START_TIME] <= time
+										&& time <= (edges[CONTACT_MAP_EDGE_START_TIME]
+												+ edges[CONTACT_MAP_EDGE_DURATION]);
+							}
+						}
+						if (hasPartnerAtTime) {
+							candidate_with_partner_list.add(pid);
+						}
+
+					}
+
+					candidate_with_partner = candidate_with_partner_list.toArray(candidate_with_partner);
+				}
+
+			}
+
+			for (int s = 0; s < LENGTH_SITE; s++) {
+
+				Integer[] candidate = num_infectioned_by_gender_site[g][s] > 0 ? candidate_any : candidate_with_partner;
+
+				int numInfect = Math.abs(num_infectioned_by_gender_site[g][s]);
+
 				for (int p = 0; p < candidate.length && numInfect > 0; p++) {
 					int prob = RNG.nextInt(candidate.length - p);
 					if (prob < numInfect) {
