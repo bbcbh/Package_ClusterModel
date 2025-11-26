@@ -460,16 +460,16 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	public void setPropSwitch_map(HashMap<Integer, HashMap<Integer, String>> propSwitch_map) {
 		this.propSwitch_map = new HashMap<>();
-		for(Entry<Integer, HashMap<Integer, String>> ent : propSwitch_map.entrySet()) {
-			HashMap<Integer, String> srcMap = ent.getValue();			
+		for (Entry<Integer, HashMap<Integer, String>> ent : propSwitch_map.entrySet()) {
+			HashMap<Integer, String> srcMap = ent.getValue();
 			HashMap<Integer, String> newMap = new HashMap<>();
-			for(Entry<Integer, String> entry : srcMap.entrySet()) {
+			for (Entry<Integer, String> entry : srcMap.entrySet()) {
 				newMap.put(entry.getKey(), entry.getValue());
-			}								
+			}
 			this.propSwitch_map.put(ent.getKey(), newMap);
-			
+
 		}
-		
+
 	}
 
 	protected void loadNonRunnableFieldSetting(Integer index, String entry, int loadTime) {
@@ -582,7 +582,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		}
 
 		// Add multimap edges if needed
-		if (bASE_CONTACT_MAP == null && contactMap_files != null) {
+		if (contactMap_files != null) {
 			for (int mapNumber = 0; mapNumber < contactMap_files.length; mapNumber++) {
 				// updateCMapFromFiles(cMap, startTime, i, removeEdges, null);
 				try {
@@ -675,7 +675,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				add_e[i] = Integer.parseInt(edgeSp[i]);
 			}
 			if (add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime) {
-				if (checkCMapKeptEdge(addSelectiveEdge(included_pids, add_e),add_e)) {										
+				if (checkCMapKeptEdge(addSelectiveEdge(included_pids, add_e), add_e)) {
 					addPartnership(cMap, add_e);
 					addedEdges.add(add_e);
 					numEdgeAdded++;
@@ -696,7 +696,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 					for (int i = 0; i < add_e.length; i++) {
 						add_e[i] = Integer.parseInt(edgeSp[i]);
 					}
-					if (checkCMapKeptEdge(add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime, add_e)) {
+					if (checkCMapKeptEdge(
+							add_e[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] <= currentTime, add_e)) {
 						addPartnership(cMap, add_e);
 						addedEdges.add(add_e);
 						numEdgeAdded++;
@@ -714,7 +715,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		ArrayList<Integer[]> toRemove;
 		for (Integer[] edge : addedEdges) {
 			int edge_start_time = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
-			int expireAt = edge_start_time + Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION],1);
+			int expireAt = edge_start_time
+					+ Math.max(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_DURATION], 1);
 			if (expireAt > currentTime) {
 				toRemove = removeEdges.get(expireAt);
 				if (toRemove == null) {
@@ -743,7 +745,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		ArrayList<Integer[]> toRemove;
 
 		// Add multimap and read edges if needed
-		if (bASE_CONTACT_MAP == null && contactMap_files != null) {
+		if (contactMap_files != null) {
 			for (int i = 0; i < contactMap_files.length; i++) {
 				numEdgeAdded += updateCMapFromFiles(cMap, currentTime, i, edgesToRemove, included_pids);
 			}
@@ -785,9 +787,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 			edges_array_pt++;
 		}
-		
-		
-		
+
 		// Remove expired edges
 		toRemove = edgesToRemove.get(currentTime);
 		if (toRemove != null) {
@@ -919,7 +919,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			addEdge = index >= cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST].length;
 			if (!addEdge) {
 				float keptEdgeProb = cMap_Kept_Edge_By_Duration_Setting[cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST][index];
-							
+
 				if (keptEdgeProb > 0) {
 					addEdge = keptEdgeProb >= 1 ? true : RNG.nextFloat() < keptEdgeProb;
 				}
@@ -944,6 +944,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	}
 
 	protected void addPartnership(ContactMap cMap, Integer[] edge) {
+
 		for (int i : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
 				Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
 			if (!cMap.containsVertex(edge[i])) {
@@ -953,7 +954,22 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		cMap.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
 				edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 
-		//System.out.println(Arrays.deepToString(edge));
+		// Update bASE_CONTACT_MAP if needed
+		if (bASE_CONTACT_MAP != null) {
+			for (int i : new int[] { Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1,
+					Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2 }) {
+				if (!bASE_CONTACT_MAP.containsVertex(edge[i])) {
+					bASE_CONTACT_MAP.addVertex(edge[i]);
+				}
+			}
+			boolean update_base = bASE_CONTACT_MAP.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
+					edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
+			if (update_base) {
+				//System.out.printf("Update base contact map : %s\n", Arrays.deepToString(edge));
+			}
+
+		}
+
 	}
 
 	public HashMap<String, Object> getSim_output() {
