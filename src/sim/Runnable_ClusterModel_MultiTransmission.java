@@ -1323,7 +1323,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 												: fieldEntry[FIELD_ACT_FREQ_SITE_P2]);
 										p2_site = (int) (s == 0 ? fieldEntry[FIELD_ACT_FREQ_SITE_P2]
 												: fieldEntry[FIELD_ACT_FREQ_SITE_P1]);
-										
+
 										int src_site = inf_src_pt == 0 ? p1_site : p2_site;
 										if (src_site == infected_site_id) {
 											int tar_site = inf_src_pt == 0 ? p2_site : p1_site;
@@ -2138,11 +2138,13 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			if (inf_id < NUM_INF) {
 				int pt = 0;
 				while (pt < inf_setting.length) {
+					boolean inPartnershipOnly = false;
 					int includeIndex = inf_setting[pt];
 					pt++;
 					int site_index = inf_setting[pt];
 					pt++;
-					int num_inf = inf_setting[pt];
+					int num_inf = Math.abs(inf_setting[pt]);
+					inPartnershipOnly = inf_setting[pt] < 0;
 					pt++;
 
 					int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
@@ -2162,17 +2164,33 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						for (Integer pid : all_vertex) {
 							int[][] current_stage_arr = map_currrent_infection_stage.get(pid);
 
-							if (isValidInfectionTargetSite(inf_id, site_index, current_stage_arr)) {
-								if (includeIndex > 0) { // By gender group
-									if ((includeIndex & 1 << getPersonGrp(pid)) > 0) {
-										candidate.add(pid);
+							boolean valid_candidate = !inPartnershipOnly;
+
+							if (inPartnershipOnly && bASE_CONTACT_MAP != null) {
+								if (bASE_CONTACT_MAP.containsVertex(pid)) {
+									Integer[][] edges = bASE_CONTACT_MAP.edgesOf(pid).toArray(new Integer[0][]);
+									for (int i = 0; i < edges.length && !valid_candidate; i++) {
+										valid_candidate = edges[i][CONTACT_MAP_EDGE_START_TIME] <= time
+												&& (edges[i][CONTACT_MAP_EDGE_START_TIME]
+														+ edges[i][CONTACT_MAP_EDGE_DURATION]) >= time;
 									}
-								} else { // By Risk Group
-									int numPartLimit = -includeIndex;
-									if (cMap != null && cMap.containsVertex(pid)) {
-										// pWri.printf("%d,%d\n", pid, cMap.degreeOf(pid));
-										if (cMap.degreeOf(pid) >= numPartLimit) {
+								}
+							}
+
+							if (valid_candidate) {
+
+								if (isValidInfectionTargetSite(inf_id, site_index, current_stage_arr)) {
+									if (includeIndex > 0) { // By gender group
+										if ((includeIndex & 1 << getPersonGrp(pid)) > 0) {
 											candidate.add(pid);
+										}
+									} else { // By Risk Group
+										int numPartLimit = -includeIndex;
+										if (cMap != null && cMap.containsVertex(pid)) {
+											// pWri.printf("%d,%d\n", pid, cMap.degreeOf(pid));
+											if (cMap.degreeOf(pid) >= numPartLimit) {
+												candidate.add(pid);
+											}
 										}
 									}
 								}

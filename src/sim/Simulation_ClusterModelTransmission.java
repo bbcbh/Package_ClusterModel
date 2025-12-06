@@ -20,7 +20,6 @@ import java.util.InvalidPropertiesFormatException;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -80,6 +79,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final String LAUNCH_ARGS_SKIP_STATE_GEN = "-export_skip_state_gen";
 	public static final String LAUNCH_ARGS_PRINT_PROGRESS = "-printProgress";
 	public static final String LAUNCH_ARGS_SEED_MAP = "-seedMap=";
+	public static final String LAUNCH_ARGS_PARTIALLOAD_MAP = "-partialLoadMap=";
 
 	public static final String FILENAME_INDEX_CASE_LIST = "Seed_IndexCases_%d_%d.txt";
 	public static final String FILENAME_PREVALENCE_SITE = "Prevalence_Site_%d_%d.csv";
@@ -174,6 +174,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			+ LENGTH_SIM_MAP_TRANSMISSION_FIELD
 			+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
+	protected int load_partial_map = Integer.MAX_VALUE;
 
 	public Simulation_ClusterModelTransmission() {
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
@@ -519,7 +520,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	@Override
 	public void setStopNextTurn(boolean stopNextTurn) {
 		this.stopNextTurn = stopNextTurn;
-
 	}
 
 	@Override
@@ -846,62 +846,65 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 
 		long tic = System.currentTimeMillis();
-		HashMap<Long, ArrayList<Integer[]>> edge_list_map = new HashMap<>();
-		if (numThreads == 1 || baseContactMapMapping.size() == 1) {
-			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
-				if (baseContactMapMapping.get(baseContactMapSeed) != null) {
-					ArrayList<Integer[]> edge_list = null;
-					try {
-						edge_list = Abstract_Runnable_ClusterModel
-								.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)).call();
-					} catch (Exception e1) {
-						e1.printStackTrace(System.err);
-					}
-					edge_list_map.put(baseContactMapSeed, edge_list);
-				}
-			}
-		} else {
-			ExecutorService execReadMap = Executors.newFixedThreadPool(numThreads);
-			HashMap<Long, Future<ArrayList<Integer[]>>> futureMap = new HashMap<>();
-			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
-				if (baseContactMapMapping.get(baseContactMapSeed) != null) {
-					Future<ArrayList<Integer[]>> res = execReadMap.submit(Abstract_Runnable_ClusterModel
-							.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)));
-					futureMap.put(baseContactMapSeed, res);
-				}
-			}
-
-			execReadMap.shutdown();
-			if (!execReadMap.awaitTermination(2, TimeUnit.DAYS)) {
-				System.err.println("Thread time-out!");
-			}
-
-			for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
-				if (baseContactMapMapping.get(baseContactMapSeed) != null) {
-					ArrayList<Integer[]> edge_list = null;
-					try {
-						Future<ArrayList<Integer[]>> res = futureMap.get(baseContactMapSeed);
-						edge_list = res.get();
-					} catch (Exception ex) {
-						ex.printStackTrace(System.err);
+		HashMap<Long, ArrayList<Integer[]>> edge_list_map = new HashMap<>();				
+		if (load_partial_map == Integer.MAX_VALUE) {			
+			// Pre load full map
+			if (numThreads == 1 || baseContactMapMapping.size() == 1) {
+				for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
+					if (baseContactMapMapping.get(baseContactMapSeed) != null) {
+						ArrayList<Integer[]> edge_list = null;
 						try {
 							edge_list = Abstract_Runnable_ClusterModel
 									.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)).call();
-						} catch (Exception e) {
-							e.printStackTrace(System.err);
+						} catch (Exception e1) {
+							e1.printStackTrace(System.err);
 						}
+						edge_list_map.put(baseContactMapSeed, edge_list);
 					}
-					edge_list_map.put(baseContactMapSeed, edge_list);
 				}
+			} else {
+				ExecutorService execReadMap = Executors.newFixedThreadPool(numThreads);
+				HashMap<Long, Future<ArrayList<Integer[]>>> futureMap = new HashMap<>();
+				for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
+					if (baseContactMapMapping.get(baseContactMapSeed) != null) {
+						Future<ArrayList<Integer[]>> res = execReadMap.submit(Abstract_Runnable_ClusterModel
+								.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)));
+						futureMap.put(baseContactMapSeed, res);
+					}
+				}
+
+				execReadMap.shutdown();
+				if (!execReadMap.awaitTermination(2, TimeUnit.DAYS)) {
+					System.err.println("Thread time-out!");
+				}
+
+				for (Long baseContactMapSeed : baseContactMapMapping.keySet()) {
+					if (baseContactMapMapping.get(baseContactMapSeed) != null) {
+						ArrayList<Integer[]> edge_list = null;
+						try {
+							Future<ArrayList<Integer[]>> res = futureMap.get(baseContactMapSeed);
+							edge_list = res.get();
+						} catch (Exception ex) {
+							ex.printStackTrace(System.err);
+							try {
+								edge_list = Abstract_Runnable_ClusterModel
+										.generateMapEdgeArray(baseContactMapMapping.get(baseContactMapSeed)).call();
+							} catch (Exception e) {
+								e.printStackTrace(System.err);
+							}
+						}
+						edge_list_map.put(baseContactMapSeed, edge_list);
+					}
+				}
+				execReadMap = null;
+				// System.gc();
+
 			}
-			execReadMap = null;
-			// System.gc();
 
-		}
-
-		if (printProgress && edge_list_map.size() > 0) {
-			System.out.printf("Generation of edge_list map completed. Time required = = %.3fs.\n",
-					(System.currentTimeMillis() - tic) / 1000.0f);
+			if (printProgress && edge_list_map.size() > 0) {
+				System.out.printf("Generation of edge_list map completed. Time required = = %.3fs.\n",
+						(System.currentTimeMillis() - tic) / 1000.0f);
+			}
 		}
 
 		RandomGenerator rngBase = new MersenneTwisterRandomGenerator(seed);
@@ -1724,9 +1727,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		if (args.length > 0) {
 			baseDir = new File(args[0]);
 		} else {
-			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY <%s> <%s> <%s> <%s....>",
+			System.out.println(String.format("Usage: java %s PROP_FILE_DIRECTORY <%s> <%s> <%s> <%s....> <%s....>",
 					Simulation_ClusterModelTransmission.class.getName(), LAUNCH_ARGS_SKIP_BACKUP,
-					LAUNCH_ARGS_SKIP_STATE_GEN, LAUNCH_ARGS_PRINT_PROGRESS, LAUNCH_ARGS_SEED_MAP));
+					LAUNCH_ARGS_SKIP_STATE_GEN, LAUNCH_ARGS_PRINT_PROGRESS, LAUNCH_ARGS_SEED_MAP,
+					LAUNCH_ARGS_PARTIALLOAD_MAP));
 			System.exit(0);
 		}
 
@@ -1735,6 +1739,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			boolean flag_exportSkipBackup = false;
 			boolean flag_setPrintProgress = false;
 			boolean flag_exportStateGen = false;
+
+			int partial_map = Integer.MAX_VALUE;
 			File seed_map = null;
 
 			if (args.length > 1) {
@@ -1753,8 +1759,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						seed_map = new File(baseDir, args[ai].substring(LAUNCH_ARGS_SEED_MAP.length()));
 
 					}
+					if (args[ai].startsWith(LAUNCH_ARGS_PARTIALLOAD_MAP)) {
+						partial_map = Integer.parseInt(args[ai].substring(LAUNCH_ARGS_PARTIALLOAD_MAP.length()));
+					}
 				}
-
 			}
 
 			if (baseDir.isDirectory()) {
@@ -1772,6 +1780,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				if (flag_exportStateGen) {
 					sim.setExportStateGen(true);
 				}
+				sim.setLoad_partial_map(partial_map);
 
 				if (seed_map != null && seed_map.isFile()) {
 					sim.loadPreGenSimSeed(seed_map);
@@ -1866,7 +1875,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						m.matches();
 						long cmap_seed = Long.parseLong(m.group(2));
 						if (cMapSeeds == null || Collections.binarySearch(cMapSeeds, cmap_seed) >= 0) {
-							//int mapType = Integer.parseInt(m.group(1));
+							// int mapType = Integer.parseInt(m.group(1));
 							ArrayList<File> mapStr = cmap_file_collection.get(cmap_seed);
 							if (mapStr == null) {
 								mapStr = new ArrayList<>();
@@ -1927,7 +1936,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	protected void loadAllContactMap(ArrayList<File> preGenClusterMap,
 			HashMap<Long, ArrayList<File>> cmap_file_collection, HashMap<Long, ContactMap> cMap_Map)
 			throws FileNotFoundException, IOException, InterruptedException {
-		if (preGenClusterMap.size() == 1 || Runtime.getRuntime().availableProcessors() == 1) {
+		if (load_partial_map == Integer.MAX_VALUE) {
 			for (File element : preGenClusterMap) {
 				System.out.printf("Loading (in series) on ContactMap located at %s.\n", element.getAbsolutePath());
 				Matcher m = Pattern.compile(REGEX_ALL_CMAP).matcher(element.getName());
@@ -1936,57 +1945,47 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				ContactMap cMap = extractedCMapfromFile(element);
 				cMap_Map.put(cMap_seed, cMap);
 				cmap_file_collection.put(cMap_seed, new ArrayList<File>(List.of(element)));
-
 			}
 
 		} else {
-			// In parallel (not used due to out of memory error)
-			ExecutorService exec = Executors
-					.newFixedThreadPool(Math.min(preGenClusterMap.size(), Runtime.getRuntime().availableProcessors()));
-
-			long[] cMap_seeds = new long[preGenClusterMap.size()];
-			@SuppressWarnings("unchecked")
-			Future<ContactMap>[] extractCMap = new Future[preGenClusterMap.size()];
-
-			for (int i = 0; i < preGenClusterMap.size(); i++) {
-				System.out.printf("Loading (in parallel) on ContactMap located at %s.\n",
-						preGenClusterMap.get(i).getAbsolutePath());
-
-				Matcher m = Pattern.compile(REGEX_ALL_CMAP).matcher(preGenClusterMap.get(i).getName());
+			for (File element : preGenClusterMap) {
+				System.out.printf("Loading on ContactMap files located at %s.\n", element.getAbsolutePath());
+				Matcher m = Pattern.compile(REGEX_ALL_CMAP).matcher(element.getName());
 				m.matches();
-				cMap_seeds[i] = Long.parseLong(m.group(1));
+				long cMap_seed = Long.parseLong(m.group(1));
+				cMap_Map.put(cMap_seed, null);
+				cmap_file_collection.put(cMap_seed, new ArrayList<File>(List.of(element)));
 
-				final File mapFile = preGenClusterMap.get(i);
+				if (load_partial_map > 0) {
+					System.out.printf("Loading (in series) on ContactMap located at %s upto t=%d.\n",
+							element.getAbsolutePath(), load_partial_map);
 
-				Callable<ContactMap> extractThread = new Callable<>() {
-					@Override
-					public ContactMap call() throws Exception {
-						return extractedCMapfromFile(mapFile);
+					BufferedReader reader = new BufferedReader(new FileReader(element));
+
+					StringBuilder strWri = new StringBuilder();
+
+					String line;
+					while ((line = reader.readLine()) != null) {
+						String[] ent = line.split(",");
+						if (Integer.parseInt(
+								ent[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME]) <= load_partial_map) {
+							strWri.append(line);
+							strWri.append('\n');
+						} else {
+							break;
+						}
 					}
-				};
-				extractCMap[i] = exec.submit(extractThread);
-			}
-			exec.shutdown();
-			if (!exec.awaitTermination(2, TimeUnit.DAYS)) {
-				System.err.println("Thread time-out!");
-			}
+					reader.close();
+					cMap_Map.put(cMap_seed, ContactMap.ContactMapFromFullString(strWri.toString()));
 
-			for (int i = 0; i < extractCMap.length; i++) {
-				ContactMap cMap = null;
-				try {
-					cMap = extractCMap[i].get();
-				} catch (Exception e) {
-					e.printStackTrace(System.err);
-					cMap = extractedCMapfromFile(preGenClusterMap.get(i));
 				}
-				cMap_Map.put(cMap_seeds[i], cMap);
 
-				cmap_file_collection.put(cMap_seeds[i], new ArrayList<>(List.of(preGenClusterMap.get(i))));
 			}
-
-			exec = null;
-			// System.gc();
 		}
+	}
+
+	public void setLoad_partial_map(int load_full_map) {
+		this.load_partial_map = load_full_map;
 	}
 
 	protected static ContactMap extractedCMapfromFile(File contactMapFile) throws FileNotFoundException, IOException {
