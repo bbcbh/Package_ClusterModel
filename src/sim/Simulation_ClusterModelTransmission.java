@@ -124,15 +124,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			.replaceFirst("_%d", "") + ".7z";
 	public static final String FILENAME_LIFE_TABLE_ZIP = FILENAME_LIFE_TABLE.replaceFirst("_%d", "") + ".7z";
 
-	public static final String FILENAME_PRE_ALLOCATE_RISK_GRP = "RiskGrp_Map_%d.csv";
-	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_PID = 0;
-	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP = PRE_ALLOCATE_RISK_GRP_INDEX_PID + 1;
-	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL = PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP + 1;
-	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL
-			+ 1;
-	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_ANAL_CONDOM_USAGE_RATE = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP
-			+ 1;
-
 	// Switching parameter
 	public static final String FILENAME_PROP_SWITCH = "simSpecificSwitch.prop";
 	public static final String POP_PROP_SWITCH_PREFIX = "SWITCH_%d_";
@@ -195,7 +186,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 	public void setBaseContactMapSeed(long baseContactMapSeed) {
 		File pre_allocate_risk_file = new File(baseDir,
-				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+				String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 
 		File riskGrpDir = baseDir;
 		if (!pre_allocate_risk_file.exists()) {
@@ -208,7 +199,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				}
 
 				pre_allocate_risk_file = new File(riskGrpDir, String.format(
-						Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+						Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 			}
 		}
 
@@ -709,7 +700,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				} else {
 					File pre_allocate_risk_file = new File(baseDir, String.format(
-							Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+							Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 					File riskGrpDir = baseDir;
 					if (!pre_allocate_risk_file.exists()) {
 						// Try loading one in cMap folder
@@ -722,7 +713,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							}
 
 							pre_allocate_risk_file = new File(riskGrpDir,
-									String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
+									String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP,
 											baseContactMapSeed));
 						}
 					}
@@ -1298,7 +1289,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static boolean loadPreallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, File riskGrpDir,
 			long baseContactMapSeed) throws NumberFormatException, IOException {
 		File pre_allocate_risk_file = new File(riskGrpDir,
-				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+				String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 		boolean reallocate = false;
 
 		if (pre_allocate_risk_file.exists()) {
@@ -1307,17 +1298,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			while ((rLine = reader.readLine()) != null) {
 				String[] ent = rLine.split(",");
 				Number[] map_ent = new Number[ent.length];
-				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_PID] = Integer.parseInt(ent[PRE_ALLOCATE_RISK_GRP_INDEX_PID]);
-				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = Integer
-						.parseInt(ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
-				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL] = Float
-						.parseFloat(ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL]);
-				map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP] = Float
-						.parseFloat(ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP]);
+				map_ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID] = Integer.parseInt(ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]);
+				map_ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = Integer
+						.parseInt(ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
+				map_ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL] = Float
+						.parseFloat(ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL]);
+				map_ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP] = Float
+						.parseFloat(ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP]);
 
-				reallocate |= map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP].intValue() < 0;
+				reallocate |= map_ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP].intValue() < 0;
 
-				if (Float.isFinite(map_ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL].floatValue())) {
+				if (Float.isFinite(map_ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL].floatValue())) {
 					prealloactedRiskGrpArr.add(map_ent);
 				}
 
@@ -1362,13 +1353,13 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static void reallocateRiskGrp(ArrayList<Number[]> prealloactedRiskGrpArr, long baseContactMapSeed,
 			int[] cumulative_pop_composition, float[][] riskCatListAll, File baseDir, long rng_seed) {
 		File pre_allocate_risk_file = new File(baseDir,
-				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
+				String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, baseContactMapSeed));
 
 		RandomGenerator rngBase = new MersenneTwisterRandomGenerator(rng_seed);
 
 		// Reset risk group for everyone
 		for (Number[] ent : prealloactedRiskGrpArr) {
-			ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = -1;
+			ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = -1;
 		}
 
 		for (float[] riskCatList : riskCatListAll) {
@@ -1407,7 +1398,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				ArrayList<Number[]> risk_grp_prealloc_subGrp = new ArrayList<>();
 				for (Number[] ent : prealloactedRiskGrpArr) {
 					int g = Arrays.binarySearch(cumulative_pop_composition,
-							(Integer) ent[PRE_ALLOCATE_RISK_GRP_INDEX_PID]);
+							(Integer) ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]);
 					if (g < 0) {
 						g = ~g;
 					}
@@ -1419,7 +1410,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				HashMap<Integer, ArrayList<Number[]>> bins = new HashMap<>();
 
 				for (Number[] ent : risk_grp_prealloc_subGrp) {
-					float numCasual12Months = (Float) ent[PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL];
+					float numCasual12Months = (Float) ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL];
 					if (numCasual12Months > 0) { // Only those with casual partners
 						int rGrp = Arrays.binarySearch(cPartCatUpper, numCasual12Months);
 						if (rGrp < 0) {
@@ -1453,7 +1444,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 					if (!endSelection) {
 						for (int r = 0; r < pickedEntry.length; r++) {
-							pickedEntry[r][PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = riskGrpIndex[r];
+							pickedEntry[r][Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = riskGrpIndex[r];
 						}
 						numberAllocated += pickedEntry.length;
 					}
@@ -1465,8 +1456,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 
 				// Set the remainder group
 				for (Number[] ent : risk_grp_prealloc_subGrp) {
-					if (ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP].intValue() < 0) {
-						ent[PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = numRiskGrp;
+					if (ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP].intValue() < 0) {
+						ent[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP] = numRiskGrp;
 					}
 				}
 

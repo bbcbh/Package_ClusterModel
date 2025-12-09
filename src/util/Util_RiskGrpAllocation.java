@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import population.Population_Bridging;
 import relationship.ContactMap;
 import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
+import sim.Abstract_Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelGeneration;
 import sim.Simulation_ClusterModelTransmission;
@@ -38,7 +39,7 @@ public class Util_RiskGrpAllocation {
 		StringWriter outputMsg = new StringWriter();
 		PrintWriter pWri = new PrintWriter(outputMsg);
 		File riskGrpFile = new File(cMapFile.getParentFile(),
-				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMapSeed));
+				String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMapSeed));
 		if (riskGrpFile.exists()) {
 			System.out.printf("Warning: %s already exists. Risk group file not generated.\n", riskGrpFile.getName());
 		} else {
@@ -77,6 +78,19 @@ public class Util_RiskGrpAllocation {
 
 		}
 	}
+	
+	/*
+	 * Usage: 
+	 * 
+	 * riskCatListAll = {
+	 * {GENDER_GRP_INC, NUM_CATGORIES, NUM_RISKGRP 
+	 *  
+	 * Standised_rate_0, Standise_rate_1... } ...}
+	 *  
+	 * 
+	 */
+	
+	
 
 	public static void generateRiskGrpAllocationByRiskCat(File cMapFolder, float[][] riskCatListAll, int numThreads)
 			throws FileNotFoundException, IOException, InvalidPropertiesFormatException, InterruptedException {

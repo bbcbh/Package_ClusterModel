@@ -140,6 +140,16 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 
+	// Risk Group setting
+	public static final String FILENAME_PRE_ALLOCATE_RISK_GRP = "RiskGrp_Map_%d.csv";
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_PID = 0;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP = PRE_ALLOCATE_RISK_GRP_INDEX_PID + 1;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL = PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP + 1;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATE_TOTAL
+			+ 1;
+	public static final int PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_ANAL_CONDOM_USAGE_RATE = PRE_ALLOCATE_RISK_GRP_INDEX_CASUAL_RATR_FIRSTSNAP
+			+ 1;
+
 	public Abstract_Runnable_ClusterModel_Transmission(long cMap_seed, long sim_seed, ContactMap base_cMap,
 			Properties prop) {
 
@@ -525,8 +535,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 				}
 
 				risk_cat_map.put(
-						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID],
-						(Integer) preAllocRisk[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
+						(Integer) preAllocRisk[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID],
+						(Integer) preAllocRisk[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]);
 			}
 		}
 	}
@@ -633,7 +643,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	protected void setPreAllocatedRiskFromFile() {
 		File pre_allocate_risk_file = new File(baseDir,
-				String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));
+				String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));
 
 		if (pre_allocate_risk_file.isFile()) {
 			try {
@@ -647,11 +657,10 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 				while ((line = reader.readLine()) != null) {
 					String[] lineSp = line.split(",");
-					risk_cat_map.put(
+					risk_cat_map.put(Integer.parseInt(
+							lineSp[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]),
 							Integer.parseInt(
-									lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_PID]),
-							Integer.parseInt(
-									lineSp[Simulation_ClusterModelTransmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));
+									lineSp[Abstract_Runnable_ClusterModel_Transmission.PRE_ALLOCATE_RISK_GRP_INDEX_RISKGRP]));
 				}
 
 				reader.close();
@@ -965,7 +974,8 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			boolean update_base = bASE_CONTACT_MAP.addEdge(edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P1],
 					edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_P2], edge);
 			if (update_base) {
-				//System.out.printf("Update base contact map : %s\n", Arrays.deepToString(edge));
+				// System.out.printf("Update base contact map : %s\n",
+				// Arrays.deepToString(edge));
 			}
 
 		}

@@ -31,6 +31,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import sim.Abstract_Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelTransmission;
 
@@ -289,7 +290,7 @@ public class Util_SimulationDirectoryModifications {
 
 			for (long cMapSeed : cMapSeedArr) {
 				File riskGrp_File = new File(riskGrp_def_dir,
-						String.format(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMapSeed));
+						String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMapSeed));
 
 				if (riskGrp_File.exists()) {
 					Files.copy(riskGrp_File.toPath(), new File(tarDir[f], riskGrp_File.getName()).toPath(),
@@ -400,8 +401,8 @@ public class Util_SimulationDirectoryModifications {
 
 		String[] ignoreAttr = new String[] { "PROP_CONTACT_MAP_LOC", "PROP_NUM_SIM_PER_SET", "PROP_USE_PARALLEL" };
 		String[][] post_zip_patterns = new String[][] { new String[] {
-				Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP.replaceAll("_%d", "") + ".7z",
-				Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP.replaceAll("%d",
+				Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP.replaceAll("_%d", "") + ".7z",
+				Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP.replaceAll("%d",
 						"(-{0,1}\\\\d+)"), },
 				new String[] { "Seed_List.csv.zip", "Seed_List(_\\d+).csv", },
 				new String[] { "simSpecificSwitch.prop.zip", "simSpecificSwitch(_\\d+).prop", },
@@ -490,7 +491,7 @@ public class Util_SimulationDirectoryModifications {
 			}
 
 			// Clean up duplicate risk map
-			Pattern riskGrp_pattern = Pattern.compile(Simulation_ClusterModelTransmission.FILENAME_PRE_ALLOCATE_RISK_GRP
+			Pattern riskGrp_pattern = Pattern.compile(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP
 					.replaceAll("%d", "(-{0,1}\\\\d+)"));
 			File[] riskGrp_files = tarDir.listFiles(new FileFilter() {
 				@Override
