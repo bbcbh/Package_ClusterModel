@@ -1833,52 +1833,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				HashMap<Long, ArrayList<File>> cmap_file_collection = new HashMap<>();
 
 				if (preGenClusterMap.length == 0) {
-					// Try multiple ContactMap version
-					final String MULTI_MAP_STR = Runnable_ClusterModel_ContactMap_Generation_MultiMap.MAPFILE_FORMAT
-							.replaceAll("%d", "(-{0,1}\\\\d+)");
-					Pattern p = Pattern.compile(MULTI_MAP_STR);
-
-					preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
-						@Override
-						public boolean accept(File pathname) {
-							return pathname.isFile() && Pattern.matches(MULTI_MAP_STR, pathname.getName());
-
-						}
-					});
-
-					Arrays.sort(preGenClusterMap, new Comparator<File>() {
-						@Override
-						public int compare(File o1, File o2) {
-							Matcher m1 = p.matcher(o1.getName());
-							Matcher m2 = p.matcher(o2.getName());
-							m1.matches();
-							m2.matches();
-							int res = 0;
-							for (int p = 1; p <= m1.groupCount() && res == 0; p++) {
-								res = -Long.compare(Long.parseLong(m1.group(p)), Long.parseLong(m2.group(p)));
-							}
-							return res;
-						}
-					});
-
-					for (File f : preGenClusterMap) {
-						Matcher m = p.matcher(f.getName());
-						m.matches();
-						long cmap_seed = Long.parseLong(m.group(2));
-						if (cMapSeeds == null || Collections.binarySearch(cMapSeeds, cmap_seed) >= 0) {
-							// int mapType = Integer.parseInt(m.group(1));
-							ArrayList<File> mapStr = cmap_file_collection.get(cmap_seed);
-							if (mapStr == null) {
-								mapStr = new ArrayList<>();
-								cmap_file_collection.put(cmap_seed, mapStr);
-							}
-							mapStr.add(f);
-						}
-					}
-
+					sim.loadMultipleCMap(cMapSeeds, contactMapDir, cmap_file_collection);					
 					for (Long seed : cmap_file_collection.keySet()) {
 						ContactMap cMap = null;
-
 						cMap_Map.put(seed, cMap);
 					}
 
@@ -1922,6 +1879,53 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 
+	}
+
+	protected void loadMultipleCMap(ArrayList<Long> cMapSeeds, File contactMapDir,
+			HashMap<Long, ArrayList<File>> cmap_file_collection) {
+		File[] preGenClusterMap;
+		// Try multiple ContactMap version
+		final String MULTI_MAP_STR = Runnable_ClusterModel_ContactMap_Generation_MultiMap.MAPFILE_FORMAT
+				.replaceAll("%d", "(-{0,1}\\\\d+)");
+		Pattern p = Pattern.compile(MULTI_MAP_STR);
+
+		preGenClusterMap = contactMapDir.listFiles(new FileFilter() {
+			@Override
+			public boolean accept(File pathname) {
+				return pathname.isFile() && Pattern.matches(MULTI_MAP_STR, pathname.getName());
+
+			}
+		});
+
+		Arrays.sort(preGenClusterMap, new Comparator<File>() {
+			@Override
+			public int compare(File o1, File o2) {
+				Matcher m1 = p.matcher(o1.getName());
+				Matcher m2 = p.matcher(o2.getName());
+				m1.matches();
+				m2.matches();
+				int res = 0;
+				for (int p = 1; p <= m1.groupCount() && res == 0; p++) {
+					res = -Long.compare(Long.parseLong(m1.group(p)), Long.parseLong(m2.group(p)));
+				}
+				return res;
+			}
+		});
+
+		for (File f : preGenClusterMap) {
+			Matcher m = p.matcher(f.getName());
+			m.matches();
+			long cmap_seed = Long.parseLong(m.group(2));
+			if (cMapSeeds == null || Collections.binarySearch(cMapSeeds, cmap_seed) >= 0) {
+				// int mapType = Integer.parseInt(m.group(1));
+				ArrayList<File> mapStr = cmap_file_collection.get(cmap_seed);
+				if (mapStr == null) {
+					mapStr = new ArrayList<>();
+					cmap_file_collection.put(cmap_seed, mapStr);
+				}
+				mapStr.add(f);
+			}
+		}
 	}
 
 	protected void loadAllContactMap(ArrayList<File> preGenClusterMap,

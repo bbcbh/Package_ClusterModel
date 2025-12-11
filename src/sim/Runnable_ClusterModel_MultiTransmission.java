@@ -1143,11 +1143,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 		}
 
-		// For timing stat
-		long tic = System.currentTimeMillis();
-		long debug_time_test = 0, debug_time_inf = 0, debug_time_cMap = 0;
-		int debug_num_test = 0, debug_num_edge_add = 0, debug_num_new_inf = 0;
-
 		for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
 				&& (currentTime < lastStateSwitch || hasInfectious); currentTime++) {
 
@@ -1228,17 +1223,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 			// Collections.sort(currenty_infectious_ent);
 
-			// Update cMap
-			tic = System.currentTimeMillis();
 			int[] updatecMap_Stat = updateCMap(cMap, currentTime, edges_array, edges_array_pt, removeEdges,
 					currenty_infectious_ent);
 			edges_array_pt = updatecMap_Stat[0];
-			debug_num_edge_add += updatecMap_Stat[1];
-			debug_time_cMap += System.currentTimeMillis() - tic;
 
 			acted_today.clear();
-
-			tic = System.currentTimeMillis();
 
 			for (String key : currently_infectious_keys) {
 				currenty_infectious_ent = map_currently_infectious.get(key);
@@ -1377,7 +1366,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 																tar_infection_state_switch[inf_id][tar_site]);
 														simulate_transmission_success_act(currentTime, inf_id,
 																pid_inf_src, pid_inf_tar, src_site, tar_site);
-														debug_num_new_inf++;
+
 													} else {
 														simulate_transmission_failed_act(currentTime, inf_id,
 																pid_inf_src, pid_inf_tar, src_site, tar_site);
@@ -1394,13 +1383,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				} // End of checking one infectious
 			} // End loop for all infectious infection-site combinations
 
-			debug_time_inf += System.currentTimeMillis() - tic;
-
 			// Simulate acts among non-infectious
 			simulate_non_infectious_act(currentTime, cMap, acted_today);
 
-			// Testing
-			tic = System.currentTimeMillis();
 			ArrayList<int[]> testToday = schedule_testing.remove(currentTime);
 			if (testToday != null) {
 				for (int[] testing_stat : testToday) {
@@ -1419,11 +1404,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 				} // End of testing for single individual
 			} // End of all scheduled testing for today
-
-			debug_time_test += System.currentTimeMillis() - tic;
-			if (testToday != null) {
-				debug_num_test += testToday.size();
-			}
 
 			// Storing of outputs
 			if (snap_index == 0) {
@@ -1602,25 +1582,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						print_progress.printf("Thread <%s>: t = %d . Timestamp = %tc.\n", runnableId, currentTime,
 								System.currentTimeMillis());
 
-						print_progress.printf(
-								"T=%d, CMAP={%d,%d}"
-										+ ", Current pop size =%d, # edge_added = %d, time_edge_added = %.3f"
-										+ ", # inf added = %d,  time inf = %.3f" + ", # test = %d, time_test = %.3fs\n",
-								currentTime, cMap.vertexSet().size(), cMap.edgeSet().size(),
-								getCurrentPopulationPId(currentTime).length, debug_num_edge_add,
-								debug_time_cMap / 1000f, debug_num_new_inf, debug_time_inf / 1000f, debug_num_test,
-								debug_time_test / 1000f);
-
 					} catch (Exception ex) {
 						System.err.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
 					}
 
-					debug_time_test = 0;
-					debug_time_inf = 0;
-					debug_time_cMap = 0;
-					debug_num_test = 0;
-					debug_num_edge_add = 0;
-					debug_num_new_inf = 0;
 				}
 			}
 

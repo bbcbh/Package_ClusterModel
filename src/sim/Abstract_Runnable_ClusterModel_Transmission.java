@@ -86,11 +86,11 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected BufferedReader[] contactMap_reader = null;
 
 	// PopStat
-	protected HashMap<Integer, String[]> pop_stat = null;
+	public HashMap<Integer, String[]> pop_stat = null;
 
 	protected HashMap<Integer, HashMap<Integer, String>> propSwitch_map;
 
-	protected transient HashMap<Integer, Integer> risk_cat_map;
+	public transient HashMap<Integer, Integer> risk_cat_map;
 	protected transient int firstSeedTime = Integer.MAX_VALUE;
 	protected transient HashMap<String, Object> sim_output = null;
 
@@ -106,7 +106,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected static final String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
 			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
 
-	protected Properties baseProp; // From simSpecificSim.prop
+	public Properties baseProp; // From simSpecificSim.prop
 
 	// Non_mapped encounter
 	// To be initialise during updateCMap
