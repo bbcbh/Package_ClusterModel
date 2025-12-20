@@ -76,7 +76,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected final long cMAP_SEED;
 
 	protected PrintStream print_progress = null;
-	protected int simSetting = 1;
+	public int simSetting = 1;
 	protected RandomGenerator RNG;
 	protected ArrayList<Integer[]> edges_list;
 
@@ -644,7 +644,14 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected void setPreAllocatedRiskFromFile() {
 		File pre_allocate_risk_file = new File(baseDir,
 				String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));
-
+		
+		if(!pre_allocate_risk_file.exists() && baseProp.containsKey(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC)) {
+			// Try again at cMapFolder
+			pre_allocate_risk_file = new File(
+					new File(baseProp.getProperty(Simulation_ClusterModelTransmission.PROP_CONTACT_MAP_LOC)),					
+					String.format(Abstract_Runnable_ClusterModel_Transmission.FILENAME_PRE_ALLOCATE_RISK_GRP, cMAP_SEED));					
+			
+		}
 		if (pre_allocate_risk_file.isFile()) {
 			try {
 				BufferedReader reader = new BufferedReader(new FileReader(pre_allocate_risk_file));

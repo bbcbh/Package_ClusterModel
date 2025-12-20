@@ -1260,7 +1260,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 								int anyAct = 0;
 								for (int a = 0; a < NUM_ACT; a++) {
 									double[] fieldEntry = table_act_frequency[a][g_s][g_t];
-									if (fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY] >= 0) {
+									if (fieldEntry != null && fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY] >= 0) {
 										if (RNG.nextDouble() < fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY]) {
 											if (fieldEntry[FIELD_ACT_FREQ_SITE_P1] == fieldEntry[FIELD_ACT_FREQ_SITE_P2]) {
 												hasActed[a] = 1;
@@ -1294,9 +1294,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 									anyAct += hasActed[a];
 								}
 
+								// Convert to any act if needed
 								for (int a = 0; a < NUM_ACT; a++) {
 									double[] fieldEntry = table_act_frequency[a][g_s][g_t];
-									if (fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY] < 0) {
+									if (fieldEntry != null && fieldEntry[FIELD_ACT_FREQ_ACT_PER_DAY] < 0) {
 										hasActed[a] = (anyAct > 0) ? 1 : 0;
 									}
 								}
@@ -2445,6 +2446,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 								state_duration = dist_stage_period[infection_id][site_id][current_infection_stage]
 										.sample();
+
 
 								if ((Double.isInfinite(state_duration) && state_duration < 0)
 										|| current_infection_stage == STAGE_ID_DEATH) {
