@@ -1580,11 +1580,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 				if (print_progress != null && runnableId != null) {
 					try {
-						print_progress.printf("Thread <%s>: t = %d . Timestamp = %tc.\n", runnableId, currentTime,
+						print_progress.printf("Thread <%s>: t = %d. Timestamp = %tc.\n", runnableId, currentTime,
 								System.currentTimeMillis());
 
 					} catch (Exception ex) {
-						System.err.printf("Thread <%s>: t = %d .\n", runnableId, currentTime);
+						System.err.printf("Thread <%s>: t = %d.\n", runnableId, currentTime);
 					}
 
 				}
@@ -1661,7 +1661,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						// Check for test_properties for symptom/self sought infections
 						if (pid_t < 0) {
 							double[] test_properties_sym = lookupTable_test_treatment_properties
-									.get(String.format("%d,%d", -infId, siteId));
+									.get(String.format("%d,%d", ~infId, siteId));
 							if (test_properties_sym != null) {
 								test_properties = test_properties_sym;
 							}
@@ -1784,6 +1784,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						int[][] preTreatmentDur = map_pre_treatment_duration.get(pid);
 						if (preTreatmentDur == null) {
 							preTreatmentDur = new int[NUM_INF][NUM_SITE];
+							for(int[] r : preTreatmentDur) {
+								Arrays.fill(r, -1);
+							}
+							
 							map_pre_treatment_duration.put(pid, preTreatmentDur);
 						}
 						preTreatmentDur[infId][siteId] = infection_switch[infId][siteId] - currentTime;
@@ -1791,6 +1795,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						int[][] preTreatmentState = map_pre_treatment_state.get(pid);
 						if (preTreatmentState == null) {
 							preTreatmentState = new int[NUM_INF][NUM_SITE];
+							for(int[] r : preTreatmentState) {
+								Arrays.fill(r, -1);
+							}
 							map_pre_treatment_state.put(pid, preTreatmentState);
 						}
 						preTreatmentState[infId][siteId] = inf_stage[infId][siteId];
