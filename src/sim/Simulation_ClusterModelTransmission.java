@@ -1113,7 +1113,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						exec = Executors.newFixedThreadPool(numThreads);
 					}
 					exec.submit(runnable[s]);
-
 					inExec++;
 					if (inExec == numThreads) {
 						exec.shutdown();
@@ -1121,17 +1120,10 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 							System.err.println("Thread time-out!");
 						}
 						inExec = 0;
-						exec = null;
-						System.gc();
-						if (numSim > 1) {
-							zipOutputFiles();
-						}
+						exec = null;						
 					}
 				} else {
 					runnable[s].run();
-					if (numSim > 1) {
-						zipOutputFiles();
-					}
 				}
 			}
 
@@ -1142,18 +1134,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				System.err.println("Thread time-out!");
 			}
 			inExec = 0;
-			exec = null;
-			System.gc();
-			if (numSim > 1) {
-				zipOutputFiles();
-			}
+			exec = null;			
 		}
 
 		finalise_simulations();
 
 	}
 
-	protected void finalise_simulations() throws IOException, FileNotFoundException {
+	protected void finalise_simulations() throws IOException, FileNotFoundException {	
+		
+		zipOutputFiles();		
 		// Zip extra files
 		Pattern pattern_csv_extra = Pattern.compile("(?:\\[.*\\]){0,1}(.*)_(-{0,1}\\d+)_-{0,1}\\d+.csv");
 
