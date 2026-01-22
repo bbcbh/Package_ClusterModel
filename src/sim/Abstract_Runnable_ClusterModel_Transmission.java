@@ -565,7 +565,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 		ArrayList<Integer[]> toRemove;
 
 		// Skip invalid edges
-		while (edges_array_pt < edges_array.length
+		while (edges_array != null && edges_array_pt < edges_array.length
 				&& edges_array[edges_array_pt][Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME] < startTime) {
 			Integer[] edge = edges_array[edges_array_pt];
 			int edge_start_time = edge[Abstract_Runnable_ClusterModel.CONTACT_MAP_EDGE_START_TIME];
