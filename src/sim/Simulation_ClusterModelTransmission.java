@@ -165,7 +165,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			+ LENGTH_SIM_MAP_TRANSMISSION_FIELD
 			+ Runnable_ClusterModel_Transmission.LENGTH_RUNNABLE_MAP_TRANSMISSION_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
+	
 	protected int load_partial_map = Integer.MAX_VALUE;
+	
 
 	public Simulation_ClusterModelTransmission() {
 		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
