@@ -1645,7 +1645,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				|| tar_infection_stages[inf_id][tar_site] == AbstractIndividualInterface.INFECT_S;
 	}
 
-	protected void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl,
+	public void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl,
 			int[][] cumul_treatment_by_person) {
 		int pid = Math.abs(pid_t); // Symptomatic or one off test if PID < 0
 
