@@ -2631,9 +2631,10 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				}
 			}
 			// Check if seek treatment
-			boolean seekTest = seek_test_rate[getPersonGrp(pid)] >= 1;
-			if (seek_test_rate[getPersonGrp(pid)] < 1) {
-				seekTest = RNG.nextDouble() < seek_test_rate[getPersonGrp(pid)];
+			double seek_test_rate_val = getSeekTestRate(pid);
+			boolean seekTest =  seek_test_rate_val >= 1;
+			if (seek_test_rate_val < 1) {
+				seekTest = RNG.nextDouble() < seek_test_rate_val;
 			}
 			if (hasSym & seekTest) {
 				int seekTestAfter = (int) Math.max(1, Math.round(dist_seek_test_period[getPersonGrp(pid)].sample()));
@@ -2664,6 +2665,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		}
 
 		return infect_switch_time;
+	}
+
+	protected double getSeekTestRate(Integer pid) {
+		double seek_test_rate_val = seek_test_rate[getPersonGrp(pid)];
+		return seek_test_rate_val;
 	}
 
 	protected int[] handleNoNextStage(Integer pid, int infection_id, int site_id, int current_infection_stage,
