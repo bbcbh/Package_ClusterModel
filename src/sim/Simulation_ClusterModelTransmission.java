@@ -1868,6 +1868,9 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				System.out.println(String.format("All simulation(s) completed. Runtime (total)= %.2fs",
 						(System.currentTimeMillis() - tic) / 1000f));
 
+			}else {
+				System.err.printf("Error! Input basedir %s not found!\n", baseDir.getAbsolutePath());
+				System.exit(-1);
 			}
 		}
 
