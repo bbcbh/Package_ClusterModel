@@ -1696,7 +1696,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				if (applyTreatment) {
 					int personGrp = getPersonGrp(pid);
 					cumul_treatment_by_person[infId][personGrp]++;
-					applyTreatment(currentTime, infId, pid, inf_stage);
+					applyTreatment(currentTime, infId, pid_t, inf_stage);
 					treatment_inf_incl += 1 << infId;
 				}
 
@@ -1841,7 +1841,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Do noting on its own, but can be overwritten by subclasses
 	}
 
-	protected void applyTreatment(int currentTime, int infId, int pid, int[][] inf_stage) {
+	protected void applyTreatment(int currentTime, int infId, int pid_t, int[][] inf_stage) {
+		int pid = Math.abs(pid_t);
 		double[] test_treatment_properies;
 		int tested_stage_inc;
 		int[][] infection_switch = map_infection_stage_switch.get(pid);
