@@ -1645,8 +1645,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				|| tar_infection_stages[inf_id][tar_site] == AbstractIndividualInterface.INFECT_S;
 	}
 
-	public void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl,
-			int[][] cumul_treatment_by_person) {
+	public void testPerson(int currentTime, int pid_t, int infIncl, int siteIncl, int[][] cumul_treatment_by_person) {
 		int pid = Math.abs(pid_t); // Symptomatic or one off test if PID < 0
 
 		int treatment_inf_incl = 0;
@@ -1796,11 +1795,15 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		double prob = trans_prob[inf_id][src_site][tar_site][src_stage];
 
-		if (FIELD_ACT_FREQ_CONDOM_EFFICACY > actFieldEntry.length) {
-			double condomUsage = (partnershiptDur > 1 ? actFieldEntry[FIELD_ACT_FREQ_USAGE_REG]
-					: actFieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL]);
-			if (RNG.nextDouble() < condomUsage) {
-				prob *= (1 - actFieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]);
+		if (FIELD_ACT_FREQ_CONDOM_EFFICACY < actFieldEntry.length) {
+			if (actFieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY] > 0) {
+				double condomUsage = (partnershiptDur > 1 ? actFieldEntry[FIELD_ACT_FREQ_USAGE_REG]
+						: actFieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL]);
+				if (condomUsage > 0) {
+					if (RNG.nextDouble() < condomUsage) {
+						prob *= (1 - actFieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]);
+					}
+				}
 			}
 		}
 
@@ -2000,7 +2003,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		if (genderType != -1 && riskCat != -1) {
 			double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
-			
 
 			for (int testDefNum = 0; testDefNum < testRateDefs.length; testDefNum++) {
 				double[] testRateDef = testRateDefs[testDefNum];
@@ -2014,7 +2016,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 						&& (last_test_siteIncl < 0 || last_test_siteIncl == sIncl)
 						&& testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] != -1) {
 					scheduleNextTestByDefNum(personId, testDefNum, lastTestTime, mustTestBefore);
-					
+
 				} // End of scduleNextTestByDef
 			}
 		}
@@ -2022,11 +2024,11 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	}
 
 	protected void scheduleNextTestByDefNum(Integer personId, int testDefNum, int lastTestTime, int mustTestBefore) {
-		
+
 		HashMap<Integer, Integer> past_test_pt = test_rate_index_map.get(personId);
 		int test_pt;
 		double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
-		double[] testRateDef = testRateDefs[testDefNum];				
+		double[] testRateDef = testRateDefs[testDefNum];
 		int sIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_SITE_INCLUDE_INDEX];
 		int iIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
 
@@ -2036,8 +2038,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			// FORMAT: {Cumul_Prob_0, Cummul_Prob_1, .... test_gap_time_0,
 			// test_gap_time_1..}
 
-			int test_opt_length = (testRateDef.length
-					- FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START) / 2;
+			int test_opt_length = (testRateDef.length - FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START)
+					/ 2;
 
 			if (past_test_pt == null) {
 				past_test_pt = new HashMap<>();
@@ -2045,10 +2047,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 
 			double prob = RNG.nextDouble();
-			pt = Arrays.binarySearch(testRateDef,
-					FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START,
-					FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + test_opt_length + 1,
-					prob);
+			pt = Arrays.binarySearch(testRateDef, FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START,
+					FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START + test_opt_length + 1, prob);
 			if (pt < 0) {
 				pt = ~pt;
 			}
@@ -2643,7 +2643,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			}
 			// Check if seek treatment
 			double seek_test_rate_val = getSeekTestRate(pid);
-			boolean seekTest =  seek_test_rate_val >= 1;
+			boolean seekTest = seek_test_rate_val >= 1;
 			if (seek_test_rate_val < 1) {
 				seekTest = RNG.nextDouble() < seek_test_rate_val;
 			}
