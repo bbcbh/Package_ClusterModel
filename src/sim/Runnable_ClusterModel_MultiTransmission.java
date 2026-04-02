@@ -23,7 +23,7 @@ import org.apache.commons.math3.distribution.RealDistribution;
 
 import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
-import population.Population_Bridging;
+import population.Population_Network;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
@@ -2739,7 +2739,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	public ArrayList<Integer> loadOptParameter(String[] parameter_settings, double[] point, int[][] seedInfectNum,
 			boolean display_only) {
 
-		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+		final int sim_offset = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 

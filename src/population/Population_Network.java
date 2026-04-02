@@ -28,7 +28,7 @@ import relationship.SingleRelationshipTimeStamp;
 import sim.Abstract_Runnable_ClusterModel;
 import util.ArrayUtilsRandomGenerator;
 
-public class Population_Bridging extends AbstractFieldsArrayPopulation {
+public class Population_Network extends AbstractFieldsArrayPopulation {
 
 	/**
 	 * 
@@ -151,7 +151,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 	protected AbstractIntegerDistribution[] regPartDuration = new AbstractIntegerDistribution[LENGTH_RELMAP];
 	protected PrintStream[] printStatus = null;
 
-	public Population_Bridging(long seed) {
+	public Population_Network(long seed) {
 		setSeed(seed);
 		setRNG(new random.MersenneTwisterRandomGenerator(seed));
 
@@ -170,13 +170,13 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 	}
 
-	public static Population_Bridging decodeFromStream(java.io.ObjectInputStream inStr)
+	public static Population_Network decodeFromStream(java.io.ObjectInputStream inStr)
 			throws IOException, ClassNotFoundException {
 		int globalTime = inStr.readInt();
 		AbstractInfection[] infList = (AbstractInfection[]) inStr.readObject();
 		Object[] decoded_fields = (Object[]) inStr.readObject();
 
-		Population_Bridging pop = new Population_Bridging((long) decoded_fields[0]);
+		Population_Network pop = new Population_Network((long) decoded_fields[0]);
 
 		if (decoded_fields.length != pop.getFields().length) {
 			int oldLen = decoded_fields.length;
@@ -460,7 +460,7 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 
 					// For consistency
 					if (rel_order_by_gender) {
-						if (src_person.getGenderType() == Population_Bridging.GENDER_FEMALE) {
+						if (src_person.getGenderType() == Population_Network.GENDER_FEMALE) {
 							pair = new Person_Bridging_Pop[] { tar_person, src_person };
 						} else {
 							pair = new Person_Bridging_Pop[] { src_person, tar_person };
@@ -544,8 +544,8 @@ public class Population_Bridging extends AbstractFieldsArrayPopulation {
 			// For consistency
 			boolean swapPerson;
 
-			if ((src_person.getGenderType() & tar_person.getGenderType()) == Population_Bridging.GENDER_FEMALE) {
-				swapPerson = src_person.getGenderType() == Population_Bridging.GENDER_FEMALE;
+			if ((src_person.getGenderType() & tar_person.getGenderType()) == Population_Network.GENDER_FEMALE) {
+				swapPerson = src_person.getGenderType() == Population_Network.GENDER_FEMALE;
 			} else {
 				swapPerson = src_person.getId() > tar_person.getId();
 			}

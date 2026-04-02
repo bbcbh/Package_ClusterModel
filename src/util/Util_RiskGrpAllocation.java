@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import population.Population_Bridging;
+import population.Population_Network;
 import relationship.ContactMap;
 import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
 import sim.Abstract_Runnable_ClusterModel_Transmission;
@@ -103,7 +103,7 @@ public class Util_RiskGrpAllocation {
 
 		int[] pop_composition = (int[]) PropValUtils
 				.propStrToObject(prop.getProperty(Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
-						+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION)), int[].class);
+						+ Integer.toString(Population_Network.FIELD_POP_COMPOSITION)), int[].class);
 
 		int[] cumul_pop = Arrays.copyOf(pop_composition, pop_composition.length);
 		for (int i = 1; i < cumul_pop.length; i++) {
@@ -111,7 +111,7 @@ public class Util_RiskGrpAllocation {
 		}
 
 		final String time_rangeKey = Simulation_ClusterModelGeneration.POP_PROP_INIT_PREFIX
-				+ Integer.toString(Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+				+ Integer.toString(Population_Network.LENGTH_FIELDS_BRIDGING_POP
 						+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 						+ Abstract_Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE);
 

@@ -13,7 +13,7 @@ import random.RandomGenerator;
 import relationship.ContactMap;
 import sim.Abstract_Runnable_ClusterModel;
 
-public class Population_Bridging_NetworkDensity extends Population_Bridging_Scheduled {
+public class Population_Network_ByDensity extends Population_Network_Scheduled {
 
 	private static final long serialVersionUID = -3797890258608814830L;
 
@@ -34,7 +34,7 @@ public class Population_Bridging_NetworkDensity extends Population_Bridging_Sche
 
 	ContactMap cMapLast12Months = new ContactMap();
 
-	public Population_Bridging_NetworkDensity(long seed) {
+	public Population_Network_ByDensity(long seed) {
 		super(seed);
 
 		float nSum = 0;

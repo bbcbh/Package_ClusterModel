@@ -21,7 +21,7 @@ import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 
-import population.Population_Bridging;
+import population.Population_Network;
 import sim.Abstract_Runnable_ClusterModel_Transmission;
 import sim.SimulationInterface;
 import sim.Simulation_ClusterModelTransmission;
@@ -227,7 +227,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output_Combined {
 						fIS.close();
 
 						String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
-								+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+								+ Integer.toString(Population_Network.FIELD_POP_COMPOSITION);
 						int[] gender_dist = (int[]) PropValUtils.propStrToObject(prop.getProperty(popCompositionKey),
 								int[].class);
 
@@ -237,7 +237,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output_Combined {
 							cuml_gender_dist[i] += cuml_gender_dist[i - 1];
 						}
 
-						int[][] total_no_incident_reported = new int[Population_Bridging.LENGTH_GENDER][Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE];
+						int[][] total_no_incident_reported = new int[Population_Network.LENGTH_GENDER][Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE];
 
 						// Key = String.format("%d,%d", g, s)
 						HashMap<String, ArrayList<Integer>> inf_history_count_map = new HashMap<>();
@@ -275,7 +275,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output_Combined {
 						PrintWriter pWri = new PrintWriter(summary_file);
 						// Incident count
 						pWri.println("Gender, Site, # Incidence (bin-size of 1)");
-						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+						for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 							for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
@@ -321,7 +321,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output_Combined {
 						pWri.println("Duration of infection");
 						pWri.println(
 								"Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
-						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+						for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 							for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
@@ -357,7 +357,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output_Combined {
 						pWri.println("Duration of treated infection");
 						pWri.println(
 								"Gender, Site, Mean duration, Total infection, Total duration, Median, 25th Quartile, 75th Quartile");
-						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+						for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 							for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 								pWri.print(g);
 								pWri.print(',');
@@ -373,7 +373,7 @@ public class Util_Analyse_ClusterModel_Transmission_Output_Combined {
 						pWri.println("Interval between infections ");
 						pWri.println("Gender, Site, Mean, Median, 25th Quartile, 75th Quartile");
 
-						for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+						for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 							for (int s = 0; s < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; s++) {
 
 								pWri.print(g);

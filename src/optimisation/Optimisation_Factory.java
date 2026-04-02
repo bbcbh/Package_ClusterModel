@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import population.Population_Bridging;
+import population.Population_Network;
 import sim.Abstract_Runnable_ClusterModel;
 import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
 import sim.Simulation_ClusterModelGeneration;
@@ -19,7 +19,7 @@ public class Optimisation_Factory {
 	public static final String OPT_OUTPUT_PREFIX_SIMSEED = "SimSeed = ";
 	public static final String OPT_OUTPUT_PREFIX_PARAM = "Param   = ";
 	public static final String OPT_OUTPUT_PREFIX_RESIDUE = "Residue = ";
-	public static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+	public static final int RUNNABLE_OFFSET = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;

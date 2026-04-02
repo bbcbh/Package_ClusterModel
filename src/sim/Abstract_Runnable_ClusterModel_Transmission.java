@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.math3.distribution.IntegerDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 
-import population.Population_Bridging;
+import population.Population_Network;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
@@ -63,7 +63,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 			+ 1;
 	public static final int RUNNABLE_FIELD_TRANSMISSION_DX_TEST_PROPERTIES = RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM
 			+ 1;
-	protected static final int RUNNABLE_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+	protected static final int RUNNABLE_OFFSET = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ +Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ Simulation_ClusterModelTransmission.LENGTH_SIM_MAP_TRANSMISSION_FIELD;
@@ -104,7 +104,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	private static final int cMAP_KEPT_EDGE_BY_DURATION_PROB_LIST = cMAP_KEPT_EDGE_BY_DURATION_DUR_LIST + 1;
 
 	protected static final String popCompositionKey = Simulation_ClusterModelTransmission.POP_PROP_INIT_PREFIX
-			+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+			+ Integer.toString(Population_Network.FIELD_POP_COMPOSITION);
 
 	public Properties baseProp; // From simSpecificSim.prop
 
@@ -136,7 +136,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 	protected int importedAtTime = -1;
 
-	protected final int SIM_OFFSET = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+	protected final int SIM_OFFSET = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 
@@ -485,7 +485,7 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 	protected void loadNonRunnableFieldSetting(Integer index, String entry, int loadTime) {
 
 		switch (index.intValue()) {
-		case Population_Bridging.FIELD_PARTNER_TYPE_PROB:
+		case Population_Network.FIELD_PARTNER_TYPE_PROB:
 			// Reset
 			non_mapped_encounter_prob = null;
 			non_mapped_encounter_target_gender = null;
@@ -820,15 +820,15 @@ public abstract class Abstract_Runnable_ClusterModel_Transmission extends Abstra
 
 			// Only valid if it is defined in the prop file
 			String prop_ent_str = getSim_prop()
-					.getProperty(String.format("POP_PROP_INIT_PREFIX_%d", Population_Bridging.FIELD_PARTNER_TYPE_PROB));
+					.getProperty(String.format("POP_PROP_INIT_PREFIX_%d", Population_Network.FIELD_PARTNER_TYPE_PROB));
 
 			if (prop_ent_str != null) {
 				float[][] prop_ent = (float[][]) util.PropValUtils.propStrToObject(prop_ent_str, float[][].class);
 				for (int g = 0; g < cUMULATIVE_POP_COMPOSITION.length; g++) {
 					float[] ent = prop_ent[g];
-					if (ent.length > Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB) {
-						non_mapped_encounter_prob[g] = ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB];
-						non_mapped_encounter_target_gender[g] = (int) ent[Population_Bridging.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER];
+					if (ent.length > Population_Network.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB) {
+						non_mapped_encounter_prob[g] = ent[Population_Network.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_PROB];
+						non_mapped_encounter_target_gender[g] = (int) ent[Population_Network.PARTNER_TYPE_NON_MAPPED_ENCOUNTER_TARGET_GENDER];
 						hasProb |= non_mapped_encounter_prob[g] > 0;
 					}
 				}

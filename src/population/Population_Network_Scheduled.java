@@ -39,7 +39,7 @@ import relationship.RelationshipMap;
 import sim.Abstract_Runnable_ClusterModel_ContactMap_Generation;
 import sim.Simulation_ClusterModelGeneration;
 
-public class Population_Bridging_Scheduled extends Population_Bridging {
+public class Population_Network_Scheduled extends Population_Network {
 	/**
 	 * 
 	 */
@@ -80,7 +80,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 		}
 	};
 
-	public Population_Bridging_Scheduled(long seed) {
+	public Population_Network_Scheduled(long seed) {
 		super(seed);
 		schedule_partnership = new HashMap<>();
 		Object[] newFields = Arrays.copyOf(super.getFields(), super.getFields().length + 1);
@@ -135,14 +135,14 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Population_Bridging decodeFromStream(java.io.ObjectInputStream inStr)
+	public static Population_Network decodeFromStream(java.io.ObjectInputStream inStr)
 			throws IOException, ClassNotFoundException {
 
 		int globalTime = inStr.readInt();
 		AbstractInfection[] infList = (AbstractInfection[]) inStr.readObject();
 		Object[] decoded_fields = (Object[]) inStr.readObject();
 
-		Population_Bridging_Scheduled pop = new Population_Bridging_Scheduled((long) decoded_fields[0]);
+		Population_Network_Scheduled pop = new Population_Network_Scheduled((long) decoded_fields[0]);
 
 		if (decoded_fields.length != pop.getFields().length) {
 			int oldLen = decoded_fields.length;
@@ -263,7 +263,7 @@ public class Population_Bridging_Scheduled extends Population_Bridging {
 
 		if (reportPartnerStat) {
 			// Export contact map
-			ContactMap cMap = ((ContactMap[]) getFields()[Population_Bridging.FIELD_CONTACT_MAP])[0];
+			ContactMap cMap = ((ContactMap[]) getFields()[Population_Network.FIELD_CONTACT_MAP])[0];
 
 			if (cMap != null) {
 				File allContactFile = new File(baseDir, String.format(

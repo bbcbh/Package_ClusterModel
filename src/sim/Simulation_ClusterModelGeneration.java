@@ -19,9 +19,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import person.AbstractIndividualInterface;
-import population.Population_Bridging;
-import population.Population_Bridging_NetworkDensity;
-import population.Population_Bridging_Scheduled;
+import population.Population_Network;
+import population.Population_Network_ByDensity;
+import population.Population_Network_Scheduled;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import util.PersonClassifier;
@@ -110,7 +110,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 	public static final String POP_PROP_INIT_PREFIX = "POP_PROP_INIT_PREFIX_";
 	public static final String POP_PROP_INIT_PREFIX_CLASS = "POP_PROP_INIT_PREFIX_CLASS_";
 
-	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
+	public Object[] simFields = new Object[Population_Network.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
 			+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD];
 	public Class<?>[] simFieldClass = new Class[simFields.length];
 
@@ -153,7 +153,7 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 	public Simulation_ClusterModelGeneration() {
 
-		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
+		final int sim_offset = Population_Network.LENGTH_FIELDS_BRIDGING_POP + LENGTH_SIM_MAP_GEN_FIELD
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		for (int i = 0; i < simFields.length; i++) {
 			// All simulation levels
@@ -295,25 +295,14 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 
 			if (skipSeeds == null || Collections.binarySearch(skipSeeds, popSeed) < 0) {
 
-				Population_Bridging population = null;
+				Population_Network population = null;
 
-				if (Population_Bridging_Scheduled.class.getName().equals(
-						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
-					population = new Population_Bridging_Scheduled(popSeed);
-					((Population_Bridging_Scheduled) population).setSpace_save(space_save);
-				} else if (Population_Bridging_NetworkDensity.class.getName().equals(
-						loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
-					population = new Population_Bridging_NetworkDensity(popSeed);
-					((Population_Bridging_NetworkDensity) population).setSpace_save(space_save);
-
-				} else {
-					population = null;
-				}
+				population = generateDefaultNetworkPopulation(popSeed);
 
 				Abstract_Runnable_ClusterModel_ContactMap_Generation r;
 
 				if (population != null) {
-					for (int f = 0; f < Population_Bridging.LENGTH_FIELDS_BRIDGING_POP; f++) {
+					for (int f = 0; f < Population_Network.LENGTH_FIELDS_BRIDGING_POP; f++) {
 						if (simFields[f] != null) {
 							population.getFields()[f] = simFields[f];
 						}
@@ -422,6 +411,23 @@ public class Simulation_ClusterModelGeneration implements SimulationInterface {
 		 */
 
 		showStrStatus(String.format("Simulation time required = %.3f s", (System.currentTimeMillis() - tic) / 1000f));
+	}
+
+	protected Population_Network generateDefaultNetworkPopulation(long popSeed) {
+		Population_Network population;
+		if (Population_Network_Scheduled.class.getName().equals(
+				loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
+			population = new Population_Network_Scheduled(popSeed);
+			((Population_Network_Scheduled) population).setSpace_save(space_save);
+		} else if (Population_Network_ByDensity.class.getName().equals(
+				loadedProperties.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]))) {
+			population = new Population_Network_ByDensity(popSeed);
+			((Population_Network_ByDensity) population).setSpace_save(space_save);
+
+		} else {
+			population = null;
+		}
+		return population;
 	}
 
 	private void showStrStatus(String string) {

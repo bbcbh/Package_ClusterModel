@@ -18,8 +18,8 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 
-import population.Population_Bridging;
-import population.Population_Bridging_Scheduled;
+import population.Population_Network;
+import population.Population_Network_Scheduled;
 import relationship.ContactMap;
 
 public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
@@ -30,17 +30,17 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 	//  Probabiliy of restrict bridging, with >= 1 means no bridging
 	public static final int RUNNABLE_FIELD_NO_BRIDGE = RUNNABLE_FIELD_INT_SETTING;
 
-	private Population_Bridging population;
+	private Population_Network population;
 
 	public Runnable_ClusterModel_ContactMap_Generation_SingleMap(long mapSeed) {
 		super(mapSeed);
 	}
 
-	public Population_Bridging getPopulation() {
+	public Population_Network getPopulation() {
 		return population;
 	}
 
-	public void setPopulation(Population_Bridging population) {
+	public void setPopulation(Population_Network population) {
 		this.population = population;
 	}
 
@@ -113,14 +113,14 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 			}
 
 			if (contactMapValidRange[0] == 0) {
-				gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+				gen_cMap = (ContactMap[]) population.getFields()[Population_Network.FIELD_CONTACT_MAP];
 				for (int i = 0; i < gen_cMap.length; i++) {
 					gen_cMap[i] = new ContactMap();
 				}
 			}
 
-			if (population instanceof Population_Bridging_Scheduled) {
-				((Population_Bridging_Scheduled) population).setProb_no_bridge(prob_no_bridge);
+			if (population instanceof Population_Network_Scheduled) {
+				((Population_Network_Scheduled) population).setProb_no_bridge(prob_no_bridge);
 			}
 
 			population.initialise();
@@ -151,15 +151,15 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 
 				try {
 					ObjectInputStream objIn;
-					Population_Bridging snapPop;
+					Population_Network snapPop;
 
 					try {
 						objIn = new ObjectInputStream(new BufferedInputStream(new FileInputStream(prevSnapFile)));
 
-						if (population instanceof Population_Bridging_Scheduled) {
-							snapPop = Population_Bridging_Scheduled.decodeFromStream(objIn);
+						if (population instanceof Population_Network_Scheduled) {
+							snapPop = Population_Network_Scheduled.decodeFromStream(objIn);
 						} else {
-							snapPop = Population_Bridging.decodeFromStream(objIn);
+							snapPop = Population_Network.decodeFromStream(objIn);
 						}
 					} catch (Exception e) {
 						// See if temp file existed and load that instead
@@ -168,10 +168,10 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 							output.append(String.format(" FAILED\nRetry using population snapshot file %s....",
 									tempFile.getName()));
 							objIn = new ObjectInputStream(new BufferedInputStream(new FileInputStream(tempFile)));
-							if (population instanceof Population_Bridging_Scheduled) {
-								snapPop = Population_Bridging_Scheduled.decodeFromStream(objIn);
+							if (population instanceof Population_Network_Scheduled) {
+								snapPop = Population_Network_Scheduled.decodeFromStream(objIn);
 							} else {
-								snapPop = Population_Bridging.decodeFromStream(objIn);
+								snapPop = Population_Network.decodeFromStream(objIn);
 							}
 						} else {
 							throw e;
@@ -183,10 +183,10 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 					objIn.close();
 					output.append(String.format(" SUCCESS, with global time set at %d.", population.getGlobalTime()));
 					skipTimeUntil = population.getGlobalTime();
-					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+					gen_cMap = (ContactMap[]) population.getFields()[Population_Network.FIELD_CONTACT_MAP];
 
-					if (population instanceof Population_Bridging_Scheduled) {
-						((Population_Bridging_Scheduled) population).setProb_no_bridge(prob_no_bridge);
+					if (population instanceof Population_Network_Scheduled) {
+						((Population_Network_Scheduled) population).setProb_no_bridge(prob_no_bridge);
 					}
 
 					if (contactMapValidRange[0] < population.getGlobalTime()
@@ -217,14 +217,14 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 					population.setPrintStatus(printStatus);
 				}
 				if (contactMapValidRange[0] == 0) {
-					gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+					gen_cMap = (ContactMap[]) population.getFields()[Population_Network.FIELD_CONTACT_MAP];
 					for (int i = 0; i < gen_cMap.length; i++) {
 						gen_cMap[i] = new ContactMap();
 					}
 				}
 
-				if (population instanceof Population_Bridging_Scheduled) {
-					((Population_Bridging_Scheduled) population).setProb_no_bridge(prob_no_bridge);
+				if (population instanceof Population_Network_Scheduled) {
+					((Population_Network_Scheduled) population).setProb_no_bridge(prob_no_bridge);
 				}
 				population.initialise();
 
@@ -243,22 +243,22 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 			for (int f = 0; f < snap_dur; f++) {
 				if (stepCount >= skipTimeUntil) {
 					if (contactMapValidRange[0] != 0 && population.getGlobalTime() == contactMapValidRange[0]) {
-						gen_cMap = (ContactMap[]) population.getFields()[Population_Bridging.FIELD_CONTACT_MAP];
+						gen_cMap = (ContactMap[]) population.getFields()[Population_Network.FIELD_CONTACT_MAP];
 						for (int i = 0; i < gen_cMap.length; i++) {
 							gen_cMap[i] = new ContactMap();
 						}
 					} else if (population.getGlobalTime() == contactMapValidRange[1]) {
 						// Set to null
 						population.setParameter("Population_Bridging.FIELD_CONTACT_MAP",
-								Population_Bridging.FIELD_CONTACT_MAP, new ContactMap[gen_cMap.length]);
+								Population_Network.FIELD_CONTACT_MAP, new ContactMap[gen_cMap.length]);
 
 					}
 					population.advanceTimeStep(1);
 
 					boolean exportPop = true;
 
-					if (population instanceof population.Population_Bridging_Scheduled) {
-						exportPop &= !((Population_Bridging_Scheduled) population).isSpace_save();
+					if (population instanceof population.Population_Network_Scheduled) {
+						exportPop &= !((Population_Network_Scheduled) population).isSpace_save();
 					}
 
 					if (prob_no_bridge > 0 && exportPop) {
@@ -285,8 +285,8 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 
 			boolean exportPop = true;
 
-			if (population instanceof population.Population_Bridging_Scheduled) {
-				exportPop &= !((Population_Bridging_Scheduled) population).isSpace_save();
+			if (population instanceof population.Population_Network_Scheduled) {
+				exportPop &= !((Population_Network_Scheduled) population).isSpace_save();
 			}
 			if (exportPop) {
 				exportPopSnap(System.currentTimeMillis());
@@ -312,10 +312,10 @@ public class Runnable_ClusterModel_ContactMap_Generation_SingleMap
 	@Override
 	public void setRunnable_fields(Object[] simFields) {
 		for (int f = 0; f < Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD; f++) {
-			if (simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+			if (simFields[Population_Network.LENGTH_FIELDS_BRIDGING_POP
 					+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD + f] != null) {
 				getRunnable_fields()[f] = simFields[f + Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
-						+ Population_Bridging.LENGTH_FIELDS_BRIDGING_POP];
+						+ Population_Network.LENGTH_FIELDS_BRIDGING_POP];
 			}
 		}
 

@@ -15,7 +15,7 @@ import org.apache.commons.math3.distribution.UniformRealDistribution;
 
 import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
-import population.Population_Bridging;
+import population.Population_Network;
 import population.person.Person_Bridging_Pop;
 import random.MersenneTwisterRandomGenerator;
 import relationship.ContactMap;
@@ -100,7 +100,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public final static int DX_TREATMENT_RATE_INDEX = DX_SPECIFICITY_INDEX + 1;
 
 	// float[gender][site][setting]
-	private float[][][] DEFAULT_NON_VIABLE_INFECTION_SETTING = new float[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][LENGTH_NON_VIABILITY_SETTING];
+	private float[][][] DEFAULT_NON_VIABLE_INFECTION_SETTING = new float[Population_Network.LENGTH_GENDER][LENGTH_SITE][LENGTH_NON_VIABILITY_SETTING];
 
 	public static final int NON_VIABILITY_CONTACT_INDUCED_PROB = 0;
 	public static final int NON_VIABILITY_CONTACT_INDUCED_DURATION_MEAN = NON_VIABILITY_CONTACT_INDUCED_PROB + 1;
@@ -119,7 +119,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			new double[] { 7, 7 }, new double[] { 7, 7 }, };
 
 	// float[gender][site][effect]
-	private float[][][] DEFAULT_VACCINE_PROPERTIES = new float[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][LENGTH_VACCINE_PROPERTIES];
+	private float[][][] DEFAULT_VACCINE_PROPERTIES = new float[Population_Network.LENGTH_GENDER][LENGTH_SITE][LENGTH_VACCINE_PROPERTIES];
 
 	public static final int VACCINE_PROPERTIES_MEAN_VAC_DURATION = 0; // Set to < 0 for same duration for all sites.
 	public static final int VACCINE_PROPERTIES_INF_DURATION_ADJUST = VACCINE_PROPERTIES_MEAN_VAC_DURATION + 1;
@@ -132,7 +132,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 																										// >0
 	public static final int LENGTH_VACCINE_PROPERTIES = VACCINE_PROPERTIES_SYMPTOM_ADJ + 1;
 
-	private float[][] DEFAULT_VACCINATION_SETTING = new float[Population_Bridging.LENGTH_GENDER][LENGTH_VACCINATION_SETTING];
+	private float[][] DEFAULT_VACCINATION_SETTING = new float[Population_Network.LENGTH_GENDER][LENGTH_VACCINATION_SETTING];
 
 	public static final int VACCINATION_SETTING_BOOSTER_PERIOD = 0;
 	public static final int VACCINATION_SETTING_BOOSTER_LIMIT = VACCINATION_SETTING_BOOSTER_PERIOD + 1;
@@ -259,7 +259,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient RealDistribution[] infectious_period = new RealDistribution[LENGTH_SITE];
 	protected transient RealDistribution[] incubation_period = new RealDistribution[LENGTH_SITE];
 	protected transient RealDistribution[] immune_period = new RealDistribution[LENGTH_SITE];
-	protected transient RealDistribution[] sym_test_period_by_gender = new RealDistribution[Population_Bridging.LENGTH_GENDER];
+	protected transient RealDistribution[] sym_test_period_by_gender = new RealDistribution[Population_Network.LENGTH_GENDER];
 
 	protected transient ArrayList<Integer>[] currently_infectious;
 
@@ -281,9 +281,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	protected transient HashMap<Integer, ArrayList<Integer>[]> infection_history;
 
 	// For antibiotic tracking
-	protected transient RealDistribution[][] non_viable_inf_by_contact_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
-	protected transient RealDistribution[][] non_viable_inf_by_recovery_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
-	protected transient RealDistribution[] antibotic_duration = new RealDistribution[Population_Bridging.LENGTH_GENDER];
+	protected transient RealDistribution[][] non_viable_inf_by_contact_duration = new RealDistribution[Population_Network.LENGTH_GENDER][LENGTH_SITE];
+	protected transient RealDistribution[][] non_viable_inf_by_recovery_duration = new RealDistribution[Population_Network.LENGTH_GENDER][LENGTH_SITE];
+	protected transient RealDistribution[] antibotic_duration = new RealDistribution[Population_Network.LENGTH_GENDER];
 	// if pid < 0, it is over-treatment
 	protected transient ArrayList<Integer> currently_has_antibiotic;
 	// Key = date, V = pid (or -pid if overtreatment)
@@ -296,9 +296,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	// Key = day, V = pid of those who receive booster shot
 	protected transient HashMap<Integer, ArrayList<Integer>> schedule_vaccination;
 
-	protected transient float[] vaccine_allocation_limit = new float[Population_Bridging.LENGTH_GENDER];
+	protected transient float[] vaccine_allocation_limit = new float[Population_Network.LENGTH_GENDER];
 
-	protected transient RealDistribution[][] vacc_dur = new RealDistribution[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
+	protected transient RealDistribution[][] vacc_dur = new RealDistribution[Population_Network.LENGTH_GENDER][LENGTH_SITE];
 	protected transient HashMap<Integer, Integer> test_rate_index_map;
 
 	// HashMap<Integer, int[][]> with K = time, V= int[gender][site]
@@ -342,7 +342,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public static final String FILENAME_CUMUL_INCIDENCE_BRIDGE_ZIP = FILENAME_CUMUL_INCIDENCE_BRIDGE.replaceFirst("_%d",
 			"") + ".7z";
 
-	private static final int ACT_SPECIFIC_CONDOM_EFFICACY_INDEX = Population_Bridging.LENGTH_GENDER;
+	private static final int ACT_SPECIFIC_CONDOM_EFFICACY_INDEX = Population_Network.LENGTH_GENDER;
 	private static final int ACT_SPECIFIC_USAGE_REG_INDEX = ACT_SPECIFIC_CONDOM_EFFICACY_INDEX + 1;
 	private static final int ACT_SPECIFIC_USAGE_CAS_INDEX = ACT_SPECIFIC_USAGE_REG_INDEX + 1;
 
@@ -401,7 +401,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 		}
 
-		sym_test_period_by_gender = new RealDistribution[Population_Bridging.LENGTH_GENDER];
+		sym_test_period_by_gender = new RealDistribution[Population_Network.LENGTH_GENDER];
 		double[] sought_test_param = (double[]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM];
 
 		if (sought_test_param.length == 2) {
@@ -451,7 +451,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		float[][][] non_viable_infection_setting = ((float[][][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_NON_VIABLE_INFECTION_SETTING]);
 		double[][] antibotic_dur = (double[][]) runnable_fields[RUNNABLE_FIELD_TRANSMISSION_ANTIBIOTIC_DURATION];
 
-		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+		for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 			for (int s = 0; s < LENGTH_SITE; s++) {
 				if (non_viable_infection_setting[g][s][NON_VIABILITY_CONTACT_INDUCED_PROB] > 0) {
 					non_viable_inf_by_contact_duration[g][s] = generateGammaDistribution(RNG,
@@ -479,7 +479,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		currently_vaccinated = new ArrayList<>();
 		vaccine_expiry_by_indivdual = new HashMap<>();
 
-		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+		for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 			for (int s = 0; s < LENGTH_SITE; s++) {
 				float[] vacc_setting = ((float[][][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_PROPERTIES])[g][s];
 				if (vacc_setting[VACCINE_PROPERTIES_MEAN_VAC_DURATION] > 0) {
@@ -623,8 +623,8 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	public void allocateSeedInfection(int[][] num_infectioned_by_gender_site, int time) {
 
 		@SuppressWarnings("unchecked")
-		ArrayList<Integer>[] pid_collection = new ArrayList[Population_Bridging.LENGTH_GENDER];
-		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+		ArrayList<Integer>[] pid_collection = new ArrayList[Population_Network.LENGTH_GENDER];
+		for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 			pid_collection[g] = new ArrayList<>();
 		}
 
@@ -632,7 +632,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			pid_collection[getPersonGrp(v)].add(v);
 		}
 
-		for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+		for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 			Integer[] candidate_any = pid_collection[g].toArray(new Integer[pid_collection[g].size()]);
 			Arrays.sort(candidate_any);
 
@@ -830,7 +830,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 		int startTime = firstSeedTime;
 		float[][][] vaccine_effect = (float[][][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_PROPERTIES];
 
-		float[] vaccine_one_off_rate = new float[Population_Bridging.LENGTH_GENDER];
+		float[] vaccine_one_off_rate = new float[Population_Network.LENGTH_GENDER];
 		int vaccine_one_off_at = -1;
 
 		final int SEED_INF_INDEX = SIM_OFFSET + Simulation_ClusterModelTransmission.SIM_FIELD_SEED_INFECTION;
@@ -872,13 +872,13 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 			ArrayList<Integer> infected_today = new ArrayList<>();
 
-			int[][] cumul_incidence = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE];
-			int[] cumul_incidence_by_person = new int[Population_Bridging.LENGTH_GENDER];
-			int[][] cumul_incidence_src = new int[Population_Bridging.LENGTH_GENDER][Population_Bridging.LENGTH_GENDER];
-			int[][] cumul_antibiotic_use = new int[Population_Bridging.LENGTH_GENDER][2];
-			int[] cumul_treatment_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
-			int[] cumul_positive_dx_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
-			int[] cumul_positive_dx_sought_by_person = new int[Population_Bridging.LENGTH_GENDER * 2];
+			int[][] cumul_incidence = new int[Population_Network.LENGTH_GENDER][LENGTH_SITE];
+			int[] cumul_incidence_by_person = new int[Population_Network.LENGTH_GENDER];
+			int[][] cumul_incidence_src = new int[Population_Network.LENGTH_GENDER][Population_Network.LENGTH_GENDER];
+			int[][] cumul_antibiotic_use = new int[Population_Network.LENGTH_GENDER][2];
+			int[] cumul_treatment_by_person = new int[Population_Network.LENGTH_GENDER * 2];
+			int[] cumul_positive_dx_by_person = new int[Population_Network.LENGTH_GENDER * 2];
+			int[] cumul_positive_dx_sought_by_person = new int[Population_Network.LENGTH_GENDER * 2];
 
 			for (int currentTime = startTime; currentTime < startTime + nUM_TIME_STEPS_PER_SNAP * nUM_SNAP
 					&& hasInfected; currentTime++) {
@@ -994,7 +994,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 								int g_s = getPersonGrp(infectious);
 								int g_t = getPersonGrp(partner);
 
-								int[] valid_target = g_t == Population_Bridging.GENDER_FEMALE
+								int[] valid_target = g_t == Population_Network.GENDER_FEMALE
 										? new int[] { SITE_VAGINA, SITE_RECTUM, SITE_OROPHARYNX }
 										: new int[] { SITE_PENIS, SITE_RECTUM, SITE_OROPHARYNX };
 
@@ -1147,7 +1147,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							cumul_treatment_by_person[gI]++;
 						}
 						if ((testOutcome & 1 << TEST_OUTCOME_TREATMENT_APPLIED_ON_TRUE_INFECTION) != 0) {
-							cumul_treatment_by_person[Population_Bridging.LENGTH_GENDER + gI]++;
+							cumul_treatment_by_person[Population_Network.LENGTH_GENDER + gI]++;
 						}
 						if ((testOutcome & 1 << TEST_OUTCOME_POSITIVE_TEST) != 0) {
 							if (tId < 0) {
@@ -1159,9 +1159,9 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 						if ((testOutcome & 1 << TEST_OUTCOME_POSITIVE_TEST_ON_TRUE_INFECTION) != 0) {
 							if (tId < 0) {
-								cumul_positive_dx_sought_by_person[Population_Bridging.LENGTH_GENDER + gI]++;
+								cumul_positive_dx_sought_by_person[Population_Network.LENGTH_GENDER + gI]++;
 							} else {
-								cumul_positive_dx_by_person[Population_Bridging.LENGTH_GENDER + gI]++;
+								cumul_positive_dx_by_person[Population_Network.LENGTH_GENDER + gI]++;
 							}
 						}
 
@@ -1364,7 +1364,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 							sim_output.put(SIM_OUTPUT_VACCINE_COVERAGE, vaccine_coverage_map);
 						}
 
-						int[][][] vaccine_coverage_ent = new int[Population_Bridging.LENGTH_GENDER][LENGTH_SITE][2];
+						int[][][] vaccine_coverage_ent = new int[Population_Network.LENGTH_GENDER][LENGTH_SITE][2];
 
 						@SuppressWarnings("unchecked")
 						HashMap<Integer, int[][]> vaccine_coverage_by_person = (HashMap<Integer, int[][]>) sim_output
@@ -1376,7 +1376,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 						}
 
 						// V= int[gender]{valid, partial, expired, unused}
-						int[][] vaccine_coverage_by_person_ent = new int[Population_Bridging.LENGTH_GENDER][4];
+						int[][] vaccine_coverage_by_person_ent = new int[Population_Network.LENGTH_GENDER][4];
 
 						for (Integer pid : currently_vaccinated) {
 							int g = getPersonGrp(pid);
@@ -1482,7 +1482,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 	protected int setOneOffVaccineSetting(float[] vaccine_one_off_rate, int vaccine_one_off_at) {
 		if (getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING] != null) {
-			for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
+			for (int gender = 0; gender < Population_Network.LENGTH_GENDER; gender++) {
 				float[] vacc_setting = ((float[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_VACCINE_SETTING])[gender];
 				if (vacc_setting != null) {
 					float vacc_coverage_by_test = vacc_setting[VACCINATION_SETTING_RATE_PER_TEST];
@@ -1947,7 +1947,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				pWri.close();
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_INFECTIOUS_COUNT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
+				str = printCountMap(count_map_by_person, Population_Network.LENGTH_GENDER, "Gender_%d");
 				pWri = new PrintWriter(new File(baseDir,
 						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_PREVALENCE_PERSON,
 								cMAP_SEED, sIM_SEED)));
@@ -1966,7 +1966,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				pWri.close();
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_INCIDENCE_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER, "Gender_%d");
+				str = printCountMap(count_map_by_person, Population_Network.LENGTH_GENDER, "Gender_%d");
 				pWri = new PrintWriter(new File(baseDir,
 						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_INCIDENCE_PERSON,
 								cMAP_SEED, sIM_SEED)));
@@ -1986,7 +1986,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				PrintWriter pWri;
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_POS_DX_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
+				str = printCountMap(count_map_by_person, Population_Network.LENGTH_GENDER * 2,
 						new String[] { "Total_Positive_DX_Gender_%d", "True_Positive_DX_Gender_%d" });
 				pWri = new PrintWriter(new File(baseDir, filePrefix + String.format(
 						Simulation_ClusterModelTransmission.FILENAME_CUMUL_POSITIVE_DX_PERSON, cMAP_SEED, sIM_SEED)));
@@ -1995,7 +1995,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output
 						.get(SIM_OUTPUT_CUMUL_POS_DX_SOUGHT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
+				str = printCountMap(count_map_by_person, Population_Network.LENGTH_GENDER * 2,
 						new String[] { "Total_Positive_DX_SOUGHT_Gender_%d", "True_Positive_DX_SOUGHT_Gender_%d" });
 				pWri = new PrintWriter(new File(baseDir,
 						filePrefix + String.format(
@@ -2005,7 +2005,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				pWri.close();
 
 				count_map_by_person = (HashMap<Integer, int[]>) sim_output.get(SIM_OUTPUT_CUMUL_TREATMENT_BY_PERSON);
-				str = printCountMap(count_map_by_person, Population_Bridging.LENGTH_GENDER * 2,
+				str = printCountMap(count_map_by_person, Population_Network.LENGTH_GENDER * 2,
 						new String[] { "Total_Treatment_Gender_%d", "True_Treatment_Gender_%d" });
 				pWri = new PrintWriter(new File(baseDir,
 						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_TREATMENT_PERSON,
@@ -2043,7 +2043,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 			if ((simSetting & 1 << Simulation_ClusterModelTransmission.SIM_SETTING_KEY_TRACK_ANTIBIOTIC_USAGE) != 0) {
 				PrintWriter pWri;
 				count_map = (HashMap<Integer, int[][]>) sim_output.get(SIM_OUTPUT_CUMUL_ANTIBOTIC_USAGE);
-				str = printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, 2 },
+				str = printCountMap(count_map, new int[] { Population_Network.LENGTH_GENDER, 2 },
 						"Gender_%d_Usage_%d"); // Proper, Over treatment
 				pWri = new PrintWriter(new File(baseDir,
 						String.format(filePrefix + Simulation_ClusterModelTransmission.FILENAME_CUMUL_ANTIBIOTIC_USAGE,
@@ -2064,7 +2064,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				str = new StringBuilder();
 
 				str.append("Time");
-				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+				for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 					for (int s = 0; s < LENGTH_SITE; s++) {
 						for (String v : new String[] { "valid", "expired" }) {
 							str.append(',');
@@ -2080,7 +2080,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				for (Integer t : time_array) {
 					int[][][] ent = count_map_vacc.get(t);
 					str.append(t);
-					for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+					for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 						for (int s = 0; s < LENGTH_SITE; s++) {
 							for (int v = 0; v < ent[g][s].length; v++) {
 								str.append(',');
@@ -2104,7 +2104,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				str = new StringBuilder();
 
 				str.append("Time");
-				for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+				for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 					str.append(String.format(",%d_Active,%d_Partial,%d_Expired,%d_Unallocated", g, g, g, g));
 				}
 				str.append('\n');
@@ -2112,7 +2112,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				for (Integer t : time_array) {
 					int[][] ent = count_map_vacc_person.get(t);
 					str.append(t);
-					for (int g = 0; g < Population_Bridging.LENGTH_GENDER; g++) {
+					for (int g = 0; g < Population_Network.LENGTH_GENDER; g++) {
 						for (int v = 0; v < ent[g].length; v++) {
 							str.append(',');
 							str.append(ent[g][v]);
@@ -2173,7 +2173,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 	}
 
 	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map, String headingFormat) {
-		return printCountMap(count_map, new int[] { Population_Bridging.LENGTH_GENDER, LENGTH_SITE }, headingFormat);
+		return printCountMap(count_map, new int[] { Population_Network.LENGTH_GENDER, LENGTH_SITE }, headingFormat);
 	}
 
 	private StringBuilder printCountMap(HashMap<Integer, int[][]> count_map, int[] dimension, String headingFormat) {
@@ -2473,12 +2473,12 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 				// Sym test adjustment for hetrosexual male
 				if (point.length >= 15) {
 					// Backward compatibility to single mean-sd option
-					if (sym_test_rate.length < 2 * Population_Bridging.LENGTH_GENDER) {
+					if (sym_test_rate.length < 2 * Population_Network.LENGTH_GENDER) {
 						sym_test_rate = Arrays.copyOf(sym_test_rate,
-								sym_test_rate.length * Population_Bridging.LENGTH_GENDER);
+								sym_test_rate.length * Population_Network.LENGTH_GENDER);
 						target_runnable
 								.getRunnable_fields()[Abstract_Runnable_ClusterModel_Transmission.RUNNABLE_FIELD_TRANSMISSION_SOUGHT_TEST_PERIOD_BY_SYM] = sym_test_rate;
-						for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+						for (int g = 1; g < Population_Network.LENGTH_GENDER; g++) {
 							sym_test_rate[2 * g] = sym_test_rate[0];
 							sym_test_rate[2 * g + 1] = sym_test_rate[1];
 						}
@@ -2492,7 +2492,7 @@ public class Runnable_ClusterModel_Transmission extends Abstract_Runnable_Cluste
 
 				// Sym rate for urethral infection for male
 				if (point.length >= 16) {
-					for (int g = 1; g < Population_Bridging.LENGTH_GENDER; g++) {
+					for (int g = 1; g < Population_Network.LENGTH_GENDER; g++) {
 						sym_rate[g][Abstract_Runnable_ClusterModel_Transmission.SITE_PENIS] = (float) point[15];
 					}
 				}

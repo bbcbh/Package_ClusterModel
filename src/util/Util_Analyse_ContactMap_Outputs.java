@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
-import population.Population_Bridging;
+import population.Population_Network;
 import sim.Simulation_ClusterModelGeneration;
 
 public class Util_Analyse_ContactMap_Outputs {
@@ -56,7 +56,7 @@ public class Util_Analyse_ContactMap_Outputs {
 
 		@SuppressWarnings("unchecked")
 		// Key = day, value=double[] {% in category for sim #1}
-		HashMap<Integer, ArrayList<Double>>[][] entry_collection = new HashMap[Population_Bridging.LENGTH_GENDER][numCat];
+		HashMap<Integer, ArrayList<Double>>[][] entry_collection = new HashMap[Population_Network.LENGTH_GENDER][numCat];
 
 		for (File outputFile : outputFiles) {
 

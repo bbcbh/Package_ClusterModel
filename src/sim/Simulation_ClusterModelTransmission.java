@@ -39,7 +39,7 @@ import org.apache.commons.math3.exception.OutOfRangeException;
 import optimisation.OptFittingFunction;
 import optimisation.Optimisation_Factory;
 import person.AbstractIndividualInterface;
-import population.Population_Bridging;
+import population.Population_Network;
 import random.MersenneTwisterRandomGenerator;
 import random.RandomGenerator;
 import relationship.ContactMap;
@@ -159,7 +159,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	public static final int SIM_FIELD_SEED_INFECTION = 0;
 	public static final int LENGTH_SIM_MAP_TRANSMISSION_FIELD = SIM_FIELD_SEED_INFECTION + 1;
 
-	public Object[] simFields = new Object[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+	public Object[] simFields = new Object[Population_Network.LENGTH_FIELDS_BRIDGING_POP
 			+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 			+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 			+ LENGTH_SIM_MAP_TRANSMISSION_FIELD
@@ -170,7 +170,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	
 
 	public Simulation_ClusterModelTransmission() {
-		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+		final int sim_offset = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD;
 		for (int i = 0; i < simFields.length; i++) {
@@ -580,7 +580,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 
 			String popCompositionKey = POP_PROP_INIT_PREFIX
-					+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+					+ Integer.toString(Population_Network.FIELD_POP_COMPOSITION);
 			if (loadedProperties.containsKey(popCompositionKey)) {
 				pop_composition = (int[]) PropValUtils.propStrToObject(loadedProperties.getProperty(popCompositionKey),
 						int[].class);
@@ -590,7 +590,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		String popType = (String) loadedProperties
 				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
-		final int sim_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+		final int sim_offset = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD;
 
@@ -666,7 +666,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			zipOutputFiles();
 		}
 
-		int[] contactMapTimeRange = (int[]) simFields[Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+		int[] contactMapTimeRange = (int[]) simFields[Population_Network.LENGTH_FIELDS_BRIDGING_POP
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.RUNNABLE_FIELD_CONTACT_MAP_GEN_VALID_RANGE];
 
 		int[] cumulative_pop_composition = new int[pop_composition.length];
@@ -1053,7 +1053,7 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						runnable[s].allocateSeedInfection(seedInfectNum, contactMapTimeRange[0]);
 					} else {
 						// Add infected (only support Runnable_ClusterModel_Transmission atm)
-						for (int gender = 0; gender < Population_Bridging.LENGTH_GENDER; gender++) {
+						for (int gender = 0; gender < Population_Network.LENGTH_GENDER; gender++) {
 							for (int site = 0; site < Abstract_Runnable_ClusterModel_Transmission.LENGTH_SITE; site++) {
 								if (seedInfectNum[gender][site] > 0) {
 									ArrayList<Integer>[] personStat = personListByGenderMap.get(baseContactMapSeed);
@@ -1311,12 +1311,12 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	}
 
 	private void reallocateRiskGrp(long baseContactMapSeed) {
-		final int ent_offset = Population_Bridging.LENGTH_FIELDS_BRIDGING_POP
+		final int ent_offset = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
 				+ Simulation_ClusterModelGeneration.LENGTH_SIM_MAP_GEN_FIELD + LENGTH_SIM_MAP_TRANSMISSION_FIELD;
 
 		final String popCompositionKey = POP_PROP_INIT_PREFIX
-				+ Integer.toString(Population_Bridging.FIELD_POP_COMPOSITION);
+				+ Integer.toString(Population_Network.FIELD_POP_COMPOSITION);
 
 		int[] pop_composition = (int[]) PropValUtils.propStrToObject(loadedProperties.getProperty(popCompositionKey),
 				int[].class);
