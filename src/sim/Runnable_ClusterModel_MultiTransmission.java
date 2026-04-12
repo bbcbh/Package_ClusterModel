@@ -1600,7 +1600,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		} // End of time step
 
-		if (runnableId != null) {
+		if (runnableId != null && print_progress!=null) {
 			System.out.printf("Thread <%s> completed.\n", runnableId);
 		}
 
