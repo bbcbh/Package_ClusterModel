@@ -1742,11 +1742,16 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					if (LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
 						flag_exportSkipBackup = true;
 					}
-					if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {
-						flag_setPrintProgress = true;
-					}
+					//if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {					
+					//	flag_setPrintProgress = true;
+					//}
 					if (LAUNCH_ARGS_SKIP_STATE_GEN.equals(args[ai])) {
 						flag_exportStateGen = true;
+					}
+					if(args[ai].startsWith(LAUNCH_ARGS_PRINT_PROGRESS)) {
+						String[] ent = args[ai].split("=");												
+						flag_setPrintProgress = ent.length == 1 
+								||  Boolean.parseBoolean(ent[ent.length-1]);
 					}
 
 					if (args[ai].startsWith(LAUNCH_ARGS_SEED_MAP)) {
