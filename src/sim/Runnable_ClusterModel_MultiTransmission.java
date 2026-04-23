@@ -1235,7 +1235,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int inf_id = Integer.parseInt(key_s[0]);
 				int infected_site_id = Integer.parseInt(key_s[1]);
 
-				for (Integer pid_inf_src : currenty_infectious_ent) {
+				for (Integer pid_inf_src : currenty_infectious_ent) {												
+					
 					if (cMap.containsVertex(pid_inf_src)) {
 						int g_s = currentTime < exitPopAt(pid_inf_src) ? getPersonGrp(pid_inf_src) : -1;
 						Integer[][] edges = cMap.edgesOf(pid_inf_src).toArray(new Integer[0][]);
@@ -1772,7 +1773,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	}
 
 	@Override
-	protected void postTimeStep(int currentTime) {
+	protected void postTimeStep(int currentTime) {				
 		if (exportTime.length > 0 && !skipStateGen) {
 			if (currentTime > 0 && currentTime % exportTime[0] == 0) {
 				try {
