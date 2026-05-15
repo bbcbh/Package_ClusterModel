@@ -1235,8 +1235,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				int inf_id = Integer.parseInt(key_s[0]);
 				int infected_site_id = Integer.parseInt(key_s[1]);
 
-				for (Integer pid_inf_src : currenty_infectious_ent) {												
-					
+				for (Integer pid_inf_src : currenty_infectious_ent) {
+
 					if (cMap.containsVertex(pid_inf_src)) {
 						int g_s = currentTime < exitPopAt(pid_inf_src) ? getPersonGrp(pid_inf_src) : -1;
 						Integer[][] edges = cMap.edgesOf(pid_inf_src).toArray(new Integer[0][]);
@@ -1601,7 +1601,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		} // End of time step
 
-		if (runnableId != null && print_progress!=null) {
+		if (runnableId != null && print_progress != null) {
 			System.out.printf("Thread <%s> completed.\n", runnableId);
 		}
 
@@ -1773,7 +1773,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	}
 
 	@Override
-	protected void postTimeStep(int currentTime) {				
+	protected void postTimeStep(int currentTime) {
 		if (exportTime.length > 0 && !skipStateGen) {
 			if (currentTime > 0 && currentTime % exportTime[0] == 0) {
 				try {
@@ -1793,49 +1793,56 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		int[][] src_infection_stages = map_current_infection_stage.get(pid_inf_src);
 		int src_stage = src_infection_stages[inf_id][src_site];
 		double[][][][] trans_prob = map_trans_prob.get(pid_inf_src);
+		double prob = 0;
 
-		double prob = trans_prob[inf_id][src_site][tar_site][src_stage];
+		try {
 
-		if (FIELD_ACT_FREQ_CONDOM_EFFICACY < actFieldEntry.length) {
-			if (actFieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY] > 0) {
-				double condomUsage = (partnershiptDur > 1 ? actFieldEntry[FIELD_ACT_FREQ_USAGE_REG]
-						: actFieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL]);
-				if (condomUsage > 0) {
-					if (RNG.nextDouble() < condomUsage) {
-						prob *= (1 - actFieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]);
-					}
-				}
-			}
-		}
+			prob = trans_prob[inf_id][src_site][tar_site][src_stage];
 
-		// Co-infection multiplier
-		double[][] co_inf_multiplier = lookupTable_co_infect_multipler.get(inf_id);
-		if (co_inf_multiplier != null) {
-			int[] pids = new int[] { pid_inf_src, pid_inf_tar };
-			int[] sites = new int[] { src_site, tar_site };
-
-			for (int inf_id_co = 0; inf_id_co < NUM_INF; inf_id_co++) {
-				if (inf_id_co != inf_id && co_inf_multiplier[inf_id_co] != null) {
-					boolean hasCoInf = false;
-					int co_inf_stage = (int) co_inf_multiplier[inf_id_co][0];
-
-					for (int ppt = 0; ppt < pids.length && !hasCoInf; ppt++) {
-						int[][] inf_states = map_current_infection_stage.get(pids[ppt]);
-						if (inf_states != null) {
-							int inf_stage = inf_states[inf_id_co][sites[ppt]];
-							hasCoInf |= (inf_stage != AbstractIndividualInterface.INFECT_S
-									&& ((co_inf_stage & (1 << inf_stage)) != 0));
+			if (FIELD_ACT_FREQ_CONDOM_EFFICACY < actFieldEntry.length) {
+				if (actFieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY] > 0) {
+					double condomUsage = (partnershiptDur > 1 ? actFieldEntry[FIELD_ACT_FREQ_USAGE_REG]
+							: actFieldEntry[FIELD_ACT_FREQ_USAGE_CASUAL]);
+					if (condomUsage > 0) {
+						if (RNG.nextDouble() < condomUsage) {
+							prob *= (1 - actFieldEntry[FIELD_ACT_FREQ_CONDOM_EFFICACY]);
 						}
 					}
-
-					if (hasCoInf) {
-						prob *= co_inf_multiplier[inf_id_co][1] + RNG.nextDouble()
-								* (co_inf_multiplier[inf_id_co][2] - co_inf_multiplier[inf_id_co][1]);
-					}
-
 				}
 			}
 
+			// Co-infection multiplier
+			double[][] co_inf_multiplier = lookupTable_co_infect_multipler.get(inf_id);
+			if (co_inf_multiplier != null) {
+				int[] pids = new int[] { pid_inf_src, pid_inf_tar };
+				int[] sites = new int[] { src_site, tar_site };
+
+				for (int inf_id_co = 0; inf_id_co < NUM_INF; inf_id_co++) {
+					if (inf_id_co != inf_id && co_inf_multiplier[inf_id_co] != null) {
+						boolean hasCoInf = false;
+						int co_inf_stage = (int) co_inf_multiplier[inf_id_co][0];
+
+						for (int ppt = 0; ppt < pids.length && !hasCoInf; ppt++) {
+							int[][] inf_states = map_current_infection_stage.get(pids[ppt]);
+							if (inf_states != null) {
+								int inf_stage = inf_states[inf_id_co][sites[ppt]];
+								hasCoInf |= (inf_stage != AbstractIndividualInterface.INFECT_S
+										&& ((co_inf_stage & (1 << inf_stage)) != 0));
+							}
+						}
+
+						if (hasCoInf) {
+							prob *= co_inf_multiplier[inf_id_co][1] + RNG.nextDouble()
+									* (co_inf_multiplier[inf_id_co][2] - co_inf_multiplier[inf_id_co][1]);
+						}
+
+					}
+				}
+
+			}
+		} catch (ArrayIndexOutOfBoundsException ex) {
+			// No transmission from stage			
+			prob = 0;
 		}
 
 		return prob;
