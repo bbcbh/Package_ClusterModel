@@ -255,6 +255,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			EXPORT_CUMUL_INC_SITE, EXPORT_CUMUL_INC_PERSON, EXPORT_CUMUL_TREATMENT_PERSON };
 
 	protected int[] exportTime = new int[0];
+	
+	protected transient ContactMap cMap = null; // Current map (generate at run())
 
 	public Runnable_ClusterModel_MultiTransmission(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop,
 			int num_inf, int num_site, int num_act) {
@@ -1082,7 +1084,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// int switchTimeIndex = 0;
 
 		// Current contact map
-		ContactMap cMap = new ContactMap();
+		cMap = new ContactMap();
 		Integer[][] edges_array = getEdgesArrayFromBaseConctactMap();
 		int edges_array_pt = 0;
 		HashMap<Integer, ArrayList<Integer[]>> removeEdges = new HashMap<>();
