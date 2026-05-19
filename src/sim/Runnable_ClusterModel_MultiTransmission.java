@@ -2225,16 +2225,9 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					int num_inf = inf_setting[pt];
 					pt++;
 
-					int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
-					int stage_pt = 0;
-					ArrayList<Integer> validInfectiousStages = new ArrayList<>();
-					while (validStage != 0) {
-						if ((validStage & 1) > 0) {
-							validInfectiousStages.add(stage_pt);
-						}
-						validStage = validStage >> 1;
-						stage_pt++;
-					}
+					
+					int validStage;
+					ArrayList<Integer> validInfectiousStages = getValidSeedStages(inf_id, site_index);
 
 					if (validInfectiousStages.size() > 0) {
 						// List out all valid candidate
@@ -2388,6 +2381,21 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 		}
 
+	}
+
+	protected ArrayList<Integer> getValidSeedStages(int inf_id, int site_index) {
+		ArrayList<Integer> validInfectiousStages = new ArrayList<>();
+		int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
+		int stage_pt = 0;				
+		
+		while (validStage != 0) {
+			if ((validStage & 1) > 0) {
+				validInfectiousStages.add(stage_pt);
+			}
+			validStage = validStage >> 1;
+			stage_pt++;
+		}
+		return validInfectiousStages;
 	}
 
 	@Override
