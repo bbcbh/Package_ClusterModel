@@ -189,15 +189,22 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected HashMap<Integer, HashMap<Integer, Integer>> test_rate_index_map; // KEY = PID, V=Map<TestRateId, Pt_ID>
 
 	// Helper objects set by fields - Not exported
-	protected transient HashMap<String, double[]> lookupTable_infection_stage_path; // Key="INF_ID,SITE_ID,STAGE_ID",V={Cumul_Prob_0,...State_ID_0...}
-	protected transient int[][] lookupTable_infection_infectious_stages; // int[INF_ID][SITE]=STAGE_INCLUDE_ID
-	protected transient HashMap<String, double[]> lookupTable_test_treatment_properties; // Key="INF_ID,SITE_ID,V=TEST_ACCURACY_INFO
-	protected transient HashMap<String, ArrayList<double[]>> lookupTable_instant_stage_switch; // KEY="Inf_ID,SITE_ID,STAGE_ID",V
-																								// = fieldEntry
-	protected transient HashMap<Integer, double[][]> lookupTable_co_infect_multipler; // KEY=INF_ID,
-																						// V={[infID]{co_infect_stage_incl,
-																						// co_infect_lower,
-																						// co_infect_higher}
+
+	// Key="INF_ID,SITE_ID,STAGE_ID",V={Cumul_Prob_0,...State_ID_0...}
+	protected transient HashMap<String, double[]> lookupTable_infection_stage_path;
+	// int[INF_ID][SITE]=STAGE_INCLUDE_ID
+	protected transient int[][] lookupTable_infection_infectious_stages;
+	// Key="INF_ID,SITE_ID,V=TEST_ACCURACY_INFO
+	protected transient HashMap<String, double[]> lookupTable_test_treatment_properties;
+	// KEY="Inf_ID,SITE_ID,STAGE_ID"
+	protected transient HashMap<String, ArrayList<double[]>> lookupTable_instant_stage_switch;
+	// KEY=INF_ID, V={[infID]{co_infect_stage_incl, co_infect_lower,
+	// co_infect_higher}
+	protected transient HashMap<Integer, double[][]> lookupTable_co_infect_multipler;
+	// KEY = Gender/Grp, V= {INF_INCL => test_rate_definition}
+	protected transient HashMap<Integer, HashMap<Integer, double[]>> lookupTable_retesting_rate_by_gender_infIncl;
+	// KEY = Gender/Grp, riskCat, last_test_infIncl, last_test_siteIncl
+	protected transient HashMap<String, Integer> lookupTable_testing_rate_def_num;
 
 	protected transient double[][][][] table_act_frequency; // double[ACT_ID][G_TO][G_FROM]=fieldEntry
 
@@ -255,7 +262,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 			EXPORT_CUMUL_INC_SITE, EXPORT_CUMUL_INC_PERSON, EXPORT_CUMUL_TREATMENT_PERSON };
 
 	protected int[] exportTime = new int[0];
-	
+
 	protected transient ContactMap cMap = null; // Current map (generate at run())
 
 	public Runnable_ClusterModel_MultiTransmission(long cMap_seed, long sim_seed, ContactMap base_cMap, Properties prop,
@@ -292,6 +299,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		lookupTable_test_treatment_properties = new HashMap<>();
 		lookupTable_instant_stage_switch = new HashMap<>();
 		lookupTable_co_infect_multipler = new HashMap<>();
+		lookupTable_retesting_rate_by_gender_infIncl = new HashMap<>();
+		lookupTable_testing_rate_def_num = new HashMap<>();
 
 		table_act_frequency = new double[NUM_ACT][NUM_GRP][NUM_GRP][];
 
@@ -1709,10 +1718,34 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		// Check for for retesting for positive infection
 
 		if (treatment_inf_incl != 0) {
-			double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+
 			int genderType = getPersonGrp(pid);
-			for (int i = 0; i < testRateDefs.length; i++) {
-				double[] testRateDef = testRateDefs[i];
+
+			HashMap<Integer, double[]> lookupTable_retesting_rate_by_risk = lookupTable_retesting_rate_by_gender_infIncl
+					.get(genderType);
+			if (lookupTable_retesting_rate_by_risk == null) {
+				lookupTable_retesting_rate_by_risk = new HashMap<>();
+				lookupTable_retesting_rate_by_gender_infIncl.put(genderType, lookupTable_retesting_rate_by_risk);
+			}
+			double[] testRateDef = lookupTable_retesting_rate_by_risk.get(treatment_inf_incl);
+
+			if (testRateDef == null) {
+				double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+				testRateDef = new double[0];
+				for (int i = 0; i < testRateDefs.length; i++) {
+					double[] testRateTest = testRateDefs[i];
+					if (testRateTest[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -1) {
+						int gIncl = (int) testRateTest[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
+						int iIncl = (int) testRateTest[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
+						if ((gIncl & (1 << genderType)) != 0 && (iIncl & treatment_inf_incl) != 0) {
+							testRateDef = testRateTest;
+						}
+					}
+				}
+				lookupTable_retesting_rate_by_risk.put(treatment_inf_incl, testRateDef);
+			}
+
+			if (testRateDef.length > 0) {
 				if (testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] == -1) {
 					int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
 					int iIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_INF_INCLUDE_INDEX];
@@ -1843,7 +1876,7 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 			}
 		} catch (ArrayIndexOutOfBoundsException ex) {
-			// No transmission from stage			
+			// No transmission from stage
 			prob = 0;
 		}
 
@@ -2012,8 +2045,22 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		int genderType = getPersonGrp(personId);
 
 		if (genderType != -1 && riskCat != -1) {
-			double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
+			int testDefSel = findTestRateDefNumber(genderType, riskCat, last_test_infIncl, last_test_siteIncl);
+			if (testDefSel != -1) {
+				scheduleNextTestByDefNum(personId, testDefSel, lastTestTime, mustTestBefore);
+			}
+		}
 
+	}
+
+	protected int findTestRateDefNumber(int genderType, int riskCat, int last_test_infIncl, int last_test_siteIncl) {
+
+		String lookupKey = String.format("%d,%d,%d,%d", genderType, riskCat, last_test_infIncl, last_test_siteIncl);
+
+		Integer testDefSel = lookupTable_testing_rate_def_num.get(lookupKey);
+
+		if (testDefSel == null) {
+			double[][] testRateDefs = (double[][]) getRunnable_fields()[RUNNABLE_FIELD_TRANSMISSION_TESTING_RATE_BY_RISK_CATEGORIES];
 			for (int testDefNum = 0; testDefNum < testRateDefs.length; testDefNum++) {
 				double[] testRateDef = testRateDefs[testDefNum];
 				int gIncl = (int) testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_GENDER_INCLUDE_INDEX];
@@ -2024,13 +2071,12 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 				if (((gIncl & (1 << genderType)) != 0) && ((rIncl & (1 << riskCat)) != 0)
 						&& (last_test_infIncl < 0 || last_test_infIncl == iIncl)
 						&& (last_test_siteIncl < 0 || last_test_siteIncl == sIncl)
-						&& testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] != -1) {
-					scheduleNextTestByDefNum(personId, testDefNum, lastTestTime, mustTestBefore);
-
-				} // End of scduleNextTestByDef
+						&& testRateDef[FIELD_TESTING_RATE_BY_RISK_CATEGORIES_TEST_RATE_PARAM_START] >= 0) {
+					testDefSel = testDefNum;
+				} 
 			}
 		}
-
+		return testDefSel.intValue();
 	}
 
 	protected void scheduleNextTestByDefNum(Integer personId, int testDefNum, int lastTestTime, int mustTestBefore) {
@@ -2225,7 +2271,6 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 					int num_inf = inf_setting[pt];
 					pt++;
 
-					
 					int validStage;
 					ArrayList<Integer> validInfectiousStages = getValidSeedStages(inf_id, site_index);
 
@@ -2386,8 +2431,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 	protected ArrayList<Integer> getValidSeedStages(int inf_id, int site_index) {
 		ArrayList<Integer> validInfectiousStages = new ArrayList<>();
 		int validStage = 1; // lookupTable_infection_infectious_stages[inf_id][site_index];
-		int stage_pt = 0;				
-		
+		int stage_pt = 0;
+
 		while (validStage != 0) {
 			if ((validStage & 1) > 0) {
 				validInfectiousStages.add(stage_pt);
