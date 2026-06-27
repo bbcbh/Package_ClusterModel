@@ -229,6 +229,8 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 
 	public static final Pattern PROP_TYPE_PATTERN = Pattern.compile("MultiTransmission_(\\d+)_(\\d+)_(\\d+)");
 
+	public static final String PROP_SEED_FILE_PATH = "PROP_SEED_FILE_PATH";
+
 	// Export/Import
 	protected final int EXPORT_MAP_TRANS_PROB = EXPORT_SIMOUTPUT + 1;
 	protected final int EXPORT_MAP_INF_STAGE = EXPORT_MAP_TRANS_PROB + 1;
@@ -1948,11 +1950,19 @@ public class Runnable_ClusterModel_MultiTransmission extends Abstract_Runnable_C
 		printCountMap(countMap, fileName, headerFormat, dimension, null);
 	}
 
-	public void printCountMap(HashMap<Integer, int[]> countMap, String fileName, String headerFormat, int[] dimension,
+	public void printCountMap(HashMap<Integer, int[]> countMap, String outputfileName, String headerFormat, int[] dimension,
 			int[] col_to_print) {
 
 		PrintWriter pWri;
 		StringWriter s = null;
+		
+		String fileName = outputfileName;
+
+		if (this.getSim_prop().containsKey(PROP_SEED_FILE_PATH)) {
+			File seedFileDir = new File((String) this.getSim_prop().get(PROP_SEED_FILE_PATH)).getParentFile();
+			fileName = String.format("%s%s%s", seedFileDir.getName(), File.separator, outputfileName);
+		}
+		
 		try {
 			pWri = new PrintWriter(new File(baseDir, fileName));
 		} catch (FileNotFoundException e) {
