@@ -553,8 +553,6 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		int numThreads = Runtime.getRuntime().availableProcessors();
 		int numSim = 1;
 		long seed = System.currentTimeMillis();
-		int num_snap = 1;
-		int num_time_steps_per_snap = 1;
 		int[] pop_composition = new int[] { 500000, 500000, 20000, 20000 };
 
 		if (loadedProperties != null) {
@@ -571,12 +569,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 						loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_BASESEED]));
 			}
 			if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP])) {
-				num_snap = Integer.parseInt(
-						loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
 			}
 			if (loadedProperties.containsKey(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ])) {
-				num_time_steps_per_snap = Integer.parseInt(loadedProperties
-						.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
 			}
 
 			String popCompositionKey = POP_PROP_INIT_PREFIX
