@@ -587,8 +587,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			}
 		}
 
-		String popType = (String) loadedProperties
-				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
+//		String popType = (String) loadedProperties
+//				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
 
 		final int sim_offset = Population_Network.LENGTH_FIELDS_BRIDGING_POP
 				+ Abstract_Runnable_ClusterModel_ContactMap_Generation.LENGTH_RUNNABLE_MAP_GEN_FIELD
@@ -948,34 +948,17 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 				ArrayList<Long> seedList = preGenSimSeedMap.get(baseContactMapSeed);
 				if (seedList != null && !seedList.isEmpty()) {
 					simSeed = seedList.remove(0);
-					if(printProgress) {
-						System.out.printf("Simulation using cMap_seed=%d and sim_seed=%d from file.\n", baseContactMapSeed,
-							simSeed);
+					if (printProgress) {
+						System.out.printf("Simulation using cMap_seed=%d and sim_seed=%d from file.\n",
+								baseContactMapSeed, simSeed);
 					}
 				}
 			}
 
-			if (runSim) {
-				runnable[s] = generateDefaultRunnable(baseContactMapSeed, simSeed, loadedProperties);
+			runnable[s] = generateDefaultRunnable(baseContactMapSeed, simSeed, loadedProperties);
 
-				if (runnable[s] == null) {
-					if (popType == null) {
-						popType = ""; // Default
-					}
-					// Adjust to remove runnable as see fit
-					if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
-						Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
-						m.matches();
-						runnable[s] = new Runnable_ClusterModel_MultiTransmission(baseContactMapSeed, simSeed,
-								pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
-								num_snap, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
-								Integer.parseInt(m.group(3)));
-					} else {
-						runnable[s] = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed,
-								pop_composition, baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap,
-								num_snap);
-					}
-				}
+			if (runSim && runnable[s] != null) {
+
 				runnable[s].setBaseDir(baseDir);
 				runnable[s].setBaseProp(loadedProperties);
 				runnable[s].setContactMapFiles(multiContactMapFileMapping.get(baseContactMapSeed).toArray(new File[0]));
@@ -1175,10 +1158,44 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 		}
 	}
 
-	// To be overwritten by subclass
-	public Abstract_Runnable_ClusterModel_Transmission generateDefaultRunnable(long cMap_seed, long sim_seed,
+	// Loading default runnable - usually to be overwritten by subclass
+	public Abstract_Runnable_ClusterModel_Transmission generateDefaultRunnable(long baseContactMapSeed, long simSeed,
 			Properties loadedProperties) {
-		return null;
+		
+		System.out.printf("Warning: Custom generateDefaultRunnable not defined - using the default from %s instead.\n", 
+				Simulation_ClusterModelTransmission.class.getName());
+
+		Abstract_Runnable_ClusterModel_Transmission default_runnable = null;
+
+		String popType = (String) loadedProperties
+				.get(SimulationInterface.PROP_NAME[SimulationInterface.PROP_POP_TYPE]);
+
+		int[] pop_composition = (int[]) PropValUtils.propStrToObject(
+				loadedProperties
+						.getProperty(POP_PROP_INIT_PREFIX + Integer.toString(Population_Network.FIELD_POP_COMPOSITION)),
+				int[].class);
+
+		int num_snap = Integer.parseInt(
+				loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_NUM_SNAP]));
+		int num_time_steps_per_snap = Integer.parseInt(
+				loadedProperties.getProperty(SimulationInterface.PROP_NAME[SimulationInterface.PROP_SNAP_FREQ]));
+
+		if (popType == null) {
+			popType = ""; // Default
+		}
+		// Adjust to remove runnable as see fit
+		if (Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType).matches()) {
+			Matcher m = Runnable_ClusterModel_MultiTransmission.PROP_TYPE_PATTERN.matcher(popType);
+			m.matches();
+			default_runnable = new Runnable_ClusterModel_MultiTransmission(baseContactMapSeed, simSeed, pop_composition,
+					baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap,
+					Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)));
+		} else {
+			default_runnable = new Runnable_ClusterModel_Transmission_Map(baseContactMapSeed, simSeed, pop_composition,
+					baseContactMapMapping.get(baseContactMapSeed), num_time_steps_per_snap, num_snap);
+		}
+
+		return default_runnable;
 	}
 
 	public static void fillRiskGrpArrByCasualPartnership(ArrayList<Number[]> riskGrpArr, ContactMap cMap,
@@ -1742,16 +1759,15 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 					if (LAUNCH_ARGS_SKIP_BACKUP.equals(args[ai])) {
 						flag_exportSkipBackup = true;
 					}
-					//if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {					
-					//	flag_setPrintProgress = true;
-					//}
+					// if (LAUNCH_ARGS_PRINT_PROGRESS.equals(args[ai])) {
+					// flag_setPrintProgress = true;
+					// }
 					if (LAUNCH_ARGS_SKIP_STATE_GEN.equals(args[ai])) {
 						flag_exportStateGen = true;
 					}
-					if(args[ai].startsWith(LAUNCH_ARGS_PRINT_PROGRESS)) {
-						String[] ent = args[ai].split("=");												
-						flag_setPrintProgress = ent.length == 1 
-								||  Boolean.parseBoolean(ent[ent.length-1]);
+					if (args[ai].startsWith(LAUNCH_ARGS_PRINT_PROGRESS)) {
+						String[] ent = args[ai].split("=");
+						flag_setPrintProgress = ent.length == 1 || Boolean.parseBoolean(ent[ent.length - 1]);
 					}
 
 					if (args[ai].startsWith(LAUNCH_ARGS_SEED_MAP)) {
