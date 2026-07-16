@@ -1155,8 +1155,8 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 	// Loading default runnable - usually to be overwritten by subclass
 	public Abstract_Runnable_ClusterModel_Transmission generateDefaultRunnable(long baseContactMapSeed, long simSeed,
 			Properties loadedProperties) {
-		
-		System.out.printf("Warning: Custom generateDefaultRunnable not defined - using the default from %s instead.\n", 
+
+		System.out.printf("Warning: Custom generateDefaultRunnable not defined - using the default from %s instead.\n",
 				Simulation_ClusterModelTransmission.class.getName());
 
 		Abstract_Runnable_ClusterModel_Transmission default_runnable = null;
@@ -1598,21 +1598,32 @@ public class Simulation_ClusterModelTransmission implements SimulationInterface 
 			// Copy previous entries from zip
 
 			if (preZip != null) {
-				SevenZFile inputZip = new SevenZFile(preZip);
 				SevenZArchiveEntry inputEnt;
 				final int BUFFER = 2048;
 				byte[] buf = new byte[BUFFER];
-				while ((inputEnt = inputZip.getNextEntry()) != null) {
-					outputZip.putArchiveEntry(inputEnt);
-					int count;
-					while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
-						outputZip.write(Arrays.copyOf(buf, count));
-					}
-					outputZip.closeArchiveEntry();
-				}
-				inputZip.close();
 
-				if (exportSkipBackup) {
+				try {
+					SevenZFile inputZip = new SevenZFile(preZip);
+					while ((inputEnt = inputZip.getNextEntry()) != null) {
+						outputZip.putArchiveEntry(inputEnt);
+						int count;
+						while ((count = inputZip.read(buf, 0, BUFFER)) != -1) {
+							outputZip.write(Arrays.copyOf(buf, count));
+						}
+						outputZip.closeArchiveEntry();
+					}
+					inputZip.close();
+
+				} catch (Exception ex) {
+					System.err.printf("Warning: Previous entries in %s ignored due to error in reading 7z archive.\n",
+							preZip.getAbsolutePath());
+					ex.printStackTrace(System.err);
+
+					preZip.delete();
+
+				}
+
+				if (preZip.exists() && exportSkipBackup) {
 					preZip.delete();
 				}
 			}
