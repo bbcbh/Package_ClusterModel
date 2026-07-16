@@ -269,9 +269,14 @@ public class Util_7Z_CSV_Entry_Extract_Callable implements Callable<Map<String, 
 					// with pattern "
 					// + "- using filename as key instead.\n", file_name);
 				}
-			}
+			}						
 
-			zip_ent.put(key, lines);
+			ArrayList<String[]> org_ent = zip_ent.put(key, lines);
+			if(org_ent != null && org_ent.size() > lines.size()) {
+				System.err.printf("extractedLinesFrom7Zip: Entry of name %s already exists. Will store entry with longer length instead.\n", key);
+				zip_ent.put(key,org_ent);
+			}
+			
 		}
 		inputZip.close();
 		return zip_ent;
